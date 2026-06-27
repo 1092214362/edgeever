@@ -36,7 +36,6 @@ import {
   History,
   Home,
   ImageIcon,
-  Inbox,
   Italic,
   KeyRound,
   LayoutList,
@@ -48,6 +47,7 @@ import {
   Minus,
   MoreHorizontal,
   MoreVertical,
+  Notebook as NotebookIcon,
   Pencil,
   Plus,
   Quote,
@@ -65,7 +65,6 @@ import {
   Tags,
   Trash2,
   Undo2,
-  UserRound,
   X,
 } from "lucide-react";
 import {
@@ -828,7 +827,7 @@ const WorkspaceApp = ({
 
   const notebooks = notebooksQuery.data?.notebooks ?? [];
   const defaultMemoNotebookId =
-    selectedNotebookId ?? notebooks.find((notebook) => notebook.slug === "inbox")?.id ?? notebooks[0]?.id ?? null;
+    notebooks.find((notebook) => notebook.slug === "inbox")?.id ?? selectedNotebookId ?? notebooks[0]?.id ?? null;
   const canCreateMemo = Boolean(defaultMemoNotebookId && memoView !== "trash");
   const memoSelectionModeActive = memoSelectionMode || selectedMemoIds.size > 0;
   const mobileSearchActive = mobileBottomNavActive === "search";
@@ -1172,8 +1171,8 @@ const WorkspaceApp = ({
   const handleDeleteNotebook = (notebook: Notebook) => {
     if (notebook.slug === "inbox") {
       setAppNoticeDialog({
-        title: "Inbox 不能删除",
-        description: "Inbox 是默认笔记本，用来保证新笔记始终有归属。",
+        title: "等待分类不能删除",
+        description: "等待分类是默认笔记本，用来保证新笔记始终有归属。",
       });
       return;
     }
@@ -1326,15 +1325,28 @@ const WorkspaceApp = ({
       return;
     }
 
+    if (memoView !== "trash") {
+      deleteMemosMutation.mutate({
+        memoIds: Array.from(selectedMemoIds),
+        permanent: false,
+      });
+      return;
+    }
+
     setMemoDeleteConfirmation({
       kind: "bulk",
       memoIds: Array.from(selectedMemoIds),
-      permanent: memoView === "trash",
+      permanent: true,
     });
   };
 
   const handleDeleteMemoFromList = (memoId: string) => {
-    setMemoDeleteConfirmation({ kind: "single", memoIds: [memoId], permanent: memoView === "trash" });
+    if (memoView !== "trash") {
+      deleteMemoMutation.mutate({ memoId, permanent: false });
+      return;
+    }
+
+    setMemoDeleteConfirmation({ kind: "single", memoIds: [memoId], permanent: true });
   };
 
   const handleConfirmMemoDeletion = () => {
@@ -1896,7 +1908,7 @@ const WorkspaceApp = ({
                 await queryClient.invalidateQueries({ queryKey: ["memos"] });
               }}
               onDeleted={async (memoId) => {
-                setMemoDeleteConfirmation({ kind: "single", memoIds: [memoId], permanent: false });
+                deleteMemoMutation.mutate({ memoId, permanent: false });
               }}
               onPermanentDeleted={async (memoId) => {
                 setMemoDeleteConfirmation({ kind: "single", memoIds: [memoId], permanent: true });
@@ -2472,27 +2484,18 @@ const NotebookPane = ({
           </button>
         </div>
 
-        <nav className="mb-4 space-y-1" aria-label="工作区导航">
+        <nav className="mb-3 space-y-1" aria-label="笔记入口">
           <SidebarNavButton
             active={view === "notebook" && selectedNotebookId === null}
             icon={<LayoutList className="h-4 w-4" />}
             label="全部笔记"
             onClick={onBackToList}
           />
-          <SidebarNavButton icon={<Tags className="h-4 w-4" />} label="标签" onClick={onOpenTags} />
-          <SidebarNavButton icon={<Archive className="h-4 w-4" />} label="附件" onClick={onOpenAssets} />
-          <SidebarNavButton
-            active={view === "trash"}
-            icon={<Trash2 className="h-4 w-4" />}
-            label="回收站"
-            onClick={onOpenTrash}
-          />
-          <SidebarNavButton icon={<UserRound className="h-4 w-4" />} label="我的" onClick={onOpenSettings} />
         </nav>
 
-        <div className="mb-3 flex items-center justify-between gap-2 px-2 text-xs font-semibold uppercase text-slate-500">
+        <div className="mb-2 flex items-center justify-between gap-2 px-2 text-xs font-semibold uppercase text-slate-500">
           <span className="inline-flex min-w-0 items-center gap-2">
-            <Folder className="h-4 w-4" />
+            <NotebookIcon className="h-4 w-4" />
             笔记本
           </span>
           <button
@@ -2507,9 +2510,9 @@ const NotebookPane = ({
         </div>
 
         {isLoading ? (
-          <div className="px-2 py-3 text-sm text-slate-500">加载中</div>
+          <div className="mb-4 px-2 py-3 text-sm text-slate-500">加载中</div>
         ) : (
-          <div className="space-y-1" data-notebook-tree>
+          <div className="mb-4 space-y-1" data-notebook-tree>
             {tree.map((node) => (
               <NotebookTreeItem
                 key={node.id}
@@ -2531,6 +2534,18 @@ const NotebookPane = ({
             ))}
           </div>
         )}
+
+        <nav className="space-y-1 border-t border-slate-100 pt-3" aria-label="辅助入口">
+          <SidebarNavButton icon={<Tags className="h-4 w-4" />} label="标签" onClick={onOpenTags} />
+          <SidebarNavButton icon={<Archive className="h-4 w-4" />} label="附件" onClick={onOpenAssets} />
+          <SidebarNavButton
+            active={view === "trash"}
+            icon={<Trash2 className="h-4 w-4" />}
+            label="回收站"
+            onClick={onOpenTrash}
+          />
+          <SidebarNavButton icon={<KeyRound className="h-4 w-4" />} label="MCP Token" onClick={onOpenSettings} />
+        </nav>
       </div>
 
       <footer className="border-t border-slate-200 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
@@ -2541,13 +2556,13 @@ const NotebookPane = ({
           onSyncNow={onSyncQueuedChanges}
         />
         <label className="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-3 py-2">
-          <span className="min-w-0 text-sm font-medium text-slate-700">压缩图片</span>
+          <span className="min-w-0 text-sm font-medium text-slate-700">是否压缩笔记内图片</span>
           <input
             type="checkbox"
             checked={imageCompressionEnabled}
             onChange={(event) => onImageCompressionChange(event.target.checked)}
             className="h-4 w-4 shrink-0 rounded border-emerald-300 text-emerald-600"
-            aria-label="粘贴图片时自动压缩"
+            aria-label="是否压缩笔记内图片"
           />
         </label>
         {authRequired ? (
@@ -2747,7 +2762,7 @@ const MobileBottomNav = ({
         label="模板"
         onClick={onOpenTemplates}
       />
-      <MobileBottomNavButton active={activeItem === "settings"} icon={<UserRound className="h-5 w-5" />} label="我的" onClick={onOpenSettings} />
+      <MobileBottomNavButton active={activeItem === "settings"} icon={<KeyRound className="h-5 w-5" />} label="设置" onClick={onOpenSettings} />
       <button
         className="absolute left-1/2 top-[-1.35rem] flex h-16 w-16 -translate-x-1/2 items-center justify-center rounded-full border-[6px] border-white bg-[#627f58] text-white shadow-[0_12px_26px_rgba(98,127,88,0.32)] transition hover:bg-[#526d49] disabled:cursor-not-allowed disabled:bg-[#b7c5b0] disabled:opacity-70 disabled:hover:bg-[#b7c5b0]"
         type="button"
@@ -3579,11 +3594,7 @@ const MobileNotebookPickerItem = ({
           aria-current={selected ? "page" : undefined}
           onClick={() => onSelect(node.id)}
         >
-          {node.slug === "inbox" ? (
-            <Inbox className={cn("h-5 w-5 shrink-0", selected ? "text-[#627f58]" : "text-slate-600")} />
-          ) : (
-            <Folder className={cn("h-5 w-5 shrink-0", selected || hasSelectedDescendant ? "text-[#627f58]" : "text-slate-600")} />
-          )}
+          <NotebookIcon className={cn("h-5 w-5 shrink-0", selected || hasSelectedDescendant ? "text-[#627f58]" : "text-slate-600")} />
           <span className="min-w-0 flex-1 truncate text-base">{node.name}</span>
           {selected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#627f58]" /> : null}
         </button>
@@ -3809,7 +3820,7 @@ const MobileListActionsSheet = ({
           <MobileListActionButton icon={<Tags className="h-4 w-4" />} label="标签" onClick={onOpenTags} />
           <MobileListActionButton icon={<Archive className="h-4 w-4" />} label="附件" onClick={onOpenAssets} />
           <MobileListActionButton icon={<Trash2 className="h-4 w-4" />} label="回收站" onClick={onOpenTrash} />
-          <MobileListActionButton icon={<UserRound className="h-4 w-4" />} label="我的" onClick={onOpenSettings} />
+          <MobileListActionButton icon={<KeyRound className="h-4 w-4" />} label="MCP Token" onClick={onOpenSettings} />
         </div>
       </section>
     </div>
@@ -4026,11 +4037,7 @@ const MobileMoveSheet = ({
                 disabled={isMoving}
                 onClick={() => onMove(option.id)}
               >
-                {option.slug === "inbox" ? (
-                  <Inbox className={cn("h-4 w-4 shrink-0", selected ? "text-[#627f58]" : "text-slate-600")} />
-                ) : (
-                  <Folder className={cn("h-4 w-4 shrink-0", selected ? "text-[#627f58]" : "text-slate-600")} />
-                )}
+                <NotebookIcon className={cn("h-4 w-4 shrink-0", selected ? "text-[#627f58]" : "text-slate-600")} />
                 <span className="min-w-0 flex-1 truncate">{option.name}</span>
                 {selected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#627f58]" /> : null}
               </button>
@@ -4111,11 +4118,7 @@ const MobileNotebookSelectSheet = ({
                 disabled={isUpdating}
                 onClick={() => onSelect(option.id)}
               >
-                {option.slug === "inbox" ? (
-                  <Inbox className={cn("h-5 w-5 shrink-0", selected ? "text-[#627f58]" : "text-slate-600")} />
-                ) : (
-                  <Folder className={cn("h-5 w-5 shrink-0", selected ? "text-[#627f58]" : "text-slate-600")} />
-                )}
+                <NotebookIcon className={cn("h-5 w-5 shrink-0", selected ? "text-[#627f58]" : "text-slate-600")} />
                 <span className="min-w-0 flex-1 truncate text-base">{option.name}</span>
                 {selected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#627f58]" /> : null}
               </button>
@@ -4454,11 +4457,7 @@ const NotebookTreeItem = ({
             onOpenKeyboardContextMenu(node, event.currentTarget);
           }}
         >
-          {node.slug === "inbox" ? (
-            <Inbox className={cn("h-4 w-4 shrink-0", selected || hasSelectedDescendant ? "text-[#627f58]" : "text-slate-500")} />
-          ) : (
-            <Folder className={cn("h-4 w-4 shrink-0", selected || hasSelectedDescendant ? "text-[#627f58]" : "text-slate-500")} />
-          )}
+          <NotebookIcon className={cn("h-4 w-4 shrink-0", selected || hasSelectedDescendant ? "text-[#627f58]" : "text-slate-500")} />
           <span className="truncate">{node.name}</span>
         </button>
         <button
@@ -5538,8 +5537,8 @@ const MemoListPane = ({
                       onOpenSettings();
                     }}
                   >
-                    <UserRound className="h-4 w-4" />
-                    我的
+                    <KeyRound className="h-4 w-4" />
+                    MCP Token
                   </button>
                 </div>
               ) : null}
@@ -5865,7 +5864,7 @@ const MemoListPane = ({
                         onMoveMemo(memo.id, option.id);
                       }}
                     >
-                      {option.slug === "inbox" ? <Inbox className="h-4 w-4 shrink-0" /> : <Folder className="h-4 w-4 shrink-0" />}
+                      <NotebookIcon className="h-4 w-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{option.name}</span>
                       {option.id === memoContextMenu.memo.notebookId ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : null}
                     </button>
@@ -5929,7 +5928,7 @@ const MemoListPane = ({
                         onMoveSelectedMemos(option.id);
                       }}
                     >
-                      {option.slug === "inbox" ? <Inbox className="h-4 w-4 shrink-0" /> : <Folder className="h-4 w-4 shrink-0" />}
+                      <NotebookIcon className="h-4 w-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{option.name}</span>
                     </button>
                   ))}
@@ -8346,7 +8345,7 @@ const EditorPane = ({
               aria-label={`所在笔记本：${currentNotebookLabel}`}
               onClick={() => setMobileNotebookSheetOpen(true)}
             >
-              <Folder className="h-3.5 w-3.5 shrink-0" />
+              <NotebookIcon className="h-3.5 w-3.5 shrink-0" />
               <span className="min-w-0 truncate">{currentNotebookLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             </button>

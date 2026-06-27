@@ -506,7 +506,7 @@ app.delete("/api/v1/notebooks/:id", async (c) => {
   }
 
   if (id === "nb_inbox") {
-    return badRequest(c, "Inbox cannot be deleted.");
+    return badRequest(c, "等待分类不能删除。");
   }
 
   const [childCount, memoCount] = await Promise.all([

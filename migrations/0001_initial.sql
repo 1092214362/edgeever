@@ -190,9 +190,11 @@ CREATE INDEX idx_audit_events_entity
 
 INSERT INTO notebooks (id, parent_id, name, slug, icon, color, sort_order)
 VALUES
-  ('nb_inbox', NULL, 'Inbox', 'inbox', 'inbox', '#0f766e', 10),
-  ('nb_projects', NULL, 'Projects', 'projects', 'folder-kanban', '#2563eb', 20),
-  ('nb_edgeever', 'nb_projects', 'EdgeEver', 'edgeever', 'notebook-tabs', '#7c3aed', 10);
+  ('nb_inbox', NULL, '等待分类', 'inbox', 'notebook', '#0f766e', 10),
+  ('nb_projects', NULL, '工作项目', 'work-projects', 'notebook', '#2563eb', 20),
+  ('nb_learning', NULL, '学习资料', 'learning-resources', 'notebook', '#7c3aed', 30),
+  ('nb_creative', NULL, '灵感创作', 'creative-ideas', 'notebook', '#db2777', 40),
+  ('nb_personal', NULL, '生活个人', 'personal-life', 'notebook', '#ea580c', 50);
 
 INSERT INTO memos (
   id,
@@ -205,7 +207,7 @@ INSERT INTO memos (
 )
 VALUES (
   'memo_welcome',
-  'nb_edgeever',
+  'nb_inbox',
   '欢迎来到 EdgeEver',
   '这是第一条 EdgeEver 笔记，三栏、边缘、Agent-ready。',
   '["edgeever","welcome"]',

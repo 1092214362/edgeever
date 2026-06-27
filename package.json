@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,magenta \"bun run dev:api\" \"bun run dev:web\"",
     "dev:api": "bun scripts/run-wrangler.mjs dev --local --port 8787",
+    "dev:tianma": "concurrently -k -n api,web -c cyan,magenta \"bun run dev:api:tianma\" \"bun run dev:web\"",
+    "dev:api:tianma": "EDGE_EVER_INSTANCE=tianma bun scripts/run-wrangler.mjs dev --remote --port 8787",
     "dev:web": "vite --config apps/web/vite.config.ts --host 127.0.0.1 --port 5173",
     "build": "bun run build:web",
     "build:web": "vite build --config apps/web/vite.config.ts",
