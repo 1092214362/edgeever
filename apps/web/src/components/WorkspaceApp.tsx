@@ -1551,7 +1551,15 @@ export const WorkspaceApp = ({
 
           <section className={cn("min-h-0 min-w-0 bg-white lg:block", activePane === "editor" ? "block" : "hidden")}>
             {rightView === "settings" ? (
-              <SettingsPane onClose={handleCloseSettings} />
+              <SettingsPane
+                user={user}
+                onClose={handleCloseSettings}
+                imageCompressionEnabled={imageCompressionEnabled}
+                onImageCompressionChange={setImageCompressionEnabled}
+                onLogout={onLogout}
+                isLoggingOut={isLoggingOut}
+                authRequired={authRequired}
+              />
             ) : rightView === "assets" ? (
               <AssetsPane onClose={handleCloseAssets} />
             ) : (
