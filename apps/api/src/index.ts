@@ -679,18 +679,20 @@ app.post("/api/v1/memos", zValidator("json", MemoCreateSchema), async (c) => {
   const contentHash = await sha256(contentMarkdown + JSON.stringify(contentJson));
   const id = createId("memo");
   const now = isoNow();
+  const createdAt = input.createdAt ?? now;
+  const updatedAt = input.updatedAt ?? now;
 
   await c.env.DB.batch([
     c.env.DB.prepare(
       `INSERT INTO memos (
         id, notebook_id, title, excerpt, tags_json, created_by, updated_by, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, input.notebookId, title, excerpt, JSON.stringify(tags), actorLabel, actorLabel, now, now),
+    ).bind(id, input.notebookId, title, excerpt, JSON.stringify(tags), actorLabel, actorLabel, createdAt, updatedAt),
     c.env.DB.prepare(
       `INSERT INTO memo_contents (
         memo_id, content_json, content_markdown, content_text, content_hash, revision, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, 0, ?, ?)`
-    ).bind(id, JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, now, now),
+    ).bind(id, JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, createdAt, updatedAt),
     c.env.DB.prepare(
       `INSERT INTO memos_fts (memo_id, title, content_text, tags)
        VALUES (?, ?, ?, ?)`
@@ -1253,8 +1255,11 @@ app.patch("/api/v1/memos/:id", zValidator("json", MemoUpdateSchema), async (c) =
     input.title !== undefined ||
     input.contentJson !== undefined ||
     input.contentMarkdown !== undefined ||
-    input.tags !== undefined;
+    input.tags !== undefined ||
+    input.createdAt !== undefined ||
+    input.updatedAt !== undefined;
   const now = isoNow();
+  const updatedAt = input.updatedAt ?? now;
 
   if (!hasContentUpdate) {
     if (input.isPinned === undefined || isPinned === Boolean(current.is_pinned)) {
@@ -1264,9 +1269,9 @@ app.patch("/api/v1/memos/:id", zValidator("json", MemoUpdateSchema), async (c) =
     await c.env.DB.batch([
       c.env.DB.prepare(
         `UPDATE memos
-         SET is_pinned = ?, updated_by = ?, updated_at = ?
+         SET is_pinned = ?, updated_by = ?, updated_at = ?, created_at = COALESCE(?, created_at)
          WHERE id = ? AND is_deleted = 0`
-      ).bind(isPinned ? 1 : 0, actorLabel, now, id),
+      ).bind(isPinned ? 1 : 0, actorLabel, updatedAt, input.createdAt ?? null, id),
       auditStatement(c.env.DB, actor.actorType, actor.actorId, isPinned ? "memo.pin" : "memo.unpin", "memo", id, {}),
     ]);
 
@@ -1289,23 +1294,23 @@ app.patch("/api/v1/memos/:id", zValidator("json", MemoUpdateSchema), async (c) =
   const notebookId = input.notebookId ?? current.notebook_id;
   const nextRevision = current.revision + 1;
   const contentHash = await sha256(contentMarkdown + JSON.stringify(contentJson));
-  const revisionStatements = (await shouldSnapshotMemoRevision(c.env.DB, current, title, JSON.stringify(tags), contentHash, now))
-    ? [createMemoRevisionStatement(c.env.DB, current, actorLabel, now)]
+  const revisionStatements = (await shouldSnapshotMemoRevision(c.env.DB, current, title, JSON.stringify(tags), contentHash, updatedAt))
+    ? [createMemoRevisionStatement(c.env.DB, current, actorLabel, updatedAt)]
     : [];
 
   await c.env.DB.batch([
     ...revisionStatements,
     c.env.DB.prepare(
       `UPDATE memos
-       SET notebook_id = ?, title = ?, excerpt = ?, tags_json = ?, is_pinned = ?, updated_by = ?, updated_at = ?
+       SET notebook_id = ?, title = ?, excerpt = ?, tags_json = ?, is_pinned = ?, updated_by = ?, updated_at = ?, created_at = COALESCE(?, created_at)
        WHERE id = ? AND is_deleted = 0`
-    ).bind(notebookId, title, excerpt, JSON.stringify(tags), isPinned ? 1 : 0, actorLabel, now, id),
+    ).bind(notebookId, title, excerpt, JSON.stringify(tags), isPinned ? 1 : 0, actorLabel, updatedAt, input.createdAt ?? null, id),
     c.env.DB.prepare(
       `UPDATE memo_contents
        SET content_json = ?, content_markdown = ?, content_text = ?, content_hash = ?,
-           revision = ?, updated_at = ?
+           revision = ?, updated_at = ?, created_at = COALESCE(?, created_at)
        WHERE memo_id = ?`
-    ).bind(JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, nextRevision, now, id),
+    ).bind(JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, nextRevision, updatedAt, input.createdAt ?? null, id),
     c.env.DB.prepare(`DELETE FROM memos_fts WHERE memo_id = ?`).bind(id),
     c.env.DB.prepare(
       `INSERT INTO memos_fts (memo_id, title, content_text, tags)
@@ -1810,6 +1815,8 @@ const callMcpTool = async (
         title: getOptionalString(args.title) ?? undefined,
         contentMarkdown: getOptionalString(args.contentMarkdown) ?? "",
         tags: getOptionalStringArray(args.tags),
+        createdAt: getOptionalString(args.createdAt) ?? undefined,
+        updatedAt: getOptionalString(args.updatedAt) ?? undefined,
       }, actor, actorLabel);
 
       return { memo };
@@ -1832,6 +1839,8 @@ const callMcpTool = async (
           isPinned: typeof args.isPinned === "boolean" ? args.isPinned : undefined,
           contentMarkdown: getOptionalString(args.contentMarkdown) ?? undefined,
           tags: Array.isArray(args.tags) ? getOptionalStringArray(args.tags) : undefined,
+          createdAt: getOptionalString(args.createdAt) ?? undefined,
+          updatedAt: getOptionalString(args.updatedAt) ?? undefined,
         },
         actor,
         actorLabel
@@ -3082,7 +3091,7 @@ const mergeMemosRecord = async (
 
 const createMemoRecord = async (
   db: D1Database,
-  input: { notebookId: string; title?: string; contentMarkdown?: string; tags?: string[] },
+  input: { notebookId: string; title?: string; contentMarkdown?: string; tags?: string[]; createdAt?: string; updatedAt?: string },
   actor: { actorType: "user" | "agent"; actorId: string | null },
   actorLabel: string
 ): Promise<MemoDetail> => {
@@ -3095,6 +3104,8 @@ const createMemoRecord = async (
   const contentHash = await sha256(contentMarkdown + JSON.stringify(contentJson));
   const id = createId("memo");
   const now = isoNow();
+  const createdAt = input.createdAt ?? now;
+  const updatedAt = input.updatedAt ?? now;
 
   await db.batch([
     db
@@ -3103,14 +3114,14 @@ const createMemoRecord = async (
           id, notebook_id, title, excerpt, tags_json, created_by, updated_by, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .bind(id, input.notebookId, title, excerpt, JSON.stringify(tags), actorLabel, actorLabel, now, now),
+      .bind(id, input.notebookId, title, excerpt, JSON.stringify(tags), actorLabel, actorLabel, createdAt, updatedAt),
     db
       .prepare(
         `INSERT INTO memo_contents (
           memo_id, content_json, content_markdown, content_text, content_hash, revision, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, 0, ?, ?)`
       )
-      .bind(id, JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, now, now),
+      .bind(id, JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, createdAt, updatedAt),
     db
       .prepare(
         `INSERT INTO memos_fts (memo_id, title, content_text, tags)
@@ -3141,6 +3152,8 @@ const updateMemoRecord = async (
     isPinned?: boolean;
     contentMarkdown?: string;
     tags?: string[];
+    createdAt?: string;
+    updatedAt?: string;
   },
   actor: { actorType: "user" | "agent"; actorId: string | null },
   actorLabel: string
@@ -3160,8 +3173,11 @@ const updateMemoRecord = async (
     input.notebookId !== undefined ||
     input.title !== undefined ||
     input.contentMarkdown !== undefined ||
-    input.tags !== undefined;
+    input.tags !== undefined ||
+    input.createdAt !== undefined ||
+    input.updatedAt !== undefined;
   const now = isoNow();
+  const updatedAt = input.updatedAt ?? now;
 
   if (!hasContentUpdate) {
     if (input.isPinned === undefined || isPinned === Boolean(current.is_pinned)) {
@@ -3178,10 +3194,10 @@ const updateMemoRecord = async (
       db
         .prepare(
           `UPDATE memos
-           SET is_pinned = ?, updated_by = ?, updated_at = ?
+           SET is_pinned = ?, updated_by = ?, updated_at = ?, created_at = COALESCE(?, created_at)
            WHERE id = ? AND is_deleted = 0`
         )
-        .bind(isPinned ? 1 : 0, actorLabel, now, id),
+        .bind(isPinned ? 1 : 0, actorLabel, updatedAt, input.createdAt ?? null, id),
       auditStatement(db, actor.actorType, actor.actorId, isPinned ? "memo.pin" : "memo.unpin", "memo", id, {}),
     ]);
 
@@ -3206,8 +3222,8 @@ const updateMemoRecord = async (
   const notebookId = input.notebookId ?? current.notebook_id;
   const nextRevision = current.revision + 1;
   const contentHash = await sha256(contentMarkdown + JSON.stringify(contentJson));
-  const revisionStatements = (await shouldSnapshotMemoRevision(db, current, title, JSON.stringify(tags), contentHash, now))
-    ? [createMemoRevisionStatement(db, current, actorLabel, now)]
+  const revisionStatements = (await shouldSnapshotMemoRevision(db, current, title, JSON.stringify(tags), contentHash, updatedAt))
+    ? [createMemoRevisionStatement(db, current, actorLabel, updatedAt)]
     : [];
 
   await db.batch([
@@ -3215,18 +3231,18 @@ const updateMemoRecord = async (
     db
       .prepare(
         `UPDATE memos
-         SET notebook_id = ?, title = ?, excerpt = ?, tags_json = ?, is_pinned = ?, updated_by = ?, updated_at = ?
+         SET notebook_id = ?, title = ?, excerpt = ?, tags_json = ?, is_pinned = ?, updated_by = ?, updated_at = ?, created_at = COALESCE(?, created_at)
          WHERE id = ? AND is_deleted = 0`
       )
-      .bind(notebookId, title, excerpt, JSON.stringify(tags), isPinned ? 1 : 0, actorLabel, now, id),
+      .bind(notebookId, title, excerpt, JSON.stringify(tags), isPinned ? 1 : 0, actorLabel, updatedAt, input.createdAt ?? null, id),
     db
       .prepare(
         `UPDATE memo_contents
          SET content_json = ?, content_markdown = ?, content_text = ?, content_hash = ?,
-             revision = ?, updated_at = ?
+             revision = ?, updated_at = ?, created_at = COALESCE(?, created_at)
          WHERE memo_id = ?`
       )
-      .bind(JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, nextRevision, now, id),
+      .bind(JSON.stringify(contentJson), contentMarkdown, contentText, contentHash, nextRevision, updatedAt, input.createdAt ?? null, id),
     db.prepare(`DELETE FROM memos_fts WHERE memo_id = ?`).bind(id),
     db
       .prepare(

@@ -16,6 +16,8 @@ export const MemoCreateSchema = z.object({
   title: z.string().trim().max(160).optional(),
   contentMarkdown: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
 });
 
 export const MemoUpdateSchema = z.object({
@@ -26,6 +28,8 @@ export const MemoUpdateSchema = z.object({
   contentJson: z.unknown().optional(),
   contentMarkdown: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
 });
 
 export const MoveMemosSchema = z.object({
