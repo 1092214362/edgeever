@@ -26,7 +26,8 @@
     --brand-green-900-rgb: 0 67 18;
     --brand-green-950-rgb: 0 43 11;
     --editor-body-font-size: 0.9375rem;
-    --editor-body-line-height: 1.75;
+    --editor-body-line-height: 1.6;
+    --editor-paragraph-spacing: 0.45rem;
 
     --card: 0 0% 100%;
     --card-foreground: 224 71% 4%;
@@ -124,7 +125,7 @@ textarea {
 
 .ProseMirror p {
   line-height: var(--editor-body-line-height);
-  margin: 0 0 0.95rem;
+  margin: 0 0 var(--editor-paragraph-spacing);
 }
 
 .ProseMirror ul,
