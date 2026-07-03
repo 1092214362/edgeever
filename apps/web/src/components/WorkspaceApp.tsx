@@ -525,6 +525,7 @@ export const WorkspaceApp = ({
   const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
   const [createdMemoEditId, setCreatedMemoEditId] = useState<string | null>(null);
+  const [createdMemoSelectionGuardId, setCreatedMemoSelectionGuardId] = useState<string | null>(null);
   const [selectedMemoIds, setSelectedMemoIds] = useState<Set<string>>(new Set());
   const [memoSelectionMode, setMemoSelectionMode] = useState(false);
   const [selectionMoveTargetNotebookId, setSelectionMoveTargetNotebookId] = useState("");
@@ -976,8 +977,20 @@ export const WorkspaceApp = ({
     selectedMemoIndex >= 0 && selectedMemoIndex < memos.length - 1 ? memos[selectedMemoIndex + 1]?.id : null;
 
   useEffect(() => {
-    if (selectedMemoId && selectedMemoId === createdMemoEditId) {
+    const selectedMemoInList = selectedMemoId ? memos.some((memo) => memo.id === selectedMemoId) : false;
+    const createdMemoStillMissingFromList = Boolean(
+      selectedMemoId &&
+        createdMemoSelectionGuardId &&
+        selectedMemoId === createdMemoSelectionGuardId &&
+        !selectedMemoInList
+    );
+
+    if (createdMemoStillMissingFromList) {
       return;
+    }
+
+    if (createdMemoSelectionGuardId && memos.some((memo) => memo.id === createdMemoSelectionGuardId)) {
+      setCreatedMemoSelectionGuardId(null);
     }
 
     if (memos.length === 0) {
@@ -985,10 +998,10 @@ export const WorkspaceApp = ({
       return;
     }
 
-    if (!selectedMemoId || !memos.some((memo) => memo.id === selectedMemoId)) {
+    if (!selectedMemoId || !selectedMemoInList) {
       setSelectedMemoId(memos[0].id);
     }
-  }, [createdMemoEditId, memos, selectedMemoId]);
+  }, [createdMemoSelectionGuardId, memos, selectedMemoId]);
 
   const memoQuery = useQuery({
     queryKey: selectedMemoId ? memoDetailQueryKey(selectedMemoId, memoView) : ["memo", selectedMemoId, memoView],
@@ -1049,6 +1062,7 @@ export const WorkspaceApp = ({
       navigateWorkspaceHome();
       setRightView("editor");
       setCreatedMemoEditId(data.memo.id);
+      setCreatedMemoSelectionGuardId(data.memo.id);
       setSelectedMemoId(data.memo.id);
       setActivePane("editor");
     },
@@ -1514,6 +1528,8 @@ export const WorkspaceApp = ({
     setSelectedNotebookId(notebookId);
     setMobileBottomNavActive("home");
     clearMemoSelection();
+    setCreatedMemoEditId(null);
+    setCreatedMemoSelectionGuardId(null);
     setMobileNotebookPickerOpen(false);
     setActivePane("memos");
   };
@@ -1524,6 +1540,8 @@ export const WorkspaceApp = ({
     setSelectedNotebookId(null);
     setMobileBottomNavActive("home");
     clearMemoSelection();
+    setCreatedMemoEditId(null);
+    setCreatedMemoSelectionGuardId(null);
     setMobileNotebookPickerOpen(false);
     setActivePane("memos");
   };
@@ -1537,6 +1555,8 @@ export const WorkspaceApp = ({
     setSelectedNotebookId(null);
     setSearch("");
     clearMemoSelection();
+    setCreatedMemoEditId(null);
+    setCreatedMemoSelectionGuardId(null);
     setActivePane("memos");
   };
 
@@ -2083,6 +2103,7 @@ export const WorkspaceApp = ({
                 setMobileBottomNavActive("home");
                 clearMemoSelection();
                 setCreatedMemoEditId(null);
+                setCreatedMemoSelectionGuardId(null);
                 setSelectedMemoId(null);
                 setActivePane("memos");
               }}
@@ -2090,6 +2111,7 @@ export const WorkspaceApp = ({
                 navigateWorkspaceHome();
                 setRightView("editor");
                 setCreatedMemoEditId(null);
+                setCreatedMemoSelectionGuardId(null);
                 setSelectedMemoId(memoId);
                 setActivePane("editor");
               }}
@@ -2180,12 +2202,14 @@ export const WorkspaceApp = ({
                     onOpenNextMemo={() => {
                       if (nextMemoId) {
                         setCreatedMemoEditId(null);
+                        setCreatedMemoSelectionGuardId(null);
                         setSelectedMemoId(nextMemoId);
                       }
                     }}
                     onOpenPreviousMemo={() => {
                       if (previousMemoId) {
                         setCreatedMemoEditId(null);
+                        setCreatedMemoSelectionGuardId(null);
                         setSelectedMemoId(previousMemoId);
                       }
                     }}
