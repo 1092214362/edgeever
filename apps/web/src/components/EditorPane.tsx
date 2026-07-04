@@ -85,6 +85,8 @@ type MobileImeDebugEntry = {
   time: string;
 };
 
+type MobilePlainTextElement = HTMLTextAreaElement | HTMLDivElement;
+
 const isEditorReady = (editor: Editor | null | undefined): editor is Editor =>
   Boolean(editor && !editor.isDestroyed && (editor as { extensionManager?: unknown }).extensionManager);
 
@@ -107,6 +109,53 @@ const getActiveElementLabel = () => {
   const role = element.getAttribute("role");
 
   return `${tag}${id}${className}${role ? `[role=${role}]` : ""}`;
+};
+
+const getMobilePlainTextElementValue = (element: MobilePlainTextElement | null) => {
+  if (!element) {
+    return "";
+  }
+
+  return "value" in element ? element.value : element.innerText;
+};
+
+const setMobilePlainTextElementValue = (element: MobilePlainTextElement | null, value: string) => {
+  if (!element) {
+    return;
+  }
+
+  if ("value" in element) {
+    element.value = value;
+    return;
+  }
+
+  if (element.innerText !== value) {
+    element.textContent = value;
+  }
+};
+
+const focusMobilePlainTextElement = (element: MobilePlainTextElement | null) => {
+  if (!element) {
+    return;
+  }
+
+  element.focus({ preventScroll: true });
+
+  if ("setSelectionRange" in element) {
+    element.setSelectionRange(element.value.length, element.value.length);
+    return;
+  }
+
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    return;
+  }
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
 };
 
 const getEditorSearchMatches = (editor: Editor | null, query: string): NoteSearchMatch[] => {
@@ -470,7 +519,7 @@ export const EditorPane = ({
 
   const memoRef = useRef<MemoDetail | null>(memo);
   const editorRef = useRef<Editor | null>(null);
-  const mobileTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const mobileTextAreaRef = useRef<HTMLDivElement | null>(null);
   const mobileDraftTimerRef = useRef<number | null>(null);
   const mobileSaveTimerRef = useRef<number | null>(null);
   const mobileImeDebugEventIdRef = useRef(0);
@@ -512,10 +561,9 @@ export const EditorPane = ({
           }
 
           if (isMobileViewport && !readOnly) {
-            const textarea = mobileTextAreaRef.current;
-            if (textarea) {
-              textarea.focus({ preventScroll: true });
-              textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            const plainTextElement = mobileTextAreaRef.current;
+            if (plainTextElement) {
+              focusMobilePlainTextElement(plainTextElement);
               return;
             }
           }
@@ -828,12 +876,12 @@ export const EditorPane = ({
   }, [editor]);
 
   const getMobilePlainTextValue = useCallback(
-    () => mobileTextAreaRef.current?.value ?? mobilePlainText,
+    () => (mobileTextAreaRef.current ? getMobilePlainTextElementValue(mobileTextAreaRef.current) : mobilePlainText),
     [mobilePlainText]
   );
 
   const recordMobileImeDebugEvent = useCallback((eventName: string, event?: unknown) => {
-    const textarea = mobileTextAreaRef.current;
+    const plainTextElement = mobileTextAreaRef.current;
     const nativeEvent = event && typeof event === "object" && "nativeEvent" in event
       ? (event as { nativeEvent?: unknown }).nativeEvent
       : event;
@@ -851,7 +899,7 @@ export const EditorPane = ({
           inputType: typeof inputEvent?.inputType === "string" ? inputEvent.inputType : undefined,
           isComposing: typeof inputEvent?.isComposing === "boolean" ? inputEvent.isComposing : undefined,
           key: typeof keyboardEvent?.key === "string" ? keyboardEvent.key : undefined,
-          valueLength: textarea?.value.length ?? 0,
+          valueLength: getMobilePlainTextElementValue(plainTextElement).length,
           time: new Date().toLocaleTimeString("zh-CN", { hour12: false }),
         },
         ...current,
@@ -868,7 +916,7 @@ export const EditorPane = ({
       return;
     }
 
-    recordMobileImeDebugEvent("mount-mobile-textarea");
+    recordMobileImeDebugEvent("mount-mobile-plain-editor");
     const timer = window.setInterval(() => {
       setMobileImeDebugActiveElement(getActiveElementLabel());
     }, 800);
@@ -946,9 +994,7 @@ export const EditorPane = ({
       setTitle("");
       setTagsText("");
       setMobilePlainText("");
-      if (mobileTextAreaRef.current) {
-        mobileTextAreaRef.current.value = "";
-      }
+      setMobilePlainTextElementValue(mobileTextAreaRef.current, "");
       setSaveState("idle");
       if (isEditorReady(currentEditor)) {
         currentEditor.commands.clearContent();
@@ -992,9 +1038,7 @@ export const EditorPane = ({
       setTitle(nextTitle);
       setTagsText(nextTagsText);
       setMobilePlainText(nextMarkdown);
-      if (mobileTextAreaRef.current) {
-        mobileTextAreaRef.current.value = nextMarkdown;
-      }
+      setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
 
       if (isEditorReady(currentEditor)) {
         currentEditor.commands.setContent(nextContent);
@@ -1018,18 +1062,14 @@ export const EditorPane = ({
     if (isEditorReady(editor)) {
       const nextMarkdown = docToMarkdown(editor.getJSON() as TiptapDoc);
       setMobilePlainText(nextMarkdown);
-      if (mobileTextAreaRef.current) {
-        mobileTextAreaRef.current.value = nextMarkdown;
-      }
+      setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
       return;
     }
 
     if (memo) {
       const nextMarkdown = docToMarkdown(memo.contentJson);
       setMobilePlainText(nextMarkdown);
-      if (mobileTextAreaRef.current) {
-        mobileTextAreaRef.current.value = nextMarkdown;
-      }
+      setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
     }
   }, [editor, memo?.id, useMobilePlainTextEditor]);
 
@@ -1246,8 +1286,8 @@ export const EditorPane = ({
       return;
     }
 
-    const textarea = mobileTextAreaRef.current;
-    if (!textarea) {
+    const plainTextElement = mobileTextAreaRef.current;
+    if (!plainTextElement) {
       return;
     }
 
@@ -1259,23 +1299,23 @@ export const EditorPane = ({
       markMobilePlainTextDirtyRef.current();
     };
 
-    textarea.addEventListener("focus", recordNativeEvent);
-    textarea.addEventListener("blur", recordNativeEvent);
-    textarea.addEventListener("click", recordNativeEvent);
-    textarea.addEventListener("compositionstart", recordNativeEvent);
-    textarea.addEventListener("compositionupdate", recordNativeEvent);
-    textarea.addEventListener("compositionend", recordNativeEvent);
-    textarea.addEventListener("input", handleNativeInput);
+    plainTextElement.addEventListener("focus", recordNativeEvent);
+    plainTextElement.addEventListener("blur", recordNativeEvent);
+    plainTextElement.addEventListener("click", recordNativeEvent);
+    plainTextElement.addEventListener("compositionstart", recordNativeEvent);
+    plainTextElement.addEventListener("compositionupdate", recordNativeEvent);
+    plainTextElement.addEventListener("compositionend", recordNativeEvent);
+    plainTextElement.addEventListener("input", handleNativeInput);
     mobileImeDebugRecorderRef.current("native-listeners-ready");
 
     return () => {
-      textarea.removeEventListener("focus", recordNativeEvent);
-      textarea.removeEventListener("blur", recordNativeEvent);
-      textarea.removeEventListener("click", recordNativeEvent);
-      textarea.removeEventListener("compositionstart", recordNativeEvent);
-      textarea.removeEventListener("compositionupdate", recordNativeEvent);
-      textarea.removeEventListener("compositionend", recordNativeEvent);
-      textarea.removeEventListener("input", handleNativeInput);
+      plainTextElement.removeEventListener("focus", recordNativeEvent);
+      plainTextElement.removeEventListener("blur", recordNativeEvent);
+      plainTextElement.removeEventListener("click", recordNativeEvent);
+      plainTextElement.removeEventListener("compositionstart", recordNativeEvent);
+      plainTextElement.removeEventListener("compositionupdate", recordNativeEvent);
+      plainTextElement.removeEventListener("compositionend", recordNativeEvent);
+      plainTextElement.removeEventListener("input", handleNativeInput);
     };
   }, [useMobilePlainTextEditor]);
 
@@ -1390,7 +1430,7 @@ export const EditorPane = ({
   const noteSearchMatchLabel = noteSearchQuery.trim()
     ? `${noteSearchMatches.length > 0 ? noteSearchIndex + 1 : 0}/${noteSearchMatches.length}`
     : "0/0";
-  const mobileImeDebugTextareaFocused =
+  const mobileImeDebugEditorFocused =
     typeof document !== "undefined" && mobileTextAreaRef.current === document.activeElement;
   const mobileImeDebugLogText = [
     `memoId=${memo.id}`,
@@ -1398,7 +1438,7 @@ export const EditorPane = ({
     `editingState=${isMobileEditing}`,
     `editingActive=${mobileEditingActive}`,
     `plainTextEditor=${useMobilePlainTextEditor}`,
-    `textareaFocused=${mobileImeDebugTextareaFocused}`,
+    `editorFocused=${mobileImeDebugEditorFocused}`,
     `activeElement=${mobileImeDebugActiveElement}`,
     `valueLength=${getMobilePlainTextValue().length}`,
     `saveState=${saveState}`,
@@ -1861,21 +1901,21 @@ export const EditorPane = ({
 
       <div className="edgeever-editor min-h-0 flex-1 overflow-y-auto bg-white">
         {useMobilePlainTextEditor ? (
-          <textarea
+          <div
             ref={mobileTextAreaRef}
-            defaultValue={mobilePlainText}
-            autoCapitalize="sentences"
-            autoComplete="on"
-            autoCorrect="on"
+            contentEditable="plaintext-only"
+            suppressContentEditableWarning
+            role="textbox"
+            tabIndex={0}
+            aria-label="笔记正文"
+            aria-multiline="true"
             enterKeyHint="enter"
             inputMode="text"
-            name="memo-body"
             spellCheck
-            data-edgeever-mobile-editor="plain-textarea"
-            aria-label="笔记正文"
-            className="block min-h-full w-full resize-none border-0 bg-white px-4 py-3 text-base leading-7 text-slate-900 outline-none placeholder:text-slate-400 sm:px-7"
-            placeholder="开始记录..."
-            style={{ WebkitUserSelect: "text", userSelect: "text" }}
+            data-edgeever-mobile-editor="plain-contenteditable"
+            data-placeholder="开始记录..."
+            className="block min-h-full w-full whitespace-pre-wrap break-words border-0 bg-white px-4 py-3 text-base leading-7 text-slate-900 outline-none empty:before:pointer-events-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] sm:px-7"
+            style={{ WebkitUserSelect: "text", userSelect: "text", caretColor: "auto" }}
           />
         ) : (
           <EditorContent editor={editor} />
@@ -1890,13 +1930,13 @@ export const EditorPane = ({
               type="button"
               onClick={() => setMobileImeDebugOpen((open) => !open)}
             >
-              IME 诊断：{mobileImeDebugTextareaFocused ? "正文已聚焦" : "正文未聚焦"} · len {getMobilePlainTextValue().length}
+              IME 诊断：{mobileImeDebugEditorFocused ? "正文已聚焦" : "正文未聚焦"} · len {getMobilePlainTextValue().length}
             </button>
             <button
               className="rounded border border-amber-300 bg-white px-2 py-1 font-medium text-slate-700"
               type="button"
               onClick={() => {
-                mobileTextAreaRef.current?.focus({ preventScroll: true });
+                focusMobilePlainTextElement(mobileTextAreaRef.current);
                 recordMobileImeDebugEvent("debug-focus-button");
               }}
             >
@@ -1916,7 +1956,7 @@ export const EditorPane = ({
           {mobileImeDebugOpen && (
             <div className="mt-2 max-h-40 overflow-auto rounded border border-amber-200 bg-white/80 p-2 font-mono leading-5">
               <div>active: {mobileImeDebugActiveElement}</div>
-              <div>textareaFocused: {String(mobileImeDebugTextareaFocused)}</div>
+              <div>editorFocused: {String(mobileImeDebugEditorFocused)}</div>
               <div>mode: mobile={String(isMobileViewport)} editingState={String(isMobileEditing)} editingActive={String(mobileEditingActive)} plain={String(useMobilePlainTextEditor)}</div>
               <div>save: {saveState} dirty={String(hasUnsavedChanges)}</div>
               <div className="mt-1 border-t border-amber-100 pt-1">
@@ -1947,7 +1987,7 @@ export const EditorPane = ({
           aria-label="编辑笔记"
           onClick={() => {
             setIsMobileEditing(true);
-            window.requestAnimationFrame(() => mobileTextAreaRef.current?.focus({ preventScroll: true }));
+            window.requestAnimationFrame(() => focusMobilePlainTextElement(mobileTextAreaRef.current));
           }}
         >
           <Pencil className="h-5 w-5" />
