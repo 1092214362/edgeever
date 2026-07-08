@@ -2623,9 +2623,11 @@ const ResourcesModal = ({
   const [filter, setFilter] = useState<ResourceFilter>("all");
   const [layout, setLayout] = useState<MobileResourceLayoutPreference>("grid");
   const [previewResource, setPreviewResource] = useState<ResourceListItem | null>(null);
+  const [uploadProgress, setUploadProgress] = useState("");
 
   useEffect(() => {
     if (!visible) {
+      setUploadProgress("");
       return;
     }
 
@@ -2666,7 +2668,7 @@ const ResourcesModal = ({
 
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
-        multiple: false,
+        multiple: true,
         type: "*/*",
       });
 
@@ -2674,28 +2676,37 @@ const ResourcesModal = ({
         return null;
       }
 
-      const asset = result.assets[0];
+      const assets = result.assets.filter((asset) => asset.uri);
 
-      if (!asset?.uri) {
+      if (assets.length === 0) {
         throw new Error("没有选择文件");
       }
 
-      const form = new FormData();
-      const uploadAsset = await prepareUploadAsset(asset, imageCompressionEnabled);
-      form.append("file", uploadAsset as unknown as Blob);
+      const resources = [];
+      let nextMarkdown = activeMemo.contentMarkdown || activeMemo.contentText || "";
 
-      const { resource } = await client.uploadMemoResource(activeMemo.id, form);
-      const nextMarkdown = appendResourceMarkdown(activeMemo.contentMarkdown || activeMemo.contentText || "", {
-        filename: resource.filename || uploadAsset.name || asset.name || "upload",
-        kind: resource.kind,
-        url: resource.url,
-      });
+      for (const [index, asset] of assets.entries()) {
+        setUploadProgress(`上传 ${index + 1}/${assets.length}：${asset.name || "文件"}`);
+        const form = new FormData();
+        const uploadAsset = await prepareUploadAsset(asset, imageCompressionEnabled);
+        form.append("file", uploadAsset as unknown as Blob);
+
+        const { resource } = await client.uploadMemoResource(activeMemo.id, form);
+        resources.push(resource);
+        nextMarkdown = appendResourceMarkdown(nextMarkdown, {
+          filename: resource.filename || uploadAsset.name || asset.name || "upload",
+          kind: resource.kind,
+          url: resource.url,
+        });
+      }
+
+      setUploadProgress("写入笔记正文");
       const { memo } = await client.updateMemo(activeMemo.id, {
         contentMarkdown: nextMarkdown,
         expectedRevision: activeMemo.revision,
       });
 
-      return { memo, resource };
+      return { memo, resources };
     },
     onSuccess: async (result) => {
       if (!result) {
@@ -2708,7 +2719,11 @@ const ResourcesModal = ({
         queryClient.invalidateQueries({ queryKey: ["mobile", "memos"] }),
       ]);
       queryClient.setQueryData(["mobile", "memo", "notebook", result.memo.id], { memo: result.memo });
-      setFilter(result.resource.kind === "image" ? "image" : "all");
+      setFilter(result.resources.some((resource) => resource.kind === "image") ? "image" : "all");
+      setUploadProgress(`已上传 ${result.resources.length} 个文件`);
+    },
+    onError: () => {
+      setUploadProgress("");
     },
   });
 
@@ -2819,8 +2834,9 @@ const ResourcesModal = ({
             style={[styles.uploadButton, (!activeMemo || activeMemo.isDeleted || uploadResourceMutation.isPending) && styles.buttonDisabled]}
           >
             {uploadResourceMutation.isPending ? <ActivityIndicator color="#ffffff" /> : <Upload color="#ffffff" size={18} />}
-            <Text style={styles.uploadButtonText}>{uploadResourceMutation.isPending ? "上传中" : "上传附件"}</Text>
+            <Text style={styles.uploadButtonText}>{uploadResourceMutation.isPending ? uploadProgress || "上传中" : "上传附件"}</Text>
           </Pressable>
+          {uploadProgress ? <Text style={styles.assetsHint}>{uploadProgress}</Text> : null}
 
           <Text style={styles.assetsHint}>
             {activeMemo
