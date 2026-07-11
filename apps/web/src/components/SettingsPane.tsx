@@ -7,6 +7,7 @@ import { EvernoteImportGuideCard } from "./settings/EvernoteImportGuideCard";
 import { McpConfigCard } from "./settings/McpConfigCard";
 import { PreferenceCard } from "./settings/PreferenceCard";
 import { PwaInstallCard } from "./settings/PwaInstallCard";
+import { PasswordCard } from "./settings/PasswordCard";
 import { SessionCard } from "./settings/SessionCard";
 import { SystemInfoCard } from "./settings/SystemInfoCard";
 
@@ -67,6 +68,7 @@ export const SettingsPane = ({
             shortcutSettings={shortcutSettings}
             onShortcutSettingsChange={onShortcutSettingsChange}
           />
+          <PasswordCard authRequired={authRequired} />
           <PwaInstallCard />
           <AdvancedPlayCard />
           <EvernoteImportGuideCard onShowGuide={onShowGuide} />
