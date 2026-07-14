@@ -36,6 +36,12 @@ Cloudflare 有两项账号级授权，仓库脚本不能、也不应该绕过：
 
 这个 token 仅供 `bun run deploy:builds:setup` 调用，不会上传到 Worker 或 Cloudflare Builds。只有在现有 `CLOUDFLARE_API_TOKEN` 同为 User API Token 且具备上述权限时，才可直接复用。
 
+## Monorepo 构建隔离
+
+Worker 触发器已经排除了仅发生在 `apps/site/*`、`apps/mobile/*`、`apps/extension/*`、`docs/*`、README 文件和 `.github/*` 中的变更。因此，仅改官网不会发布 EdgeEver Worker。
+
+如果这个仓库还部署了 Cloudflare Pages 官网，请设置 `EDGE_EVER_PAGES_PROJECT_NAME`，再重跑 `bun run deploy:builds:setup`。命令会将 Pages 的 Build watch paths 设为 `apps/site/*`、`bun.lock`、`package.json`；这样仅改产品代码不会重新构建官网。该可选步骤要求 User API Token 额外拥有 **Account** -> **Cloudflare Pages** -> **Edit**。不使用自动化时，在 **Pages 项目** -> **Settings** -> **Build** -> **Build watch paths** 填入同样的路径即可。
+
 ### 手动兜底
 
 若不能运行命令，则在 Cloudflare Dashboard 中：

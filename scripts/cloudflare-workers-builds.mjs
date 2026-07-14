@@ -63,6 +63,7 @@ const gitRepository = () => {
 const cfToken = value("EDGE_EVER_BUILDS_API_TOKEN") || value("CLOUDFLARE_API_TOKEN");
 const accountId = value("CLOUDFLARE_ACCOUNT_ID");
 const workerName = instanceValue("WORKER_NAME");
+const pagesProjectName = value("EDGE_EVER_PAGES_PROJECT_NAME");
 
 const request = async (method, path, body) => {
   if (dryRun) return undefined;
@@ -146,6 +147,23 @@ const triggerPayload = (workerTag, repoConnectionUuid, buildTokenUuid) => ({
   build_caching_enabled: true,
 });
 
+const configurePagesWatchPaths = async () => {
+  if (!pagesProjectName) return;
+
+  await request("PATCH", `/accounts/${accountId}/pages/projects/${encodeURIComponent(pagesProjectName)}`, {
+    source: {
+      config: {
+        // `*` spans nested directories in Cloudflare Pages. Root lockfiles and
+        // package metadata are shared build inputs, so they intentionally trigger
+        // both projects when changed.
+        path_includes: ["apps/site/*", "bun.lock", "package.json"],
+        path_excludes: [],
+      },
+    },
+  });
+  console.log(`[ok] configured Pages watch paths for ${pagesProjectName}`);
+};
+
 const setup = async () => {
   if (!accountId) throw new Error("Missing CLOUDFLARE_ACCOUNT_ID.");
   if (!workerName) throw new Error("Missing EDGE_EVER_WORKER_NAME.");
@@ -212,6 +230,7 @@ const setup = async () => {
 
   await request("PATCH", `/accounts/${accountId}/builds/triggers/${triggerUuid}/environment_variables`, variables);
   console.log(`[ok] ${existing ? "updated" : "created"} production trigger`);
+  await configurePagesWatchPaths();
   if (!existing) {
     const build = await request("POST", `/accounts/${accountId}/builds/triggers/${triggerUuid}/builds`, { branch: "main" });
     console.log(`[ok] started first build${build?.build_uuid ? `: ${build.build_uuid}` : ""}`);
