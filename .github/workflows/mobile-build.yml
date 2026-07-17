@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: edgeever-mobile-android-${{ github.ref }}
+  group: edgeever-mobile-android-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -58,6 +58,7 @@ jobs:
         working-directory: apps/mobile
 
       - name: Build debug APK
+        if: github.event_name == 'push'
         run: ./gradlew assembleDebug
         working-directory: apps/mobile/android
 
@@ -92,16 +93,19 @@ jobs:
         working-directory: apps/mobile/android
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
         with:
           name: edgeever-android-debug-apk
           path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          compression-level: 0
 
       - name: Upload release AAB
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: edgeever-android-release-aab
           path: apps/mobile/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
+          compression-level: 0
