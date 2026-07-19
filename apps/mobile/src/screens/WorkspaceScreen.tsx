@@ -28,6 +28,7 @@ import {
   List,
   LogOut,
   Merge,
+  MessageSquare,
   Moon,
   MoreHorizontal,
   MoreVertical,
@@ -78,7 +79,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Alert, Pressable, Text, TextInput } from "../components/LocalizedText";
 import Markdown, { type RenderRules } from "react-native-markdown-display";
 import { SvgXml } from "react-native-svg";
-import { buildRevisionDiffRows, createExcerpt, docToMarkdown, docToText, getNotebookDescendantIds, markdownToDoc, type ApiToken, type AuthUser, type MemoDetail, type MemoRevision, type MemoSummary, type Notebook, type ResourceListItem, type RevisionDiffRow, type TagSummary, type TiptapDoc } from "@edgeever/shared";
+import { buildGitHubFeedbackUrl, buildRevisionDiffRows, createExcerpt, docToMarkdown, docToText, getNotebookDescendantIds, markdownToDoc, type ApiToken, type AuthUser, type MemoDetail, type MemoRevision, type MemoSummary, type Notebook, type ResourceListItem, type RevisionDiffRow, type TagSummary, type TiptapDoc } from "@edgeever/shared";
 import { MOBILE_UI_METRICS, getMobileCenteredScrollOffset, getMobileNotebookSearchVisibleIds, toggleMobileMemoFilterMode, toggleMobileMemoSelection } from "@edgeever/shared/mobile-ui";
 import { clearMobileMemoDraft, clearMobileNewMemoDraft, readMobileMemoDraft, readMobileNewMemoDraft, writeMobileMemoDraft, writeMobileNewMemoDraft, type MobileMemoDraft } from "../lib/mobile-drafts";
 import {
@@ -1834,6 +1835,9 @@ const SettingsView = ({
       setLocalePickerOpen(true);
     });
   };
+  const openFeedback = () => {
+    void Linking.openURL(buildMobileFeedbackUrl(localePreference));
+  };
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -1934,16 +1938,30 @@ const SettingsView = ({
       </View>
       <ScrollView contentContainerStyle={styles.settingsScrollContent} style={styles.viewBody}>
         {activeTab === null ? (
-          <View style={styles.settingsMenu}>
-            {tabs.map((tab, index) => (
-              <Pressable key={tab.key} onPress={() => setActiveTab(tab.key)} style={[styles.settingsMenuRow, index > 0 && styles.settingsMenuRowBorder]}>
+          <View style={styles.settingsDetailList}>
+            <View style={styles.settingsMenu}>
+              {tabs.map((tab, index) => (
+                <Pressable key={tab.key} onPress={() => setActiveTab(tab.key)} style={[styles.settingsMenuRow, index > 0 && styles.settingsMenuRowBorder]}>
+                  <View style={styles.settingsMenuLabel}>
+                    <View style={styles.settingsMenuIcon}>{tab.icon}</View>
+                    <Text style={styles.settingsMenuText}>{tab.label}</Text>
+                  </View>
+                  <ChevronRight color="#94a3b8" size={17} />
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.settingsMenu}>
+              <Pressable accessibilityRole="link" onPress={openFeedback} style={styles.settingsMenuRow}>
                 <View style={styles.settingsMenuLabel}>
-                  <View style={styles.settingsMenuIcon}>{tab.icon}</View>
-                  <Text style={styles.settingsMenuText}>{tab.label}</Text>
+                  <View style={[styles.settingsMenuIcon, styles.settingsFeedbackIcon]}><MessageSquare color="#64748b" size={17} /></View>
+                  <View style={styles.settingsFeedbackCopy}>
+                    <Text style={styles.settingsMenuText}>意见反馈</Text>
+                    <Text style={styles.settingsLinkDescription}>报告问题或提出功能建议</Text>
+                  </View>
                 </View>
-                <ChevronRight color="#94a3b8" size={17} />
+                <ExternalLink color="#94a3b8" size={17} />
               </Pressable>
-            ))}
+            </View>
           </View>
         ) : renderContent()}
       </ScrollView>
@@ -3029,17 +3047,8 @@ const SystemInfoCard = ({ embedded = false }: { embedded?: boolean }) => {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const localePreference = useMobileLocalePreference();
-  const resolvedLocale = getResolvedMobileLocale(localePreference);
   const copy = getMobileSystemInfoText(localePreference);
-  const infoItems = [
-    { label: copy.version, value: `v${MOBILE_APP_VERSION}` },
-    { label: copy.build, value: __DEV__ ? "development" : "production" },
-    { label: copy.platform, value: Platform.OS },
-    { label: copy.platformVersion, value: String(Platform.Version) },
-    { label: copy.language, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
-    { label: copy.timeZone, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
-    { label: copy.installMode, value: formatExecutionEnvironment(Constants.executionEnvironment, localePreference) },
-  ];
+  const infoItems = getMobileSystemInfoItems(localePreference);
 
   const copySystemInfo = async () => {
     await Clipboard.setStringAsync(infoItems.map((item) => `${item.label}: ${item.value}`).join("\n"));
@@ -5447,6 +5456,41 @@ const getMobileSystemInfoText = (localePreference: MobileLocaleMode) =>
         version: "版本",
       };
 
+const getMobileSystemInfoItems = (localePreference: MobileLocaleMode) => {
+  const copy = getMobileSystemInfoText(localePreference);
+  const resolvedLocale = getResolvedMobileLocale(localePreference);
+
+  return [
+    { label: copy.version, value: `v${MOBILE_APP_VERSION}` },
+    { label: copy.build, value: __DEV__ ? "development" : "production" },
+    { label: copy.platform, value: Platform.OS },
+    { label: copy.platformVersion, value: String(Platform.Version) },
+    { label: copy.language, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
+    { label: copy.timeZone, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
+    { label: copy.installMode, value: formatExecutionEnvironment(Constants.executionEnvironment, localePreference) },
+  ];
+};
+
+const buildMobileFeedbackUrl = (localePreference: MobileLocaleMode) => {
+  const english = isEnglishMobileLocale(localePreference);
+
+  return buildGitHubFeedbackUrl({
+    contentHeading: english ? "Feedback" : "反馈内容",
+    contentPrompt: english
+      ? "Describe the problem, steps to reproduce it, or the feature you would like to see."
+      : "请描述遇到的问题、复现步骤，或你希望增加的功能。",
+    privacyNotice: english
+      ? "GitHub Issues are public. Do not include passwords, tokens, instance URLs, or private note content."
+      : "GitHub Issue 公开可见，请勿提交密码、Token、实例地址或私人笔记内容。",
+    systemInfo: getMobileSystemInfoItems(localePreference),
+    systemInfoHeading: english ? "System information" : "系统信息",
+    systemInfoNotice: english
+      ? "The following information was generated by EdgeEver to help diagnose the issue."
+      : "以下信息由 EdgeEver 自动生成，可帮助定位问题。",
+    titlePrefix: english ? "[Feedback] " : "[反馈] ",
+  });
+};
+
 const formatDate = (value: string, localePreference: MobileLocaleMode = "system") =>
   new Intl.DateTimeFormat(getResolvedMobileLocale(localePreference), {
     month: "2-digit",
@@ -5963,6 +6007,12 @@ const baseWorkspaceStyles = StyleSheet.create({
     color: "#1e293b",
     fontSize: 14,
     fontWeight: "700",
+  },
+  settingsFeedbackCopy: {
+    flex: 1,
+  },
+  settingsFeedbackIcon: {
+    backgroundColor: "#f1f5f9",
   },
   settingsDetailList: {
     gap: 16,

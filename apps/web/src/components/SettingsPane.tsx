@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { AdvancedPlayCard } from "./settings/AdvancedPlayCard";
 import { DataExportCard } from "./settings/DataExportCard";
 import { EvernoteImportGuideCard } from "./settings/EvernoteImportGuideCard";
+import { FeedbackLink } from "./settings/FeedbackLink";
 import { McpConfigCard } from "./settings/McpConfigCard";
 import { PreferenceCard } from "./settings/PreferenceCard";
 import { PasswordCard } from "./settings/PasswordCard";
@@ -172,6 +173,7 @@ export const SettingsPane = ({
               onShortcutSettingsChange={onShortcutSettingsChange}
             />
             <SystemInfoCard />
+            <FeedbackLink className="hidden lg:flex" />
           </SettingsGroup>
         );
       case "users":
@@ -290,6 +292,9 @@ export const SettingsPane = ({
                     </button>
                   );
                 })}
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <FeedbackLink />
               </div>
             </div>
           ) : (

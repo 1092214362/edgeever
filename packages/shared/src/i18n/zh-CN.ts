@@ -170,6 +170,16 @@ export const zhCN = {
     unknown: "未知",
     copy: "复制信息",
   },
+  feedback: {
+    title: "意见反馈",
+    description: "报告问题或提出功能建议",
+    issueTitlePrefix: "[反馈] ",
+    issueContentHeading: "反馈内容",
+    issueContentPrompt: "请描述遇到的问题、复现步骤，或你希望增加的功能。",
+    systemInfoHeading: "系统信息",
+    systemInfoNotice: "以下信息由 EdgeEver 自动生成，可帮助定位问题。",
+    privacyNotice: "GitHub Issue 公开可见，请勿提交密码、Token、实例地址或私人笔记内容。",
+  },
   dataExport: {
     title: "导入与导出",
     description: "一份同时兼顾开放性与完整恢复的档案：笔记可直接以 Markdown 阅读，结构化数据、历史版本和附件可用于 EdgeEver 实例间迁移。",

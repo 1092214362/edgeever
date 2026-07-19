@@ -47,6 +47,7 @@ export const LockKeyhole = createIcon("lock");
 export const LogOut = createIcon("log-out");
 export const Moon = createIcon("moon");
 export const Merge = createIcon("git-merge");
+export const MessageSquare = createIcon("message-square");
 export const Minus = createIcon("minus");
 export const MoreHorizontal = createIcon("more-horizontal");
 export const MoreVertical = createIcon("more-vertical");
