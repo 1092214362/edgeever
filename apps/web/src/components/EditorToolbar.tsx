@@ -19,6 +19,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getActiveBlockValue } from "@/lib/app-helpers";
 import { CODE_BLOCK_LANGUAGES, getCodeBlockLanguageValue } from "@/lib/code-block";
+import { EditorTableMenu } from "@/components/EditorTableMenu";
 
 const EditorToolbarButton = ({
   active = false,
@@ -344,6 +345,7 @@ export const EditorToolbar = ({
           >
             <Minus className="h-4 w-4" />
           </EditorToolbarButton>
+          <EditorTableMenu editor={editor} readOnly={readOnly} />
             </>
           )}
         </div>

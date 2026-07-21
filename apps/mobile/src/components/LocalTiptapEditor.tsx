@@ -2,6 +2,7 @@
 
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import type { TiptapDoc } from "@edgeever/shared";
@@ -20,6 +21,7 @@ import {
   getMobileEditorPlaceholder,
   getMobileEditorToolbarActionLabel,
   getMobileEditorToolbarLabel,
+  type MobileEditorTableActionId,
   type MobileEditorToolbarActionId,
 } from "@edgeever/shared/mobile-editor";
 import { useDOMImperativeHandle, type DOMImperativeFactory, type DOMProps } from "expo/dom";
@@ -89,6 +91,9 @@ export default function LocalTiptapEditor(props: LocalTiptapEditorProps) {
     extensions: [
       StarterKit,
       protectedImageExtension,
+      TableKit.configure({
+        table: { renderWrapper: true },
+      }),
       Placeholder.configure({
         placeholder: getMobileEditorPlaceholder(props.locale),
       }),
@@ -250,7 +255,8 @@ export default function LocalTiptapEditor(props: LocalTiptapEditorProps) {
     selector: ({ editor: activeEditor }) =>
       (activeEditor?.isActive("bold") ? MOBILE_EDITOR_ACTIVE_FLAGS.bold : 0) |
       (activeEditor?.isActive("bulletList") ? MOBILE_EDITOR_ACTIVE_FLAGS.bulletList : 0) |
-      (activeEditor?.isActive("blockquote") ? MOBILE_EDITOR_ACTIVE_FLAGS.blockquote : 0),
+      (activeEditor?.isActive("blockquote") ? MOBILE_EDITOR_ACTIVE_FLAGS.blockquote : 0) |
+      (activeEditor?.isActive("table") ? MOBILE_EDITOR_ACTIVE_FLAGS.table : 0),
   });
 
   const insertImage = async () => {
@@ -272,12 +278,49 @@ export default function LocalTiptapEditor(props: LocalTiptapEditorProps) {
     }
   };
 
+  const runTableAction = (action: MobileEditorTableActionId) => {
+    const chain = editor?.chain().focus();
+    if (!chain) {
+      return;
+    }
+
+    switch (action) {
+      case "insertTable":
+        chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+        return;
+      case "addTableRow":
+        chain.addRowAfter().run();
+        return;
+      case "deleteTableRow":
+        chain.deleteRow().run();
+        return;
+      case "addTableColumn":
+        chain.addColumnAfter().run();
+        return;
+      case "deleteTableColumn":
+        chain.deleteColumn().run();
+        return;
+      case "toggleTableHeader":
+        chain.toggleHeaderRow().run();
+        return;
+      case "deleteTable":
+        chain.deleteTable().run();
+    }
+  };
+
   const toolbarIcons: Record<MobileEditorToolbarActionId, ReactNode> = {
     image: <ImagePlusIcon />,
     bold: <BoldIcon />,
     bulletList: <ListIcon />,
     blockquote: <QuoteIcon />,
     horizontalRule: <MinusIcon />,
+    insertTable: <TableGridIcon />,
+    addTableRow: <TableActionGlyph label="R+" />,
+    deleteTableRow: <TableActionGlyph label="R−" />,
+    addTableColumn: <TableActionGlyph label="C+" />,
+    deleteTableColumn: <TableActionGlyph label="C−" />,
+    toggleTableHeader: <TableActionGlyph label="H" />,
+    deleteTable: <TableActionGlyph label="×" />,
   };
   const toolbarHandlers: Record<MobileEditorToolbarActionId, () => void> = {
     image: () => void insertImage(),
@@ -285,32 +328,45 @@ export default function LocalTiptapEditor(props: LocalTiptapEditorProps) {
     bulletList: () => editor?.chain().focus().toggleBulletList().run(),
     blockquote: () => editor?.chain().focus().toggleBlockquote().run(),
     horizontalRule: () => editor?.chain().focus().setHorizontalRule().run(),
+    insertTable: () => runTableAction("insertTable"),
+    addTableRow: () => runTableAction("addTableRow"),
+    deleteTableRow: () => runTableAction("deleteTableRow"),
+    addTableColumn: () => runTableAction("addTableColumn"),
+    deleteTableColumn: () => runTableAction("deleteTableColumn"),
+    toggleTableHeader: () => runTableAction("toggleTableHeader"),
+    deleteTable: () => runTableAction("deleteTable"),
   };
 
   return (
     <div className="edgeever-editor-shell">
       <style>{getEditorStyles(props.theme)}</style>
       <div aria-label={getMobileEditorToolbarLabel(props.locale)} className="edgeever-editor-toolbar" role="toolbar">
-        {MOBILE_EDITOR_TOOLBAR_ACTIONS.map((action) => (
+        {MOBILE_EDITOR_TOOLBAR_ACTIONS
+          .filter((action) => toolbarState & MOBILE_EDITOR_ACTIVE_FLAGS.table
+            ? action.id !== "insertTable"
+            : !action.requiresTable)
+          .map((action) => (
           <ToolbarButton
             key={action.id}
             active={action.activeFlag > 0 && Boolean(toolbarState & action.activeFlag)}
+            disabled={(action.requiresTable && !(toolbarState & MOBILE_EDITOR_ACTIVE_FLAGS.table)) || (action.id === "insertTable" && Boolean(toolbarState & MOBILE_EDITOR_ACTIVE_FLAGS.table))}
             icon={toolbarIcons[action.id]}
             label={getMobileEditorToolbarActionLabel(action.id, props.locale)}
             onRun={toolbarHandlers[action.id]}
           />
-        ))}
+          ))}
       </div>
       <EditorContent editor={editor} />
     </div>
   );
 }
 
-const ToolbarButton = ({ active = false, icon, label, onRun }: { active?: boolean; icon: ReactNode; label: string; onRun: () => void }) => (
+const ToolbarButton = ({ active = false, disabled = false, icon, label, onRun }: { active?: boolean; disabled?: boolean; icon: ReactNode; label: string; onRun: () => void }) => (
   <button
     aria-label={label}
     aria-pressed={active}
     className={active ? "is-active" : undefined}
+    disabled={disabled}
     onMouseDown={(event) => event.preventDefault()}
     onClick={onRun}
     type="button"
@@ -397,6 +453,17 @@ const MinusIcon = () => (
   <EditorIcon size={18} strokeWidth={2.4}>
     <path d="M5 12h14" />
   </EditorIcon>
+);
+
+const TableGridIcon = () => (
+  <EditorIcon size={18} strokeWidth={2}>
+    <rect height="16" rx="1" width="18" x="3" y="4" />
+    <path d="M3 10h18M9 4v16M15 4v16" />
+  </EditorIcon>
+);
+
+const TableActionGlyph = ({ label }: { label: string }) => (
+  <span aria-hidden="true" className="edgeever-table-action-glyph">{label}</span>
 );
 
 const mapImageSources = (doc: EditorDoc, mapSource: (source: string) => string): EditorDoc => {
@@ -832,6 +899,8 @@ const getEditorStyles = (theme: "light" | "dark") => `
   .edgeever-editor-toolbar::-webkit-scrollbar { display: none; }
   .edgeever-editor-toolbar button { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 36px; min-height: 32px; padding: 0; border: 1px solid transparent; border-radius: 999px; background: transparent; color: ${theme === "dark" ? "#cbd5e1" : "#64748b"}; }
   .edgeever-editor-toolbar button:active, .edgeever-editor-toolbar button.is-active { border-color: ${theme === "dark" ? "#166534" : "#bbf7d0"}; background: ${theme === "dark" ? "#14532d" : "#ecfdf5"}; color: ${theme === "dark" ? "#86efac" : "#047857"}; }
+  .edgeever-editor-toolbar button:disabled { opacity: 0.38; }
+  .edgeever-table-action-glyph { font-size: 12px; font-weight: 800; letter-spacing: -0.03em; }
   .tiptap { min-height: 100%; outline: none; }
   .edgeever-editor-shell > div:last-child { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .edgeever-editor-content { min-height: 100%; padding: 18px 12px 32px; font-size: 17px; line-height: 1.7; word-break: break-word; caret-color: #0f766e; }
@@ -843,6 +912,17 @@ const getEditorStyles = (theme: "light" | "dark") => `
   .edgeever-editor-content code { border-radius: 4px; padding: 2px 4px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; }
   .edgeever-editor-content pre code { padding: 0; background: transparent; }
   .edgeever-editor-content img { display: block; max-width: 100%; height: auto; margin: 14px auto; border-radius: 10px; }
+  .edgeever-editor-content .tableWrapper { width: fit-content; max-width: 100%; overflow-x: auto; margin-top: 20px; margin-right: auto; margin-bottom: 20px; margin-left: auto; border: 1px solid ${theme === "dark" ? "#334155" : "#d8d8d8"}; border-radius: 2px; background: ${theme === "dark" ? "#0f172a" : "#fff"}; overscroll-behavior-inline: contain; scrollbar-color: rgba(100, 116, 139, 0.28) transparent; }
+  .edgeever-editor-content table { width: 42rem; min-width: 42rem !important; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  .edgeever-editor-content table col { width: auto !important; }
+  .edgeever-editor-content th, .edgeever-editor-content td { position: relative; min-width: 7.5rem; border: 0; border-right: 1px solid ${theme === "dark" ? "#334155" : "#dedede"}; border-bottom: 1px solid ${theme === "dark" ? "#334155" : "#dedede"}; padding: 7px 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; line-height: 1.4; transition: background-color 120ms ease; }
+  .edgeever-editor-content th { background: ${theme === "dark" ? "#27303f" : "#f0f0f0"}; color: ${theme === "dark" ? "#f8fafc" : "#111827"}; font-size: 14px; font-weight: 700; }
+  .edgeever-editor-content th:last-child, .edgeever-editor-content td:last-child { border-right: 0; }
+  .edgeever-editor-content tr:last-child td { border-bottom: 0; }
+  .edgeever-editor-content tbody tr:nth-child(even) td { background: ${theme === "dark" ? "#182235" : "#f8f8f8"}; }
+  .edgeever-editor-content tbody tr:hover td { background: ${theme === "dark" ? "#202b3d" : "#f3f4f6"}; }
+  .edgeever-editor-content th p, .edgeever-editor-content td p { margin: 0; }
+  .edgeever-editor-content .selectedCell::after { position: absolute; inset: 0; content: ""; pointer-events: none; background: rgba(16, 185, 129, 0.14); }
   .edgeever-image-upload-placeholder { position: relative; max-width: 100%; min-height: 112px; margin: 14px auto; overflow: hidden; border-radius: 10px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; }
   .edgeever-image-upload-preview { display: block; width: 100%; max-height: 360px; margin: 0 !important; object-fit: contain; border-radius: 10px; }
   .edgeever-image-upload-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 10px; background: rgba(15, 23, 42, 0.38); color: #fff; font-size: 14px; font-weight: 600; text-shadow: 0 1px 2px rgba(15, 23, 42, 0.45); }

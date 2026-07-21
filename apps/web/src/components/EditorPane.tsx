@@ -5,6 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import { useTranslation } from "react-i18next";
 import {
   ChevronLeft,
@@ -61,6 +62,7 @@ import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
 import {
   docToMarkdown,
   markdownToDoc,
+  resolveMemoContentDoc,
   type Notebook,
   type MemoDetail,
   type MemoEditSession,
@@ -743,7 +745,9 @@ const MobileNativeEditorPane = ({
       const useDraft = Boolean(draft && (queuedUpdate || draftUpdatedAt >= remoteUpdatedAt));
       const nextTitle = useDraft && draft ? draft.title : memo.title ?? "";
       const nextTagsText = useDraft && draft ? draft.tagsText : memo.tags.join(", ");
-      const nextContent = useDraft && draft ? draft.contentJson : memo.contentJson;
+      const nextContent = useDraft && draft
+        ? draft.contentJson
+        : resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown);
       editSessionRef.current = editSessionResponse?.editSession ?? null;
 
       hydratingRef.current = true;
@@ -945,7 +949,7 @@ const MobileNativeEditorPane = ({
 
         <textarea
           ref={bodyRef}
-          defaultValue={docToMarkdown(memo.contentJson)}
+          defaultValue={docToMarkdown(resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown))}
           autoCapitalize="sentences"
           autoComplete="on"
           autoCorrect="on"
@@ -1328,11 +1332,16 @@ const RichEditorPane = ({
         allowBase64: false,
         inline: false,
       }),
+      TableKit.configure({
+        table: { renderWrapper: true },
+      }),
       Placeholder.configure({
         placeholder: "开始记录...",
       }),
     ],
-    content: memo?.contentJson ?? { type: "doc", content: [{ type: "paragraph" }] },
+    content: memo
+      ? resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown)
+      : { type: "doc", content: [{ type: "paragraph" }] },
     editable: Boolean(memo && !effectiveReadOnly),
     editorProps: {
       attributes: {
@@ -1683,7 +1692,9 @@ const RichEditorPane = ({
       const useDraft = Boolean(draft && (queuedUpdate || draftUpdatedAt >= remoteUpdatedAt));
       const nextTitle = useDraft && draft ? draft.title : memo.title ?? "";
       const nextTagsText = useDraft && draft ? draft.tagsText : memo.tags.join(", ");
-      const nextContent = useDraft && draft ? draft.contentJson : memo.contentJson;
+      const nextContent = useDraft && draft
+        ? draft.contentJson
+        : resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown);
       const nextMarkdown = docToMarkdown(nextContent);
       const nextHasUnsavedChanges = Boolean(useDraft && !queuedUpdate);
 
@@ -1728,7 +1739,7 @@ const RichEditorPane = ({
     }
 
     if (memo) {
-      const nextMarkdown = docToMarkdown(memo.contentJson);
+      const nextMarkdown = docToMarkdown(resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown));
       setMobilePlainText(nextMarkdown);
       setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
     }

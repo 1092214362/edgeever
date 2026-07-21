@@ -3,8 +3,9 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import { createExcerpt, docToMarkdown, docToText, emptyDoc, type MemoDetail, type MemoEditSession, type Notebook, type TiptapDoc } from "@edgeever/shared";
-import { getMobileEditorInputAttributes, getMobileEditorPlaceholder } from "@edgeever/shared/mobile-editor";
+import { getMobileEditorInputAttributes, getMobileEditorPlaceholder, type MobileEditorTableActionId } from "@edgeever/shared/mobile-editor";
 import {
   MobileEditorFallback,
   MobileEditorHeader,
@@ -170,6 +171,9 @@ export const MobileStandaloneTiptapEditor = ({
       Image.configure({
         allowBase64: false,
         inline: false,
+      }),
+      TableKit.configure({
+        table: { renderWrapper: true },
       }),
       Placeholder.configure({
         placeholder: getMobileEditorPlaceholder("zh-CN"),
@@ -792,6 +796,7 @@ export const MobileStandaloneTiptapEditor = ({
     notebookOptions.find((notebook) => notebook.id === memo?.notebookId)?.name ?? (notebookOptions.length === 0 ? "等待分类" : "笔记本");
 
   const fallbackMarkdown = memo ? docToMarkdown(contentJsonRef.current) : "";
+  const tableActive = Boolean(editor?.isActive("table"));
 
   const runEditorCommand = (command: () => boolean) => {
     if (editorActionDisabled || !editor) {
@@ -800,6 +805,32 @@ export const MobileStandaloneTiptapEditor = ({
 
     command();
     editor.commands.focus();
+  };
+
+  const runTableAction = (action: MobileEditorTableActionId) => {
+    runEditorCommand(() => {
+      const chain = editor?.chain().focus();
+      if (!chain) {
+        return false;
+      }
+
+      switch (action) {
+        case "insertTable":
+          return chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+        case "addTableRow":
+          return chain.addRowAfter().run();
+        case "deleteTableRow":
+          return chain.deleteRow().run();
+        case "addTableColumn":
+          return chain.addColumnAfter().run();
+        case "deleteTableColumn":
+          return chain.deleteColumn().run();
+        case "toggleTableHeader":
+          return chain.toggleHeaderRow().run();
+        case "deleteTable":
+          return chain.deleteTable().run();
+      }
+    });
   };
 
   return (
@@ -839,11 +870,13 @@ export const MobileStandaloneTiptapEditor = ({
           boldActive={Boolean(editor?.isActive("bold"))}
           bulletListActive={Boolean(editor?.isActive("bulletList"))}
           blockquoteActive={Boolean(editor?.isActive("blockquote"))}
+          tableActive={tableActive}
           onPickImage={() => imageInputRef.current?.click()}
           onToggleBold={() => runEditorCommand(() => editor?.chain().focus().toggleBold().run() ?? false)}
           onToggleBulletList={() => runEditorCommand(() => editor?.chain().focus().toggleBulletList().run() ?? false)}
           onToggleBlockquote={() => runEditorCommand(() => editor?.chain().focus().toggleBlockquote().run() ?? false)}
           onSetHorizontalRule={() => runEditorCommand(() => editor?.chain().focus().setHorizontalRule().run() ?? false)}
+          onTableAction={runTableAction}
         />
         <input
           ref={imageInputRef}

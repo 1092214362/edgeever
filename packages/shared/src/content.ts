@@ -1,4 +1,5 @@
 import Image from "@tiptap/extension-image";
+import { TableKit } from "@tiptap/extension-table";
 import { Markdown, MarkdownManager } from "@tiptap/markdown";
 import StarterKit from "@tiptap/starter-kit";
 
@@ -32,7 +33,14 @@ export const emptyDoc = (): TiptapDoc => ({
 });
 
 const markdownManager = new MarkdownManager({
-  extensions: [StarterKit, Image, Markdown],
+  extensions: [
+    StarterKit,
+    TableKit,
+    Image,
+    Markdown.configure({
+      markedOptions: { gfm: true },
+    }),
+  ],
 });
 
 export const markdownToDoc = (markdown: string): TiptapDoc => {
@@ -41,6 +49,33 @@ export const markdownToDoc = (markdown: string): TiptapDoc => {
   }
 
   return markdownManager.parse(markdown.replace(/\r\n?/g, "\n")) as TiptapDoc;
+};
+
+const docContainsNodeType = (doc: TiptapDoc, nodeType: string): boolean => {
+  const visit = (nodes: TiptapNode[]): boolean => nodes.some((node) =>
+    node.type === nodeType || (node.content ? visit(node.content as TiptapNode[]) : false)
+  );
+
+  return visit(doc.content);
+};
+
+/**
+ * Recovers Markdown features that an older editor schema could not persist in
+ * contentJson. The stored Markdown remains the compatibility source in that
+ * case; otherwise the richer JSON document (for example image sizing attrs)
+ * keeps precedence.
+ */
+export const resolveMemoContentDoc = (
+  contentJson: TiptapDoc | null | undefined,
+  contentMarkdown: string | null | undefined
+): TiptapDoc => {
+  const currentDoc = contentJson && Array.isArray(contentJson.content) ? contentJson : emptyDoc();
+  if (!contentMarkdown?.trim() || docContainsNodeType(currentDoc, "table")) {
+    return currentDoc;
+  }
+
+  const markdownDoc = markdownToDoc(contentMarkdown);
+  return docContainsNodeType(markdownDoc, "table") ? markdownDoc : currentDoc;
 };
 
 export const docToText = (doc: unknown): string => {

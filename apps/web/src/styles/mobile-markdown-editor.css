@@ -237,6 +237,12 @@ input {
   color: #334155;
 }
 
+.mobile-editor-table-glyph {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
 .mobile-editor-sheet-backdrop {
   position: fixed;
   inset: 0;
@@ -446,6 +452,109 @@ input {
   height: auto;
   max-width: 100%;
   border-radius: 8px;
+}
+
+.edgeever-mobile-tiptap-content .tableWrapper {
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: 1.25rem;
+  margin-right: auto;
+  margin-bottom: 1.25rem;
+  margin-left: auto;
+  border: 1px solid #d8d8d8;
+  border-radius: 2px;
+  background: #fff;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: rgb(100 116 139 / 0.28) transparent;
+}
+
+.edgeever-mobile-tiptap-content table {
+  width: 42rem;
+  min-width: 42rem !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.edgeever-mobile-tiptap-content table col {
+  width: auto !important;
+}
+
+.edgeever-mobile-tiptap-content th,
+.edgeever-mobile-tiptap-content td {
+  position: relative;
+  min-width: 7.5rem;
+  border: 0;
+  border-right: 1px solid #dedede;
+  border-bottom: 1px solid #dedede;
+  padding: 0.42rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  transition: background-color 120ms ease;
+}
+
+.edgeever-mobile-tiptap-content th {
+  background: #f0f0f0;
+  color: #111827;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.edgeever-mobile-tiptap-content th:last-child,
+.edgeever-mobile-tiptap-content td:last-child {
+  border-right: 0;
+}
+
+.edgeever-mobile-tiptap-content tr:last-child td {
+  border-bottom: 0;
+}
+
+.edgeever-mobile-tiptap-content tbody tr:nth-child(even) td {
+  background: #f8f8f8;
+}
+
+.edgeever-mobile-tiptap-content tbody tr:hover td {
+  background: #f3f4f6;
+}
+
+.edgeever-mobile-tiptap-content th p,
+.edgeever-mobile-tiptap-content td p {
+  margin: 0;
+}
+
+.edgeever-mobile-tiptap-content .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: rgb(16 185 129 / 0.14);
+}
+
+:root.dark .edgeever-mobile-tiptap-content th {
+  background: #27303f;
+  color: #f8fafc;
+}
+
+:root.dark .edgeever-mobile-tiptap-content .tableWrapper {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+:root.dark .edgeever-mobile-tiptap-content th,
+:root.dark .edgeever-mobile-tiptap-content td {
+  border-color: #334155;
+}
+
+:root.dark .edgeever-mobile-tiptap-content tbody tr:nth-child(even) td {
+  background: #182235;
+}
+
+:root.dark .edgeever-mobile-tiptap-content tbody tr:hover td {
+  background: #202b3d;
 }
 
 .edgeever-mobile-tiptap-content p.is-editor-empty:first-child::before {

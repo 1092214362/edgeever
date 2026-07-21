@@ -2,6 +2,7 @@ import { Bold, Check, ChevronDown, ImagePlus, List, Minus, Quote } from "lucide-
 import {
   MOBILE_EDITOR_TOOLBAR_ACTIONS,
   getMobileEditorToolbarActionLabel,
+  type MobileEditorTableActionId,
   type MobileEditorToolbarActionId,
 } from "@edgeever/shared/mobile-editor";
 import type { ReactNode } from "react";
@@ -37,21 +38,25 @@ export const MobileEditorToolbar = ({
   boldActive,
   bulletListActive,
   blockquoteActive,
+  tableActive,
   onPickImage,
   onToggleBold,
   onToggleBulletList,
   onToggleBlockquote,
   onSetHorizontalRule,
+  onTableAction,
 }: {
   disabled: boolean;
   boldActive: boolean;
   bulletListActive: boolean;
   blockquoteActive: boolean;
+  tableActive: boolean;
   onPickImage: () => void;
   onToggleBold: () => void;
   onToggleBulletList: () => void;
   onToggleBlockquote: () => void;
   onSetHorizontalRule: () => void;
+  onTableAction: (action: MobileEditorTableActionId) => void;
 }) => {
   const icons: Record<MobileEditorToolbarActionId, ReactNode> = {
     image: <ImagePlus aria-hidden="true" size={18} strokeWidth={2} />,
@@ -59,6 +64,13 @@ export const MobileEditorToolbar = ({
     bulletList: <List aria-hidden="true" size={18} strokeWidth={2.2} />,
     blockquote: <Quote aria-hidden="true" size={17} strokeWidth={2.2} />,
     horizontalRule: <Minus aria-hidden="true" size={18} strokeWidth={2.4} />,
+    insertTable: <TableActionGlyph label="T" />,
+    addTableRow: <TableActionGlyph label="R+" />,
+    deleteTableRow: <TableActionGlyph label="R−" />,
+    addTableColumn: <TableActionGlyph label="C+" />,
+    deleteTableColumn: <TableActionGlyph label="C−" />,
+    toggleTableHeader: <TableActionGlyph label="H" />,
+    deleteTable: <TableActionGlyph label="×" />,
   };
   const handlers: Record<MobileEditorToolbarActionId, () => void> = {
     image: onPickImage,
@@ -66,6 +78,13 @@ export const MobileEditorToolbar = ({
     bulletList: onToggleBulletList,
     blockquote: onToggleBlockquote,
     horizontalRule: onSetHorizontalRule,
+    insertTable: () => onTableAction("insertTable"),
+    addTableRow: () => onTableAction("addTableRow"),
+    deleteTableRow: () => onTableAction("deleteTableRow"),
+    addTableColumn: () => onTableAction("addTableColumn"),
+    deleteTableColumn: () => onTableAction("deleteTableColumn"),
+    toggleTableHeader: () => onTableAction("toggleTableHeader"),
+    deleteTable: () => onTableAction("deleteTable"),
   };
   const activeStates: Partial<Record<MobileEditorToolbarActionId, boolean>> = {
     bold: boldActive,
@@ -75,7 +94,9 @@ export const MobileEditorToolbar = ({
 
   return (
     <div className="mobile-editor-tool-row">
-      {MOBILE_EDITOR_TOOLBAR_ACTIONS.map(({ id }) => {
+      {MOBILE_EDITOR_TOOLBAR_ACTIONS
+        .filter(({ id, requiresTable }) => tableActive ? id !== "insertTable" : !requiresTable)
+        .map(({ id, requiresTable }) => {
         const label = getMobileEditorToolbarActionLabel(id, "zh-CN");
 
         return (
@@ -86,17 +107,21 @@ export const MobileEditorToolbar = ({
             aria-label={label}
             title={label}
             aria-pressed={activeStates[id]}
-            disabled={disabled}
+            disabled={disabled || (requiresTable && !tableActive) || (id === "insertTable" && tableActive)}
             onPointerDown={(event) => event.preventDefault()}
             onClick={handlers[id]}
           >
             {icons[id]}
           </button>
         );
-      })}
+        })}
     </div>
   );
 };
+
+const TableActionGlyph = ({ label }: { label: string }) => (
+  <span aria-hidden="true" className="mobile-editor-table-glyph">{label}</span>
+);
 
 export const MobileEditorNotebookButton = ({
   label,
