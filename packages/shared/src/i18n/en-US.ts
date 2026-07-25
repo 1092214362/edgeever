@@ -128,6 +128,8 @@ export const enUS = {
     expand: "Expand {{name}}",
     current: "Current: {{name}}",
     switchTo: "Switch to {{name}}",
+    currentWithCount: "Current: {{name}}, {{count}} notes",
+    switchToWithCount: "Switch to {{name}}, {{count}} notes",
     newChild: "New child notebook",
     newChildAria: "Create child notebook under {{name}}",
     rename: "Rename",
