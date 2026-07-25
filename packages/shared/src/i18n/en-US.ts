@@ -900,6 +900,6 @@ export const enUS = {
     resetSuccess: "Demo environment successfully reset!",
     resetFailed: "Failed to reset demo environment. Please try again later.",
     resetting: "Resetting...",
-    privacyNotice: "Demo environment. Please do not save private notes.",
+    privacyNotice: "Demo environment. Please do not save private notes",
   },
 } as const;
