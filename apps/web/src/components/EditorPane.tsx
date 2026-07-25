@@ -513,6 +513,7 @@ type EditorPaneProps = {
   searchFocusToken: number;
   replaceFocusToken: number;
   selectionActionBar?: ReactNode;
+  demoMode?: boolean;
 };
 
 type RichEditorPaneProps = EditorPaneProps & {
@@ -1135,6 +1136,7 @@ const RichEditorPane = ({
   replaceFocusToken,
   selectionActionBar,
   onRequestMobileNativeEdit,
+  demoMode = false,
 }: RichEditorPaneProps) => {
   const { t } = useTranslation();
   const { customEditorTheme, editorTheme } = useTheme();
@@ -2487,6 +2489,12 @@ const RichEditorPane = ({
   return (
     <div className="relative flex h-full min-w-0 flex-col bg-white">
       {selectionActionBar}
+      {demoMode && (
+        <div className="flex shrink-0 items-center justify-center gap-1.5 border-b border-amber-200/40 bg-amber-50/70 px-3 py-1 text-[11px] font-normal text-amber-700/80 select-none">
+          <Info className="h-3 w-3 shrink-0 text-amber-600/70" />
+          <span>{t("demo.privacyNotice")}</span>
+        </div>
+      )}
       <header className="shrink-0 border-b border-slate-200 bg-white">
         <div className="flex min-h-12 items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 sm:px-5">
           <div className="flex min-w-0 items-center gap-2 text-sm">

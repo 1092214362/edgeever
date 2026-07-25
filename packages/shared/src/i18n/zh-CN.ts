@@ -900,5 +900,6 @@ export const zhCN = {
     resetSuccess: "演示环境已成功重置！",
     resetFailed: "重置演示环境失败，请稍后重试。",
     resetting: "正在重置...",
+    privacyNotice: "当前为演示环境，请勿保存私密笔记。",
   },
 } as const;
