@@ -30,6 +30,8 @@ export const EDITOR_THEME_NAMES = [
   "moyu-ticket",
   "olive-journal",
   "mint-breeze",
+  "minimal-emerald",
+  "outline-emerald",
   "custom",
 ] as const;
 export type EditorThemeName = (typeof EDITOR_THEME_NAMES)[number];

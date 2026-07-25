@@ -159,6 +159,8 @@ export const zhCN = {
       "moyu-ticket": "摸鱼票据风",
       "olive-journal": "橄榄手记",
       "mint-breeze": "薄荷青",
+      "minimal-emerald": "minimal品牌绿",
+      "outline-emerald": "Outline 品牌绿",
       custom: "自定义",
     },
     customEditorTheme: {

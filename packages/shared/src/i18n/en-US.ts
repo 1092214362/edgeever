@@ -159,6 +159,8 @@ export const enUS = {
       "moyu-ticket": "Moyu Ticket",
       "olive-journal": "Olive Journal",
       "mint-breeze": "Mint Breeze",
+      "minimal-emerald": "Minimal Emerald",
+      "outline-emerald": "Outline Emerald",
       custom: "Custom",
     },
     customEditorTheme: {
