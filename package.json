@@ -12,6 +12,8 @@
     "dev:api": "bun run dev:api:local",
     "dev:local": "bun run db:migrate:local && concurrently -k -n api,web -c cyan,magenta \"bun run dev:api:local\" \"bun run dev:web\"",
     "dev:api:local": "EDGE_EVER_INSTANCE= EDGE_EVER_LOCAL_DEMO_SEED=true bun scripts/run-wrangler.mjs dev --local --port 8787",
+    "dev:self-hosted": "bun --watch scripts/self-hosted-server.mjs",
+    "start:self-hosted": "bun scripts/self-hosted-server.mjs",
     "dev:remote": "concurrently -k -n api,web -c cyan,magenta \"bun run dev:api:remote\" \"bun run dev:web\"",
     "dev:api:remote": "bun scripts/run-wrangler.mjs dev --remote --port 8787",
     "dev:web": "vite --config apps/web/vite.config.ts --host 127.0.0.1 --port 5173",

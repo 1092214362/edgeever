@@ -228,7 +228,7 @@ Cloudflare Worker 侧执行图片处理会消耗计算/图片处理额度，因�
 
 ## Docker 部署规划
 
-> 🐳 面向 VPS、NAS 和家庭服务器的 Docker 私有化部署已纳入规划，待核心功能稳定后提供；当前版本尚不支持。
+> 🐳 面向 VPS、NAS 和家庭服务器的 Docker 私有化部署已纳入规划，但当前版本尚不支持。API 已预留存储适配器边界，未来可在复用现有路由、REST API、MCP 接口、数据库结构和迁移历史的前提下接入 SQLite + 本地文件/S3 兼容存储。详见[自托管与 Docker 架构预留](docs/self-hosting-architecture.zh-CN.md)。
 
 ## 致谢
 
