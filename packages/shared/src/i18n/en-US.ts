@@ -152,12 +152,6 @@ export const enUS = {
     editorThemeDescription: "Choose a writing style for the note editor. Saved in this browser.",
     editorThemes: {
       default: "System default",
-      "moyu-green": "Moyu Green",
-      "red-white": "Red & White",
-      "graphite-minimal": "Graphite Minimal",
-      "zen-whitespace": "Zen Whitespace",
-      "moyu-ticket": "Moyu Ticket",
-      "olive-journal": "Olive Journal",
       "mint-breeze": "Mint Breeze",
       "minimal-emerald": "Minimal Emerald",
       "outline-emerald": "Outline Emerald",

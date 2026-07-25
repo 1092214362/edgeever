@@ -23,12 +23,6 @@ export type MermaidThemeName = (typeof MERMAID_THEME_NAMES)[number];
 
 export const EDITOR_THEME_NAMES = [
   "default",
-  "moyu-green",
-  "red-white",
-  "graphite-minimal",
-  "zen-whitespace",
-  "moyu-ticket",
-  "olive-journal",
   "mint-breeze",
   "minimal-emerald",
   "outline-emerald",
