@@ -292,7 +292,7 @@ export const NotebookPane = ({
 }) => {
   const { t } = useTranslation();
   // Temporarily keep template actions out of the primary workspace navigation.
-  const showTemplateEntry = false;
+  const showTemplateEntry = true;
   const { isInstallable, install } = usePwaInstall();
   const notebookScrollRef = useRef<HTMLDivElement | null>(null);
   const notebookDragScrollFrameRef = useRef<number | null>(null);
@@ -437,7 +437,7 @@ export const NotebookPane = ({
         </div>
         {showTemplateEntry && (
           <button
-            className="mb-4 hidden h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 lg:flex"
+            className="mb-3 hidden h-8 w-full items-center justify-start gap-2 rounded-md px-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50 lg:flex"
             type="button"
             title={t("templates.useTemplate")}
             onClick={onOpenTemplates}

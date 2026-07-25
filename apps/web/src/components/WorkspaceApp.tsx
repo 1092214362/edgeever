@@ -336,7 +336,7 @@ const MobileBottomNav = ({
 }) => {
   const { t } = useTranslation();
   // Temporarily hide template navigation while the feature is being finalized.
-  const showTemplateEntry = false;
+  const showTemplateEntry = true;
   const createMemoLabel = !canCreateMemo ? t("nav.createDisabled") : isCreating ? t("nav.creating") : t("nav.createMemo");
 
   return (
