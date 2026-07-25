@@ -152,7 +152,6 @@ export const enUS = {
     editorThemeDescription: "Choose a writing style for the note editor. Saved in this browser.",
     editorThemes: {
       default: "System default",
-      "mint-breeze": "Mint Breeze",
       "minimal-emerald": "Minimal Emerald",
       "outline-emerald": "Outline Emerald",
       custom: "Custom",

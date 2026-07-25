@@ -152,7 +152,6 @@ export const zhCN = {
     editorThemeDescription: "选择正文编辑区的排版风格，偏好会保存在当前浏览器中。",
     editorThemes: {
       default: "系统默认",
-      "mint-breeze": "薄荷青",
       "minimal-emerald": "minimal品牌绿",
       "outline-emerald": "Outline 品牌绿",
       custom: "自定义",
