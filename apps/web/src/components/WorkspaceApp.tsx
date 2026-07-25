@@ -2027,6 +2027,7 @@ export const WorkspaceApp = ({
     navigateWorkspaceHome();
     setMemoView("notebook");
     setSelectedNotebookId(null);
+    setRightView("editor");
     setMobileBottomNavActive("home");
     clearMemoSelection();
     clearPendingCreatedMemo();
