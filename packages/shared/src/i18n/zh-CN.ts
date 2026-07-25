@@ -240,6 +240,7 @@ export const zhCN = {
     updateAvailableDescription: "当前版本较旧，最新版本为 {{version}}。",
     viewRelease: "查看更新",
     latestVersion: "当前已是最新版本",
+    closeUpdateNotice: "关闭新版本提示",
   },
   feedback: {
     title: "意见反馈",

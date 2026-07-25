@@ -23,7 +23,6 @@ import { McpConfigCard } from "./settings/McpConfigCard";
 import { PreferenceCard } from "./settings/PreferenceCard";
 import { PasswordCard } from "./settings/PasswordCard";
 import { SessionCard } from "./settings/SessionCard";
-import { SystemInfoCard } from "./settings/SystemInfoCard";
 import { UserManagementCard } from "./settings/UserManagementCard";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -171,7 +170,6 @@ export const SettingsPane = ({
               shortcutSettings={shortcutSettings}
               onShortcutSettingsChange={onShortcutSettingsChange}
             />
-            <SystemInfoCard />
             <FeedbackLink className="hidden lg:flex" />
           </SettingsGroup>
         );

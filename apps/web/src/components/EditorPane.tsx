@@ -30,6 +30,7 @@ import {
   Check,
   CircleAlert,
   LoaderCircle,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GitHubRepositoryLink } from "@/components/GitHubRepositoryLink";
@@ -91,6 +92,9 @@ import {
 } from "@/lib/app-helpers";
 import { copyEditorToWeChat, copyMarkdownToWeChat } from "@/lib/wechat-copy";
 import { ThemeBlock } from "./ThemeBlock";
+import { SystemInfoDialog } from "./SystemInfoDialog";
+import { fetchLatestRelease, isVersionOutdated } from "@/lib/version-check";
+import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
@@ -1135,6 +1139,8 @@ const RichEditorPane = ({
   const [editorContentVersion, setEditorContentVersion] = useState(0);
   const [imageUploadState, setImageUploadState] = useState<"idle" | "compressing" | "uploading" | "error">("idle");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [systemInfoOpen, setSystemInfoOpen] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [mobileNotebookSheetOpen, setMobileNotebookSheetOpen] = useState(false);
   const [notebookUpdatePending, setNotebookUpdatePending] = useState(false);
   const [noteSearchOpen, setNoteSearchOpen] = useState(false);
@@ -1158,6 +1164,19 @@ const RichEditorPane = ({
   const readOnly = isTrashView || Boolean(memo?.isDeleted);
   const mobileDefaultEditRequested = Boolean(memo?.id && memo.id === mobileDefaultEditMemoId && !readOnly);
   const mobileEditingActive = isMobileEditing || mobileDefaultEditRequested;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchLatestRelease(controller.signal)
+      .then((release) => setUpdateAvailable(isVersionOutdated(__EDGEEVER_APP_VERSION__, release.tagName)))
+      .catch(() => undefined);
+    const handleReleaseStatus = () => setUpdateAvailable(true);
+    window.addEventListener(RELEASE_STATUS_EVENT, handleReleaseStatus);
+    return () => {
+      controller.abort();
+      window.removeEventListener(RELEASE_STATUS_EVENT, handleReleaseStatus);
+    };
+  }, []);
   const effectiveReadOnly = readOnly || (isMobileViewport && !mobileEditingActive);
   const useMobilePlainTextEditor = isMobileViewport && mobileEditingActive && !readOnly;
   const useMarkdownSourceEditor = !useMobilePlainTextEditor && isMarkdownMode;
@@ -2636,6 +2655,10 @@ const RichEditorPane = ({
               <History className="h-5 w-5" strokeWidth={2.25} />
             </Button>
             <GitHubRepositoryLink className="hidden h-8 w-8 justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 lg:inline-flex" iconClassName="h-5 w-5" />
+            <Button className="relative hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:inline-flex" size="icon" variant="ghost" title={t("systemInfo.title")} aria-label={t("systemInfo.title")} onClick={() => setSystemInfoOpen(true)}>
+              <Info className="h-5 w-5" strokeWidth={2.25} />
+              {updateAvailable ? <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-white" aria-label={t("systemInfo.updateAvailableTitle")} /> : null}
+            </Button>
             <ThemeToggle />
             {!readOnly && (
               <Button
@@ -3080,6 +3103,8 @@ const RichEditorPane = ({
           }}
         />
       )}
+
+      <SystemInfoDialog open={systemInfoOpen} onOpenChange={setSystemInfoOpen} />
 
       {mobileNotebookSheetOpen && (
         <MobileNotebookSelectSheet

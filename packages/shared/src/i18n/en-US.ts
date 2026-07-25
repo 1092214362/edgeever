@@ -240,6 +240,7 @@ export const enUS = {
     updateAvailableDescription: "This version is out of date. The latest version is {{version}}.",
     viewRelease: "View update",
     latestVersion: "You are running the latest version",
+    closeUpdateNotice: "Close update notice",
   },
   feedback: {
     title: "Feedback",
