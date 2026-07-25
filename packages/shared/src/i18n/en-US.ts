@@ -13,7 +13,7 @@ export const enUS = {
     processing: "Processing",
     saving: "Saving",
     copied: "Copied",
-    githubRepository: "GitHub repository",
+    githubRepository: "Open source",
   },
   dialogs: {
     memoDelete: {

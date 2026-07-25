@@ -102,6 +102,15 @@ const EDITOR_AUTO_SAVE_DELAY_MS = 1200;
 const MOBILE_DRAFT_PERSIST_DELAY_MS = 800;
 const NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY = new PluginKey("edgeever-note-search-highlight");
 
+const IconTooltip = ({ label, children }: { label: string; children: ReactNode }) => (
+  <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
+
 type NoteSearchMatch = {
   from: number;
   to: number;
@@ -2527,12 +2536,16 @@ const RichEditorPane = ({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button size="icon" variant="ghost" title={t("editor.previousMemo")} aria-label={t("editor.previousMemo")} onClick={onOpenPreviousMemo} disabled={!hasPreviousMemo}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" title={t("editor.nextMemo")} aria-label={t("editor.nextMemo")} onClick={onOpenNextMemo} disabled={!hasNextMemo}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              <IconTooltip label={t("editor.previousMemo")}>
+                <Button size="icon" variant="ghost" aria-label={t("editor.previousMemo")} onClick={onOpenPreviousMemo} disabled={!hasPreviousMemo}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
+              <IconTooltip label={t("editor.nextMemo")}>
+                <Button size="icon" variant="ghost" aria-label={t("editor.nextMemo")} onClick={onOpenNextMemo} disabled={!hasNextMemo}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
             </div>
             <span className="hidden truncate text-xs text-slate-400 sm:inline">
               {t("editor.updatedAt", { time: updatedLabel })}
@@ -2616,9 +2629,11 @@ const RichEditorPane = ({
                 <Type className="h-4 w-4" />
               </Button>
             )}
-            <Button className="hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-slate-300 sm:inline-flex" size="icon" variant="ghost" title={t("editor.searchCurrentMemo")} aria-label={t("editor.searchCurrentMemo")} onClick={() => openNoteSearch()}>
-              <Search className="h-5 w-5" strokeWidth={2.25} />
-            </Button>
+            <IconTooltip label={t("editor.searchCurrentMemo")}>
+              <Button className="hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-slate-300 sm:inline-flex" size="icon" variant="ghost" aria-label={t("editor.searchCurrentMemo")} onClick={() => openNoteSearch()}>
+                <Search className="h-5 w-5" strokeWidth={2.25} />
+              </Button>
+            </IconTooltip>
             <TooltipProvider delayDuration={0} skipDelayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -2651,27 +2666,32 @@ const RichEditorPane = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button className="hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-slate-300 sm:inline-flex" size="icon" variant="ghost" title={t("editor.versionHistory")} aria-label={t("editor.versionHistory")} onClick={() => setHistoryOpen(true)}>
-              <History className="h-5 w-5" strokeWidth={2.25} />
-            </Button>
+            <IconTooltip label={t("editor.versionHistory")}>
+              <Button className="hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-slate-300 sm:inline-flex" size="icon" variant="ghost" aria-label={t("editor.versionHistory")} onClick={() => setHistoryOpen(true)}>
+                <History className="h-5 w-5" strokeWidth={2.25} />
+              </Button>
+            </IconTooltip>
             <GitHubRepositoryLink className="hidden h-8 w-8 justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 lg:inline-flex" iconClassName="h-5 w-5" />
-            <Button className="relative hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:inline-flex" size="icon" variant="ghost" title={t("systemInfo.title")} aria-label={t("systemInfo.title")} onClick={() => setSystemInfoOpen(true)}>
-              <Info className="h-5 w-5" strokeWidth={2.25} />
-              {updateAvailable ? <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-white" aria-label={t("systemInfo.updateAvailableTitle")} /> : null}
-            </Button>
+            <IconTooltip label={t("systemInfo.title")}>
+              <Button className="relative hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-emerald-500/70 sm:inline-flex" size="icon" variant="ghost" aria-label={t("systemInfo.title")} onClick={() => setSystemInfoOpen(true)}>
+                <Info className="h-5 w-5" strokeWidth={2.25} />
+                {updateAvailable ? <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-2 ring-white" /> : null}
+              </Button>
+            </IconTooltip>
             <ThemeToggle />
             {!readOnly && (
-              <Button
-                className="hidden sm:inline-flex"
-                size="icon"
-                variant="solid"
-                title={t("editor.save")}
-                aria-label={t("editor.save")}
-                onClick={() => saveMutation.mutate()}
-                disabled={!editor || saveMutation.isPending || !hasUnsavedChanges}
-              >
-                <Save className="h-4 w-4" />
-              </Button>
+              <IconTooltip label={t("editor.save")}>
+                <Button
+                  className="hidden sm:inline-flex"
+                  size="icon"
+                  variant="solid"
+                  aria-label={t("editor.save")}
+                  onClick={() => saveMutation.mutate()}
+                  disabled={!editor || saveMutation.isPending || !hasUnsavedChanges}
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

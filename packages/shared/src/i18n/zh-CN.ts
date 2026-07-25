@@ -13,7 +13,7 @@ export const zhCN = {
     processing: "处理中",
     saving: "保存中",
     copied: "已复制",
-    githubRepository: "GitHub 仓库",
+    githubRepository: "开源",
   },
   dialogs: {
     memoDelete: {
