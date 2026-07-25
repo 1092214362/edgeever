@@ -568,6 +568,7 @@ export const enUS = {
     copyingToWeChat: "Preparing WeChat content",
     copiedToWeChat: "Copied",
     copyToWeChatFailed: "Copy failed",
+    outline: "Outline",
   },
   editorToolbar: {
     toolbar: "Editor toolbar",

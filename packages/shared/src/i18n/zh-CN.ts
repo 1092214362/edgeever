@@ -568,6 +568,7 @@ export const zhCN = {
     copyingToWeChat: "正在准备公众号内容",
     copiedToWeChat: "已复制",
     copyToWeChatFailed: "复制失败",
+    outline: "文档大纲",
   },
   editorToolbar: {
     toolbar: "编辑器工具栏",
