@@ -109,9 +109,6 @@ export const buildMarkdownFrontMatter = (memo: MemoDetail, notebookPath: string)
   "",
 ].join("\n");
 
-export const buildSingleMarkdownExport = (memo: MemoDetail, notebookPath = "Unfiled") =>
-  `${buildMarkdownFrontMatter(memo, notebookPath)}${memo.contentMarkdown}`;
-
 export const getExportResourceExtension = (resource: Resource) => {
   const filenameExtension = resource.filename?.match(/\.([a-z0-9]{1,12})$/i)?.[1];
   if (filenameExtension) {
@@ -229,19 +226,6 @@ export const downloadMarkdownExport = (blob: Blob) => {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = `edgeever-markdown-${date}.zip`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
-};
-
-export const downloadMarkdownFile = (markdown: string, title: string) => {
-  const filename = `${sanitizeExportPathSegment(title.trim() || "Untitled note", "Untitled note")}.md`;
-  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();

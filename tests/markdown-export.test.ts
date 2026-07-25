@@ -3,7 +3,6 @@ import type { MemoDetail, Notebook, Resource } from "@edgeever/shared";
 import { strFromU8, unzipSync } from "fflate";
 import {
   buildMarkdownFrontMatter,
-  buildSingleMarkdownExport,
   buildNotebookExportPaths,
   createMarkdownExport,
   sanitizeExportPathSegment,
@@ -104,13 +103,5 @@ describe("Markdown export", () => {
     expect(markdown).toContain(
       "![diagram](%E9%A1%B9%E7%9B%AE%E7%AC%94%E8%AE%B0.assets/%E8%AE%BE%E8%AE%A1%20%E5%9B%BE.png)"
     );
-  });
-
-  test("builds a standalone Markdown file with note metadata", () => {
-    const markdown = buildSingleMarkdownExport(memo(), "工作/项目");
-
-    expect(markdown).toStartWith('---\ntitle: "项目笔记"\n');
-    expect(markdown).toContain('notebook: "工作/项目"');
-    expect(markdown).toEndWith("![diagram](/api/v1/resources/res_1/blob)");
   });
 });

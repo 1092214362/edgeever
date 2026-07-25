@@ -549,8 +549,6 @@ export const zhCN = {
     searchCurrentMemo: "搜索当前笔记",
     replaceCurrentMemo: "替换当前笔记",
     versionHistory: "版本历史",
-    exportMarkdown: "导出 Markdown",
-    printPdf: "打印 / 保存为 PDF",
     save: "保存",
     more: "更多",
     moreAria: "笔记更多操作",
