@@ -34,9 +34,9 @@ EdgeEver 容器
 └── 附件存储             -> /data/resources
 ```
 
-自托管适配器应继续复用现有 SQLite 结构和 `migrations/*.sql`；附件继续使用
-`resources.object_key` 中保存的不透明对象键，初版可以使用本地文件系统，
-后续再增加 S3 兼容存储。
+自托管适配器继续复用现有 SQLite 结构和 `migrations/*.sql`；附件继续使用
+`resources.object_key` 中保存的不透明对象键。目前的实验性运行入口已经支持
+本地文件系统和 S3 兼容对象存储两种后端。
 
 未来实现 PostgreSQL 时，必须明确处理 SQL 方言以及 PostgreSQL 专用的全文搜索
 和事务行为，并提供独立迁移策略，不能让现有 SQLite/D1 migration 文件产生歧义。

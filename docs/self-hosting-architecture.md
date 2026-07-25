@@ -38,10 +38,10 @@ EdgeEver container
 └── attachment store      -> /data/resources
 ```
 
-The initial self-hosted adapter should preserve the existing SQLite schema and
-`migrations/*.sql` files. Attachments should be addressed by the same opaque
-object keys currently stored in `resources.object_key`; the implementation may
-use a local filesystem first and add an S3-compatible backend later.
+The initial self-hosted adapter preserves the existing SQLite schema and
+`migrations/*.sql` files. Attachments are addressed by the same opaque object
+keys currently stored in `resources.object_key`; the experimental runtime
+already supports both a local filesystem backend and an S3-compatible backend.
 
 When PostgreSQL is implemented, it must introduce an explicit SQL dialect and
 migration set for PostgreSQL-specific full-text search and transaction

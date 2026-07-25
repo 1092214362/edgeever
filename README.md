@@ -214,7 +214,7 @@ If you want to migrate notes from other platforms to EdgeEver, please refer to t
 
 ## Docker Deployment Roadmap
 
-> 🐳 Docker-based self-hosting for VPS, NAS, and home servers is planned but is not yet available in current releases. The API now reserves a storage adapter boundary so a future SQLite + local/S3-compatible deployment can reuse the existing routes, REST API, MCP endpoint, schema, and migration history. See [Self-hosting and Docker architecture](docs/self-hosting-architecture.md).
+> 🐳 Docker-based self-hosting for VPS, NAS, and home servers is planned but is not yet a supported release. An experimental Bun runtime is already available for adapter development, with SQLite + local files or S3-compatible storage; PostgreSQL remains reserved at the contract level. See [Self-hosting and Docker architecture](docs/self-hosting-architecture.md).
 
 ## Acknowledgements
 
