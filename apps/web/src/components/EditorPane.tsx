@@ -2976,8 +2976,22 @@ const RichEditorPane = ({
           useMobilePlainTextEditor ? "overflow-visible" : "overflow-y-auto"
         )}
       >
-        <div className="flex min-h-full items-start w-full gap-8 px-6 py-6 sm:px-10">
-          <div className="min-w-0 flex-1 max-w-[var(--editor-content-max-width,880px)]">
+        <div
+          className={cn(
+            "flex min-h-full items-start gap-8 px-6 py-6 sm:px-10 transition-all duration-200",
+            desktopFocusMode
+              ? "mx-auto w-full max-w-[1400px] justify-center"
+              : "w-full justify-start"
+          )}
+        >
+          <div
+            className={cn(
+              "min-w-0 flex-1 transition-[max-width] duration-200",
+              desktopFocusMode
+                ? "max-w-[960px]"
+                : "max-w-[var(--editor-content-max-width,880px)]"
+            )}
+          >
             {useMobilePlainTextEditor ? (
               <>
                 <textarea
