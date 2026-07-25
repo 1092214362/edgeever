@@ -2489,12 +2489,6 @@ const RichEditorPane = ({
   return (
     <div className="relative flex h-full min-w-0 flex-col bg-white">
       {selectionActionBar}
-      {demoMode && (
-        <div className="flex shrink-0 items-center justify-center gap-1.5 border-b border-amber-200/40 bg-amber-50/70 px-3 py-1 text-[11px] font-normal text-amber-700/80 select-none">
-          <Info className="h-3 w-3 shrink-0 text-amber-600/70" />
-          <span>{t("demo.privacyNotice")}</span>
-        </div>
-      )}
       <header className="shrink-0 border-b border-slate-200 bg-white">
         <div className="flex min-h-12 items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 sm:px-5">
           <div className="flex min-w-0 items-center gap-2 text-sm">
@@ -2567,6 +2561,12 @@ const RichEditorPane = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
+            {demoMode && (
+              <span className="hidden items-center gap-1 px-1.5 text-xs text-amber-600/80 select-none md:inline-flex">
+                <Info className="h-3.5 w-3.5 shrink-0 text-amber-500/80" />
+                <span>{t("demo.privacyNotice")}</span>
+              </span>
+            )}
             <span
               className="hidden whitespace-nowrap px-1.5 text-xs tabular-nums text-slate-400 sm:inline-flex"
               title={t("editor.characterCount", { count: characterCount })}
