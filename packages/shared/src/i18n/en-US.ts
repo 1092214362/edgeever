@@ -841,29 +841,34 @@ export const enUS = {
     badgeCustom: "Custom",
     items: {
       quickNote: {
-        title: "Quick note",
-        description: "For temporary ideas, links, and sparks.",
-        contentMarkdown: "## Quick note\n\n- \n\n## Next actions\n\n- [ ] ",
+        title: "Quick Spark",
+        description: "Capture fleeting thoughts, ideas, links, and immediate action items.",
+        contentMarkdown: "## 💡 Fleeting Thoughts\n\n- \n\n## 📌 Context & Notes\n\n\n\n## 🚀 Next Actions\n\n- [ ] ",
       },
       meeting: {
-        title: "Meeting notes",
-        description: "Keep agenda, decisions, and todos on one page.",
-        contentMarkdown: "## Meeting notes\n\nTime:\nAttendees:\n\n## Agenda\n\n- \n\n## Decisions\n\n- \n\n## Todos\n\n- [ ] ",
+        title: "Meeting Minutes",
+        description: "Structured log for agenda, key decisions, and action items with owners.",
+        contentMarkdown: "# 📝 Meeting Minutes\n\n- **Time**:\n- **Host/Recorder**:\n- **Attendees**:\n\n---\n\n## 🎯 Goal\n\n- \n\n## 💬 Discussion & Decisions\n\n1. **[Topic 1]**\n   - Points:\n   - ✅ **Decision**:\n\n2. **[Topic 2]**\n   - Points:\n   - ✅ **Decision**:\n\n## 📋 Action Items\n\n- [ ] **[Owner]** Task description (Due: MM-DD)\n- [ ] **[Owner]** Task description (Due: MM-DD)\n",
       },
-      checklist: {
-        title: "Checklist",
-        description: "Quickly list tasks, shopping items, or project checks.",
-        contentMarkdown: "## Checklist\n\n- [ ] \n- [ ] \n- [ ] ",
+      weeklyReview: {
+        title: "Weekly Review & Status",
+        description: "Summarize weekly highlights, blockers, and next week's key priorities.",
+        contentMarkdown: "# 🗓️ Weekly Status Report\n\n## 🌟 Highlights\n\n- [x] **[Project/Feature]** Accomplishment details\n- [x] **[Project/Feature]** Accomplishment details\n\n## 🚧 Blockers & Risks\n\n- ⚠️ **Blocker**: Reason and required support\n\n## 🎯 Next Week Priorities\n\n1. [ ] \n2. [ ] \n3. [ ] \n\n## 💡 Reflection & Insights\n\n- \n",
       },
       reading: {
-        title: "Reading notes",
-        description: "Collect excerpts, ideas, and follow-up reading.",
-        contentMarkdown: "## Reading notes\n\nBook:\nAuthor:\n\n## Excerpts\n\n> \n\n## My thoughts\n\n\n## Follow-up questions\n\n- ",
+        title: "Reading Note Card",
+        description: "Extract key takeaways, quotes, reflections, and connected concepts.",
+        contentMarkdown: "# 📖 Reading Note Card\n\n- **Book/Article**:\n- **Author/Source**:\n- **Rating**: ⭐⭐⭐⭐⭐\n\n---\n\n## 💡 Key Takeaway\n\n> \n\n## ✍️ Highlights & Quotes\n\n> [Quote content]\n> —— *Original Source*\n\n## 🧠 Personal Reflections\n\n- \n\n## 🔗 Action & Practice\n\n- [ ] **Action Plan**:\n",
       },
-      daily: {
-        title: "Daily review",
-        description: "Record what you finished today and where you got stuck.",
-        contentMarkdown: "## Daily review\n\n## Done today\n\n- \n\n## Blockers\n\n- \n\n## Tomorrow's priorities\n\n- [ ] ",
+      okr: {
+        title: "Goal & Task Breakdown",
+        description: "Define OKRs, Key Results, milestones, and task checklists.",
+        contentMarkdown: "# 🎯 Goal Breakdown\n\n- **Period**:\n- **Owner**:\n\n---\n\n## 📌 Objective\n\n> \n\n## 📈 Key Results\n\n- **KR 1**: Target metric -> Current progress\n- **KR 2**: Target metric -> Current progress\n\n## 🗓️ Milestones\n\n- [ ] **Phase 1 (Date)**: Target\n- [ ] **Phase 2 (Date)**: Target\n\n## 📋 Execution Checklist\n\n- [ ] \n- [ ] \n",
+      },
+      postMortem: {
+        title: "Problem & Post-mortem",
+        description: "Document incident symptoms, 5-Whys root cause, and preventive measures.",
+        contentMarkdown: "# 🔍 Post-mortem & Problem Investigation\n\n- **Occurred At**:\n- **Impact Scope**:\n- **Status**: Resolved / In-Progress\n\n---\n\n## 🚨 Symptoms & Impact\n\n\n\n## 🛠️ Investigation & Fix Steps\n\n1. \n2. \n\n## 🔬 Root Cause Analysis (5 Whys)\n\n- **Root Cause**:\n\n## 🛡️ Action Items & Prevention\n\n- [ ] **[Short-term]** \n- [ ] **[Long-term]** \n",
       },
     },
   },
