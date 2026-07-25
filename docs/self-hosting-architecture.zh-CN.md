@@ -63,3 +63,17 @@ EDGE_EVER_AUTH_PASSWORD='<强密码>' bun run start:self-hosted
 
 可通过 `EDGE_EVER_DATA_DIR` 指定需要由 Docker 或 NAS 卷持久化的目录。该入口
 目前仍不是正式支持的发行物。
+
+同一个入口也可以使用 S3 兼容对象存储：
+
+```sh
+EDGE_EVER_STORAGE_BACKEND=s3 \
+EDGE_EVER_S3_ENDPOINT='http://minio:9000' \
+EDGE_EVER_S3_REGION='us-east-1' \
+EDGE_EVER_S3_BUCKET='edgeever' \
+EDGE_EVER_S3_ACCESS_KEY_ID='<access-key>' \
+EDGE_EVER_S3_SECRET_ACCESS_KEY='<secret-key>' \
+bun run start:self-hosted
+```
+
+实现使用 `@aws-sdk/client-s3`，Cloudflare Worker 入口不会加载该 SDK。

@@ -4,6 +4,7 @@ import { dirname, extname, join, normalize, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url";
 import worker from "../apps/api/src/index.ts";
 import { createSelfHostedStorageAdapter } from "../apps/api/src/self-hosted-storage-adapter.ts";
+import { createS3CompatibleStorageAdapter } from "../apps/api/src/s3-compatible-storage-adapter.ts";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dataDirectory = resolve(process.env.EDGE_EVER_DATA_DIR ?? join(projectRoot, ".edgeever-data"));
@@ -45,7 +46,23 @@ for (const name of migrationFiles) {
   console.log(`[self-hosted] applied migration ${name}`);
 }
 
-const storage = createSelfHostedStorageAdapter(sqlite, resourcesDirectory);
+const storageBackend = process.env.EDGE_EVER_STORAGE_BACKEND ?? "local";
+const storage = storageBackend === "s3"
+  ? createS3CompatibleStorageAdapter(sqlite, {
+      bucket: process.env.EDGE_EVER_S3_BUCKET ?? "",
+      region: process.env.EDGE_EVER_S3_REGION,
+      endpoint: process.env.EDGE_EVER_S3_ENDPOINT,
+      accessKeyId: process.env.EDGE_EVER_S3_ACCESS_KEY_ID,
+      secretAccessKey: process.env.EDGE_EVER_S3_SECRET_ACCESS_KEY,
+      forcePathStyle: process.env.EDGE_EVER_S3_FORCE_PATH_STYLE
+        ? process.env.EDGE_EVER_S3_FORCE_PATH_STYLE === "true"
+        : undefined,
+    })
+  : createSelfHostedStorageAdapter(sqlite, resourcesDirectory);
+
+if (storageBackend === "s3" && !process.env.EDGE_EVER_S3_BUCKET) {
+  throw new Error("EDGE_EVER_S3_BUCKET is required when EDGE_EVER_STORAGE_BACKEND=s3");
+}
 const env = {
   DB: storage.db,
   RESOURCES: storage.resources,
@@ -110,3 +127,4 @@ const server = Bun.serve({
 
 console.log(`[self-hosted] listening on ${server.url}`);
 console.log(`[self-hosted] data directory: ${dataDirectory}`);
+console.log(`[self-hosted] storage backend: ${storageBackend}`);

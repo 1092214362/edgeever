@@ -76,3 +76,18 @@ EDGE_EVER_AUTH_PASSWORD='<strong-password>' bun run start:self-hosted
 
 Set `EDGE_EVER_DATA_DIR` to the directory that should be persisted by Docker
 or a NAS volume. This runtime is not yet a supported release artifact.
+
+The same runtime can use an S3-compatible object store:
+
+```sh
+EDGE_EVER_STORAGE_BACKEND=s3 \
+EDGE_EVER_S3_ENDPOINT='http://minio:9000' \
+EDGE_EVER_S3_REGION='us-east-1' \
+EDGE_EVER_S3_BUCKET='edgeever' \
+EDGE_EVER_S3_ACCESS_KEY_ID='<access-key>' \
+EDGE_EVER_S3_SECRET_ACCESS_KEY='<secret-key>' \
+bun run start:self-hosted
+```
+
+The implementation uses `@aws-sdk/client-s3` and does not load that SDK in the
+Cloudflare Worker entrypoint.
