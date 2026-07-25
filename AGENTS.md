@@ -72,6 +72,10 @@ bun run build:android:apk:local
 
 当用户要求根据 GitHub 项目链接将本项目安装部署到 Cloudflare 时，必须先完整阅读并严格按照 `docs/agent-deploy-cloudflare.md` 执行。该文档是此部署流程的唯一操作规范；不要在本文件重复维护部署命令、密码配置或 Workers Builds 步骤。
 
+### 数据库 Migration 约束
+
+数据库结构或初始化数据发生变化时，在 `migrations/` 下新增递增编号的 D1 Migration SQL 文件。推送到 `main` 后，Cloudflare 会自动执行尚未应用的远程 Migration 并部署 Worker。不要修改已经执行过的旧 Migration；本地数据库数据不会自动同步到远程数据库。
+
 ## 本地启动约束
 
 - 默认使用 `bun run dev` 启动完整本地环境（本地 D1/R2 和固定演示种子），不得连接 `.env.local` 中的远程实例。
