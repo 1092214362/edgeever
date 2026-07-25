@@ -549,6 +549,8 @@ export const enUS = {
     searchCurrentMemo: "Search current note",
     replaceCurrentMemo: "Replace in current note",
     versionHistory: "Version history",
+    exportMarkdown: "Export Markdown",
+    printPdf: "Print / Save as PDF",
     save: "Save",
     more: "More",
     moreAria: "More note actions",

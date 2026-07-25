@@ -31,6 +31,8 @@ import {
   CircleAlert,
   LoaderCircle,
   Info,
+  Download,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GitHubRepositoryLink } from "@/components/GitHubRepositoryLink";
@@ -91,6 +93,7 @@ import {
   getNotebookMoveOptions,
 } from "@/lib/app-helpers";
 import { copyEditorToWeChat, copyMarkdownToWeChat } from "@/lib/wechat-copy";
+import { buildSingleMarkdownExport, downloadMarkdownFile } from "@/lib/markdown-export";
 import { ThemeBlock } from "./ThemeBlock";
 import { SystemInfoDialog } from "./SystemInfoDialog";
 import { fetchLatestRelease, isVersionOutdated } from "@/lib/version-check";
@@ -101,6 +104,35 @@ const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
 const EDITOR_AUTO_SAVE_DELAY_MS = 1200;
 const MOBILE_DRAFT_PERSIST_DELAY_MS = 800;
 const NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY = new PluginKey("edgeever-note-search-highlight");
+
+const printCurrentMemo = () => {
+  const source = document.querySelector<HTMLElement>("[data-edgeever-editor-pane]");
+  const content = source?.querySelector<HTMLElement>(".ProseMirror");
+
+  if (!source || !content) {
+    window.print();
+    return;
+  }
+
+  const printRoot = document.createElement("article");
+  printRoot.className = "edgeever-print-root";
+
+  const titleInput = source.querySelector<HTMLInputElement>('input[placeholder]');
+  const title = document.createElement("h1");
+  title.textContent = titleInput?.value.trim() || "Untitled note";
+  printRoot.appendChild(title);
+  printRoot.appendChild(content.cloneNode(true));
+
+  const cleanup = () => {
+    document.body.classList.remove("edgeever-printing");
+    printRoot.remove();
+  };
+
+  document.body.classList.add("edgeever-printing");
+  document.body.appendChild(printRoot);
+  window.addEventListener("afterprint", cleanup, { once: true });
+  window.print();
+};
 
 const IconTooltip = ({ label, children }: { label: string; children: ReactNode }) => (
   <TooltipProvider delayDuration={0} skipDelayDuration={0}>
@@ -2478,8 +2510,30 @@ const RichEditorPane = ({
     });
   };
 
+  const getCurrentMarkdownForExport = () => {
+    if (useMobilePlainTextEditor) {
+      return getMobilePlainTextValue();
+    }
+
+    if (useMarkdownSourceEditor) {
+      return markdownSource;
+    }
+
+    return isEditorReady(editor) ? docToMarkdown(editor.getJSON() as TiptapDoc) : memo.contentMarkdown;
+  };
+
+  const handleDownloadMarkdown = () => {
+    const exportMemo: MemoDetail = {
+      ...memo,
+      title,
+      tags: parseTagsText(tagsText),
+      contentMarkdown: getCurrentMarkdownForExport(),
+    };
+    downloadMarkdownFile(buildSingleMarkdownExport(exportMemo, currentNotebookLabel), title);
+  };
+
   return (
-    <div className="relative flex h-full min-w-0 flex-col bg-white">
+    <div className="relative flex h-full min-w-0 flex-col bg-white" data-edgeever-editor-pane>
       {selectionActionBar}
       <header className="shrink-0 border-b border-slate-200 bg-white">
         <div className="flex min-h-12 items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 sm:px-5">
@@ -2728,6 +2782,21 @@ const RichEditorPane = ({
                 >
                   <History className="h-4 w-4 text-slate-500" />
                   {t("editor.versionHistory")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 h-px bg-slate-100" />
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={handleDownloadMarkdown}
+                >
+                  <Download className="h-4 w-4 text-slate-500" />
+                  {t("editor.exportMarkdown")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={printCurrentMemo}
+                >
+                  <Printer className="h-4 w-4 text-slate-500" />
+                  {t("editor.printPdf")}
                 </DropdownMenuItem>
                 {readOnly ? (
                   <>
