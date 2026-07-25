@@ -2562,8 +2562,8 @@ const RichEditorPane = ({
 
           <div className="flex shrink-0 items-center gap-1">
             {demoMode && (
-              <span className="hidden items-center gap-1 px-1.5 text-xs text-amber-600/80 select-none md:inline-flex">
-                <Info className="h-3.5 w-3.5 shrink-0 text-amber-500/80" />
+              <span className="hidden items-center gap-1 px-1.5 text-xs text-slate-400 select-none md:inline-flex">
+                <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 <span>{t("demo.privacyNotice")}</span>
               </span>
             )}
