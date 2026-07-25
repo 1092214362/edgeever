@@ -51,6 +51,7 @@ export const enUS = {
   nav: {
     mobileMain: "Mobile primary navigation",
     home: "Home",
+    templates: "Templates",
     mine: "Me",
     createMemo: "New note",
     createDisabled: "You cannot create a note in this view",
@@ -799,6 +800,23 @@ export const enUS = {
   templates: {
     title: "Templates",
     description: "Choose a template to create a note instantly.",
+    create: "New template",
+    useTemplate: "New note from template",
+    createDescription: "Create a reusable template from scratch.",
+    myTemplates: "My templates",
+    builtIn: "Built-in templates",
+    savedDescription: "A custom template saved from a note.",
+    delete: "Delete template",
+    saveAsTemplate: "Save as template",
+    edit: "Edit template",
+    name: "Template name",
+    descriptionField: "Template description",
+    noteTitle: "New note title",
+    tags: "Tags (comma-separated)",
+    content: "Template content",
+    templateNamePrompt: "Enter a template name",
+    templateSaved: "Template saved",
+    templateCreated: "Template created",
     unavailable: "Select an available notebook before creating a note.",
     items: {
       quickNote: {

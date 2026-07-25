@@ -1,22 +1,60 @@
-import { useMemo } from "react";
-import { LayoutList, File as FileIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, File as FileIcon, LayoutList, Pencil, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getMemoTemplates, type MemoTemplate } from "@/lib/app-helpers";
+import type { MemoTemplate as SavedMemoTemplate } from "@edgeever/shared";
 
 export const TemplatesDialog = ({
   canCreateMemo,
   isCreating,
   onClose,
   onCreateMemo,
+  savedTemplates,
+  onUseSavedTemplate,
+  onDeleteSavedTemplate,
+  onUpdateSavedTemplate,
 }: {
   canCreateMemo: boolean;
   isCreating: boolean;
   onClose: () => void;
   onCreateMemo: (template: MemoTemplate) => void;
+  savedTemplates: SavedMemoTemplate[];
+  onUseSavedTemplate: (template: SavedMemoTemplate) => void;
+  onDeleteSavedTemplate: (template: SavedMemoTemplate) => void;
+  onUpdateSavedTemplate: (templateId: string, payload: { name: string; description: string | null; title: string | null; contentMarkdown: string; tags: string[] }) => Promise<void>;
 }) => {
   const { t } = useTranslation();
   const memoTemplates = useMemo(() => getMemoTemplates(t), [t]);
+  const [editingTemplate, setEditingTemplate] = useState<SavedMemoTemplate | null>(null);
+  const [draft, setDraft] = useState({ name: "", description: "", title: "", contentMarkdown: "", tags: "" });
+
+  const startEditing = (template: SavedMemoTemplate) => {
+    setEditingTemplate(template);
+    setDraft({
+      name: template.name,
+      description: template.description ?? "",
+      title: template.title ?? "",
+      contentMarkdown: template.contentMarkdown,
+      tags: template.tags.join(", "),
+    });
+  };
+
+  const cancelEditing = () => setEditingTemplate(null);
+
+  const saveEditing = async () => {
+    if (!editingTemplate || !draft.name.trim()) return;
+    await onUpdateSavedTemplate(editingTemplate.id, {
+      name: draft.name.trim(),
+      description: draft.description.trim() || null,
+      title: draft.title.trim() || null,
+      contentMarkdown: draft.contentMarkdown,
+      tags: draft.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+    });
+    setEditingTemplate(null);
+  };
 
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open && !isCreating) onClose(); }}>
@@ -34,6 +72,55 @@ export const TemplatesDialog = ({
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-y-auto p-5">
+          {savedTemplates.length > 0 && (
+            <section className="mb-5">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("templates.myTemplates")}</h3>
+              {editingTemplate && (
+                <div className="mb-3 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder={t("templates.name")} />
+                    <Input value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} placeholder={t("templates.descriptionField")} />
+                    <Input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder={t("templates.noteTitle")} />
+                    <Input value={draft.tags} onChange={(event) => setDraft((current) => ({ ...current, tags: event.target.value }))} placeholder={t("templates.tags")} />
+                  </div>
+                  <textarea
+                    className="min-h-40 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-950 outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500/20"
+                    value={draft.contentMarkdown}
+                    onChange={(event) => setDraft((current) => ({ ...current, contentMarkdown: event.target.value }))}
+                    aria-label={t("templates.content")}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" size="sm" variant="ghost" onClick={cancelEditing}><X className="mr-1 h-4 w-4" />{t("common.cancel")}</Button>
+                    <Button type="button" size="sm" onClick={() => void saveEditing()} disabled={!draft.name.trim()}><Check className="mr-1 h-4 w-4" />{t("common.save")}</Button>
+                  </div>
+                </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {savedTemplates.map((template) => (
+                  <div key={template.id} className="rounded-md border border-emerald-100 bg-emerald-50/40 p-3">
+                    <button
+                      className="block w-full text-left disabled:opacity-50"
+                      type="button"
+                      disabled={!canCreateMemo || isCreating}
+                      onClick={() => onUseSavedTemplate(template)}
+                    >
+                      <span className="text-sm font-semibold text-slate-950">{template.name}</span>
+                      <span className="mt-1 block line-clamp-2 text-xs leading-5 text-slate-500">{template.description || template.title || t("templates.savedDescription")}</span>
+                    </button>
+                    <div className="mt-2 flex gap-3 text-xs">
+                      <button className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800" type="button" disabled={isCreating} onClick={() => startEditing(template)}>
+                        <Pencil className="h-3 w-3" />{t("templates.edit")}
+                      </button>
+                      <button className="text-rose-600 hover:text-rose-700" type="button" disabled={isCreating} onClick={() => onDeleteSavedTemplate(template)}>
+                        {t("templates.delete")}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("templates.builtIn")}</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             {memoTemplates.map((template) => (
               <button

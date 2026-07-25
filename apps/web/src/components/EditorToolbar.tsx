@@ -219,7 +219,7 @@ export const EditorToolbar = ({
   };
 
   return (
-    <TooltipProvider delayDuration={250} skipDelayDuration={100}>
+    <TooltipProvider delayDuration={0} skipDelayDuration={0}>
       <div className="relative border-t border-slate-200 bg-white">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-white to-transparent sm:hidden" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-white to-transparent sm:hidden" />

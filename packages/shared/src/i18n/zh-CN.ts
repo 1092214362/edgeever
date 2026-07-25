@@ -51,6 +51,7 @@ export const zhCN = {
   nav: {
     mobileMain: "移动端主导航",
     home: "首页",
+    templates: "模板",
     mine: "我的",
     createMemo: "新建笔记",
     createDisabled: "当前视图不可新建笔记",
@@ -799,6 +800,23 @@ export const zhCN = {
   templates: {
     title: "模板",
     description: "选择一个模板，直接创建新笔记。",
+    create: "新建模板",
+    useTemplate: "从模板新建笔记",
+    createDescription: "从零开始创建一个可重复使用的模板。",
+    myTemplates: "我的模板",
+    builtIn: "内置模板",
+    savedDescription: "基于已保存笔记的自定义模板。",
+    delete: "删除模板",
+    saveAsTemplate: "另存为模板",
+    edit: "编辑模板",
+    name: "模板名称",
+    descriptionField: "模板说明",
+    noteTitle: "新笔记标题",
+    tags: "标签（逗号分隔）",
+    content: "模板正文",
+    templateNamePrompt: "请输入模板名称",
+    templateSaved: "模板已保存",
+    templateCreated: "模板已创建",
     unavailable: "当前无法创建笔记，请先选择可用笔记本。",
     items: {
       quickNote: {

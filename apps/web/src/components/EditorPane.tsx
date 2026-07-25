@@ -495,6 +495,7 @@ type EditorPaneProps = {
   onPermanentDeleted: (memoId: string) => Promise<void>;
   onRestored: (memoId: string) => Promise<void>;
   onMobileDefaultEditConsumed: () => void;
+  onSaveAsTemplate: (memo: MemoDetail, name: string) => Promise<void>;
   searchFocusToken: number;
   replaceFocusToken: number;
   selectionActionBar?: ReactNode;
@@ -1115,6 +1116,7 @@ const RichEditorPane = ({
   onPermanentDeleted,
   onRestored,
   onMobileDefaultEditConsumed,
+  onSaveAsTemplate,
   searchFocusToken,
   replaceFocusToken,
   selectionActionBar,
@@ -2488,7 +2490,7 @@ const RichEditorPane = ({
               </button>
             </div>
             <div className="hidden items-center gap-1 lg:flex">
-              <TooltipProvider delayDuration={350} skipDelayDuration={100}>
+              <TooltipProvider delayDuration={0} skipDelayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -2598,7 +2600,7 @@ const RichEditorPane = ({
             <Button className="hidden h-8 w-8 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-slate-300 sm:inline-flex" size="icon" variant="ghost" title={t("editor.searchCurrentMemo")} aria-label={t("editor.searchCurrentMemo")} onClick={() => openNoteSearch()}>
               <Search className="h-5 w-5" strokeWidth={2.25} />
             </Button>
-            <TooltipProvider delayDuration={250} skipDelayDuration={100}>
+            <TooltipProvider delayDuration={0} skipDelayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -2704,6 +2706,30 @@ const RichEditorPane = ({
                   </>
                 ) : (
                   <>
+                    <DropdownMenuItem
+                      className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                      onClick={() => {
+                        const name = window.prompt(t("templates.templateNamePrompt"), memo.title || "");
+                        if (name?.trim()) {
+                          const currentMarkdown = useMobilePlainTextEditor
+                            ? getMobilePlainTextValue()
+                            : isEditorReady(editor)
+                              ? docToMarkdown(editor.getJSON() as TiptapDoc)
+                              : memo.contentMarkdown;
+                          const currentTemplateMemo: MemoDetail = {
+                            ...memo,
+                            title,
+                            tags: parseTagsText(tagsText),
+                            contentJson: markdownToDoc(currentMarkdown),
+                            contentMarkdown: currentMarkdown,
+                          };
+                          void onSaveAsTemplate(currentTemplateMemo, name.trim());
+                        }
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 text-slate-500" />
+                      {t("templates.saveAsTemplate")}
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 h-px bg-slate-100" />
                     <DropdownMenuItem
                       className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-rose-700 hover:bg-rose-50 cursor-pointer outline-none"
