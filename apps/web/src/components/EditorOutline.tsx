@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { ChevronDown, ListTree } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { EDITOR_OUTLINE_WIDTH } from "@/lib/workspace-ui";
 
 type OutlineItem = {
   level: number;
@@ -13,6 +14,11 @@ type OutlineItem = {
 type EditorOutlineProps = {
   editor: Editor | null;
   scrollContainer: HTMLDivElement | null;
+};
+
+const stripLeadingEmoji = (str: string): string => {
+  const leadingEmojiRegex = /^(?:(?:[\u0030-\u0039#*]\uFE0F?\u20E3|\p{Extended_Pictographic}|[\u2460-\u24FF\u2600-\u27BF\u2B00-\u2BFF])[\uFE00-\uFE0F\u200D]*\s*)+/u;
+  return str.replace(leadingEmojiRegex, "").trim() || str;
 };
 
 const getOutlineItems = (editor: Editor): OutlineItem[] => {
@@ -114,7 +120,35 @@ export const EditorOutline = ({ editor, scrollContainer }: EditorOutlineProps) =
       return;
     }
 
-    editor.chain().focus().setTextSelection(item.pos + 1).scrollIntoView().run();
+    let domElement: HTMLElement | null = null;
+    const domNode = editor.view.nodeDOM(item.pos);
+    if (domNode instanceof HTMLElement) {
+      domElement = domNode;
+    } else {
+      try {
+        const domAtPos = editor.view.domAtPos(item.pos);
+        if (domAtPos.node instanceof HTMLElement) {
+          domElement = domAtPos.node;
+        } else if (domAtPos.node.parentElement instanceof HTMLElement) {
+          domElement = domAtPos.node.parentElement;
+        }
+      } catch {
+        // ignore DOM resolution error
+      }
+    }
+
+    if (domElement) {
+      domElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    try {
+      const maxPos = editor.state.doc.content.size;
+      const targetPos = Math.min(item.pos + 1, maxPos);
+      editor.chain().focus().setTextSelection(targetPos).run();
+    } catch {
+      // ignore selection positioning error
+    }
+
     setActivePos(item.pos);
   };
 
@@ -123,41 +157,61 @@ export const EditorOutline = ({ editor, scrollContainer }: EditorOutlineProps) =
   }
 
   return (
-    <aside className="sticky top-0 h-fit max-h-[calc(100vh-8rem)] w-56 shrink-0 overflow-y-auto border-r border-slate-200 bg-slate-50/80 px-4 py-5" aria-label={t("editor.outline")}>
-      <div className="flex items-center gap-2">
-        <ListTree className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+    <aside
+      className="sticky top-6 h-fit max-h-[calc(100vh-8rem)] shrink-0 select-none overflow-y-auto py-2"
+      style={{ width: EDITOR_OUTLINE_WIDTH }}
+      aria-label={t("editor.outline")}
+    >
+      <div className="mb-3 flex items-center justify-between">
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600"
+          className="group flex items-center gap-1.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600"
           onClick={() => setCollapsed((value) => !value)}
           aria-expanded={!collapsed}
         >
           <span>{t("editor.outline")}</span>
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", collapsed && "-rotate-90")} aria-hidden="true" />
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 text-slate-400 transition-transform duration-200 group-hover:text-slate-600",
+              collapsed && "-rotate-90"
+            )}
+            aria-hidden="true"
+          />
         </button>
-        <span className="text-xs text-slate-400">{items.length}</span>
       </div>
+
       {!collapsed && (
-        <nav className="mt-3" aria-label={t("editor.outline")}>
-          <ol className="space-y-0.5">
-            {items.map((item) => (
-              <li key={item.pos}>
-                <button
-                  type="button"
-                  className={cn(
-                    "block w-full truncate rounded px-2 py-1 text-left text-sm transition-colors",
-                    activePos === item.pos
-                      ? "bg-emerald-100 font-medium text-emerald-800"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        <nav className="relative pl-3.5" aria-label={t("editor.outline")}>
+          <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-slate-200/80" aria-hidden="true" />
+          <ol className="space-y-1.5">
+            {items.map((item) => {
+              const isActive = activePos === item.pos;
+              const displayText = stripLeadingEmoji(item.text);
+              return (
+                <li key={item.pos} className="relative flex items-center">
+                  {isActive && (
+                    <span
+                      className="absolute left-0 top-0.5 bottom-0.5 w-[2px] -translate-x-[0.5px] rounded-full bg-sky-500 transition-all duration-200"
+                      aria-hidden="true"
+                    />
                   )}
-                  style={{ paddingLeft: `${8 + Math.max(0, item.level - 1) * 14}px` }}
-                  onClick={() => jumpToHeading(item)}
-                  title={item.text}
-                >
-                  {item.text}
-                </button>
-              </li>
-            ))}
+                  <button
+                    type="button"
+                    className={cn(
+                      "block w-full truncate text-left text-[13px] leading-snug transition-colors duration-150 py-0.5",
+                      isActive
+                        ? "font-medium text-slate-900"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                    style={{ paddingLeft: `${Math.max(0, item.level - 1) * 12}px` }}
+                    onClick={() => jumpToHeading(item)}
+                    title={item.text}
+                  >
+                    {displayText}
+                  </button>
+                </li>
+              );
+            })}
           </ol>
         </nav>
       )}

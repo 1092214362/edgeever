@@ -2968,11 +2968,8 @@ const RichEditorPane = ({
           useMobilePlainTextEditor ? "overflow-visible" : "overflow-y-auto"
         )}
       >
-        <div className="flex min-h-full items-stretch">
-          {!isMobileViewport && !useMobilePlainTextEditor && !useMarkdownSourceEditor && (
-            <EditorOutline editor={editor} scrollContainer={editorScrollContainer} />
-          )}
-          <div className="min-w-0 flex-1">
+        <div className="flex min-h-full items-start w-full gap-8 px-6 py-6 sm:px-10">
+          <div className="min-w-0 flex-1 max-w-[var(--editor-content-max-width,880px)]">
             {useMobilePlainTextEditor ? (
               <>
                 <textarea
@@ -3024,6 +3021,9 @@ const RichEditorPane = ({
               <EditorContent editor={editor} />
             )}
           </div>
+          {!isMobileViewport && !useMobilePlainTextEditor && !useMarkdownSourceEditor && (
+            <EditorOutline editor={editor} scrollContainer={editorScrollContainer} />
+          )}
         </div>
       </div>
 
