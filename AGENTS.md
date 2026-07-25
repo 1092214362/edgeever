@@ -18,9 +18,24 @@
 
 正式版本遵循 Semantic Versioning，标签与 Release 标题统一使用 `vX.Y.Z`。发布前检查远端标签与实际 GitHub Release；孤立标签不作为发布基线，每个正式标签最终都应有对应 Release。
 
-Release 以上一个实际发布的正式 Release 为基线，审计完整提交区间并面向用户汇总所有可感知变化。Release 说明必须使用英文。标签必须指向 `main` 上经过验证的提交，默认发布为非 Draft、非 Prerelease。功能或修复 Release 须关联带对应 Label 的 Issue；发布后回链并关闭 Issue。正文结构：
+Release 以上一个实际发布的正式 Release 为基线，审计完整提交区间并面向用户汇总所有可感知变化。Release 说明必须使用中英文双语格式：顶部为标准英文正文，下方放置使用 `<details><summary><b>🇨🇳 点击展开中文说明 / Chinese Changelog</b></summary></details>` 包裹折叠的中文说明。标签必须指向 `main` 上经过验证的提交，默认发布为非 Draft、非 Prerelease。功能或修复 Release 须关联带对应 Label 的 Issue；发布后回链并关闭 Issue。正文结构：
 
 ```md
+## Key Changes
+
+- User-facing summary of changes in English.
+
+Related Issue: #<issue-number>
+
+## Verification
+
+- List completed tests, type checks, and build results in English.
+
+<details>
+<summary><b>🇨🇳 点击展开中文说明 / Chinese Changelog</b></summary>
+
+<br/>
+
 ## 主要更新
 
 - 面向用户说明本次变化及影响。
@@ -30,6 +45,8 @@ Release 以上一个实际发布的正式 Release 为基线，审计完整提交
 ## 验证
 
 - 列出实际完成的测试、类型检查和构建结果。
+
+</details>
 ```
 
 验证失败时不得发布正式 Release。
@@ -47,7 +64,7 @@ Release 以上一个实际发布的正式 Release 为基线，审计完整提交
 5. 从即将发布的提交执行验证。至少完成相关类型检查、测试和 Web 构建；移动端变更必须执行 `bun run build:android:apk:local`，不得用工作区其他未提交改动构建 APK。
 6. 验证 APK 的 `versionName`、`versionCode`、包名、生产签名、目标 ABI、SHA-256 和文件大小。将产物重命名为 `edgeever-android-vX.Y.Z-arm64-v8a.apk`，并确保只上传该版本产物。
 7. 创建标签并推送标签，标签必须指向已验证的 `main` 提交；随后创建非 Draft、非 Prerelease 的 GitHub Release，上传 APK，并在发布后确认 Release、标签、附件状态和下载链接均可用。
-8. Release 正文使用英文，必须包含用户可感知的变化、关联 Issue 和实际验证结果；发布完成后将已完成的 Issue 回链到 Release 并关闭。正文必须通过 `--notes-file` 或包含真实换行的字符串提交，禁止把字面量 `\n` 写入 GitHub Release。
+8. Release 正文使用中英文双语格式（顶部为标准英文正文，下附使用 `<details><summary><b>🇨🇳 点击展开中文说明 / Chinese Changelog</b></summary></details>` 包裹折叠的中文说明），必须包含用户可感知的变化、关联 Issue 和实际验证结果；发布完成后将已完成的 Issue 回链到 Release 并关闭。正文必须通过 `--notes-file` 或包含真实换行符的字符串提交，禁止把字面量 `\n` 写入 GitHub Release。
 
 推荐的移动端发布验证命令：
 
