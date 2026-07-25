@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createCloudflareStorageAdapter } from "../apps/api/src/cloudflare-storage-adapter";
 import { createSelfHostedStorageAdapter } from "../apps/api/src/self-hosted-storage-adapter";
+import { SELF_HOSTED_DATABASE_DIALECT } from "../apps/api/src/self-hosted-storage-adapter";
 
 describe("storage adapter", () => {
   test("wraps Cloudflare bindings without changing their identity", () => {
@@ -12,6 +13,10 @@ describe("storage adapter", () => {
 
     expect(adapter.db).toBe(db);
     expect(adapter.resources).toBe(resources);
+  });
+
+  test("keeps the self-hosted database dialect explicit", () => {
+    expect(SELF_HOSTED_DATABASE_DIALECT).toBe("sqlite");
   });
 
   test("stores attachments in a persistent filesystem directory", async () => {

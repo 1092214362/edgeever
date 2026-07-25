@@ -19,6 +19,11 @@ Cloudflare SDK 类型。目前的具体实现位于
 共享的自托管配置结构也已定义为 `SelfHostedStorageConfig`，包含统一的应用
 数据目录、SQLite 数据库文件和附件目录。
 
+PostgreSQL 已通过与驱动无关的 `RelationalDatabaseAdapter` 和
+`PostgreSQLStorageConfig` 契约预留为第二种关系数据库后端，但当前尚未实现。
+SQLite 仍是自托管默认数据库；未来 PostgreSQL 更适合较大团队、更高写入并发
+以及独立数据库运维场景。
+
 ## 计划中的 Docker 形态
 
 第一版正式支持的容器部署应为单容器应用，并挂载两个持久化目录：
@@ -32,6 +37,9 @@ EdgeEver 容器
 自托管适配器应继续复用现有 SQLite 结构和 `migrations/*.sql`；附件继续使用
 `resources.object_key` 中保存的不透明对象键，初版可以使用本地文件系统，
 后续再增加 S3 兼容存储。
+
+未来实现 PostgreSQL 时，必须明确处理 SQL 方言以及 PostgreSQL 专用的全文搜索
+和事务行为，并提供独立迁移策略，不能让现有 SQLite/D1 migration 文件产生歧义。
 
 ## 兼容性要求
 

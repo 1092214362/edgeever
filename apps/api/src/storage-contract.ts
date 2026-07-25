@@ -35,6 +35,21 @@ export type StorageAdapter = {
   resources: BlobStoreAdapter;
 };
 
+/** Database engines that a self-hosted deployment may select. */
+export type RelationalDatabaseDialect = "sqlite" | "postgresql";
+
+/**
+ * Future driver-neutral relational contract. The current API still consumes
+ * the D1-compatible DatabaseAdapter above; this contract prevents a future
+ * PostgreSQL implementation from leaking driver-specific calls into routes.
+ */
+export type RelationalDatabaseAdapter = {
+  readonly dialect: RelationalDatabaseDialect;
+  query<T>(sql: string, parameters?: readonly unknown[]): Promise<readonly T[]>;
+  execute(sql: string, parameters?: readonly unknown[]): Promise<void>;
+  transaction<T>(callback: (database: RelationalDatabaseAdapter) => Promise<T>): Promise<T>;
+};
+
 /** Cloudflare's native Worker bindings, used only by the platform adapter. */
 export type CloudflareStorageBindings = {
   DB: DatabaseAdapter;
@@ -48,4 +63,12 @@ export type SelfHostedStorageConfig = {
   dataDirectory: string;
   databaseFile: string;
   resourcesDirectory: string;
+  databaseDialect?: RelationalDatabaseDialect;
+};
+
+/** Configuration reserved for a future PostgreSQL-backed deployment. */
+export type PostgreSQLStorageConfig = {
+  databaseUrl: string;
+  schema?: string;
+  poolSize?: number;
 };

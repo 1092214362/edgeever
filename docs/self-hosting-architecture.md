@@ -21,6 +21,12 @@ The shared self-hosted configuration shape is also defined as
 `SelfHostedStorageConfig`, with one application data directory, one SQLite
 database file, and one attachment directory.
 
+PostgreSQL is reserved as a second relational backend through the
+driver-neutral `RelationalDatabaseAdapter` and `PostgreSQLStorageConfig`
+contracts. It is intentionally not implemented yet. SQLite remains the
+default self-hosted database; PostgreSQL will be useful for larger teams,
+higher write concurrency, and external database operations.
+
 ## Intended Docker shape
 
 The first supported container deployment should be a single application
@@ -36,6 +42,11 @@ The initial self-hosted adapter should preserve the existing SQLite schema and
 `migrations/*.sql` files. Attachments should be addressed by the same opaque
 object keys currently stored in `resources.object_key`; the implementation may
 use a local filesystem first and add an S3-compatible backend later.
+
+When PostgreSQL is implemented, it must introduce an explicit SQL dialect and
+migration set for PostgreSQL-specific full-text search and transaction
+behavior. It must not make the current SQLite/D1 migration files silently
+ambiguous.
 
 ## Compatibility requirements
 

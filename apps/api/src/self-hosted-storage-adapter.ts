@@ -4,6 +4,7 @@ import type {
   BlobObjectAdapter,
   BlobStoreAdapter,
   DatabaseAdapter,
+  RelationalDatabaseDialect,
   StorageAdapter,
 } from "./storage-contract";
 
@@ -16,6 +17,8 @@ export type SqliteDatabaseLike = {
   };
   transaction: (callback: () => void) => () => unknown;
 };
+
+export const SELF_HOSTED_DATABASE_DIALECT: RelationalDatabaseDialect = "sqlite";
 
 class SqlitePreparedStatement {
   constructor(
