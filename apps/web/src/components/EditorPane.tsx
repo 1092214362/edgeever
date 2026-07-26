@@ -1102,7 +1102,10 @@ export const EditorPane = (props: EditorPaneProps) => {
   return (
     <RichEditorPane
       {...props}
-      mobileDefaultEditMemoId={null}
+      // On desktop this is also the create-note autofocus request. On mobile
+      // the native editor branch above consumes it before RichEditorPane is
+      // rendered.
+      mobileDefaultEditMemoId={props.mobileDefaultEditMemoId}
       onRequestMobileNativeEdit={() => {
         if (props.memo?.id && !readOnly) {
           setMobileNativeEditMemoId(props.memo.id);
@@ -1263,12 +1266,18 @@ const RichEditorPane = ({
           }
 
           const currentEditor = editorRef.current;
-          if (!isMobileViewport && isEditorReady(currentEditor)) {
-            currentEditor.commands.focus("end");
-            return;
+          if (!isMobileViewport) {
+            if (isEditorReady(currentEditor) && hydratedMemoIdRef.current === memo.id) {
+              currentEditor.commands.focus("end");
+              onMobileDefaultEditConsumed();
+              return;
+            }
           }
 
-          if (attempt < 10) {
+          // The editor is mounted before its memo hydration/edit session
+          // finishes. Keep retrying across that async boundary so a newly
+          // created note reliably receives the caret on desktop as well.
+          if (attempt < 120) {
             focusWhenReady(attempt + 1);
             return;
           }

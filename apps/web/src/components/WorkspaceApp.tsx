@@ -1301,9 +1301,9 @@ export const WorkspaceApp = ({
     const selectedMemoInList = selectedMemoId ? memos.some((memo) => memo.id === selectedMemoId) : false;
 
     if (createdMemoEditId && selectedMemoId === createdMemoEditId) {
-      if (selectedMemoInList) {
-        setCreatedMemoEditId(null);
-      }
+      // Keep the create request alive until the editor consumes it. The new
+      // memo can appear in the list before its detail query has mounted the
+      // editor, and clearing it here would lose the autofocus request.
       return;
     }
 
