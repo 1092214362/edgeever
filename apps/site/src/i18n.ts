@@ -53,6 +53,7 @@ export const siteCopy = {
       tagMigration: "迁移教程",
       tagMcp: "AI 协同 (MCP)",
       tagSelfHosted: "部署自托管",
+      openSource: "开源",
     },
     hero: {
       slogan: siteTaglines["zh-CN"],
@@ -305,6 +306,7 @@ export const siteCopy = {
       tagMigration: "Migration",
       tagMcp: "AI & MCP",
       tagSelfHosted: "Deployment",
+      openSource: "Open Source",
     },
     hero: {
       slogan: siteTaglines["en-US"],
