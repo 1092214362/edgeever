@@ -8,6 +8,7 @@ import {
   ChangePasswordSchema,
   DeleteMemosSchema,
   LoginSchema,
+  LoginDeviceSessionUpdateSchema,
   markdownToDoc,
   isSuspiciousMemoOverwrite,
   isMemoEditBindingValid,
@@ -508,7 +509,7 @@ app.get("/api/v1/auth/sessions", async (c) => {
 
   const now = isoNow();
   const rows = await c.env.storage.db.prepare(
-    `SELECT id, device_id, user_agent, expires_at, created_at, last_seen_at
+    `SELECT id, device_id, user_agent, device_label, ip_address, ip_country, ip_region, expires_at, created_at, last_seen_at
      FROM sessions
      WHERE user_id = ?
        AND revoked_at IS NULL
@@ -522,6 +523,40 @@ app.get("/api/v1/auth/sessions", async (c) => {
   return c.json({
     sessions: groupLoginDeviceSessions(rows.results, auth.sessionId).slice(0, 50),
   });
+});
+
+app.patch("/api/v1/auth/sessions/:sessionId", zValidator("json", LoginDeviceSessionUpdateSchema), async (c) => {
+  const auth = await authenticateRequest(c, true);
+
+  if (!auth || auth.kind !== "user" || !auth.actorId || !auth.sessionId) {
+    return unauthorized(c, "An interactive user session is required.");
+  }
+
+  const sessionId = c.req.param("sessionId");
+  const input = c.req.valid("json");
+  const now = isoNow();
+  const session = await c.env.storage.db.prepare(
+    `SELECT id, device_id FROM sessions
+     WHERE id = ? AND user_id = ? AND revoked_at IS NULL AND expires_at > ?`
+  ).bind(sessionId, auth.actorId, now).first<{ id: string; device_id: string | null }>();
+
+  if (!session) return notFound(c, "Login session not found.");
+
+  const statement = session.device_id
+    ? c.env.storage.db.prepare(
+        `UPDATE sessions SET device_label = ?
+         WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL`
+      ).bind(input.label || null, auth.actorId, session.device_id)
+    : c.env.storage.db.prepare(`UPDATE sessions SET device_label = ? WHERE id = ?`).bind(input.label || null, session.id);
+
+  await c.env.storage.db.batch([
+    statement,
+    auditStatement(c.env.storage.db, "user", auth.actorId, "auth.session_label_update", "session", session.id, {
+      label: input.label || null,
+    }),
+  ]);
+
+  return c.json({ ok: true });
 });
 
 app.delete("/api/v1/auth/sessions", async (c) => {
@@ -3960,6 +3995,9 @@ const createSession = async (c: AppContext, user: UserRow, requestedDeviceId?: s
   const deviceId = resolveSessionDeviceId(requestedDeviceId, userAgent, id);
   const ip = c.req.header("CF-Connecting-IP");
   const ipHash = ip ? await sha256(ip) : null;
+  const cf = c.req.raw.cf as { country?: string; region?: string } | undefined;
+  const ipCountry = c.req.header("CF-IPCountry") ?? cf?.country ?? null;
+  const ipRegion = cf?.region ?? null;
 
   await c.env.storage.db.batch([
     c.env.storage.db.prepare(
@@ -3968,9 +4006,9 @@ const createSession = async (c: AppContext, user: UserRow, requestedDeviceId?: s
     ).bind(now, user.id, deviceId),
     c.env.storage.db.prepare(
       `INSERT INTO sessions (
-        id, user_id, token_hash, device_id, user_agent, ip_hash, expires_at, created_at, last_seen_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, user.id, await sha256(token), deviceId, userAgent, ipHash, expiresAt, now, now),
+        id, user_id, token_hash, device_id, user_agent, ip_hash, device_label, ip_address, ip_country, ip_region, expires_at, created_at, last_seen_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, user.id, await sha256(token), deviceId, userAgent, ipHash, null, ip ?? null, ipCountry, ipRegion, expiresAt, now, now),
   ]);
 
   return { id, token, maxAge };
