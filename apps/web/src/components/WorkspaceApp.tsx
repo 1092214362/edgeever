@@ -2499,12 +2499,12 @@ export const WorkspaceApp = ({
       <div className="min-w-0 flex-1">
         <main
           className={cn(
-            "grid h-[100dvh] min-h-0 grid-cols-[minmax(0,1fr)]",
+            "edgeever-workspace-grid grid h-[100dvh] min-h-0 grid-cols-[minmax(0,1fr)]",
             desktopFocusModeActive
-              ? "lg:grid-cols-[minmax(0,1fr)]"
+              ? "edgeever-workspace-grid--focus"
               : rightView === "editor"
-                ? "lg:grid-cols-[260px_var(--memo-list-width)_minmax(0,1fr)]"
-                : "lg:grid-cols-[260px_1fr]"
+                ? "edgeever-workspace-grid--editor"
+                : "edgeever-workspace-grid--single-right"
           )}
           style={{ "--memo-list-width": `${memoListWidth}px` } as CSSProperties}
         >
