@@ -883,6 +883,8 @@ export const enUS = {
     closeNotice: "Close update notice",
     sidebarInstall: "Install Client",
     sidebarInstallTitle: "Install EdgeEver Desktop App",
+    sidebarClipper: "Install Web Clipper",
+    sidebarClipperTitle: "Install the EdgeEver Web Clipper",
     iosPrompt: {
       title: "Add EdgeEver to Home Screen",
       subtitle: "Enjoy full screen independent window, experience Evernote as smooth as a native app.",

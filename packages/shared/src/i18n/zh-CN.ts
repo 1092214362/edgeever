@@ -883,6 +883,8 @@ export const zhCN = {
     closeNotice: "关闭更新通知",
     sidebarInstall: "安装桌面客户端",
     sidebarInstallTitle: "安装 EdgeEver 桌面端",
+    sidebarClipper: "安装浏览器剪藏插件",
+    sidebarClipperTitle: "安装 EdgeEver 浏览器剪藏插件",
     iosPrompt: {
       title: "将 EdgeEver 安装到主屏幕",
       subtitle: "享受全屏独立窗口，体验如原生 App 般丝滑的印象笔记。",
