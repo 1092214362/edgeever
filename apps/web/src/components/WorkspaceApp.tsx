@@ -1291,6 +1291,13 @@ export const WorkspaceApp = ({
   useEffect(() => {
     const selectedMemoInList = selectedMemoId ? memos.some((memo) => memo.id === selectedMemoId) : false;
 
+    if (createdMemoEditId && selectedMemoId === createdMemoEditId) {
+      if (selectedMemoInList) {
+        setCreatedMemoEditId(null);
+      }
+      return;
+    }
+
     if (memos.length === 0) {
       setSelectedMemoId(null);
       return;
@@ -1299,7 +1306,7 @@ export const WorkspaceApp = ({
     if (!selectedMemoId || !selectedMemoInList) {
       setSelectedMemoId(memos[0].id);
     }
-  }, [memos, selectedMemoId]);
+  }, [createdMemoEditId, memos, selectedMemoId]);
 
   const memoQuery = useQuery({
     queryKey: selectedMemoId ? memoDetailQueryKey(selectedMemoId, memoView) : ["memo", selectedMemoId, memoView],
@@ -1348,6 +1355,11 @@ export const WorkspaceApp = ({
 
       setMemoView("notebook");
       setSearch("");
+      // A newly created memo is not pinned or otherwise guaranteed to match
+      // the active list filter. Leave filtered views so the selected memo
+      // remains visible instead of the list effect falling back to its first
+      // item (for example, the currently pinned memo).
+      setMemoFilterMode("all");
       if (targetNotebookId !== selectedNotebookId) {
         setSelectedNotebookId(targetNotebookId);
       }
