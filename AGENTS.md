@@ -27,7 +27,7 @@ Related Issue: #<issue-number>
 - List completed tests, type checks, and build results in English.
 
 <details open>
-<summary><b>🇨🇳 点击展开中文说明 / Chinese Changelog</b></summary>
+<summary><b>🇨🇳 中文说明 / Chinese Changelog</b></summary>
 
 <br/>
 
