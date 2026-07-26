@@ -14,6 +14,8 @@ type OutlineItem = {
 type EditorOutlineProps = {
   editor: Editor | null;
   scrollContainer: HTMLDivElement | null;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
 };
 
 const stripLeadingEmoji = (str: string): string => {
@@ -42,10 +44,9 @@ const getOutlineItems = (editor: Editor): OutlineItem[] => {
   return items;
 };
 
-export const EditorOutline = ({ editor, scrollContainer }: EditorOutlineProps) => {
+export const EditorOutline = ({ editor, scrollContainer, collapsed, onCollapsedChange }: EditorOutlineProps) => {
   const { t } = useTranslation();
   const [items, setItems] = useState<OutlineItem[]>([]);
-  const [collapsed, setCollapsed] = useState(false);
   const [activePos, setActivePos] = useState<number | null>(null);
 
   const refresh = useCallback(() => {
@@ -174,7 +175,7 @@ export const EditorOutline = ({ editor, scrollContainer }: EditorOutlineProps) =
             "group flex items-center text-left text-[11px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600",
             collapsed ? "h-7 w-7 justify-center rounded-md hover:bg-slate-100" : "gap-1.5"
           )}
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={() => onCollapsedChange(!collapsed)}
           aria-expanded={!collapsed}
           aria-label={t(collapsed ? "editor.showOutline" : "editor.hideOutline")}
           title={t(collapsed ? "editor.showOutline" : "editor.hideOutline")}

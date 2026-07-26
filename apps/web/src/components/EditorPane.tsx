@@ -67,6 +67,7 @@ import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { api } from "@/lib/api";
 import { consumeStandaloneMobileEditorReturn, openStandaloneMobileEditor } from "@/lib/mobile-editor";
 import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
+import { EDITOR_CONTENT_MAX_WIDTH, EDITOR_CONTENT_MAX_WIDTH_COLLAPSED } from "@/lib/workspace-ui";
 import {
   countMemoCharacters,
   docToMarkdown,
@@ -1167,6 +1168,7 @@ const RichEditorPane = ({
   const [isMarkdownMode, setIsMarkdownMode] = useState(false);
   const [mobileToolbarOpen, setMobileToolbarOpen] = useState(false);
   const [mobileImeDebugOpen, setMobileImeDebugOpen] = useState(false);
+  const [editorOutlineCollapsed, setEditorOutlineCollapsed] = useState(false);
   const [mobileImeDebugActiveElement, setMobileImeDebugActiveElement] = useState(getActiveElementLabel);
   const [mobileImeDebugEvents, setMobileImeDebugEvents] = useState<MobileImeDebugEntry[]>([]);
   const [wechatCopyState, setWechatCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
@@ -2981,8 +2983,11 @@ const RichEditorPane = ({
               "min-w-0 flex-1 transition-[max-width] duration-200",
               desktopFocusMode
                 ? "max-w-[960px]"
-                : "max-w-[var(--editor-content-max-width,880px)]"
+                : "max-w-none"
             )}
+            style={!desktopFocusMode ? {
+              maxWidth: editorOutlineCollapsed ? EDITOR_CONTENT_MAX_WIDTH_COLLAPSED : EDITOR_CONTENT_MAX_WIDTH,
+            } : undefined}
           >
             {useMobilePlainTextEditor ? (
               <>
@@ -3036,7 +3041,12 @@ const RichEditorPane = ({
             )}
           </div>
           {!isMobileViewport && !useMobilePlainTextEditor && !useMarkdownSourceEditor && (
-            <EditorOutline editor={editor} scrollContainer={editorScrollContainer} />
+            <EditorOutline
+              editor={editor}
+              scrollContainer={editorScrollContainer}
+              collapsed={editorOutlineCollapsed}
+              onCollapsedChange={setEditorOutlineCollapsed}
+            />
           )}
         </div>
       </div>
