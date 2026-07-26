@@ -513,7 +513,6 @@ type EditorPaneProps = {
   searchFocusToken: number;
   replaceFocusToken: number;
   selectionActionBar?: ReactNode;
-  demoMode?: boolean;
 };
 
 type RichEditorPaneProps = EditorPaneProps & {
@@ -1136,7 +1135,6 @@ const RichEditorPane = ({
   replaceFocusToken,
   selectionActionBar,
   onRequestMobileNativeEdit,
-  demoMode = false,
 }: RichEditorPaneProps) => {
   const { t } = useTranslation();
   const { customEditorTheme, editorTheme } = useTheme();
@@ -2561,12 +2559,6 @@ const RichEditorPane = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
-            {demoMode && (
-              <span className="hidden items-center gap-1 px-1.5 text-xs text-slate-400 select-none md:inline-flex">
-                <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                <span>{t("demo.privacyNotice")}</span>
-              </span>
-            )}
             <span
               className="hidden whitespace-nowrap px-1.5 text-xs tabular-nums text-slate-400 sm:inline-flex"
               title={t("editor.characterCount", { count: characterCount })}

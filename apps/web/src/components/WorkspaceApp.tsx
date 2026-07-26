@@ -2738,7 +2738,6 @@ export const WorkspaceApp = ({
                 ) : (
                   <EditorPane
                     memo={selectedMemo}
-                    demoMode={demoMode}
                     desktopFocusMode={desktopFocusModeActive}
                     onToggleDesktopFocusMode={toggleDesktopFocusMode}
                     mobileDefaultEditMemoId={createdMemoEditId}
