@@ -45,7 +45,7 @@ export const PreferenceCard = ({
   };
 
   const autoSaveIntervalPreference: AutoSaveIntervalPreference =
-    autoSaveIntervalMs === 300_000 ? "5m" : autoSaveIntervalMs === 900_000 ? "15m" : autoSaveIntervalMs === 1_800_000 ? "30m" : autoSaveIntervalMs === 3_600_000 ? "1h" : "1m";
+    autoSaveIntervalMs === 300_000 ? "5m" : autoSaveIntervalMs === 900_000 ? "15m" : autoSaveIntervalMs === 1_800_000 ? "30m" : autoSaveIntervalMs === 3_600_000 ? "1h" : autoSaveIntervalMs === 7_200_000 ? "2h" : "1m";
 
   return (
     <Card className="w-full min-w-0 overflow-hidden shadow-none">
@@ -99,7 +99,7 @@ export const PreferenceCard = ({
                 const preference = value as AutoSaveIntervalPreference;
                 writeAutoSaveIntervalPreference(preference);
                 onAutoSaveIntervalChange(
-                  preference === "5m" ? 300_000 : preference === "15m" ? 900_000 : preference === "30m" ? 1_800_000 : preference === "1h" ? 3_600_000 : 60_000
+                  preference === "5m" ? 300_000 : preference === "15m" ? 900_000 : preference === "30m" ? 1_800_000 : preference === "1h" ? 3_600_000 : preference === "2h" ? 7_200_000 : 60_000
                 );
               }}
             >
@@ -112,6 +112,7 @@ export const PreferenceCard = ({
                 <SelectItem value="15m">{t("settings.autoSaveIntervals.15m")}</SelectItem>
                 <SelectItem value="30m">{t("settings.autoSaveIntervals.30m")}</SelectItem>
                 <SelectItem value="1h">{t("settings.autoSaveIntervals.1h")}</SelectItem>
+                <SelectItem value="2h">{t("settings.autoSaveIntervals.2h")}</SelectItem>
               </SelectContent>
             </Select>
           </div>

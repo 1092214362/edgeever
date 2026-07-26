@@ -218,7 +218,7 @@ export const DEFAULT_MEMO_LIST_WIDTH_PX = 360;
 export const MIN_MEMO_LIST_WIDTH_PX = 300;
 export const MAX_MEMO_LIST_WIDTH_PX = 540;
 
-export type AutoSaveIntervalPreference = "1m" | "5m" | "15m" | "30m" | "1h" | "off";
+export type AutoSaveIntervalPreference = "1m" | "5m" | "15m" | "30m" | "1h" | "2h" | "off";
 export const DEFAULT_AUTO_SAVE_INTERVAL_MS = 60_000;
 const AUTO_SAVE_INTERVAL_VALUES: Record<AutoSaveIntervalPreference, number | null> = {
   "1m": 60_000,
@@ -226,6 +226,7 @@ const AUTO_SAVE_INTERVAL_VALUES: Record<AutoSaveIntervalPreference, number | nul
   "15m": 900_000,
   "30m": 1_800_000,
   "1h": 3_600_000,
+  "2h": 7_200_000,
   off: null,
 };
 

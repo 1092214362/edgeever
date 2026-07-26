@@ -1016,7 +1016,7 @@ export const WorkspaceApp = ({
 
   useEffect(() => {
     writeAutoSaveIntervalPreference(
-      autoSaveIntervalMs === null ? "1m" : autoSaveIntervalMs === 300_000 ? "5m" : autoSaveIntervalMs === 900_000 ? "15m" : autoSaveIntervalMs === 1_800_000 ? "30m" : autoSaveIntervalMs === 3_600_000 ? "1h" : "1m"
+      autoSaveIntervalMs === null ? "1m" : autoSaveIntervalMs === 300_000 ? "5m" : autoSaveIntervalMs === 900_000 ? "15m" : autoSaveIntervalMs === 1_800_000 ? "30m" : autoSaveIntervalMs === 3_600_000 ? "1h" : autoSaveIntervalMs === 7_200_000 ? "2h" : "1m"
     );
   }, [autoSaveIntervalMs]);
 
