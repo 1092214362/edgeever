@@ -158,11 +158,16 @@ export const EditorOutline = ({ editor, scrollContainer }: EditorOutlineProps) =
 
   return (
     <aside
-      className="sticky top-6 h-fit max-h-[calc(100vh-8rem)] shrink-0 select-none overflow-x-hidden overflow-y-auto py-2 transition-[width] duration-200"
-      style={{ width: collapsed ? "2rem" : EDITOR_OUTLINE_WIDTH }}
+      className={cn(
+        "select-none overflow-x-hidden",
+        collapsed
+          ? "absolute right-2 top-6 z-10 h-8 w-8 overflow-hidden"
+          : "sticky top-6 h-fit max-h-[calc(100vh-8rem)] shrink-0 overflow-y-auto py-2"
+      )}
+      style={!collapsed ? { width: EDITOR_OUTLINE_WIDTH } : undefined}
       aria-label={t("editor.outline")}
     >
-      <div className={cn("mb-3 flex", collapsed ? "justify-center" : "justify-between")}>
+      <div className={cn("flex", collapsed ? "justify-center" : "mb-3 justify-between")}>
         <button
           type="button"
           className={cn(
