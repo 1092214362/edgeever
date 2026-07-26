@@ -571,6 +571,8 @@ export const enUS = {
     copiedToWeChat: "Copied",
     copyToWeChatFailed: "Copy failed",
     outline: "Outline",
+    showOutline: "Show outline",
+    hideOutline: "Hide outline",
   },
   editorToolbar: {
     toolbar: "Editor toolbar",

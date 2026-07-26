@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ListTree } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { EDITOR_OUTLINE_WIDTH } from "@/lib/workspace-ui";
@@ -158,25 +158,30 @@ export const EditorOutline = ({ editor, scrollContainer }: EditorOutlineProps) =
 
   return (
     <aside
-      className="sticky top-6 h-fit max-h-[calc(100vh-8rem)] shrink-0 select-none overflow-y-auto py-2"
-      style={{ width: EDITOR_OUTLINE_WIDTH }}
+      className="sticky top-6 h-fit max-h-[calc(100vh-8rem)] shrink-0 select-none overflow-x-hidden overflow-y-auto py-2 transition-[width] duration-200"
+      style={{ width: collapsed ? "2rem" : EDITOR_OUTLINE_WIDTH }}
       aria-label={t("editor.outline")}
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className={cn("mb-3 flex", collapsed ? "justify-center" : "justify-between")}>
         <button
           type="button"
-          className="group flex items-center gap-1.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600"
+          className={cn(
+            "group flex items-center text-left text-[11px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600",
+            collapsed ? "h-7 w-7 justify-center rounded-md hover:bg-slate-100" : "gap-1.5"
+          )}
           onClick={() => setCollapsed((value) => !value)}
           aria-expanded={!collapsed}
+          aria-label={t(collapsed ? "editor.showOutline" : "editor.hideOutline")}
+          title={t(collapsed ? "editor.showOutline" : "editor.hideOutline")}
         >
-          <span>{t("editor.outline")}</span>
-          <ChevronDown
-            className={cn(
-              "h-3 w-3 text-slate-400 transition-transform duration-200 group-hover:text-slate-600",
-              collapsed && "-rotate-90"
-            )}
-            aria-hidden="true"
-          />
+          {collapsed ? (
+            <ListTree className="h-4 w-4 text-slate-400 group-hover:text-slate-600" aria-hidden="true" />
+          ) : (
+            <>
+              <span>{t("editor.outline")}</span>
+              <ChevronDown className="h-3 w-3 text-slate-400 transition-transform duration-200 group-hover:text-slate-600" aria-hidden="true" />
+            </>
+          )}
         </button>
       </div>
 
