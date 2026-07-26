@@ -125,7 +125,7 @@ import EditorRuntimePrewarm from "../components/EditorRuntimePrewarm";
 import { showEdgeEverKeyboard } from "../../modules/edgeever-keyboard";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
 import { resolveMobileThemeStyles, useMobileTheme, type MobileResolvedTheme } from "../lib/mobile-theme";
-import { MobileUpdateCard } from "../components/MobileUpdateCard";
+import { useMobileUpdate } from "../lib/mobile-update";
 import { MobileMermaidDiagram, MobileMermaidProvider } from "../components/MobileMermaid";
 import { getMobileMarkdownFenceLanguage, trimMobileMarkdownFenceContent } from "../lib/mobile-mermaid";
 
@@ -1913,7 +1913,6 @@ const SettingsView = ({
                 </View>
               </View>
             </View>
-            <MobileUpdateCard />
             <SystemInfoCard embedded />
           </SettingsGroup>
         </View>
@@ -3098,6 +3097,7 @@ const AdvancedPlayCard = ({ embedded = false }: { embedded?: boolean }) => {
 const SystemInfoCard = ({ embedded = false }: { embedded?: boolean }) => {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const { checkForUpdate, hasUpdate, status } = useMobileUpdate();
   const localePreference = useMobileLocalePreference();
   const copy = getMobileSystemInfoText(localePreference);
   const infoItems = getMobileSystemInfoItems(localePreference);
@@ -3115,6 +3115,7 @@ const SystemInfoCard = ({ embedded = false }: { embedded?: boolean }) => {
           <View style={styles.settingsGroupHeader}>
             <Info color="#047857" size={16} />
             <Text style={styles.settingsGroupTitle}>{copy.title}</Text>
+            {hasUpdate ? <View accessibilityLabel="有新版本" style={styles.updateDot} /> : null}
           </View>
           <Text style={styles.settingsLinkDescription}>{copy.description}</Text>
         </View>
@@ -3124,6 +3125,13 @@ const SystemInfoCard = ({ embedded = false }: { embedded?: boolean }) => {
         <View style={styles.settingsAccordionContent}>
           <ActionButton label={copied ? "已复制" : "复制信息"} onPress={copySystemInfo}>
             {copied ? <ShieldCheck color="#047857" size={16} /> : <Copy color="#0f172a" size={16} />}
+          </ActionButton>
+          <ActionButton
+            disabled={status === "checking"}
+            label={status === "checking" ? "正在检查…" : hasUpdate ? "发现新版本" : "检查更新"}
+            onPress={() => void checkForUpdate()}
+          >
+            {status === "checking" ? <ActivityIndicator color="#047857" size="small" /> : <RefreshCw color="#047857" size={16} />}
           </ActionButton>
           <View style={styles.systemInfoRows}>
             {Array.from({ length: Math.ceil(infoItems.length / 3) }, (_, rowIndex) => {
@@ -6173,6 +6181,15 @@ const baseWorkspaceStyles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     justifyContent: "flex-start",
+  },
+  updateDot: {
+    backgroundColor: "#10b981",
+    borderColor: "#ffffff",
+    borderRadius: 5,
+    borderWidth: 1,
+    height: 9,
+    marginLeft: 1,
+    width: 9,
   },
   settingsTitle: {
     color: "#0f172a",
