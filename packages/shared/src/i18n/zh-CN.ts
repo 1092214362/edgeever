@@ -208,6 +208,10 @@ export const zhCN = {
       account: "登录设置",
     },
   },
+  accountInfo: {
+    title: "当前账户",
+    description: "当前设备正在登录的账户信息。",
+  },
   systemInfo: {
     title: "系统信息",
     description: "查看当前应用版本、构建标识和运行环境。",

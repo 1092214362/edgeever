@@ -1936,6 +1936,18 @@ const SettingsView = ({
     }
     return (
       <View style={styles.settingsDetailList}>
+        <View style={styles.accountSummaryCard}>
+          <View style={styles.accountSummaryIcon}>
+            <UserRound color="#047857" size={19} />
+          </View>
+      <View style={styles.accountSummaryContent}>
+            <Text style={styles.accountSummaryTitle}>{translate("当前账户")}</Text>
+            <Text style={styles.accountSummaryName}>{currentUser?.displayName || currentUser?.username || "—"}</Text>
+        <Text style={styles.accountSummaryHelp}>
+              @{currentUser?.username ?? "—"} · {currentUser?.role === "owner" ? translate("实例管理员") : translate("成员")}
+            </Text>
+          </View>
+        </View>
         <View style={styles.settingsGroup}>
           <AccountSecurityPanel active currentUser={currentUser} section="password" />
         </View>
@@ -6224,6 +6236,45 @@ const baseWorkspaceStyles = StyleSheet.create({
   },
   settingsDetailList: {
     gap: 16,
+  },
+  accountSummaryCard: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    padding: 16,
+  },
+    accountSummaryIcon: {
+      alignItems: "center",
+      backgroundColor: "#ecfdf5",
+    borderRadius: 999,
+    height: 40,
+      justifyContent: "center",
+      width: 40,
+    },
+    accountSummaryContent: {
+      flex: 1,
+      minWidth: 0,
+    },
+    accountSummaryHelp: {
+      color: "#64748b",
+      fontSize: 12,
+      lineHeight: 18,
+      marginTop: 3,
+    },
+    accountSummaryTitle: {
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  accountSummaryName: {
+    color: "#0f172a",
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 2,
   },
   settingsGroup: {
     backgroundColor: "#ffffff",

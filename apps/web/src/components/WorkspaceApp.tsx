@@ -2723,6 +2723,7 @@ export const WorkspaceApp = ({
                     authRequired={authRequired}
                     demoMode={demoMode}
                     isOwner={authRequired && user?.role === "owner"}
+                    user={user}
                   />
                 ) : rightView === "assets" ? (
                   <AssetsPane onClose={handleCloseAssets} activeMemo={selectedMemo} />

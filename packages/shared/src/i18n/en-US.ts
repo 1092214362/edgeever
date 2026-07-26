@@ -208,6 +208,10 @@ export const enUS = {
       account: "Login Settings",
     },
   },
+  accountInfo: {
+    title: "Current account",
+    description: "The account currently signed in on this device.",
+  },
   systemInfo: {
     title: "System info",
     description: "View the current app version, build identifier, and runtime environment.",

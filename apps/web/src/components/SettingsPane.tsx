@@ -16,6 +16,7 @@ import type { ShortcutSettings } from "@/lib/app-helpers";
 import { WORKSPACE_PAGE_TITLE_CLASSNAME } from "@/lib/workspace-ui";
 import { cn } from "@/lib/utils";
 import { AdvancedPlayCard } from "./settings/AdvancedPlayCard";
+import { AccountInfoCard } from "./settings/AccountInfoCard";
 import { DataExportCard } from "./settings/DataExportCard";
 import { LoginDevicesCard } from "./settings/LoginDevicesCard";
 import { EvernoteImportGuideCard } from "./settings/EvernoteImportGuideCard";
@@ -26,6 +27,7 @@ import { PasswordCard } from "./settings/PasswordCard";
 import { SessionCard } from "./settings/SessionCard";
 import { UserManagementCard } from "./settings/UserManagementCard";
 import { ThemeToggle } from "./ThemeToggle";
+import type { AuthUser } from "@edgeever/shared";
 
 interface SettingsPaneProps {
   onClose: () => void;
@@ -41,6 +43,7 @@ interface SettingsPaneProps {
   authRequired: boolean;
   demoMode: boolean;
   isOwner: boolean;
+  user: AuthUser | null;
 }
 
 // Slate and brand color variables already switch values with the root theme.
@@ -77,6 +80,7 @@ export const SettingsPane = ({
   authRequired,
   demoMode,
   isOwner,
+  user,
 }: SettingsPaneProps) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("general");
@@ -205,6 +209,7 @@ export const SettingsPane = ({
       case "account":
         return (
           <SettingsGroup>
+            <AccountInfoCard user={user} />
             <PasswordCard authRequired={authRequired} demoMode={demoMode} />
             {demoMode ? null : <LoginDevicesCard authRequired={authRequired} />}
             <SessionCard authRequired={authRequired} isLoggingOut={isLoggingOut} onLogout={onLogout} />
