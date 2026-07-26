@@ -100,7 +100,6 @@ import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
-const EDITOR_AUTO_SAVE_DELAY_MS = 1200;
 const MOBILE_DRAFT_PERSIST_DELAY_MS = 800;
 const NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY = new PluginKey("edgeever-note-search-highlight");
 
@@ -500,6 +499,7 @@ type EditorPaneProps = {
   isLoading: boolean;
   contentSearchQuery?: string;
   imageCompressionEnabled: boolean;
+  autoSaveIntervalMs: number | null;
   hasNextMemo: boolean;
   hasPreviousMemo: boolean;
   onBackToList: () => void;
@@ -524,6 +524,7 @@ const MobileNativeEditorPane = ({
   memo,
   notebooks,
   isTrashView,
+  autoSaveIntervalMs,
   onBackToList,
   onSaved,
   onMobileDefaultEditConsumed,
@@ -709,14 +710,17 @@ const MobileNativeEditorPane = ({
 
     if (saveTimerRef.current !== null) {
       window.clearTimeout(saveTimerRef.current);
-    }
-    saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null;
-      if (hasUnsavedChangesRef.current) {
-        void saveCurrent();
-      }
-    }, EDITOR_AUTO_SAVE_DELAY_MS);
-  }, [persistDraft, saveCurrent]);
+    }
+    if (autoSaveIntervalMs !== null) {
+      saveTimerRef.current = window.setTimeout(() => {
+        saveTimerRef.current = null;
+        if (hasUnsavedChangesRef.current) {
+          void saveCurrent();
+        }
+      }, autoSaveIntervalMs);
+    }
+  }, [autoSaveIntervalMs, persistDraft, saveCurrent]);
 
   useEffect(() => {
     document.documentElement.classList.add("edgeever-mobile-native-editing");
@@ -1121,6 +1125,7 @@ const RichEditorPane = ({
   isLoading,
   contentSearchQuery = "",
   imageCompressionEnabled,
+  autoSaveIntervalMs,
   hasNextMemo,
   hasPreviousMemo,
   onBackToList,
@@ -2173,21 +2178,23 @@ const RichEditorPane = ({
     if (mobileSaveTimerRef.current !== null) {
       window.clearTimeout(mobileSaveTimerRef.current);
     }
-    mobileSaveTimerRef.current = window.setTimeout(() => {
-      mobileSaveTimerRef.current = null;
-      if (
-        !memoRef.current ||
-        memoRef.current.isDeleted ||
-        !hasUnsavedChangesRef.current ||
-        saveMutation.isPending ||
-        saveState === "conflict"
-      ) {
-        return;
-      }
+    if (autoSaveIntervalMs !== null) {
+      mobileSaveTimerRef.current = window.setTimeout(() => {
+        mobileSaveTimerRef.current = null;
+        if (
+          !memoRef.current ||
+          memoRef.current.isDeleted ||
+          !hasUnsavedChangesRef.current ||
+          saveMutation.isPending ||
+          saveState === "conflict"
+        ) {
+          return;
+        }
 
-      saveMutation.mutate();
-    }, EDITOR_AUTO_SAVE_DELAY_MS);
-  }, [getMobilePlainTextValue, persistCurrentDraft, saveMutation, saveState, tagsText, title]);
+        saveMutation.mutate();
+      }, autoSaveIntervalMs);
+    }
+  }, [autoSaveIntervalMs, getMobilePlainTextValue, persistCurrentDraft, saveMutation, saveState, tagsText, title]);
 
   useEffect(() => {
     markMobilePlainTextDirtyRef.current = markMobilePlainTextDirty;
@@ -2254,12 +2261,16 @@ const RichEditorPane = ({
       return;
     }
 
+    if (autoSaveIntervalMs === null) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       saveMutation.mutate();
-    }, EDITOR_AUTO_SAVE_DELAY_MS);
+    }, autoSaveIntervalMs);
 
     return () => window.clearTimeout(timer);
-  }, [dirtyVersion, editor, hasUnsavedChanges, memo, saveMutation, saveState, useMobilePlainTextEditor]);
+  }, [autoSaveIntervalMs, dirtyVersion, editor, hasUnsavedChanges, memo, saveMutation, saveState, useMobilePlainTextEditor]);
 
   if (isSelectionMode) {
     return (

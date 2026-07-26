@@ -59,7 +59,9 @@ import {
   MAX_MEMO_LIST_WIDTH_PX,
   DEFAULT_MEMO_LIST_WIDTH_PX,
   isTextEntryTarget,
+  readAutoSaveIntervalPreference,
   readImageCompressionPreference,
+  writeAutoSaveIntervalPreference,
   writeImageCompressionPreference,
   readDesktopFocusModePreference,
   writeDesktopFocusModePreference,
@@ -691,6 +693,7 @@ export const WorkspaceApp = ({
   });
   const [multiSelectKeyDown, setMultiSelectKeyDown] = useState(false);
   const [imageCompressionEnabled, setImageCompressionEnabled] = useState(readImageCompressionPreference);
+  const [autoSaveIntervalMs, setAutoSaveIntervalMs] = useState(readAutoSaveIntervalPreference);
   const [desktopFocusMode, setDesktopFocusMode] = useState(readDesktopFocusModePreference);
   const [shortcutSettings, setShortcutSettings] = useState<ShortcutSettings>(readShortcutSettingsPreference);
   const [rightView, setRightView] = useState<"editor" | "settings" | "assets" | "tags" | "templates" | "evernote-migration">(() =>
@@ -1010,6 +1013,12 @@ export const WorkspaceApp = ({
   useEffect(() => {
     writeImageCompressionPreference(imageCompressionEnabled);
   }, [imageCompressionEnabled]);
+
+  useEffect(() => {
+    writeAutoSaveIntervalPreference(
+      autoSaveIntervalMs === null ? "1m" : autoSaveIntervalMs === 300_000 ? "5m" : autoSaveIntervalMs === 900_000 ? "15m" : autoSaveIntervalMs === 1_800_000 ? "30m" : autoSaveIntervalMs === 3_600_000 ? "1h" : "1m"
+    );
+  }, [autoSaveIntervalMs]);
 
   useEffect(() => {
     writeShortcutSettingsPreference(shortcutSettings);
@@ -2705,6 +2714,8 @@ export const WorkspaceApp = ({
                     onOpenTemplates={handleOpenTemplates}
                     imageCompressionEnabled={imageCompressionEnabled}
                     onImageCompressionChange={setImageCompressionEnabled}
+                    autoSaveIntervalMs={autoSaveIntervalMs}
+                    onAutoSaveIntervalChange={setAutoSaveIntervalMs}
                     shortcutSettings={shortcutSettings}
                     onShortcutSettingsChange={setShortcutSettings}
                     onLogout={onLogout}
@@ -2748,6 +2759,7 @@ export const WorkspaceApp = ({
                     searchFocusToken={noteSearchFocusToken}
                     replaceFocusToken={noteReplaceFocusToken}
                     imageCompressionEnabled={imageCompressionEnabled}
+                    autoSaveIntervalMs={autoSaveIntervalMs}
                     selectionActionBar={memoSelectionActionBar}
                     hasNextMemo={Boolean(nextMemoId)}
                     hasPreviousMemo={Boolean(previousMemoId)}

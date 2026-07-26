@@ -32,6 +32,8 @@ interface SettingsPaneProps {
   onOpenTemplates: () => void;
   imageCompressionEnabled: boolean;
   onImageCompressionChange: (enabled: boolean) => void;
+  autoSaveIntervalMs: number | null;
+  onAutoSaveIntervalChange: (intervalMs: number | null) => void;
   shortcutSettings: ShortcutSettings;
   onShortcutSettingsChange: (settings: ShortcutSettings) => void;
   onLogout: () => void;
@@ -66,6 +68,8 @@ export const SettingsPane = ({
   onOpenTemplates,
   imageCompressionEnabled,
   onImageCompressionChange,
+  autoSaveIntervalMs,
+  onAutoSaveIntervalChange,
   shortcutSettings,
   onShortcutSettingsChange,
   onLogout,
@@ -170,6 +174,8 @@ export const SettingsPane = ({
             <PreferenceCard
               imageCompressionEnabled={imageCompressionEnabled}
               onImageCompressionChange={onImageCompressionChange}
+              autoSaveIntervalMs={autoSaveIntervalMs}
+              onAutoSaveIntervalChange={onAutoSaveIntervalChange}
               shortcutSettings={shortcutSettings}
               onShortcutSettingsChange={onShortcutSettingsChange}
             />
