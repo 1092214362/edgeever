@@ -31,6 +31,7 @@ import {
   CircleAlert,
   LoaderCircle,
   Info,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GitHubRepositoryLink } from "@/components/GitHubRepositoryLink";
@@ -97,6 +98,7 @@ import { ThemeBlock } from "./ThemeBlock";
 import { SystemInfoDialog } from "./SystemInfoDialog";
 import { fetchLatestRelease, isVersionOutdated } from "@/lib/version-check";
 import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
+import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
@@ -1145,7 +1147,7 @@ const RichEditorPane = ({
   selectionActionBar,
   onRequestMobileNativeEdit,
 }: RichEditorPaneProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { customEditorTheme, editorTheme } = useTheme();
   const queryClient = useQueryClient();
   const isSelectionMode = Boolean(selectionActionBar);
@@ -2004,6 +2006,52 @@ const RichEditorPane = ({
     }
   }, [editor, markdownSource, useMarkdownSourceEditor]);
 
+  const handleExportPdf = useCallback(() => {
+    if (!isEditorReady(editor) || !memo) {
+      return;
+    }
+
+    const currentDocument = useMobilePlainTextEditor
+      ? markdownToDoc(getMobilePlainTextValue())
+      : useMarkdownSourceEditor
+        ? markdownToDoc(markdownSource)
+        : editor.getJSON() as TiptapDoc;
+    const html = serializeNoteDocumentForPrint(editor, currentDocument);
+    const opened = openNotePrintPreview({
+      title: title.trim() || t("common.untitledMemo"),
+      notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
+      tags: parseTagsText(tagsText),
+      updatedAt: formatDateTime(memo.updatedAt),
+      html,
+      language: i18n.resolvedLanguage ?? i18n.language,
+      labels: {
+        close: t("editor.pdfExport.close"),
+        error: t("editor.pdfExport.error"),
+        hint: t("editor.pdfExport.hint"),
+        preparing: t("editor.pdfExport.preparing"),
+        print: t("editor.pdfExport.print"),
+        ready: t("editor.pdfExport.ready"),
+      },
+    });
+
+    if (!opened) {
+      window.alert(t("editor.pdfExport.popupBlocked"));
+    }
+  }, [
+    editor,
+    getMobilePlainTextValue,
+    i18n.language,
+    i18n.resolvedLanguage,
+    markdownSource,
+    memo,
+    notebookOptions,
+    t,
+    tagsText,
+    title,
+    useMarkdownSourceEditor,
+    useMobilePlainTextEditor,
+  ]);
+
   useEffect(() => {
     if (!useMobilePlainTextEditor) {
       return;
@@ -2756,6 +2804,13 @@ const RichEditorPane = ({
                 >
                   <History className="h-4 w-4 text-slate-500" />
                   {t("editor.versionHistory")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={handleExportPdf}
+                >
+                  <Printer className="h-4 w-4 text-slate-500" />
+                  {t("editor.exportPdf")}
                 </DropdownMenuItem>
                 {readOnly ? (
                   <>
