@@ -7,8 +7,8 @@ const isEnglish = locale === "en-US";
 const copy = isEnglish
   ? {
       chooseOne: "Choose either option to complete deployment.",
-      oneClick: "Option B: Manual online deployment",
-      agent: "Option A: AI Agent deployment",
+      oneClick: "Option B: Manual online",
+      agent: "Option A: AI Agent",
       recommended: "Recommended",
       oneClickIntro:
         "Complete setup in 4 simple web steps: Fork EdgeEver, import it into Cloudflare Workers & Pages, configure required resources & secret, then run and verify the first build. See the online deployment guide for details.",
@@ -45,32 +45,33 @@ const copy = isEnglish
 ---
 
 <section class="not-prose relative left-1/2 my-10 w-[min(92vw,960px)] -translate-x-1/2" data-agent-install-tabs>
-  <p class="mb-6 text-center text-base sm:text-lg font-bold text-slate-800">{copy.chooseOne}</p>
+  <p class="mb-5 text-center text-base sm:text-lg font-bold text-slate-800">{copy.chooseOne}</p>
 
-  <div class="mx-auto grid max-w-4xl grid-cols-1 border-b border-slate-200 text-sm font-semibold sm:grid-cols-2 sm:text-base">
+  <!-- Segmented Control Tab Header (Radix / Shadcn Segmented Control Pill Style) -->
+  <div class="mx-auto max-w-lg p-1 rounded-2xl bg-slate-200/80 border border-slate-300/60 grid grid-cols-2 gap-1 text-xs sm:text-sm font-semibold select-none shadow-2xs">
     <button
-      class="agent-install-tab active relative px-3 py-3.5 text-brand transition hover:text-brand-text"
+      class="agent-install-tab active flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer bg-white text-slate-950 font-bold shadow-xs"
       type="button"
       data-tab-target="agent"
       aria-selected="true">
-      <span>{copy.agent}</span>
-      <span class="ml-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-xs text-brand font-bold">{copy.recommended}</span>
+      <span class="truncate">{copy.agent}</span>
+      <span class="shrink-0 rounded-md bg-emerald-100 text-emerald-800 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold">{copy.recommended}</span>
     </button>
     <button
-      class="agent-install-tab relative px-3 py-3.5 text-slate-500 transition hover:text-brand-text"
+      class="agent-install-tab flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-slate-500 hover:text-slate-900"
       type="button"
       data-tab-target="one-click"
       aria-selected="false">
-      {copy.oneClick}
+      <span class="truncate">{copy.oneClick}</span>
     </button>
   </div>
 
-  <div class="mt-8 overflow-hidden rounded-[28px] bg-slate-100/90 px-4 py-6 sm:px-10 md:px-14 sm:py-8 border border-slate-200/60 shadow-xs">
+  <div class="mt-6 overflow-hidden rounded-[28px] bg-slate-100/90 px-4 py-6 sm:px-10 md:px-14 sm:py-8 border border-slate-200/60 shadow-xs">
     <div class="agent-install-panel hidden" data-tab-panel="one-click">
-      <p class="mx-auto max-w-3xl text-center text-sm sm:text-base md:text-lg leading-relaxed text-slate-600">{copy.oneClickIntro}</p>
+      <p class="mx-auto max-w-3xl text-center text-xs sm:text-sm md:text-base leading-relaxed text-slate-600 font-sans">{copy.oneClickIntro}</p>
       <div class="mt-8 flex justify-center">
         <a
-          class="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-sm sm:text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95"
+          class="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-xs sm:text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95"
           href={copy.oneClickGuideHref}
           target="_blank"
           rel="noopener">
@@ -84,7 +85,7 @@ const copy = isEnglish
       <!-- Top Intro Text (Upper Red Box Optimized Typography) -->
       <div class="mx-auto mb-6 max-w-3xl text-center sm:text-left text-xs sm:text-sm md:text-base leading-relaxed text-slate-600 font-sans">
         {isEnglish ? (
-          <p>
+          <p class="text-center leading-relaxed">
             Copy the prompt below directly to an AI Agent configured with{" "}
             <span class="inline-flex items-center font-bold text-slate-800 bg-white border border-slate-200/90 px-2 py-0.5 rounded-md text-xs shadow-2xs">GitHub</span>
             {" "}and{" "}
@@ -224,8 +225,13 @@ const copy = isEnglish
             const isActive = item === tab;
             item.setAttribute("aria-selected", String(isActive));
             item.classList.toggle("active", isActive);
-            item.classList.toggle("text-brand", isActive);
-            item.classList.toggle("text-slate-500", !isActive);
+            if (isActive) {
+              item.classList.add("bg-white", "text-slate-950", "font-bold", "shadow-xs");
+              item.classList.remove("text-slate-500");
+            } else {
+              item.classList.remove("bg-white", "text-slate-950", "font-bold", "shadow-xs");
+              item.classList.add("text-slate-500");
+            }
           });
 
           panels.forEach((panel) => {
@@ -266,16 +272,3 @@ const copy = isEnglish
     initAgentInstallTabs();
   }
 </script>
-
-<style>
-  .agent-install-tab.active::after {
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    left: 0;
-    height: 3px;
-    border-radius: 999px;
-    background: var(--color-brand);
-    content: "";
-  }
-</style>
