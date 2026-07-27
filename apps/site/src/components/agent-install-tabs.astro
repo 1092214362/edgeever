@@ -18,7 +18,7 @@ const copy = isEnglish
         "https://github.com/tianma-if/edgeever/blob/main/docs/deploy-cloudflare-button.md",
       agentIntro:
         "Copy the prompt below to an AI Agent configured with GitHub and Cloudflare MCP servers, plugins, or other integrations (such as Codex, Claude, Cursor, Antigravity, OpenClaw, Hermes Agent, etc.):",
-      promptLabel: "Prompt",
+      promptLabel: "PROMPT",
       copyPrompt: "Copy prompt",
       copying: "Copying...",
       copied: "Copied",
@@ -39,7 +39,7 @@ const copy = isEnglish
       oneClickGuideHref:
         "https://github.com/tianma-if/edgeever/blob/main/docs/deploy-cloudflare-button.zh-CN.md",
       agentIntro: "将下方提示词直接复制发送给已配置 GitHub、Cloudflare MCP/插件或其他可用集成的 AI Agent（如 Codex, Claude, Cursor, Antigravity, OpenClaw, Hermes Agent 等）：",
-      promptLabel: "提示词",
+      promptLabel: "PROMPT",
       copyPrompt: "复制提示词",
       copying: "复制中...",
       copied: "已复制",
@@ -72,9 +72,9 @@ const copy = isEnglish
     </button>
   </div>
 
-  <div class="mt-8 overflow-hidden rounded-[28px] bg-slate-100 px-6 py-8 sm:px-10 md:px-14">
+  <div class="mt-8 overflow-hidden rounded-[28px] bg-slate-100/90 px-4 py-6 sm:px-10 md:px-14 sm:py-8">
     <div class="agent-install-panel hidden" data-tab-panel="one-click">
-      <p class="mx-auto max-w-3xl text-center text-lg leading-9 text-slate-600">{copy.oneClickIntro}</p>
+      <p class="mx-auto max-w-3xl text-center text-base sm:text-lg leading-8 sm:leading-9 text-slate-600">{copy.oneClickIntro}</p>
       <div class="mt-8 flex justify-center">
         <a
           class="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover"
@@ -88,18 +88,69 @@ const copy = isEnglish
     </div>
 
     <div class="agent-install-panel" data-tab-panel="agent">
-      <p class="mx-auto mb-8 max-w-3xl text-center text-lg leading-9 text-slate-600">
+      <p class="mx-auto mb-6 max-w-3xl text-center text-sm sm:text-lg leading-7 sm:leading-9 text-slate-600">
         {copy.agentIntro}
       </p>
 
-      <div class="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-sm">
-        <p class="text-sm font-medium text-slate-400">{copy.promptLabel}</p>
-        <pre class="mt-4 whitespace-pre-wrap break-words font-mono text-base leading-8 text-slate-900">{copy.promptText}</pre>
+      <!-- Pireel-style Premium Terminal Prompt Window -->
+      <div class="mx-auto max-w-3xl rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden font-mono text-xs sm:text-sm">
+        <!-- Top Window Bar -->
+        <div class="flex items-center justify-between border-b border-slate-800/80 bg-slate-900/90 px-3.5 sm:px-4 py-2.5 backdrop-blur-sm select-none">
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 mr-1.5">
+              <span class="h-2.5 w-2.5 rounded-full bg-[#ff5f57] inline-block opacity-80"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-[#febc2e] inline-block opacity-80"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-[#28c840] inline-block opacity-80"></span>
+            </div>
+            <span class="flex items-center gap-1.5 text-xs font-bold font-mono text-emerald-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19h8"></path><path d="m4 17 6-6-6-6"></path></svg>
+              {copy.promptLabel}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            class="agent-install-copy group inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-emerald-950/90 border border-slate-700/80 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 text-xs font-mono transition-all cursor-pointer select-none"
+            data-copy-text={copy.promptText}
+            data-copy-default={copy.copyPrompt}
+            data-copy-copying={copy.copying}
+            data-copy-copied={copy.copied}
+            data-copy-failed={copy.copyFailed}>
+            <Icon class="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-400 transition-colors" name="bx:bx-copy" />
+            <span data-copy-label>{copy.copyPrompt}</span>
+          </button>
+        </div>
+
+        <!-- Prompt Content Body with Pireel Code Typography & Highlighting -->
+        <div class="p-4 sm:p-6 text-slate-200 leading-relaxed font-mono space-y-3 bg-slate-950/95 select-text">
+          <p class="text-slate-400 font-semibold text-xs sm:text-sm">
+            {isEnglish ? "Please complete EdgeEver deployment online:" : "请在线完成 EdgeEver 部署："}
+          </p>
+          <ol class="space-y-2.5 pl-0.5">
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0 font-mono">1.</span>
+              <span class="break-all">Fork <a href="https://github.com/tianma-if/edgeever" target="_blank" rel="noopener" class="text-emerald-300 underline underline-offset-4 decoration-emerald-500/40 hover:text-emerald-200">https://github.com/tianma-if/edgeever</a></span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0 font-mono">2.</span>
+              <span>{isEnglish ? "Import the Fork into" : "将这个 Fork 导入"} <code class="text-teal-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-mono">Cloudflare Workers & Pages</code></span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0 font-mono">3.</span>
+              <span class="break-words">{isEnglish ? "Configure following" : "按照"} <code class="text-amber-300/90 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-mono">{isEnglish ? "docs/agent-deploy-cloudflare.md" : "docs/agent-deploy-cloudflare.zh-CN.md"}</code> {isEnglish ? "for" : "配置"} <code class="text-cyan-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-mono">D1 DB</code>, <code class="text-cyan-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-mono">R2 RESOURCES</code>, <code class="text-cyan-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-mono">EDGE_EVER_AUTH_PASSWORD</code> {isEnglish ? "Worker Secret, and" : "Worker Secret 和"} <code class="text-teal-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-mono">Workers Builds</code></span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-emerald-400 font-bold shrink-0 font-mono">4.</span>
+              <span>{isEnglish ? "Start first build, verify health check & login, then manually run" : "启动首次构建，验证健康检查和登录，然后手动运行一次"} <code class="text-emerald-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-mono">Update deployed EdgeEver</code></span>
+            </li>
+          </ol>
+        </div>
       </div>
 
-      <div class="mt-8 flex justify-center">
+      <!-- Secondary Large Action Button Below -->
+      <div class="mt-6 flex justify-center">
         <button
-          class="agent-install-copy inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover"
+          class="agent-install-copy inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95 cursor-pointer"
           type="button"
           data-copy-text={copy.promptText}
           data-copy-default={copy.copyPrompt}
@@ -111,7 +162,7 @@ const copy = isEnglish
         </button>
       </div>
 
-      <div class="mx-auto mt-5 flex max-w-3xl gap-2 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-xs leading-5 text-amber-900">
+      <div class="mx-auto mt-5 flex max-w-3xl gap-2 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-xs leading-5 text-amber-900">
         <Icon class="mt-0.5 h-4 w-4 shrink-0 text-amber-600" name="bx:bx-credit-card" />
         <p>{copy.billingNotice}</p>
       </div>
@@ -171,7 +222,7 @@ const copy = isEnglish
         });
       });
 
-      root.querySelectorAll("[data-copy-text]").forEach((button) => {
+      root.querySelectorAll(".agent-install-copy").forEach((button) => {
         button.addEventListener("click", async () => {
           const text = button.getAttribute("data-copy-text") || "";
           const label = button.querySelector("[data-copy-label]");
