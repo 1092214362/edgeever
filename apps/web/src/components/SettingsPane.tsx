@@ -98,6 +98,24 @@ export const SettingsPane = ({
       hoverColorClass: "hover:bg-emerald-50/40",
       iconColorClass: "text-emerald-600",
     },
+    {
+      key: "ai",
+      label: t("settings.tabs.ai"),
+      icon: Sparkles,
+      colorClass: "text-emerald-700",
+      bgColorClass: "bg-emerald-50/80",
+      hoverColorClass: "hover:bg-emerald-50/40",
+      iconColorClass: "text-emerald-600",
+    },
+    {
+      key: "data",
+      label: t("settings.tabs.data"),
+      icon: Database,
+      colorClass: "text-emerald-700",
+      bgColorClass: "bg-emerald-50/80",
+      hoverColorClass: "hover:bg-emerald-50/40",
+      iconColorClass: "text-emerald-600",
+    },
     ...(isOwner
       ? [
           {
@@ -111,24 +129,6 @@ export const SettingsPane = ({
           },
         ]
       : []),
-    {
-      key: "data",
-      label: t("settings.tabs.data"),
-      icon: Database,
-      colorClass: "text-emerald-700",
-      bgColorClass: "bg-emerald-50/80",
-      hoverColorClass: "hover:bg-emerald-50/40",
-      iconColorClass: "text-emerald-600",
-    },
-    {
-      key: "ai",
-      label: t("settings.tabs.ai"),
-      icon: Sparkles,
-      colorClass: "text-emerald-700",
-      bgColorClass: "bg-emerald-50/80",
-      hoverColorClass: "hover:bg-emerald-50/40",
-      iconColorClass: "text-emerald-600",
-    },
     {
       key: "account",
       label: t("settings.tabs.account"),
