@@ -11,17 +11,9 @@ const copy = isEnglish
       agent: "Option A: AI Agent deployment",
       recommended: "Recommended",
       oneClickIntro:
-        "Complete setup in 4 simple web steps to deploy EdgeEver for free on Cloudflare's global edge network:",
-      step1Title: "1. Fork Repo",
-      step1Desc: "Fork EdgeEver on GitHub",
-      step2Title: "2. Import Pages",
-      step2Desc: "Import into Cloudflare Pages",
-      step3Title: "3. Bind D1 & R2",
-      step3Desc: "Set D1 DB, R2 & Secret",
-      step4Title: "4. Build & Login",
-      step4Desc: "Build & launch your note app",
+        "Complete setup in 4 simple web steps: Fork EdgeEver, import it into Cloudflare Workers & Pages, configure required resources & secret, then run and verify the first build. See the online deployment guide for details.",
       forkButton: "Fork EdgeEver on GitHub",
-      oneClickGuide: "Open deployment guide",
+      oneClickGuide: "Open the online deployment guide",
       oneClickGuideHref:
         "https://github.com/tianma-if/edgeever/blob/main/docs/deploy-cloudflare-button.md",
       promptLabel: "PROMPT",
@@ -37,17 +29,9 @@ const copy = isEnglish
       oneClick: "方案二：手动在线部署",
       agent: "方案一：AI Agent 一键部署",
       recommended: "推荐",
-      oneClickIntro: "仅需在网页端完成 4 步极简配置，即可将 EdgeEver 免费部署至 Cloudflare 全球边缘网络：",
-      step1Title: "1. Fork 仓库",
-      step1Desc: "在 GitHub Fork EdgeEver 项目",
-      step2Title: "2. 导入 Pages",
-      step2Desc: "Cloudflare 网页导入 Pages",
-      step3Title: "3. 绑定 D1/R2",
-      step3Desc: "配置数据库、存储桶与密码",
-      step4Title: "4. 部署 & 登录",
-      step4Desc: "自动完成构建，即刻体验",
-      forkButton: "在 GitHub Fork 仓库",
-      oneClickGuide: "查看在线部署详细文档",
+      oneClickIntro: "仅需在网页端完成 4 步极简配置：Fork EdgeEver、导入 Cloudflare Workers & Pages、配置所需资源与密码、启动并验证首次构建。详细操作请查看在线部署文档。",
+      forkButton: "在 GitHub Fork EdgeEver",
+      oneClickGuide: "查看在线部署文档",
       oneClickGuideHref:
         "https://github.com/tianma-if/edgeever/blob/main/docs/deploy-cloudflare-button.zh-CN.md",
       promptLabel: "PROMPT",
@@ -82,59 +66,25 @@ const copy = isEnglish
   </div>
 
   <div class="mt-8 overflow-hidden rounded-[28px] bg-slate-100/90 px-4 py-6 sm:px-10 md:px-14 sm:py-8 border border-slate-200/60 shadow-xs">
-    <!-- Tab 2: Manual Online Deployment (Optimized 4-Step Visual Flow) -->
     <div class="agent-install-panel hidden" data-tab-panel="one-click">
-      <p class="mx-auto max-w-3xl text-center text-xs sm:text-sm md:text-base leading-relaxed text-slate-600 font-sans mb-6">
-        {copy.oneClickIntro}
-      </p>
-
-      <!-- 4-Step Interactive Mini Cards Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 max-w-3xl mx-auto mb-8">
-        <div class="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
-          <span class="text-xs font-bold text-emerald-700 font-mono">{copy.step1Title}</span>
-          <span class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">{copy.step1Desc}</span>
-        </div>
-        <div class="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
-          <span class="text-xs font-bold text-teal-700 font-mono">{copy.step2Title}</span>
-          <span class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">{copy.step2Desc}</span>
-        </div>
-        <div class="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
-          <span class="text-xs font-bold text-cyan-700 font-mono">{copy.step3Title}</span>
-          <span class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">{copy.step3Desc}</span>
-        </div>
-        <div class="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
-          <span class="text-xs font-bold text-emerald-800 font-mono">{copy.step4Title}</span>
-          <span class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">{copy.step4Desc}</span>
-        </div>
-      </div>
-
-      <!-- Action Buttons Row -->
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+      <p class="mx-auto max-w-3xl text-center text-sm sm:text-base md:text-lg leading-relaxed text-slate-600">{copy.oneClickIntro}</p>
+      <div class="mt-8 flex justify-center">
         <a
-          class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-slate-800 active:scale-95 w-full sm:w-auto justify-center"
-          href="https://github.com/tianma-if/edgeever/fork"
-          target="_blank"
-          rel="noopener">
-          <Icon class="h-4 w-4" name="bx:bxl-github" />
-          {copy.forkButton}
-        </a>
-        <a
-          class="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95 w-full sm:w-auto justify-center"
+          class="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-sm sm:text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95"
           href={copy.oneClickGuideHref}
           target="_blank"
           rel="noopener">
-          <Icon class="h-4 w-4" name="bx:bx-book-open" />
+          <Icon class="h-5 w-5" name="bx:bx-book-open" />
           {copy.oneClickGuide}
         </a>
       </div>
     </div>
 
-    <!-- Tab 1: AI Agent Deployment Panel -->
     <div class="agent-install-panel" data-tab-panel="agent">
       <!-- Top Intro Text (Upper Red Box Optimized Typography) -->
       <div class="mx-auto mb-6 max-w-3xl text-center sm:text-left text-xs sm:text-sm md:text-base leading-relaxed text-slate-600 font-sans">
         {isEnglish ? (
-          <p class="text-center leading-relaxed">
+          <p>
             Copy the prompt below directly to an AI Agent configured with{" "}
             <span class="inline-flex items-center font-bold text-slate-800 bg-white border border-slate-200/90 px-2 py-0.5 rounded-md text-xs shadow-2xs">GitHub</span>
             {" "}and{" "}
