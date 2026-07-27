@@ -147,21 +147,6 @@ const copy = isEnglish
         </div>
       </div>
 
-      <!-- Secondary Large Action Button Below -->
-      <div class="mt-6 flex justify-center">
-        <button
-          class="agent-install-copy inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95 cursor-pointer"
-          type="button"
-          data-copy-text={copy.promptText}
-          data-copy-default={copy.copyPrompt}
-          data-copy-copying={copy.copying}
-          data-copy-copied={copy.copied}
-          data-copy-failed={copy.copyFailed}>
-          <Icon class="h-5 w-5" name="bx:bx-copy" />
-          <span data-copy-label>{copy.copyPrompt}</span>
-        </button>
-      </div>
-
       <div class="mx-auto mt-5 flex max-w-3xl gap-2 rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-xs leading-5 text-amber-900">
         <Icon class="mt-0.5 h-4 w-4 shrink-0 text-amber-600" name="bx:bx-credit-card" />
         <p>{copy.billingNotice}</p>
