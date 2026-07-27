@@ -65,21 +65,6 @@ const ToolbarDivider = () => <div className="hidden h-6 w-px shrink-0 bg-slate-2
 const isToolbarEditorReady = (editor: Editor | null): editor is Editor =>
   Boolean(editor && !editor.isDestroyed && (editor as { extensionManager?: unknown }).extensionManager);
 
-const editorHasCodeBlock = (editor: Editor) => {
-  let found = false;
-
-  editor.state.doc.descendants((node) => {
-    if (node.type.name === "codeBlock") {
-      found = true;
-      return false;
-    }
-
-    return true;
-  });
-
-  return found;
-};
-
 const toggleCodeBlock = (editor: Editor) => {
   const { from, to, empty } = editor.state.selection;
   const selectedText = editor.state.doc.textBetween(from, to, "\n", "\n");
@@ -157,7 +142,7 @@ export const EditorToolbar = ({
     }
   };
   const codeBlockActive = isActive("codeBlock");
-  const showCodeLanguageSelector = editorReady && editorHasCodeBlock(editor);
+  const showCodeLanguageSelector = codeBlockActive;
   const codeBlockLanguage = editorReady
     ? getCodeBlockLanguageValue(editor.getAttributes("codeBlock").language)
     : "plaintext";
