@@ -88,21 +88,13 @@ const copy = isEnglish
         )}
       </div>
 
-      <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <div class="mt-8 flex justify-center">
         <a
-          class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-slate-800 active:scale-95 w-full sm:w-auto justify-center"
-          href="https://github.com/tianma-if/edgeever/fork"
-          target="_blank"
-          rel="noopener">
-          <Icon class="h-4 w-4" name="bx:bxl-github" />
-          {isEnglish ? "Fork EdgeEver on GitHub" : "在 GitHub Fork 仓库"}
-        </a>
-        <a
-          class="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95 w-full sm:w-auto justify-center"
+          class="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-xs sm:text-base font-semibold text-white shadow-[0_14px_30px_-18px_rgb(var(--edgeever-brand-rgb)/0.85)] transition hover:-translate-y-0.5 hover:bg-brand-hover active:scale-95"
           href={copy.oneClickGuideHref}
           target="_blank"
           rel="noopener">
-          <Icon class="h-4 w-4" name="bx:bx-book-open" />
+          <Icon class="h-5 w-5" name="bx:bx-book-open" />
           {copy.oneClickGuide}
         </a>
       </div>
