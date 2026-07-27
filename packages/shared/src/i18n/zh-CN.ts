@@ -258,7 +258,7 @@ export const zhCN = {
   },
   dataExport: {
     title: "导入与导出",
-    description: "一份同时兼顾开放性与完整恢复的档案：笔记可直接以 Markdown 阅读，结构化数据、历史版本和附件可用于 EdgeEver 实例间迁移。",
+    description: "导出可读 Markdown 笔记、附件与历史版本的 ZIP 档案，用于备份与无损迁移。",
     exportButton: "导出 EdgeEver ZIP",
     importButton: "导入 EdgeEver ZIP",
     working: "正在整理笔记和附件…",
@@ -697,10 +697,10 @@ export const zhCN = {
     subtitle: "AI Agent 驱动一键迁移，无损保留笔记本组结构",
   },
   evernoteImport: {
-    title: "导入印象笔记、Notion、Memos。",
+    title: "导入印象笔记、Notion、Memos",
     guide: "查看迁移指南",
     openGuideAria: "在新标签页打开印象笔记迁移指南",
-    description: "查看从印象笔记迁移到 EdgeEver 的步骤，推荐使用 MCP 与 AI Agent 批量导入。",
+    description: "支持从第三方平台快速迁移笔记，推荐使用 MCP 与 AI Agent 批量导入。",
   },
   session: {
     loggingOut: "安全退出中...",

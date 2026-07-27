@@ -258,7 +258,7 @@ export const enUS = {
   },
   dataExport: {
     title: "Import and export",
-    description: "One archive for openness and complete recovery: read notes directly as Markdown, or use the structured data, revision history, and attachments to migrate between EdgeEver instances.",
+    description: "Export a complete ZIP archive with Markdown notes, attachments, and history for backup or migration.",
     exportButton: "Export EdgeEver ZIP",
     importButton: "Import EdgeEver ZIP",
     working: "Preparing notes and attachments…",
@@ -700,7 +700,7 @@ export const enUS = {
     title: "Import Evernote, Notion, and Memos",
     guide: "View migration guide",
     openGuideAria: "Open the Evernote migration guide in a new tab",
-    description: "Review the steps for migrating from Evernote to EdgeEver. MCP and AI Agent batch import are recommended.",
+    description: "Migrate notes from third-party platforms with recommended MCP and AI Agent batch import.",
   },
   session: {
     loggingOut: "Signing out...",
