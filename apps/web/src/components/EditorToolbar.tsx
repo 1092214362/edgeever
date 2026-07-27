@@ -10,8 +10,6 @@ import {
   Code2,
   List,
   ListOrdered,
-  ListIndentDecrease,
-  ListIndentIncrease,
   Quote,
   SquareCode,
   ChartNoAxesCombined,
@@ -40,21 +38,18 @@ const EditorToolbarButton = ({
   disabled = false,
   onClick,
   title,
-  wide = false,
 }: {
   active?: boolean;
   children: ReactNode;
   disabled?: boolean;
   onClick: () => void;
   title: string;
-  wide?: boolean;
 }) => (
   <Tooltip>
     <TooltipTrigger asChild>
       <button
         className={cn(
-          "flex h-8 shrink-0 items-center justify-center rounded-md border text-slate-700 transition disabled:pointer-events-none disabled:opacity-40",
-          wide ? "w-auto gap-1 px-2" : "w-8",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-slate-700 transition disabled:pointer-events-none disabled:opacity-40",
           active
             ? "border-emerald-200 bg-emerald-50 text-emerald-800"
             : "border-transparent bg-transparent hover:border-slate-200 hover:bg-slate-50"
@@ -73,7 +68,7 @@ const EditorToolbarButton = ({
   </Tooltip>
 );
 
-const ToolbarDivider = () => <div className="h-6 w-px shrink-0 bg-slate-200" />;
+const ToolbarDivider = () => <div className="hidden h-6 w-px shrink-0 bg-slate-200 sm:block" />;
 
 const isToolbarEditorReady = (editor: Editor | null): editor is Editor =>
   Boolean(editor && !editor.isDestroyed && (editor as { extensionManager?: unknown }).extensionManager);
@@ -226,11 +221,11 @@ export const EditorToolbar = ({
 
   return (
     <TooltipProvider delayDuration={0} skipDelayDuration={0}>
-      <div className="relative border-t border-slate-200 bg-white">
+      <div className="relative min-w-0 max-w-full border-t border-slate-200 bg-white">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-white to-transparent sm:hidden" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-white to-transparent sm:hidden" />
         <div
-          className="flex min-h-12 items-center gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] sm:px-5 [&::-webkit-scrollbar]:hidden"
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-1 overflow-visible px-3 py-2 sm:gap-2 sm:px-5"
           role="toolbar"
           aria-label={t("editorToolbar.toolbar")}
         >
@@ -272,12 +267,10 @@ export const EditorToolbar = ({
             <>
               <EditorToolbarButton
                 title={t("editorToolbar.noteLink")}
-                wide
                 disabled={readOnly}
                 onClick={onPickNoteLink}
               >
                 <Link2 className="h-4 w-4" />
-                <span className="text-xs font-medium">{t("editorToolbar.noteLink")}</span>
               </EditorToolbarButton>
               <ToolbarDivider />
             </>
@@ -354,7 +347,7 @@ export const EditorToolbar = ({
 
           <ToolbarDivider />
           <EditorToolbarButton
-            title={t("editorToolbar.bulletList")}
+            title={`${t("editorToolbar.bulletList")} · ${t("editorToolbar.listIndentHint")}`}
             active={isActive("bulletList")}
             disabled={disabled}
             onClick={() => run((current) => current.chain().focus().toggleBulletList().run())}
@@ -362,26 +355,12 @@ export const EditorToolbar = ({
             <List className="h-4 w-4" />
           </EditorToolbarButton>
           <EditorToolbarButton
-            title={t("editorToolbar.orderedList")}
+            title={`${t("editorToolbar.orderedList")} · ${t("editorToolbar.listIndentHint")}`}
             active={isActive("orderedList")}
             disabled={disabled}
             onClick={() => run((current) => current.chain().focus().toggleOrderedList().run())}
           >
             <ListOrdered className="h-4 w-4" />
-          </EditorToolbarButton>
-          <EditorToolbarButton
-            title={t("editorToolbar.increaseListIndent")}
-            disabled={!canRun((current) => current.can().chain().focus().sinkListItem("listItem").run())}
-            onClick={() => run((current) => current.chain().focus().sinkListItem("listItem").run())}
-          >
-            <ListIndentIncrease className="h-4 w-4" />
-          </EditorToolbarButton>
-          <EditorToolbarButton
-            title={t("editorToolbar.decreaseListIndent")}
-            disabled={!canRun((current) => current.can().chain().focus().liftListItem("listItem").run())}
-            onClick={() => run((current) => current.chain().focus().liftListItem("listItem").run())}
-          >
-            <ListIndentDecrease className="h-4 w-4" />
           </EditorToolbarButton>
           <EditorToolbarButton
             title={t("editorToolbar.quote")}
@@ -398,14 +377,6 @@ export const EditorToolbar = ({
             onClick={() => run(toggleCodeBlock)}
           >
             <SquareCode className="h-4 w-4" />
-          </EditorToolbarButton>
-          <EditorToolbarButton
-            title={t("editorToolbar.mermaidDiagram")}
-            active={codeBlockActive && codeBlockLanguage === "mermaid"}
-            disabled={disabled}
-            onClick={() => run(insertMermaidDiagram)}
-          >
-            <ChartNoAxesCombined className="h-4 w-4" />
           </EditorToolbarButton>
           {showCodeLanguageSelector && (
             <Select
@@ -431,6 +402,14 @@ export const EditorToolbar = ({
             </Select>
           )}
           <EditorToolbarButton
+            title={t("editorToolbar.mermaidDiagram")}
+            active={codeBlockActive && codeBlockLanguage === "mermaid"}
+            disabled={disabled}
+            onClick={() => run(insertMermaidDiagram)}
+          >
+            <ChartNoAxesCombined className="h-4 w-4" />
+          </EditorToolbarButton>
+          <EditorToolbarButton
             title={t("editorToolbar.horizontalRule")}
             disabled={disabled}
             onClick={() => run((current) => current.chain().focus().setHorizontalRule().run())}
@@ -438,18 +417,23 @@ export const EditorToolbar = ({
             <Minus className="h-4 w-4" />
           </EditorToolbarButton>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-slate-700 transition hover:border-slate-200 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40"
-                aria-label={t("editorToolbar.themeBlock")}
-                title={t("editorToolbar.themeBlock")}
-                disabled={disabled}
-                onMouseDown={(event) => event.preventDefault()}
-              >
-                <Blocks className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-slate-700 transition hover:border-slate-200 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40"
+                    aria-label={t("editorToolbar.themeBlock")}
+                    title={t("editorToolbar.themeBlock")}
+                    disabled={disabled}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <Blocks className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{t("editorToolbar.themeBlock")}</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end">
               {(["intro", "key-point", "callout", "chapter"] as ThemeBlockKind[]).map((kind) => (
                 <DropdownMenuItem key={kind} onSelect={() => run((current) => insertThemeBlock(current, kind))}>

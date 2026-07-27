@@ -631,6 +631,7 @@ export const zhCN = {
     orderedList: "有序列表",
     increaseListIndent: "增加列表层级（Tab）",
     decreaseListIndent: "减少列表层级（Shift + Tab）",
+    listIndentHint: "Tab 增加层级，Shift + Tab 减少层级",
     quote: "引用",
     codeBlock: "代码块",
     copyCode: "复制代码",
@@ -645,7 +646,7 @@ export const zhCN = {
     mermaidEmpty: "在下方输入 Mermaid 源码以生成图表。",
     mermaidSource: "Mermaid 源码",
     horizontalRule: "分割线",
-    themeBlock: "主题化组件",
+    themeBlock: "插入内容块",
     deleteThemeBlock: "删除主题化组件",
     themeBlocks: {
       intro: "引言卡片",
