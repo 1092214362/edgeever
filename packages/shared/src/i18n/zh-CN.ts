@@ -576,6 +576,7 @@ export const zhCN = {
     searchCurrentMemo: "搜索当前笔记",
     replaceCurrentMemo: "替换当前笔记",
     versionHistory: "版本历史",
+    exportMarkdown: "导出 Markdown",
     exportPdf: "导出 PDF",
     pdfExport: {
       preparing: "正在生成打印预览…",

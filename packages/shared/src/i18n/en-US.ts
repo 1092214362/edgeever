@@ -576,6 +576,7 @@ export const enUS = {
     searchCurrentMemo: "Search current note",
     replaceCurrentMemo: "Replace in current note",
     versionHistory: "Version history",
+    exportMarkdown: "Export Markdown",
     exportPdf: "Export PDF",
     pdfExport: {
       preparing: "Preparing print preview…",

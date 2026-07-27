@@ -31,6 +31,7 @@ import {
   CircleAlert,
   LoaderCircle,
   Info,
+  FileDown,
   Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,7 @@ import { ThemeBlock } from "./ThemeBlock";
 import { SystemInfoDialog } from "./SystemInfoDialog";
 import { fetchLatestRelease, isVersionOutdated } from "@/lib/version-check";
 import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
+import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
@@ -2052,6 +2054,32 @@ const RichEditorPane = ({
     useMobilePlainTextEditor,
   ]);
 
+  const handleExportMarkdown = useCallback(() => {
+    if (!isEditorReady(editor) || !memo) {
+      return;
+    }
+
+    const markdown = useMobilePlainTextEditor
+      ? getMobilePlainTextValue()
+      : useMarkdownSourceEditor
+        ? markdownSource
+        : docToMarkdown(editor.getJSON() as TiptapDoc);
+    downloadMarkdownFile(
+      markdown,
+      title,
+      t("common.untitledMemo")
+    );
+  }, [
+    editor,
+    getMobilePlainTextValue,
+    markdownSource,
+    memo,
+    t,
+    title,
+    useMarkdownSourceEditor,
+    useMobilePlainTextEditor,
+  ]);
+
   useEffect(() => {
     if (!useMobilePlainTextEditor) {
       return;
@@ -2804,6 +2832,13 @@ const RichEditorPane = ({
                 >
                   <History className="h-4 w-4 text-slate-500" />
                   {t("editor.versionHistory")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={handleExportMarkdown}
+                >
+                  <FileDown className="h-4 w-4 text-slate-500" />
+                  {t("editor.exportMarkdown")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
