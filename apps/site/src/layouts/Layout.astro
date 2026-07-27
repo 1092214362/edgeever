@@ -2,6 +2,7 @@
 import { SEO } from "astro-seo";
 import Footer from "@/components/footer.astro";
 import Navbar from "@/components/navbar/navbar.astro";
+import MobileStickyBar from "@/components/mobile-sticky-bar.astro";
 import { getLocalizedPath, getSiteLocale, siteCopy, siteLocaleDataAttribute, siteLocaleStorageKey } from "@/i18n";
 import "@fontsource-variable/inter/index.css";
 import "@fontsource-variable/bricolage-grotesque";
@@ -216,6 +217,7 @@ const localeRedirectScript = `(() => {
     <Navbar />
     <slot />
     <Footer />
+    <MobileStickyBar />
     <style is:global>
       /* Improve Page speed */
       /* https://css-tricks.com/almanac/properties/c/content-visibility/ */
