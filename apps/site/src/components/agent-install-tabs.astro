@@ -157,16 +157,24 @@ const copy = isEnglish
         </div>
       </div>
 
-      <!-- Bottom Visa Billing Notice Card (Visually De-emphasized) -->
-      <div class="mx-auto mt-5 flex max-w-3xl items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-200/30 p-3 sm:p-3.5 text-xs leading-relaxed text-slate-500 font-sans">
-        <Icon class="mt-0.5 h-4 w-4 shrink-0 text-slate-400" name="bx:bx-credit-card" />
+      <!-- Bottom Visa Billing Notice Card (Soft Muted Amber Warning) -->
+      <div class="mx-auto mt-5 flex max-w-3xl items-start gap-2.5 rounded-xl border border-amber-200/50 bg-amber-50/50 p-3 sm:p-3.5 text-xs leading-relaxed text-amber-900/80 font-sans">
+        <Icon class="mt-0.5 h-4 w-4 shrink-0 text-amber-600/70" name="bx:bx-credit-card" />
         {isEnglish ? (
           <p>
-            <span class="font-semibold text-slate-700">Heads up:</span> Cloudflare R2, D1, and Worker may ask you to add a Visa card even when using free quotas.
+            <span class="font-semibold text-amber-950">Heads up:</span> Cloudflare{" "}
+            <code class="font-mono text-[11px] font-semibold text-amber-950 bg-amber-100/60 px-1 py-0.5 rounded">R2</code>,{" "}
+            <code class="font-mono text-[11px] font-semibold text-amber-950 bg-amber-100/60 px-1 py-0.5 rounded">D1</code>, and{" "}
+            <code class="font-mono text-[11px] font-semibold text-amber-950 bg-amber-100/60 px-1 py-0.5 rounded">Worker</code>{" "}
+            may ask you to add a <span class="font-semibold text-amber-950">Visa card</span> even when using free quotas.
           </p>
         ) : (
           <p>
-            <span class="font-semibold text-slate-700">提示：</span>Cloudflare 的 R2、D1 和 Worker 即使使用免费额度，开通或使用时也可能要求绑定 Visa 卡。国内用户可考虑使用招商银行多币种卡绑定。
+            <span class="font-semibold text-amber-950">提示：</span>Cloudflare 的{" "}
+            <code class="font-mono text-[11px] font-semibold text-amber-950 bg-amber-100/60 px-1 py-0.5 rounded">R2</code>、
+            <code class="font-mono text-[11px] font-semibold text-amber-950 bg-amber-100/60 px-1 py-0.5 rounded">D1</code> 和{" "}
+            <code class="font-mono text-[11px] font-semibold text-amber-950 bg-amber-100/60 px-1 py-0.5 rounded">Worker</code>{" "}
+            即使使用免费额度，开通或使用时也可能要求绑定 <span class="font-semibold text-amber-950">Visa 卡</span>。国内用户可考虑使用招商银行多币种卡绑定。
           </p>
         )}
       </div>
