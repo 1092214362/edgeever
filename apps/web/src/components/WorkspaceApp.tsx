@@ -1625,6 +1625,15 @@ export const WorkspaceApp = ({
       const previousActivePane = activePane;
       const previousSelectedMemoId = selectedMemoId;
 
+      // Leave the editor before cancelling/refetching its detail query. On a
+      // desktop layout the editor remains mounted even when the memo pane is
+      // visible, so keeping a trashed memo selected while its query is being
+      // invalidated can render a deleted detail and repeatedly re-select it.
+      setEmptyTrashConfirmationOpen(false);
+      clearMemoSelection();
+      setSelectedMemoId(null);
+      setActivePane("memos");
+
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ["memos"] }),
         queryClient.cancelQueries({ queryKey: ["memo"] }),
@@ -1638,10 +1647,6 @@ export const WorkspaceApp = ({
       // memo detail query here can make the editor render with a missing memo
       // during the same React update and blank the whole workspace.
       clearTrashMemoLists(queryClient);
-      setEmptyTrashConfirmationOpen(false);
-      clearMemoSelection();
-      setSelectedMemoId(null);
-      setActivePane("memos");
 
       return { previousMemoLists, previousMemoDetails, previousActivePane, previousSelectedMemoId };
     },
@@ -1658,6 +1663,20 @@ export const WorkspaceApp = ({
         title: t("workspaceDialogs.emptyTrashFailedTitle"),
         description: t("workspaceDialogs.emptyTrashFailedDescription"),
       });
+    },
+    onSuccess: () => {
+      // The trash detail queries are no longer valid after a successful
+      // permanent delete. Remove them before invalidating the remaining
+      // active queries so an editor cannot briefly observe a 404 detail.
+      queryClient.removeQueries({
+        queryKey: ["memo"],
+        predicate: (query) => {
+          const data = query.state.data as { memo?: { isDeleted?: boolean } } | undefined;
+          return data?.memo?.isDeleted === true;
+        },
+      });
+      setSelectedMemoId(null);
+      setActivePane("memos");
     },
     onSettled: () => {
       void Promise.all([
