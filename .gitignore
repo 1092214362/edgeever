@@ -24,3 +24,6 @@ wrangler.local.toml
 *.p12
 credentials.json
 *-key.pem
+
+# Local HyperFrames video workspace.
+/videos/edgeever-promo/
