@@ -12,26 +12,26 @@ const copy = siteCopy[locale].hero;
 const agentPromptText = copy.agentPromptText;
 ---
 
-<main class="relative grid gap-6 lg:gap-10 lg:grid-cols-2 place-items-center pt-3 pb-8 md:pt-10 md:pb-16 overflow-hidden max-w-full">
+<main class="relative grid gap-8 lg:gap-10 lg:grid-cols-2 place-items-center pt-4 pb-10 md:pt-10 md:pb-16 overflow-hidden max-w-full">
   <!-- Background Glow Orbs & Meteors Container -->
   <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
-    <div class="absolute top-0 left-1/4 w-[240px] sm:w-[450px] h-[240px] sm:h-[450px] bg-brand/10 rounded-full blur-3xl animate-slow-spin"></div>
-    <div class="absolute bottom-0 right-1/4 w-[200px] sm:w-[380px] h-[200px] sm:h-[380px] bg-emerald-400/10 rounded-full blur-3xl animate-float"></div>
-    <Meteors number={10} client:load />
+    <div class="absolute top-0 left-1/4 w-[280px] sm:w-[450px] h-[280px] sm:h-[450px] bg-brand/10 rounded-full blur-3xl animate-slow-spin"></div>
+    <div class="absolute bottom-0 right-1/4 w-[240px] sm:w-[380px] h-[240px] sm:h-[380px] bg-emerald-400/10 rounded-full blur-3xl animate-float"></div>
+    <Meteors number={12} client:load />
   </div>
 
   <div class="relative z-20 w-full max-w-full flex flex-col items-start min-w-0">
     {copy.badgeText && (
       <a
         href={`${getLocalizedPath(locale, "/")}blog?tag=migration`}
-        class="animate-rise flex items-center gap-1.5 max-w-full min-w-0 px-2.5 sm:px-3.5 py-1 mb-4 md:mb-6 text-[10.5px] sm:text-xs text-brand bg-brand/5 border border-brand-border/30 hover:border-brand/40 hover:bg-brand/10 rounded-full backdrop-blur-sm select-none hover:-translate-y-0.5 transition-all duration-300 group/badge cursor-pointer"
+        class="animate-rise flex items-center gap-2 max-w-full min-w-0 px-3.5 py-1.5 mb-5 md:mb-6 text-xs text-brand bg-brand/5 border border-brand-border/30 hover:border-brand/40 hover:bg-brand/10 rounded-full backdrop-blur-sm select-none hover:-translate-y-0.5 transition-all duration-300 group/badge cursor-pointer"
         style="animation-delay: 0ms;"
       >
-        <span class="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
+        <span class="relative flex h-2 w-2 shrink-0">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-brand"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
         </span>
-        <span class="text-slate-600 font-medium group-hover/badge:text-brand transition-colors text-[10.5px] sm:text-xs truncate min-w-0 flex-1">
+        <span class="text-slate-600 font-medium group-hover/badge:text-brand transition-colors text-[11px] sm:text-xs truncate min-w-0 flex-1">
           <span class="hidden sm:inline">{copy.badgeText}</span>
           <span class="inline sm:hidden">{locale === 'zh-CN' ? '💡 印象笔记 / Notion 零成本平替，双 MCP 搬家' : '💡 Serverless Evernote Alternative'}</span>
         </span>
@@ -41,56 +41,52 @@ const agentPromptText = copy.agentPromptText;
       </a>
     )}
 
-    <!-- Mobile Typography Scale: Refined 26px - 32px on Mobile, 48px - 64px on Desktop -->
-    <h1 class="animate-rise text-2xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-slate-900 leading-[1.2] sm:leading-[1.18] tracking-tight max-w-full" style="animation-delay: 80ms;">
+    <h1 class="animate-rise text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-extrabold text-slate-900 leading-[1.18] tracking-tight max-w-full" style="animation-delay: 80ms;">
       <span class="text-gradient">EdgeEver</span>
-      <div class="mt-2 sm:mt-3 flex flex-wrap items-center gap-1.5 sm:gap-2 max-w-full">
-        <span class="inline-block px-2 py-0.5 sm:px-3 sm:py-1 bg-emerald-600 text-white rounded-md sm:rounded-lg text-xs sm:text-lg md:text-xl font-bold -rotate-1 shadow-xs sm:shadow-md animate-pop">
+      <div class="mt-2.5 sm:mt-3 flex flex-wrap items-center gap-2 max-w-full">
+        <span class="inline-block px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-base sm:text-lg md:text-xl font-bold -rotate-1 shadow-md animate-pop">
           {copy.popHighlight}
         </span>
       </div>
-      <span class="hero-slogan block mt-2.5 sm:mt-4 max-w-xl text-xs sm:text-base md:text-xl font-normal leading-relaxed text-slate-600">{copy.slogan}</span>
+      <span class="hero-slogan block mt-3 sm:mt-4 max-w-xl text-base sm:text-lg md:text-xl font-normal leading-relaxed text-slate-600">{copy.slogan}</span>
     </h1>
 
-    <!-- Mobile Refined Button Scale: Grid on Mobile (10px - 12px text), Flex Row on Desktop -->
-    <div class="animate-rise mt-5 sm:mt-8 w-full sm:w-auto max-w-full z-20" style="animation-delay: 160ms;">
-      <!-- Mobile Layout: 2 Top Buttons + 1 Full Width Bottom Button -->
-      <div class="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full">
-        <Link
-          href="https://demo.edgeever.org"
-          target="_blank"
-          class="group flex gap-1.5 items-center justify-center h-10 sm:h-12 px-3 sm:px-6 text-white bg-brand border-transparent shadow-xs hover:bg-brand-hover active:scale-[0.98] transition-all rounded-full font-semibold text-xs sm:text-sm text-center"
-          rel="noopener">
-          <Icon class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" name="bx:bx-show" />
-          <span class="truncate">{copy.demo}</span>
-        </Link>
-        <Link
-          size="lg"
-          style="outline"
-          rel="noopener"
-          href="https://github.com/tianma-if/edgeever"
-          class="flex gap-1.5 items-center justify-center h-10 sm:h-12 px-3 sm:px-6 border border-slate-200 hover:border-slate-400 bg-white/80 backdrop-blur-sm text-slate-800 active:scale-[0.98] transition-all rounded-full font-semibold text-xs sm:text-sm text-center"
-          target="_blank">
-          <Icon class="text-slate-800 w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" name="bx:bxl-github" />
-          <span class="truncate">GitHub Star</span>
-        </Link>
-        <a
-          rel="noopener"
-          href={getLocalizedPath(locale, "/blog/ai-agent-deploy-cloudflare")}
-          class="col-span-2 sm:col-span-1 flex gap-1.5 items-center justify-center h-10 sm:h-12 px-4 sm:px-5 bg-brand/5 border border-brand/20 hover:border-brand/40 text-brand-text hover:bg-brand/10 active:scale-[0.98] transition-all rounded-full font-semibold text-xs sm:text-sm text-center"
-          >
-          <Icon class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" name="simple-icons:cloudflare" />
-          <span class="truncate">{copy.agentInstall}</span>
-        </a>
-      </div>
+    <!-- Primary Action Buttons (Mobile 44px+ touch targets) -->
+    <div class="animate-rise mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto max-w-full z-20" style="animation-delay: 160ms;">
+      <Link
+        href="https://demo.edgeever.org"
+        target="_blank"
+        class="group flex gap-2 items-center justify-center min-h-[44px] px-6 py-3 text-white bg-brand border-transparent shadow-[0_12px_30px_-14px_rgb(var(--edgeever-brand-rgb)/0.8)] hover:bg-brand-hover hover:shadow-brand/40 active:scale-[0.99] transition-all duration-300 hover:-translate-y-0.5 rounded-full font-bold text-sm w-full sm:w-auto text-center"
+        rel="noopener">
+        <Icon class="w-4 h-4" name="bx:bx-show" />
+        <span>{copy.demo}</span>
+      </Link>
+      <Link
+        size="lg"
+        style="outline"
+        rel="noopener"
+        href="https://github.com/tianma-if/edgeever"
+        class="flex gap-2 items-center justify-center min-h-[44px] px-6 py-3 border border-slate-200 hover:border-slate-400 bg-white/80 backdrop-blur-sm text-slate-800 active:scale-[0.99] transition-all rounded-full font-bold text-sm hover:-translate-y-0.5 w-full sm:w-auto text-center"
+        target="_blank">
+        <Icon class="text-slate-800 w-4 h-4" name="bx:bxl-github" />
+        <span>GitHub Star</span>
+      </Link>
+      <a
+        rel="noopener"
+        href={getLocalizedPath(locale, "/blog/ai-agent-deploy-cloudflare")}
+        class="flex gap-2 items-center justify-center min-h-[44px] px-5 py-3 bg-brand/5 border border-brand/20 hover:border-brand/40 text-brand-text hover:bg-brand/10 active:scale-[0.99] transition-all rounded-full font-bold text-sm hover:-translate-y-0.5 w-full sm:w-auto text-center"
+        >
+        <Icon class="w-4 h-4" name="simple-icons:cloudflare" />
+        <span>{copy.agentInstall}</span>
+      </a>
     </div>
 
-    <!-- Agent Terminal Prompt Pill (Desktop & Mobile Ergonomic Scale) -->
-    <div class="animate-rise mt-4 sm:mt-6 w-full max-w-full sm:max-w-lg z-30 relative" style="animation-delay: 240ms;">
+    <!-- Agent Terminal Prompt Pill (Desktop & Mobile Ergonomic Touch Bar) -->
+    <div class="animate-rise mt-6 w-full max-w-full sm:max-w-lg z-30 relative" style="animation-delay: 240ms;">
       <!-- Hidden Textarea for clean text copying -->
       <textarea id="agent-prompt-textarea" class="sr-only" aria-hidden="true" readonly>{agentPromptText}</textarea>
 
-      <div class="flex flex-col gap-1 w-full max-w-full">
+      <div class="flex flex-col gap-1.5 w-full max-w-full">
         <!-- Desktop Pill -->
         <button
           type="button"
@@ -113,54 +109,54 @@ const agentPromptText = copy.agentPromptText;
           </span>
         </button>
 
-        <!-- Mobile Touch Refined Copy Card (Compact 10px - 11px scale) -->
+        <!-- Mobile Touch Optimized Copy Card -->
         <button
           type="button"
           id="copy-agent-prompt-mobile"
-          class="group relative flex sm:hidden items-center justify-between gap-2 w-full rounded-xl border border-slate-200/90 bg-white/95 p-2.5 shadow-2xs active:scale-[0.98] transition-all cursor-pointer text-left select-none z-30"
+          class="group relative flex sm:hidden items-center justify-between gap-2.5 w-full rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-xs active:scale-[0.99] transition-all cursor-pointer text-left select-none z-30"
         >
           <div class="flex items-center gap-2 overflow-hidden pointer-events-none min-w-0 flex-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-600 shrink-0"><path d="M12 19h8"></path><path d="m4 17 6-6-6-6"></path></svg>
-            <div class="flex flex-col min-w-0 flex-1">
-              <span class="text-[11.5px] font-bold text-slate-800 truncate">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-600 shrink-0"><path d="M12 19h8"></path><path d="m4 17 6-6-6-6"></path></svg>
+            <div class="flex flex-col min-w-0">
+              <span class="text-xs font-bold text-slate-800 truncate">
                 {locale === 'zh-CN' ? '复制 AI 自动化部署 Prompt' : 'Copy AI Deployment Prompt'}
               </span>
-              <span class="text-[9.5px] text-slate-500 font-mono truncate">
+              <span class="text-[10px] text-slate-500 font-mono truncate">
                 {copy.terminalCmd}
               </span>
             </div>
           </div>
-          <span class="mobile-copy-badge shrink-0 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold text-[10.5px] rounded-lg border border-emerald-200/80 flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+          <span class="mobile-copy-badge shrink-0 px-3 py-1.5 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200/80 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
             <span>{locale === 'zh-CN' ? '一键复制' : 'Copy'}</span>
           </span>
         </button>
 
-        <span class="text-[10px] sm:text-[11.5px] text-slate-500 pl-1 sm:pl-4 font-medium select-none truncate max-w-full">{copy.terminalSub}</span>
+        <span class="text-[10.5px] sm:text-[11.5px] text-slate-600 pl-2 sm:pl-4 font-medium select-none truncate max-w-full">{copy.terminalSub}</span>
       </div>
     </div>
   </div>
 
   <!-- macOS Browser Window Mockup (Pireel style) -->
-  <div class="animate-rise w-full max-w-full relative z-10 flex justify-center lg:justify-end mt-3 sm:mt-4 lg:mt-0" style="animation-delay: 320ms;">
+  <div class="animate-rise w-full max-w-full relative z-10 flex justify-center lg:justify-end mt-4 lg:mt-0" style="animation-delay: 320ms;">
     <div class="relative w-full max-w-full sm:max-w-xl animate-float pointer-events-none select-none">
       <!-- Glow Underlay -->
-      <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-brand/10 to-teal-500/20 rounded-xl sm:rounded-2xl blur-xl opacity-70"></div>
+      <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-brand/10 to-teal-500/20 rounded-2xl blur-xl opacity-70"></div>
       
       <!-- macOS Window Container -->
-      <div class="relative rounded-xl sm:rounded-2xl border border-slate-200/80 bg-white shadow-lg sm:shadow-2xl overflow-hidden max-w-full">
+      <div class="relative rounded-2xl border border-slate-200/80 bg-white shadow-xl sm:shadow-2xl overflow-hidden max-w-full">
         <!-- macOS Top Header Bar -->
-        <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/90 px-3 py-1.5 sm:py-2 backdrop-blur-sm">
-          <div class="flex items-center gap-1 sm:gap-1.5">
-            <span class="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-[#ff5f57] inline-block"></span>
-            <span class="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-[#febc2e] inline-block"></span>
-            <span class="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-[#28c840] inline-block"></span>
+        <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/90 px-3.5 py-2 backdrop-blur-sm">
+          <div class="flex items-center gap-1.5">
+            <span class="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-[#ff5f57] inline-block"></span>
+            <span class="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-[#febc2e] inline-block"></span>
+            <span class="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-[#28c840] inline-block"></span>
           </div>
-          <div class="flex items-center gap-1 rounded-full bg-slate-200/60 px-2 py-0.5 text-center font-mono text-[9.5px] sm:text-[11px] text-slate-500 font-medium">
-            <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 mr-1"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <div class="flex items-center gap-1 rounded-full bg-slate-200/60 px-2.5 py-0.5 text-center font-mono text-[10px] sm:text-[11px] text-slate-500 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 mr-1"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             demo.edgeever.org
           </div>
-          <div class="w-6 sm:w-10"></div>
+          <div class="w-8 sm:w-10"></div>
         </div>
 
         <!-- Product Image Preview -->
@@ -220,7 +216,7 @@ const agentPromptText = copy.agentPromptText;
         if (btn) btn.classList.add("border-emerald-500", "bg-emerald-50");
         if (tooltip) tooltip.classList.remove("hidden");
         if (mobileBadge) {
-          mobileBadge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-600"><polyline points="20 6 9 17 4 12"></polyline></svg><span>已复制</span>';
+          mobileBadge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-600"><polyline points="20 6 9 17 4 12"></polyline></svg><span>已复制</span>';
           mobileBadge.classList.add("bg-emerald-600", "text-white");
         }
         if (iconContainer) {
@@ -230,11 +226,11 @@ const agentPromptText = copy.agentPromptText;
           if (btn) btn.classList.remove("border-emerald-500", "bg-emerald-50");
           if (tooltip) tooltip.classList.add("hidden");
           if (mobileBadge) {
-            mobileBadge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>一键复制</span>';
+            mobileBadge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>一键复制</span>';
             mobileBadge.classList.remove("bg-emerald-600", "text-white");
           }
           if (iconContainer) {
-            iconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>';
+            iconContainer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>';
           }
         }, 2500);
       }
