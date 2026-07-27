@@ -2776,6 +2776,12 @@ export const WorkspaceApp = ({
                     contentSearchQuery={search}
                     searchFocusToken={noteSearchFocusToken}
                     replaceFocusToken={noteReplaceFocusToken}
+                    onOpenMemo={(memoId) => {
+                      clearPendingCreatedMemo();
+                      setMemoView("notebook");
+                      setSelectedMemoId(memoId);
+                      setActivePane("editor");
+                    }}
                     imageCompressionEnabled={imageCompressionEnabled}
                     autoSaveIntervalMs={autoSaveIntervalMs}
                     selectionActionBar={memoSelectionActionBar}

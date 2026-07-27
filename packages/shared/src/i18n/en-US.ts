@@ -667,6 +667,14 @@ export const enUS = {
     switchToMarkdown: "Switch to Markdown mode",
     switchToRichText: "Switch to rich text mode",
     attachment: "Upload attachment",
+    noteLink: "Link a note",
+  },
+  noteLinkPicker: {
+    title: "Link a note",
+    searchPlaceholder: "Search notes to link",
+    empty: "No notes found",
+    loading: "Searching notes...",
+    close: "Close note picker",
   },
   mobileNotebookPicker: {
     title: "Switch notebook",

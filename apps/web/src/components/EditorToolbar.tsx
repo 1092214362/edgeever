@@ -14,10 +14,11 @@ import {
   ListIndentIncrease,
   Quote,
   SquareCode,
-  Workflow,
+  ChartNoAxesCombined,
   Minus,
   Paperclip,
   Blocks,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -39,18 +40,21 @@ const EditorToolbarButton = ({
   disabled = false,
   onClick,
   title,
+  wide = false,
 }: {
   active?: boolean;
   children: ReactNode;
   disabled?: boolean;
   onClick: () => void;
   title: string;
+  wide?: boolean;
 }) => (
   <Tooltip>
     <TooltipTrigger asChild>
       <button
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-slate-700 transition disabled:pointer-events-none disabled:opacity-40",
+          "flex h-8 shrink-0 items-center justify-center rounded-md border text-slate-700 transition disabled:pointer-events-none disabled:opacity-40",
+          wide ? "w-auto gap-1 px-2" : "w-8",
           active
             ? "border-emerald-200 bg-emerald-50 text-emerald-800"
             : "border-transparent bg-transparent hover:border-slate-200 hover:bg-slate-50"
@@ -141,12 +145,14 @@ export const EditorToolbar = ({
   markdownMode = false,
   onMarkdownModeChange,
   onPickAttachment,
+  onPickNoteLink,
 }: {
   editor: Editor | null;
   readOnly: boolean;
   markdownMode?: boolean;
   onMarkdownModeChange?: () => void;
   onPickAttachment?: () => void;
+  onPickNoteLink?: () => void;
 }) => {
   const { t } = useTranslation();
   const editorReady = isToolbarEditorReady(editor);
@@ -258,6 +264,20 @@ export const EditorToolbar = ({
                 onClick={onPickAttachment}
               >
                 <Paperclip className="h-4 w-4" />
+              </EditorToolbarButton>
+              <ToolbarDivider />
+            </>
+          )}
+          {onPickNoteLink && (
+            <>
+              <EditorToolbarButton
+                title={t("editorToolbar.noteLink")}
+                wide
+                disabled={readOnly}
+                onClick={onPickNoteLink}
+              >
+                <Link2 className="h-4 w-4" />
+                <span className="text-xs font-medium">{t("editorToolbar.noteLink")}</span>
               </EditorToolbarButton>
               <ToolbarDivider />
             </>
@@ -385,7 +405,7 @@ export const EditorToolbar = ({
             disabled={disabled}
             onClick={() => run(insertMermaidDiagram)}
           >
-            <Workflow className="h-4 w-4" />
+            <ChartNoAxesCombined className="h-4 w-4" />
           </EditorToolbarButton>
           {showCodeLanguageSelector && (
             <Select

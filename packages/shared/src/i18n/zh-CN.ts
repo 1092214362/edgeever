@@ -667,6 +667,14 @@ export const zhCN = {
     switchToMarkdown: "切换到 Markdown 模式",
     switchToRichText: "切换到富文本模式",
     attachment: "上传附件",
+    noteLink: "引用笔记",
+  },
+  noteLinkPicker: {
+    title: "引用笔记",
+    searchPlaceholder: "搜索要引用的笔记",
+    empty: "没有找到可引用的笔记",
+    loading: "正在搜索笔记...",
+    close: "关闭引用笔记",
   },
   mobileNotebookPicker: {
     title: "切换笔记本",
