@@ -159,17 +159,19 @@ const menuitems = [
         }
       </ul>
 
-      <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
-        <LanguageSwitcher pathname={Astro.url.pathname} compact />
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <LanguageSwitcher pathname={Astro.url.pathname} compact />
+        </div>
         <a
           href="https://github.com/tianma-if/edgeever"
           target="_blank"
           rel="noopener"
-          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-full"
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg shrink-0 whitespace-nowrap"
           aria-label="GitHub"
         >
-          <Icon class="h-4 w-4 text-slate-800" name="bx:bxl-github" />
-          <span>{copy.openSource}</span>
+          <Icon class="h-4 w-4 text-slate-800 shrink-0" name="bx:bxl-github" />
+          <span class="whitespace-nowrap shrink-0">{copy.openSource}</span>
         </a>
       </div>
     </div>
