@@ -15,7 +15,6 @@ import {
   ChartNoAxesCombined,
   Minus,
   Paperclip,
-  Blocks,
   Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,13 +23,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { getActiveBlockValue } from "@/lib/app-helpers";
 import { CODE_BLOCK_LANGUAGES, getCodeBlockLanguageValue } from "@/lib/code-block";
 import { EditorTableMenu } from "@/components/EditorTableMenu";
-import { insertThemeBlock, type ThemeBlockKind } from "./ThemeBlock";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const EditorToolbarButton = ({
   active = false,
@@ -416,32 +408,6 @@ export const EditorToolbar = ({
           >
             <Minus className="h-4 w-4" />
           </EditorToolbarButton>
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-slate-700 transition hover:border-slate-200 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40"
-                    aria-label={t("editorToolbar.themeBlock")}
-                    title={t("editorToolbar.themeBlock")}
-                    disabled={disabled}
-                    onMouseDown={(event) => event.preventDefault()}
-                  >
-                    <Blocks className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>{t("editorToolbar.themeBlock")}</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end">
-              {(["intro", "key-point", "callout", "chapter"] as ThemeBlockKind[]).map((kind) => (
-                <DropdownMenuItem key={kind} onSelect={() => run((current) => insertThemeBlock(current, kind))}>
-                  {t(`editorToolbar.themeBlocks.${kind}`)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
           <EditorTableMenu editor={editor} readOnly={readOnly} />
             </>
           )}
