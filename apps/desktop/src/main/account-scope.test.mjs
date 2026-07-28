@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { join, sep } from "node:path";
 import { accountDataDirectory, accountScopeKey } from "./account-scope.mjs";
 
 describe("desktop account scopes", () => {
@@ -11,7 +12,7 @@ describe("desktop account scopes", () => {
 
   test("stores accounts below the managed user-data directory", () => {
     const directory = accountDataDirectory("/tmp/edgeever", "https://notes.example.com", "user-1");
-    expect(directory.startsWith("/tmp/edgeever/accounts/")).toBe(true);
-    expect(directory.endsWith("/user-1")).toBe(false);
+    expect(directory.startsWith(`${join("/tmp/edgeever", "accounts")}${sep}`)).toBe(true);
+    expect(directory.endsWith(`${sep}user-1`)).toBe(false);
   });
 });
