@@ -73,7 +73,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.EDGEEVER_APPLE_TEAM_ID }}
           WIN_CSC_LINK: ${{ secrets.EDGEEVER_WINDOWS_CERTIFICATE_BASE64 }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.EDGEEVER_WINDOWS_CERTIFICATE_PASSWORD }}
-        run: bun run --cwd apps/desktop dist -- --publish ${{ github.event_name == 'release' && 'always' || 'never' }}
+        run: bun scripts/run-desktop-builder.mjs --publish ${{ github.event_name == 'release' && 'always' || 'never' }}
 
       - name: Verify desktop installer
         run: bun scripts/verify-desktop-package.mjs
