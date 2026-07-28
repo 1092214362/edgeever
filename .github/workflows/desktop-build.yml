@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -26,13 +26,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
 
       - name: Cache Rust dependencies and sidecar builds
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -43,7 +43,7 @@ jobs:
             ${{ runner.os }}-rust-
 
       - name: Cache Electron downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Library/Caches/electron
@@ -151,7 +151,7 @@ jobs:
         run: bun scripts/verify-desktop-package.mjs
 
       - name: Upload desktop installer and metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: edgeever-desktop-macOS-arm64
           path: |

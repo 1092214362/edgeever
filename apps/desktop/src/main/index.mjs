@@ -11,7 +11,9 @@ import { accountDataDirectory, accountScopeKey } from "./account-scope.mjs";
 import { rotateDiagnosticLog } from "./diagnostic-log.mjs";
 import { restrictDirectory, restrictFile } from "./file-permissions.mjs";
 import { normalizeStagedResourceInput } from "./staged-resource.mjs";
-import { autoUpdater } from "electron-updater";
+import electronUpdater from "electron-updater";
+
+const { autoUpdater } = electronUpdater;
 
 const currentDirectory = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = join(currentDirectory, "../../..");

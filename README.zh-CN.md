@@ -159,12 +159,16 @@ apps/web          Vite + React 前端、PWA、离线草稿与同步队列
 apps/extension    Chrome/Edge Manifest V3 网页裁剪插件
 apps/api          Cloudflare Worker + Hono API、OpenAPI、MCP endpoint
 apps/mobile       Expo + React Native 移动端 App
+apps/desktop      Electron 桌面端壳层、preload bridge 与原生打包配置
 apps/site         Astro 官方网站，可独立部署
 packages/client   Web 与移动端共享的 API Client
 packages/shared   共享类型、Zod schema、TipTap / Markdown 内容转换
+crates/desktop-sidecar
+                   Rust sidecar，负责本地 SQLite、离线数据、备份与资源服务
 scripts           Wrangler 封装、密码 hash、CLI、MCP stdio bridge、Evernote ENEX 导入
 migrations        D1 数据库迁移
-docs              OpenAPI schema、迁移指南等文档
+docs              OpenAPI schema、架构、迁移与部署文档
+.github/workflows Web、移动端、桌面端打包、部署与 Release 的 CI
 wrangler.toml     Cloudflare Workers、Assets、D1、R2 配置
 ```
 

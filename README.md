@@ -157,12 +157,16 @@ apps/web          Vite + React frontend, PWA, offline drafts, and sync queue
 apps/extension    Chrome/Edge Manifest V3 web clipper
 apps/api          Cloudflare Worker + Hono API, OpenAPI, MCP endpoint
 apps/mobile       Expo + React Native mobile app
+apps/desktop      Electron desktop shell, preload bridge, and native packaging
 apps/site         Astro official website, deployable independently
 packages/client   Shared API client for web and mobile apps
 packages/shared   Shared types, Zod schemas, TipTap / Markdown conversion
+crates/desktop-sidecar
+                   Rust sidecar for local SQLite, offline data, backups, and resources
 scripts           Wrangler wrapper, password hash, CLI, MCP stdio bridge, Evernote ENEX import
 migrations        D1 database migrations
-docs              OpenAPI schema, migration guides, and deployment docs
+docs              OpenAPI schema, architecture, migration, and deployment docs
+.github/workflows CI for web, mobile, desktop packaging, deployment, and releases
 wrangler.toml     Cloudflare Workers, Assets, D1, R2 configuration
 ```
 
