@@ -55,7 +55,6 @@ export const enUS = {
     desktopScopeRetry: "Retry",
     passwordHashInvalid: "This account's password data is invalid; plaintext passwords are not supported. Follow the deployment guide and run auth:reset-password to reset it safely.",
     desktopInstanceTitle: "Connect an EdgeEver instance",
-    desktopInstanceDescription: "The desktop app needs your self-hosted instance URL. It is stored only in this computer's local storage.",
     desktopInstanceUrl: "Instance URL",
     desktopInstanceContinue: "Continue",
     desktopChangeInstance: "Change instance URL",

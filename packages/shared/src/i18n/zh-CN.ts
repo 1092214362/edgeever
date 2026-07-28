@@ -55,7 +55,6 @@ export const zhCN = {
     desktopScopeRetry: "重试",
     passwordHashInvalid: "该账号的密码数据格式无效，不能使用明文密码。请按照部署指南运行 auth:reset-password 安全重置。",
     desktopInstanceTitle: "连接 EdgeEver 实例",
-    desktopInstanceDescription: "桌面端需要知道你的自托管实例地址。地址只保存在本机浏览器存储中。",
     desktopInstanceUrl: "实例地址",
     desktopInstanceContinue: "继续",
     desktopChangeInstance: "更换实例地址",

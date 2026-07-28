@@ -57,7 +57,6 @@ const DesktopInstanceSetup = () => {
     <main className="flex h-[100dvh] items-center justify-center bg-gradient-to-tr from-emerald-50/70 via-emerald-50 to-emerald-100 px-4 py-8 text-slate-950">
       <section className="w-full max-w-[440px] rounded-2xl border border-emerald-500/15 bg-white/95 p-8 shadow-[0_20px_50px_rgb(var(--brand-green-rgb)/0.08)]">
         <h1 className="text-xl font-bold tracking-tight text-slate-900">{t("login.desktopInstanceTitle")}</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{t("login.desktopInstanceDescription")}</p>
         <form className="mt-6 space-y-4" onSubmit={save}>
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-slate-700">{t("login.desktopInstanceUrl")}</span>
