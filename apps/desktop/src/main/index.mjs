@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, session, net, protocol, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, session, net, protocol, shell, dialog } from "electron";
 import { existsSync } from "node:fs";
 import { appendFile, mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
@@ -41,6 +41,7 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 const windowStatePath = () => join(app.getPath("userData"), "window-state.json");
 const instanceUrlPath = () => join(app.getPath("userData"), "instance-url");
 const crashMarkerPath = () => join(app.getPath("userData"), "last-session-active");
+const installationMarkerPath = () => join(app.getPath("userData"), "installation-confirmed");
 const logPath = () => join(app.getPath("userData"), "logs", "desktop.log");
 const sidecarDataDirectory = (accountId = null) => {
   return accountId
@@ -424,6 +425,24 @@ const createWindow = async () => {
   buildApplicationMenu();
 };
 
+const confirmMacInstallation = async () => {
+  if (!app.isPackaged || process.platform !== "darwin" || existsSync(installationMarkerPath())) return;
+
+  const isChinese = app.getLocale().toLowerCase().startsWith("zh");
+  await dialog.showMessageBox(mainWindow, {
+    type: "info",
+    title: isChinese ? "EdgeEver 安装成功" : "EdgeEver installed successfully",
+    message: isChinese ? "EdgeEver 已成功安装并正在运行。" : "EdgeEver was installed successfully and is now running.",
+    detail: isChinese
+      ? "以后可以从“应用程序”文件夹或 Launchpad 启动 EdgeEver。当前窗口已经是安装完成后的应用，不是安装盘。"
+      : "You can launch EdgeEver later from the Applications folder or Launchpad. This window is the installed app, not the installer disk.",
+    buttons: [isChinese ? "知道了" : "Done"],
+  });
+  await writeFile(installationMarkerPath(), new Date().toISOString(), { mode: 0o600 });
+  await restrictFile(installationMarkerPath());
+  void writeDiagnostic("installation.confirmed");
+};
+
 app.whenReady().then(async () => {
   if (!hasSingleInstanceLock) {
     app.quit();
@@ -527,6 +546,7 @@ app.whenReady().then(async () => {
   });
 
   await createWindow();
+  await confirmMacInstallation();
   configureAutoUpdater();
   handleOpenTarget(process.argv);
   app.on("activate", () => {
