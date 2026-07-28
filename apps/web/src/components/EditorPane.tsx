@@ -108,6 +108,7 @@ import { fetchLatestRelease, isVersionOutdated } from "@/lib/version-check";
 import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
 import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
+import { isBrowserOffline } from "@/lib/network-status";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
@@ -125,7 +126,7 @@ const createLocalEditSession = (memo: MemoDetail): MemoEditSession => ({
 const requiresLocalEditSession = (memo: MemoDetail) =>
   isDesktopResourceRuntime() ||
   isLocalMemoId(memo.id) ||
-  (typeof navigator !== "undefined" && !navigator.onLine);
+  isBrowserOffline();
 
 const IconTooltip = ({ label, children }: { label: string; children: ReactNode }) => (
   <TooltipProvider delayDuration={0} skipDelayDuration={0}>
@@ -2414,7 +2415,7 @@ const RichEditorPane = ({
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !memo) {
     return (
       <div className="flex h-full min-w-0 flex-col bg-white">
         {selectionActionBar}

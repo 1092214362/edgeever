@@ -40,6 +40,7 @@ import {
 import { queueLocalAction, queueMemoCreate, queueMemoDelete, queueMemoRestore, queueMemoUpdate } from "@/lib/sync-queue";
 import type { MemoUpdateSyncPayload } from "@/lib/local-db";
 import { createDesktopRepository } from "@/lib/desktop-repository";
+import { isBrowserOffline } from "@/lib/network-status";
 
 export type EdgeEverRepository = {
   listNotebooks(): Promise<{ notebooks: Notebook[] }>;
@@ -73,8 +74,24 @@ export type EdgeEverRepository = {
   sync(): Promise<{ bootstrapped: boolean; changed: number }>;
 };
 
+const LOCAL_MEMO_READ_TIMEOUT_MS = 300;
+
+const getLocalMemoWithoutBlocking = (scope: string, memoId: string) =>
+  Promise.race([
+    getLocalMemo(scope, memoId),
+    new Promise<null>((resolve) => {
+      globalThis.setTimeout(() => resolve(null), LOCAL_MEMO_READ_TIMEOUT_MS);
+    }),
+  ]);
+
+const cacheMemoWithoutBlocking = (scope: string, memo: MemoDetail) => {
+  void putLocalMemo(scope, memo).catch(() => {
+    // Cache persistence must never prevent a remote detail from rendering.
+  });
+};
+
 export const createWebRepository = (scope: string): EdgeEverRepository => {
-  const isOffline = () => typeof navigator !== "undefined" && !navigator.onLine;
+  const isOffline = isBrowserOffline;
 
   return ({
   async listNotebooks() {
@@ -185,7 +202,7 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
     return { memo };
   },
   uploadMemoResource: async (memoId, file) => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (isOffline()) {
       const resource = await createLocalResource(scope, memoId, file);
       await queueLocalAction(scope, "resource.create", resource.id, {
         resourceId: resource.id,
@@ -282,12 +299,52 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
   },
 
   async getMemo(memoId, includeDeleted = false) {
-    const local = await getLocalMemo(scope, memoId);
-    if (local && (includeDeleted || !local.isDeleted)) return { memo: local };
+    const localPromise = getLocalMemoWithoutBlocking(scope, memoId);
 
-    if (isOffline()) throw new Error("Memo is not available in the local mirror");
-    const remote = await api.getMemo(memoId, { includeDeleted });
-    await putLocalMemo(scope, remote.memo);
+    if (isOffline()) {
+      const local = await localPromise;
+      const usableLocal = local && (includeDeleted || !local.isDeleted) ? local : null;
+      if (usableLocal) return { memo: usableLocal };
+      throw new Error("Memo is not available in the local mirror");
+    }
+
+    const remotePromise = api.getMemo(memoId, { includeDeleted });
+    const firstResult = await Promise.race([
+      localPromise.then((local) => ({ source: "local" as const, local })),
+      remotePromise.then(
+        (remote) => ({ source: "remote" as const, remote }),
+        (error: unknown) => ({ source: "remote-error" as const, error }),
+      ),
+    ]);
+
+    if (firstResult.source === "remote") {
+      cacheMemoWithoutBlocking(scope, firstResult.remote.memo);
+      return firstResult.remote;
+    }
+
+    const local = firstResult.source === "local" ? firstResult.local : await localPromise;
+    const usableLocal = local && (includeDeleted || !local.isDeleted) ? local : null;
+
+    if (usableLocal) {
+      if (firstResult.source === "local") {
+        void remotePromise
+          .then((remote) => {
+            cacheMemoWithoutBlocking(scope, remote.memo);
+            window.dispatchEvent(new CustomEvent("edgeever:memo-detail-refreshed", { detail: remote.memo }));
+          })
+          .catch(() => {
+            // The local detail remains usable when the background refresh fails.
+          });
+      }
+      return { memo: usableLocal };
+    }
+
+    if (firstResult.source === "remote-error") {
+      throw firstResult.error;
+    }
+
+    const remote = await remotePromise;
+    cacheMemoWithoutBlocking(scope, remote.memo);
     return remote;
   },
 

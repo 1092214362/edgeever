@@ -19,6 +19,7 @@ import {
   saveDesktopApiBaseUrl,
 } from "@/lib/api";
 import { EVERNOTE_MIGRATION_PATH } from "@/lib/routes";
+import { isBrowserOffline } from "@/lib/network-status";
 import type { AuthSession } from "@edgeever/shared";
 
 const EvernoteImportGuidePane = lazy(() =>
@@ -113,7 +114,7 @@ const AuthenticatedWorkspace = () => {
         return session;
       } catch (error) {
         const cached = getCachedDesktopSession();
-        if (cached?.authenticated && typeof navigator !== "undefined" && !navigator.onLine) return cached;
+        if (cached?.authenticated && isBrowserOffline()) return cached;
         throw error;
       }
     },

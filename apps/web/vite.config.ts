@@ -2,7 +2,7 @@ import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { resolveAppVersion, resolveDeploymentMethod, resolveDeploymentTrigger, resolveReleaseTimestamp } from "./build-metadata";
 
@@ -71,6 +71,35 @@ const deploymentMethod = resolveDeploymentMethod(
         : undefined)
 );
 const isDesktopBuild = process.env.EDGE_EVER_DESKTOP_BUILD === "1";
+const developmentServiceWorkerReset: Plugin = {
+  name: "edgeever-development-service-worker-reset",
+  apply: "serve",
+  configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      if (request.url?.split("?")[0] !== "/sw.js") {
+        next();
+        return;
+      }
+
+      response.statusCode = 200;
+      response.setHeader("Content-Type", "application/javascript; charset=utf-8");
+      response.setHeader("Cache-Control", "no-store");
+      response.end(`
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+    await self.clients.claim();
+    await self.registration.unregister();
+    const clients = await self.clients.matchAll({ type: "window" });
+    await Promise.all(clients.map((client) => client.navigate(client.url)));
+  })());
+});
+`);
+    });
+  },
+};
 
 export default defineConfig({
   root: "apps/web",
@@ -86,6 +115,7 @@ export default defineConfig({
     __EDGEEVER_DEPLOYMENT_METHOD__: JSON.stringify(deploymentMethod),
   },
   plugins: [
+    developmentServiceWorkerReset,
     react(),
     VitePWA({
       registerType: "autoUpdate",

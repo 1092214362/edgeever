@@ -37,6 +37,7 @@ import {
   type MobileEditorReturnPreview,
 } from "@/lib/mobile-editor";
 import { cn } from "@/lib/utils";
+import { isBrowserOffline, isBrowserOnline } from "@/lib/network-status";
 import { createExcerpt, docToText, getNotebookDescendantIds, type Notebook, type AuthUser, type MemoSummary, type MemoDetail, type Resource, type MemoTemplate as SavedMemoTemplate } from "@edgeever/shared";
 import { toggleMobileMemoSelection } from "@edgeever/shared/mobile-ui";
 import type {
@@ -727,7 +728,7 @@ export const WorkspaceApp = ({
   const [mobileEditorReturnPreview, setMobileEditorReturnPreview] = useState<MobileEditorReturnPreview | null>(() =>
     readMobileEditorReturnPreview(getMobileEditorReturnMemoId(location.search))
   );
-  const [isOnline, setIsOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const [isOnline, setIsOnline] = useState(isBrowserOnline);
   const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [isSyncingQueuedChanges, setIsSyncingQueuedChanges] = useState(false);
   const [isManualMemoSyncing, setIsManualMemoSyncing] = useState(false);
@@ -769,7 +770,7 @@ export const WorkspaceApp = ({
   };
 
   const runQueuedSync = useCallback(async () => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (isBrowserOffline()) {
       setIsOnline(false);
       return;
     }
@@ -873,7 +874,7 @@ export const WorkspaceApp = ({
   }, [isOnline, queryClient]);
 
   const refreshLatestMemos = useCallback(async () => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (isBrowserOffline()) {
       setIsOnline(false);
       setPullToRefreshDistance(0);
       return;
@@ -894,7 +895,7 @@ export const WorkspaceApp = ({
   }, [isOnline, localDataScope, queryClient]);
 
   const syncMemosManually = useCallback(async () => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (isBrowserOffline()) {
       setIsOnline(false);
       return;
     }
@@ -1363,7 +1364,7 @@ export const WorkspaceApp = ({
 
   useEffect(() => {
     const updateOnlineState = () => {
-      const online = navigator.onLine;
+      const online = isBrowserOnline();
       setIsOnline(online);
       if (online) {
         void runQueuedSync();
@@ -1394,7 +1395,7 @@ export const WorkspaceApp = ({
     }
 
     const refreshWorkspaceQueries = () => {
-      if (document.visibilityState === "hidden" || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      if (document.visibilityState === "hidden" || isBrowserOffline()) {
         return;
       }
 
@@ -1480,6 +1481,7 @@ export const WorkspaceApp = ({
   const previousMemoId = selectedMemoIndex > 0 ? memos[selectedMemoIndex - 1]?.id : null;
   const nextMemoId =
     selectedMemoIndex >= 0 && selectedMemoIndex < memos.length - 1 ? memos[selectedMemoIndex + 1]?.id : null;
+  const detailMemoId = selectedMemoId ?? memos[0]?.id ?? null;
 
   useEffect(() => {
     const selectedMemoInList = selectedMemoId ? memos.some((memo) => memo.id === selectedMemoId) : false;
@@ -1502,10 +1504,24 @@ export const WorkspaceApp = ({
   }, [createdMemoEditId, memos, selectedMemoId]);
 
   const memoQuery = useQuery({
-    queryKey: selectedMemoId ? memoDetailQueryKey(selectedMemoId, memoView) : ["memo", selectedMemoId, memoView],
-    queryFn: () => repository.getMemo(selectedMemoId as string, memoView === "trash"),
-    enabled: Boolean(selectedMemoId),
+    queryKey: detailMemoId ? memoDetailQueryKey(detailMemoId, memoView) : ["memo", detailMemoId, memoView],
+    queryFn: () => repository.getMemo(detailMemoId as string, memoView === "trash"),
+    enabled: Boolean(detailMemoId),
   });
+
+  useEffect(() => {
+    const handleMemoDetailRefreshed = (event: Event) => {
+      const memo = (event as CustomEvent<MemoDetail>).detail;
+      if (!memo?.id) return;
+
+      queryClient.setQueryData(memoDetailQueryKey(memo.id, "notebook"), { memo });
+      queryClient.setQueryData(memoDetailQueryKey(memo.id, "trash"), { memo });
+      updateMemoSummaryInLists(queryClient, memoToSummary(memo));
+    };
+
+    window.addEventListener("edgeever:memo-detail-refreshed", handleMemoDetailRefreshed);
+    return () => window.removeEventListener("edgeever:memo-detail-refreshed", handleMemoDetailRefreshed);
+  }, [queryClient]);
 
   const createNotebookMutation = useMutation({
     mutationFn: repository.createNotebook,
@@ -1895,8 +1911,8 @@ export const WorkspaceApp = ({
   });
 
   const selectedNotebook = notebooks.find((notebook) => notebook.id === selectedNotebookId) ?? null;
-  const cachedSelectedMemo = selectedMemoId
-    ? queryClient.getQueryData<{ memo: MemoDetail }>(memoDetailQueryKey(selectedMemoId, memoView))?.memo ?? null
+  const cachedSelectedMemo = detailMemoId
+    ? queryClient.getQueryData<{ memo: MemoDetail }>(memoDetailQueryKey(detailMemoId, memoView))?.memo ?? null
     : null;
   const selectedMemo = memoQuery.data?.memo ?? cachedSelectedMemo;
   const desktopFocusModeActive = Boolean(
