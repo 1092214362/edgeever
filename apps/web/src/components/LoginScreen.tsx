@@ -9,6 +9,7 @@ interface LoginScreenProps {
   configurationError: string | null;
   error: string | null;
   isSubmitting: boolean;
+  onChangeInstance?: () => void;
   onSubmit: (payload: { username: string; password: string }) => void;
 }
 
@@ -24,7 +25,7 @@ const getDefaultLoginCredentials = () => {
   return isDemoHost ? DEMO_LOGIN_CREDENTIALS : { username: "admin", password: "" };
 };
 
-export const LoginScreen = ({ configurationError, error, isSubmitting, onSubmit }: LoginScreenProps) => {
+export const LoginScreen = ({ configurationError, error, isSubmitting, onChangeInstance, onSubmit }: LoginScreenProps) => {
   const { t } = useTranslation();
   const [username, setUsername] = useState(() => getDefaultLoginCredentials().username);
   const [password, setPassword] = useState(() => getDefaultLoginCredentials().password);
@@ -57,8 +58,15 @@ export const LoginScreen = ({ configurationError, error, isSubmitting, onSubmit 
         </div>
 
         {configurationError ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-900">
-            {configurationError}
+          <div className="space-y-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-900">
+              {configurationError}
+            </div>
+            {onChangeInstance ? (
+              <Button className="h-10 w-full justify-center" type="button" variant="outline" onClick={onChangeInstance}>
+                {t("login.desktopChangeInstance")}
+              </Button>
+            ) : null}
           </div>
         ) : <form className="space-y-5" onSubmit={handleSubmit}>
           <label className="block">

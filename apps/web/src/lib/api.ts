@@ -121,6 +121,12 @@ export const saveDesktopApiBaseUrl = (value: string) => {
   return normalized;
 };
 
+export const resetDesktopApiBaseUrl = () => {
+  if (typeof window === "undefined" || !window.edgeeverDesktop?.isAvailable) return;
+  window.localStorage.removeItem(DESKTOP_API_BASE_URL_STORAGE_KEY);
+  void window.edgeeverDesktop.setApiBaseUrl("");
+};
+
 const createWebDeviceId = () => {
   const uuid = globalThis.crypto?.randomUUID?.();
   return uuid

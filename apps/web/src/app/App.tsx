@@ -16,6 +16,7 @@ import {
   getConfiguredDesktopApiBaseUrl,
   getCachedDesktopSession,
   isDesktopInstanceConfigurationRequired,
+  resetDesktopApiBaseUrl,
   saveDesktopApiBaseUrl,
 } from "@/lib/api";
 import { EVERNOTE_MIGRATION_PATH } from "@/lib/routes";
@@ -229,6 +230,10 @@ const AuthenticatedWorkspace = () => {
           configurationError={configurationError}
           error={loginError}
           isSubmitting={loginMutation.isPending}
+          onChangeInstance={desktopBridge?.isAvailable ? () => {
+            resetDesktopApiBaseUrl();
+            window.location.reload();
+          } : undefined}
           onSubmit={(payload) => loginMutation.mutate(payload)}
         />
       </Suspense>

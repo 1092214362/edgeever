@@ -58,6 +58,7 @@ export const enUS = {
     desktopInstanceDescription: "The desktop app needs your self-hosted instance URL. It is stored only in this computer's local storage.",
     desktopInstanceUrl: "Instance URL",
     desktopInstanceContinue: "Continue",
+    desktopChangeInstance: "Change instance URL",
     desktopInstanceUrlInvalid: "Enter a valid instance URL beginning with http:// or https://.",
   },
   nav: {

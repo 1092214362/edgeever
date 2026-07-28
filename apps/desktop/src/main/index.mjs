@@ -19,7 +19,12 @@ const { autoUpdater } = electronUpdater;
 const currentDirectory = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = join(currentDirectory, "../../..");
 const webUrl = process.env.EDGE_EVER_DESKTOP_WEB_URL || "http://127.0.0.1:5173";
-const apiBaseUrl = (process.env.EDGE_EVER_API_URL || (process.env.EDGE_EVER_DESKTOP_WEB_URL ? webUrl : "")).replace(/\/$/, "");
+// A packaged desktop app is self-hosted-client software: its instance URL must
+// come from the user-facing first-run setup, never from the build environment.
+// Environment URLs are intentionally limited to local development.
+const apiBaseUrl = (!app.isPackaged && (process.env.EDGE_EVER_API_URL || process.env.EDGE_EVER_DESKTOP_WEB_URL)
+  ? process.env.EDGE_EVER_API_URL || webUrl
+  : "").replace(/\/$/, "");
 let configuredApiBaseUrl = apiBaseUrl;
 const packagedSidecarName = process.platform === "win32" ? "edgeever-sidecar.exe" : "edgeever-sidecar";
 const sidecarPath = process.env.EDGE_EVER_SIDECAR_PATH || (app.isPackaged

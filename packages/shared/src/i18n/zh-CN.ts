@@ -58,6 +58,7 @@ export const zhCN = {
     desktopInstanceDescription: "桌面端需要知道你的自托管实例地址。地址只保存在本机浏览器存储中。",
     desktopInstanceUrl: "实例地址",
     desktopInstanceContinue: "继续",
+    desktopChangeInstance: "更换实例地址",
     desktopInstanceUrlInvalid: "请输入以 http:// 或 https:// 开头的有效实例地址。",
   },
   nav: {
