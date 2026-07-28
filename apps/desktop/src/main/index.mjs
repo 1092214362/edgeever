@@ -11,6 +11,7 @@ import { accountDataDirectory, accountScopeKey } from "./account-scope.mjs";
 import { rotateDiagnosticLog } from "./diagnostic-log.mjs";
 import { restrictDirectory, restrictFile } from "./file-permissions.mjs";
 import { normalizeStagedResourceInput } from "./staged-resource.mjs";
+import { isMountedInstallerPath } from "./installation-location.mjs";
 import electronUpdater from "electron-updater";
 
 const { autoUpdater } = electronUpdater;
@@ -444,6 +445,22 @@ const confirmMacInstallation = async () => {
 };
 
 app.whenReady().then(async () => {
+  if (app.isPackaged && isMountedInstallerPath(app.getAppPath())) {
+    const isChinese = app.getLocale().toLowerCase().startsWith("zh");
+    await dialog.showMessageBox({
+      type: "info",
+      title: isChinese ? "请先安装 EdgeEver" : "Install EdgeEver first",
+      message: isChinese
+        ? "请先将 EdgeEver 拖入“应用程序”文件夹。"
+        : "Please move EdgeEver to the Applications folder first.",
+      detail: isChinese
+        ? "请关闭此窗口，将 EdgeEver 拖入“应用程序”，然后推出安装盘，再从“应用程序”启动。这样可以避免 macOS 显示两个 EdgeEver。"
+        : "Close this window, drag EdgeEver to Applications, eject the installer disk, and then launch it from Applications. This prevents macOS from showing duplicate EdgeEver entries.",
+      buttons: [isChinese ? "知道了" : "Done"],
+    });
+    app.quit();
+    return;
+  }
   if (!hasSingleInstanceLock) {
     app.quit();
     return;
