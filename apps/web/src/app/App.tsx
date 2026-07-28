@@ -9,13 +9,13 @@ import { PwaIosPrompt } from "@/components/PwaIosPrompt";
 import { Button } from "@/components/ui/button";
 import {
   api,
-  ApiRequestError,
   cacheDesktopSession,
   clearCachedDesktopSession,
   getConfiguredDesktopApiBaseUrl,
   getCachedDesktopSession,
   saveDesktopApiBaseUrl,
 } from "@/lib/api";
+import { classifyLoginError, type LoginProblem } from "@/lib/login-error";
 import { EVERNOTE_MIGRATION_PATH } from "@/lib/routes";
 import { isBrowserOffline } from "@/lib/network-status";
 import type { AuthSession } from "@edgeever/shared";
@@ -104,11 +104,7 @@ const AuthenticatedWorkspace = () => {
   const loginMutation = useMutation({
     mutationFn: async (payload: { instanceUrl?: string; username: string; password: string }) => {
       if (desktopBridge?.isAvailable && payload.instanceUrl !== undefined) {
-        try {
-          await saveDesktopApiBaseUrl(payload.instanceUrl);
-        } catch {
-          throw new Error(t("login.desktopInstanceUrlInvalid"));
-        }
+        await saveDesktopApiBaseUrl(payload.instanceUrl);
       }
       return api.login({ username: payload.username, password: payload.password });
     },
@@ -157,22 +153,44 @@ const AuthenticatedWorkspace = () => {
   }
 
   const session = sessionQuery.data;
-  const configurationError =
-    sessionQuery.error instanceof ApiRequestError
-      ? sessionQuery.error.code === "auth_not_configured"
-        ? t("login.authNotConfigured")
-        : sessionQuery.error.code === "database_not_ready"
-          ? t("login.databaseNotReady")
-          : t("login.instanceUnavailable")
-      : sessionQuery.error
-        ? t("login.instanceUnavailable")
-        : null;
-  const loginError =
-    loginMutation.error instanceof ApiRequestError && loginMutation.error.code === "password_hash_invalid"
-      ? t("login.passwordHashInvalid")
-      : loginMutation.error instanceof Error
-        ? loginMutation.error.message
-        : null;
+  const problem = loginMutation.error
+    ? classifyLoginError(loginMutation.error, "login")
+    : sessionQuery.error
+      ? classifyLoginError(sessionQuery.error, "session")
+      : null;
+  const problemMessage = (value: LoginProblem) => {
+    switch (value.kind) {
+      case "invalidInstanceUrl":
+        return t("login.desktopInstanceUrlInvalid");
+      case "instanceUnreachable":
+        return t("login.instanceUnreachable");
+      case "instanceApiNotFound":
+        return t("login.instanceApiNotFound");
+      case "invalidCredentials":
+        return t("login.invalidCredentials");
+      case "sessionExpired":
+        return t("login.sessionExpired");
+      case "loginRateLimited":
+        return t("login.loginRateLimited");
+      case "authNotConfigured":
+        return t("login.authNotConfigured");
+      case "databaseNotReady":
+        return t("login.databaseNotReady");
+      case "passwordHashInvalid":
+        return t("login.passwordHashInvalid");
+      case "instanceServerError":
+        return t("login.instanceServerError", { status: value.status });
+      case "requestRejected":
+        return t("login.requestRejected", { status: value.status });
+      case "invalidResponse":
+        return t("login.invalidInstanceResponse");
+      case "unexpected":
+        return t("login.unexpectedError");
+    }
+  };
+  const loginError = problem
+    ? { message: problemMessage(problem), diagnosticCode: problem.diagnosticCode }
+    : null;
 
   if (desktopBridge?.isAvailable && !desktopScopeReady) {
     if (desktopScopeError) {
@@ -194,7 +212,6 @@ const AuthenticatedWorkspace = () => {
     return (
       <Suspense fallback={<AuthLoadingScreen />}>
         <LoginScreen
-          configurationError={configurationError}
           error={loginError}
           instanceUrl={desktopBridge?.isAvailable ? configuredDesktopApiBaseUrl : undefined}
           isSubmitting={loginMutation.isPending}

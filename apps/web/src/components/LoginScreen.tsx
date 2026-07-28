@@ -6,8 +6,7 @@ import { GitHubRepositoryLink } from "@/components/GitHubRepositoryLink";
 import { Input } from "@/components/ui/input";
 
 interface LoginScreenProps {
-  configurationError: string | null;
-  error: string | null;
+  error: { message: string; diagnosticCode: string } | null;
   instanceUrl?: string;
   isSubmitting: boolean;
   onSubmit: (payload: { instanceUrl?: string; username: string; password: string }) => void;
@@ -25,7 +24,7 @@ const getDefaultLoginCredentials = () => {
   return isDemoHost ? DEMO_LOGIN_CREDENTIALS : { username: "admin", password: "" };
 };
 
-export const LoginScreen = ({ configurationError, error, instanceUrl: initialInstanceUrl, isSubmitting, onSubmit }: LoginScreenProps) => {
+export const LoginScreen = ({ error, instanceUrl: initialInstanceUrl, isSubmitting, onSubmit }: LoginScreenProps) => {
   const { t } = useTranslation();
   const [instanceUrl, setInstanceUrl] = useState(initialInstanceUrl ?? "");
   const [username, setUsername] = useState(() => getDefaultLoginCredentials().username);
@@ -63,9 +62,15 @@ export const LoginScreen = ({ configurationError, error, instanceUrl: initialIns
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
-          {configurationError ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-900">
-              {configurationError}
+          {error ? (
+            <div
+              className="rounded-lg border border-rose-100 bg-rose-50/80 px-3.5 py-3 text-rose-800 transition duration-150 animate-shake"
+              role="alert"
+            >
+              <p className="text-sm font-medium leading-6">{error.message}</p>
+              <p className="mt-1 font-mono text-[11px] text-rose-500">
+                {t("login.diagnosticCode", { code: error.diagnosticCode })}
+              </p>
             </div>
           ) : null}
 
@@ -106,12 +111,6 @@ export const LoginScreen = ({ configurationError, error, instanceUrl: initialIns
               onChange={(event) => setPassword(event.target.value)}
             />
           </label>
-
-          {error && (
-            <div className="rounded-lg border border-rose-100 bg-rose-50/80 px-3.5 py-2.5 text-xs font-medium text-rose-700 transition duration-150 animate-shake">
-              {error}
-            </div>
-          )}
 
           <Button 
             className="w-full h-11 justify-center rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition-all duration-200 shadow-[0_8px_20px_-4px_rgb(var(--brand-green-rgb)/0.25)] hover:shadow-[0_12px_24px_-4px_rgb(var(--brand-green-rgb)/0.35)]"

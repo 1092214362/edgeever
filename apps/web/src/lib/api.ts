@@ -103,11 +103,23 @@ export const getConfiguredDesktopApiBaseUrl = () => {
   return bridgeUrl.replace(/\/$/, "");
 };
 
+export class DesktopInstanceUrlError extends Error {
+  constructor() {
+    super("Desktop instance URL must use http or https");
+    this.name = "DesktopInstanceUrlError";
+  }
+}
+
 export const saveDesktopApiBaseUrl = async (value: string) => {
   const normalized = value.trim().replace(/\/$/, "");
-  const parsed = new URL(normalized);
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new DesktopInstanceUrlError();
+  }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("Desktop instance URL must use http or https");
+    throw new DesktopInstanceUrlError();
   }
 
   if (getConfiguredDesktopApiBaseUrl() !== normalized) {
