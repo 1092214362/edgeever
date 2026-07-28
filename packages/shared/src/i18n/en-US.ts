@@ -575,7 +575,7 @@ export const enUS = {
     emptySelection: "Select or create a note",
     saveState: {
       saving: "Saving",
-      saved: "Saved",
+      saved: "Synced",
       queued: "Queued",
       conflict: "Conflict",
       error: "Save failed",

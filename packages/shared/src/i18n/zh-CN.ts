@@ -575,7 +575,7 @@ export const zhCN = {
     emptySelection: "选择或新建一条笔记",
     saveState: {
       saving: "保存中",
-      saved: "已保存",
+      saved: "已同步",
       queued: "待同步",
       conflict: "有冲突",
       error: "保存失败",

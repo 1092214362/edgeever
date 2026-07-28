@@ -664,7 +664,6 @@ const MobileNativeEditorPane = ({
         setHasUnsavedChanges(false);
         await localDb.drafts.delete(localMemo.id);
         setSaveState("queued");
-        window.setTimeout(() => setSaveState("idle"), 1200);
       } else {
         persistDraft();
         hasUnsavedChangesRef.current = true;
@@ -2231,7 +2230,9 @@ const RichEditorPane = ({
         setHasUnsavedChanges(false);
         await localDb.drafts.delete(savedMemo.id);
         setSaveState(queued ? "queued" : "saved");
-        window.setTimeout(() => setSaveState("idle"), 1400);
+        if (!queued) {
+          window.setTimeout(() => setSaveState("idle"), 1400);
+        }
         return;
       }
 
