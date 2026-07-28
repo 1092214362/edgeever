@@ -42,8 +42,8 @@ const {
   DESKTOP_API_BASE_URL_STORAGE_KEY,
   api,
   cacheDesktopSession,
+  getConfiguredDesktopApiBaseUrl,
   getCachedDesktopSession,
-  resetDesktopApiBaseUrl,
   saveDesktopApiBaseUrl,
 } = await import("./api.ts");
 
@@ -66,8 +66,9 @@ describe("desktop instance setup", () => {
     expect(storage.get(DESKTOP_API_BASE_URL_STORAGE_KEY)).toBe("https://notes.example.com");
   });
 
-  test("clears the saved instance and cached session before switching", async () => {
+  test("clears the cached session when the login form changes instances", async () => {
     calls.length = 0;
+    window.edgeeverDesktop.apiBaseUrl = "https://notes.example.com";
     storage.set(DESKTOP_API_BASE_URL_STORAGE_KEY, "https://notes.example.com");
     cacheDesktopSession({
       authRequired: true,
@@ -76,16 +77,21 @@ describe("desktop instance setup", () => {
       sessionToken: "old-instance-session",
       user: { id: "user-1", username: "admin", displayName: null, role: "owner" },
     });
+    calls.length = 0;
 
-    resetDesktopApiBaseUrl();
+    const saving = saveDesktopApiBaseUrl("https://other.example.com");
     await Promise.resolve();
 
-    expect(storage.has(DESKTOP_API_BASE_URL_STORAGE_KEY)).toBe(false);
     expect(getCachedDesktopSession()).toBeNull();
-    expect(calls.slice(-2)).toEqual([
-      ["bridge:start", ""],
-      ["bridge:complete", ""],
+    expect(calls).toEqual([
+      ["bridge:start", "https://other.example.com"],
     ]);
+
+    completeSave();
+    await expect(saving).resolves.toBe("https://other.example.com");
+    expect(storage.get(DESKTOP_API_BASE_URL_STORAGE_KEY)).toBe("https://other.example.com");
+    expect(getConfiguredDesktopApiBaseUrl()).toBe("https://other.example.com");
+    window.edgeeverDesktop.apiBaseUrl = "";
   });
 
   test("uses the desktop session token and stops network retries after a 401", async () => {

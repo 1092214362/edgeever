@@ -93,21 +93,15 @@ export const clearCachedDesktopSession = () => {
 
 export const getConfiguredDesktopApiBaseUrl = () => {
   if (typeof window === "undefined") return "";
-  const bridgeUrl = (window.edgeeverDesktop?.apiBaseUrl ?? "").trim();
-  if (bridgeUrl) return bridgeUrl.replace(/\/$/, "");
 
   try {
-    return (window.localStorage.getItem(DESKTOP_API_BASE_URL_STORAGE_KEY) ?? "").trim().replace(/\/$/, "");
-  } catch {
-    return "";
-  }
-};
+    const savedUrl = (window.localStorage.getItem(DESKTOP_API_BASE_URL_STORAGE_KEY) ?? "").trim();
+    if (savedUrl) return savedUrl.replace(/\/$/, "");
+  } catch {}
 
-export const isDesktopInstanceConfigurationRequired = () =>
-  typeof window !== "undefined" &&
-  Boolean(window.edgeeverDesktop?.isAvailable) &&
-  window.location.protocol === "file:" &&
-  !getConfiguredDesktopApiBaseUrl();
+  const bridgeUrl = (window.edgeeverDesktop?.apiBaseUrl ?? "").trim();
+  return bridgeUrl.replace(/\/$/, "");
+};
 
 export const saveDesktopApiBaseUrl = async (value: string) => {
   const normalized = value.trim().replace(/\/$/, "");
@@ -116,16 +110,12 @@ export const saveDesktopApiBaseUrl = async (value: string) => {
     throw new Error("Desktop instance URL must use http or https");
   }
 
+  if (getConfiguredDesktopApiBaseUrl() !== normalized) {
+    clearCachedDesktopSession();
+  }
   await window.edgeeverDesktop?.setApiBaseUrl(normalized);
   window.localStorage.setItem(DESKTOP_API_BASE_URL_STORAGE_KEY, normalized);
   return normalized;
-};
-
-export const resetDesktopApiBaseUrl = () => {
-  if (typeof window === "undefined" || !window.edgeeverDesktop?.isAvailable) return;
-  clearCachedDesktopSession();
-  window.localStorage.removeItem(DESKTOP_API_BASE_URL_STORAGE_KEY);
-  void window.edgeeverDesktop.setApiBaseUrl("");
 };
 
 const createWebDeviceId = () => {

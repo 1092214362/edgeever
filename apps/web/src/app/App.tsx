@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navigate, Route, Routes, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,6 @@ import { ReleaseUpdateNotice } from "@/components/ReleaseUpdateNotice";
 import { PwaInstallProvider } from "@/components/PwaInstallContext";
 import { PwaIosPrompt } from "@/components/PwaIosPrompt";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   api,
   ApiRequestError,
@@ -15,8 +14,6 @@ import {
   clearCachedDesktopSession,
   getConfiguredDesktopApiBaseUrl,
   getCachedDesktopSession,
-  isDesktopInstanceConfigurationRequired,
-  resetDesktopApiBaseUrl,
   saveDesktopApiBaseUrl,
 } from "@/lib/api";
 import { EVERNOTE_MIGRATION_PATH } from "@/lib/routes";
@@ -37,53 +34,6 @@ const AuthLoadingScreen = ({ title = "EdgeEver", detail }: { title?: string; det
     </div>
   </div>
 );
-
-const DesktopInstanceSetup = ({ onConfigured }: { onConfigured: () => void }) => {
-  const { t } = useTranslation();
-  const [value, setValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const save = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-    setIsSaving(true);
-    try {
-      await saveDesktopApiBaseUrl(value);
-      onConfigured();
-    } catch {
-      setError(t("login.desktopInstanceUrlInvalid"));
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <main className="flex h-[100dvh] items-center justify-center bg-gradient-to-tr from-emerald-50/70 via-emerald-50 to-emerald-100 px-4 py-8 text-slate-950">
-      <section className="w-full max-w-[440px] rounded-2xl border border-emerald-500/15 bg-white/95 p-8 shadow-[0_20px_50px_rgb(var(--brand-green-rgb)/0.08)]">
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">{t("login.desktopInstanceTitle")}</h1>
-        <form className="mt-6 space-y-4" onSubmit={save}>
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-slate-700">{t("login.desktopInstanceUrl")}</span>
-            <Input
-              autoFocus
-              className="h-11 rounded-lg bg-slate-50/50 px-3.5 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-emerald-500/10"
-              placeholder="https://notes.example.com"
-              value={value}
-              onChange={(event) => {
-                setValue(event.target.value);
-                setError(null);
-              }}
-            />
-          </label>
-          {error && <p className="text-sm text-rose-700">{error}</p>}
-          <Button className="h-11 w-full justify-center rounded-lg bg-emerald-500 font-semibold text-white transition hover:bg-emerald-600" disabled={isSaving} type="submit" variant="solid">
-            {t("login.desktopInstanceContinue")}
-          </Button>
-        </form>
-      </section>
-    </main>
-  );
-};
 
 const EvernoteMigrationRoute = () => {
   const navigate = useNavigate();
@@ -111,6 +61,7 @@ const AuthenticatedWorkspace = () => {
   const [desktopScopeReady, setDesktopScopeReady] = useState(() => !desktopBridge?.isAvailable);
   const [desktopScopeError, setDesktopScopeError] = useState<Error | null>(null);
   const [desktopScopeAttempt, setDesktopScopeAttempt] = useState(0);
+  const configuredDesktopApiBaseUrl = getConfiguredDesktopApiBaseUrl();
 
   const sessionQuery = useQuery({
     queryKey: ["auth", "session"],
@@ -125,6 +76,7 @@ const AuthenticatedWorkspace = () => {
         throw error;
       }
     },
+    enabled: !desktopBridge?.isAvailable || Boolean(configuredDesktopApiBaseUrl),
     retry: false,
   });
 
@@ -150,7 +102,16 @@ const AuthenticatedWorkspace = () => {
   }, [desktopAccountId, desktopBridge, desktopScopeAttempt, sessionQuery.isLoading]);
 
   const loginMutation = useMutation({
-    mutationFn: api.login,
+    mutationFn: async (payload: { instanceUrl?: string; username: string; password: string }) => {
+      if (desktopBridge?.isAvailable && payload.instanceUrl !== undefined) {
+        try {
+          await saveDesktopApiBaseUrl(payload.instanceUrl);
+        } catch {
+          throw new Error(t("login.desktopInstanceUrlInvalid"));
+        }
+      }
+      return api.login({ username: payload.username, password: payload.password });
+    },
     onSuccess: (session) => {
       cacheDesktopSession(session);
       queryClient.clear();
@@ -235,11 +196,8 @@ const AuthenticatedWorkspace = () => {
         <LoginScreen
           configurationError={configurationError}
           error={loginError}
+          instanceUrl={desktopBridge?.isAvailable ? configuredDesktopApiBaseUrl : undefined}
           isSubmitting={loginMutation.isPending}
-          onChangeInstance={desktopBridge?.isAvailable ? () => {
-            resetDesktopApiBaseUrl();
-            window.location.reload();
-          } : undefined}
           onSubmit={(payload) => loginMutation.mutate(payload)}
         />
       </Suspense>
@@ -263,19 +221,11 @@ const AuthenticatedWorkspace = () => {
 };
 
 export const App = () => {
-  const [desktopInstanceConfigured, setDesktopInstanceConfigured] = useState(
-    () => !isDesktopInstanceConfigurationRequired(),
-  );
-
   useEffect(() => {
     const bridge = window.edgeeverDesktop;
     const baseUrl = getConfiguredDesktopApiBaseUrl();
     if (bridge?.isAvailable && baseUrl) void bridge.setApiBaseUrl(baseUrl);
   }, []);
-
-  if (!desktopInstanceConfigured) {
-    return <DesktopInstanceSetup onConfigured={() => setDesktopInstanceConfigured(true)} />;
-  }
 
   return (
     <PwaInstallProvider>

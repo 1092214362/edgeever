@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 interface LoginScreenProps {
   configurationError: string | null;
   error: string | null;
+  instanceUrl?: string;
   isSubmitting: boolean;
-  onChangeInstance?: () => void;
-  onSubmit: (payload: { username: string; password: string }) => void;
+  onSubmit: (payload: { instanceUrl?: string; username: string; password: string }) => void;
 }
 
 const DEMO_LOGIN_CREDENTIALS = {
@@ -25,19 +25,24 @@ const getDefaultLoginCredentials = () => {
   return isDemoHost ? DEMO_LOGIN_CREDENTIALS : { username: "admin", password: "" };
 };
 
-export const LoginScreen = ({ configurationError, error, isSubmitting, onChangeInstance, onSubmit }: LoginScreenProps) => {
+export const LoginScreen = ({ configurationError, error, instanceUrl: initialInstanceUrl, isSubmitting, onSubmit }: LoginScreenProps) => {
   const { t } = useTranslation();
+  const [instanceUrl, setInstanceUrl] = useState(initialInstanceUrl ?? "");
   const [username, setUsername] = useState(() => getDefaultLoginCredentials().username);
   const [password, setPassword] = useState(() => getDefaultLoginCredentials().password);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!username.trim() || !password) {
+    if ((initialInstanceUrl !== undefined && !instanceUrl.trim()) || !username.trim() || !password) {
       return;
     }
 
-    onSubmit({ username: username.trim(), password });
+    onSubmit({
+      ...(initialInstanceUrl !== undefined ? { instanceUrl: instanceUrl.trim() } : {}),
+      username: username.trim(),
+      password,
+    });
   };
 
   return (
@@ -57,23 +62,34 @@ export const LoginScreen = ({ configurationError, error, isSubmitting, onChangeI
           </div>
         </div>
 
-        {configurationError ? (
-          <div className="space-y-3">
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          {configurationError ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-900">
               {configurationError}
             </div>
-            {onChangeInstance ? (
-              <Button className="h-10 w-full justify-center" type="button" variant="outline" onClick={onChangeInstance}>
-                {t("login.desktopChangeInstance")}
-              </Button>
-            ) : null}
-          </div>
-        ) : <form className="space-y-5" onSubmit={handleSubmit}>
+          ) : null}
+
+          {initialInstanceUrl !== undefined ? (
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-700">{t("login.desktopInstanceUrl")}</span>
+              <Input
+                autoComplete="url"
+                className="h-11 rounded-lg bg-slate-50/50 px-3.5 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-emerald-500/10"
+                placeholder="https://notes.example.com"
+                required
+                type="url"
+                value={instanceUrl}
+                onChange={(event) => setInstanceUrl(event.target.value)}
+              />
+            </label>
+          ) : null}
+
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-slate-700">{t("login.username")}</span>
             <Input
               autoComplete="username"
               className="h-11 rounded-lg bg-slate-50/50 px-3.5 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-emerald-500/10"
+              required
               value={username}
               onChange={(event) => setUsername(event.target.value)}
             />
@@ -84,6 +100,7 @@ export const LoginScreen = ({ configurationError, error, isSubmitting, onChangeI
             <Input
               autoComplete="current-password"
               className="h-11 rounded-lg bg-slate-50/50 px-3.5 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-emerald-500/10"
+              required
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -106,12 +123,7 @@ export const LoginScreen = ({ configurationError, error, isSubmitting, onChangeI
             <LockKeyhole className="h-4 w-4 mr-1" />
             {isSubmitting ? t("login.submitting") : t("login.submit")}
           </Button>
-          {onChangeInstance ? (
-            <Button className="h-10 w-full justify-center" type="button" variant="ghost" onClick={onChangeInstance}>
-              {t("login.desktopChangeInstance")}
-            </Button>
-          ) : null}
-        </form>}
+        </form>
       </section>
     </main>
   );
