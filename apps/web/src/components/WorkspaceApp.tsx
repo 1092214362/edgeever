@@ -60,9 +60,9 @@ import {
   MAX_MEMO_LIST_WIDTH_PX,
   DEFAULT_MEMO_LIST_WIDTH_PX,
   isTextEntryTarget,
-  readAutoSaveIntervalPreference,
+  readSyncIntervalPreference,
   readImageCompressionPreference,
-  writeAutoSaveIntervalPreference,
+  writeSyncIntervalPreference,
   writeImageCompressionPreference,
   readDesktopFocusModePreference,
   writeDesktopFocusModePreference,
@@ -83,6 +83,7 @@ import {
 import { useBrowserBackLayer } from "@/lib/app-hooks";
 import { updateMemoSummaryInLists, type MemoListQueryData } from "@/lib/memo-list-cache";
 import type { SyncQueueSummary } from "@/lib/sync-queue";
+import { SYNC_QUEUE_DEFERRED_EVENT } from "@/lib/sync-events";
 import {
   createLocalDataScope,
   putLocalMemo,
@@ -706,7 +707,7 @@ export const WorkspaceApp = ({
   });
   const [multiSelectKeyDown, setMultiSelectKeyDown] = useState(false);
   const [imageCompressionEnabled, setImageCompressionEnabled] = useState(readImageCompressionPreference);
-  const [autoSaveIntervalMs, setAutoSaveIntervalMs] = useState(readAutoSaveIntervalPreference);
+  const [syncIntervalMs, setSyncIntervalMs] = useState(readSyncIntervalPreference);
   const [desktopFocusMode, setDesktopFocusMode] = useState(readDesktopFocusModePreference);
   const [shortcutSettings, setShortcutSettings] = useState<ShortcutSettings>(readShortcutSettingsPreference);
   const [rightView, setRightView] = useState<"editor" | "settings" | "assets" | "tags" | "templates" | "evernote-migration">(() =>
@@ -737,6 +738,9 @@ export const WorkspaceApp = ({
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const isPullRefreshingRef = useRef(false);
   const skipNextHomeRouteSyncRef = useRef(false);
+  const deferredSyncTimerRef = useRef<number | null>(null);
+  const deferredSyncPendingRef = useRef(false);
+  const runQueuedSyncRef = useRef<() => Promise<void>>(async () => undefined);
 
   const [mobileListActionsOpen, setMobileListActionsOpen] = useState(false);
   const [mobileMoveOpen, setMobileMoveOpen] = useState(false);
@@ -1167,10 +1171,10 @@ export const WorkspaceApp = ({
   }, [imageCompressionEnabled]);
 
   useEffect(() => {
-    writeAutoSaveIntervalPreference(
-      autoSaveIntervalMs === null ? "1m" : autoSaveIntervalMs === 300_000 ? "5m" : autoSaveIntervalMs === 900_000 ? "15m" : autoSaveIntervalMs === 1_800_000 ? "30m" : autoSaveIntervalMs === 3_600_000 ? "1h" : autoSaveIntervalMs === 7_200_000 ? "2h" : "1m"
+    writeSyncIntervalPreference(
+      syncIntervalMs === null ? "off" : syncIntervalMs === 300_000 ? "5m" : syncIntervalMs === 900_000 ? "15m" : syncIntervalMs === 1_800_000 ? "30m" : syncIntervalMs === 3_600_000 ? "1h" : syncIntervalMs === 7_200_000 ? "2h" : "1m"
     );
-  }, [autoSaveIntervalMs]);
+  }, [syncIntervalMs]);
 
   useEffect(() => {
     writeShortcutSettingsPreference(shortcutSettings);
@@ -1385,12 +1389,51 @@ export const WorkspaceApp = ({
   }, [runQueuedSync]);
 
   useEffect(() => {
+    runQueuedSyncRef.current = runQueuedSync;
+  }, [runQueuedSync]);
+
+  useEffect(() => {
     const handleQueueChanged = () => {
+      deferredSyncPendingRef.current = false;
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+        deferredSyncTimerRef.current = null;
+      }
       void runQueuedSync();
     };
     window.addEventListener("edgeever:sync-queue-changed", handleQueueChanged);
     return () => window.removeEventListener("edgeever:sync-queue-changed", handleQueueChanged);
   }, [runQueuedSync]);
+
+  useEffect(() => {
+    const scheduleDeferredSync = () => {
+      deferredSyncPendingRef.current = true;
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+        deferredSyncTimerRef.current = null;
+      }
+      if (syncIntervalMs === null) {
+        return;
+      }
+      deferredSyncTimerRef.current = window.setTimeout(() => {
+        deferredSyncTimerRef.current = null;
+        deferredSyncPendingRef.current = false;
+        void runQueuedSyncRef.current();
+      }, syncIntervalMs);
+    };
+
+    window.addEventListener(SYNC_QUEUE_DEFERRED_EVENT, scheduleDeferredSync);
+    if (deferredSyncPendingRef.current) {
+      scheduleDeferredSync();
+    }
+    return () => {
+      window.removeEventListener(SYNC_QUEUE_DEFERRED_EVENT, scheduleDeferredSync);
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+        deferredSyncTimerRef.current = null;
+      }
+    };
+  }, [syncIntervalMs]);
 
   useEffect(() => {
     if (!isStandaloneRuntime) {
@@ -2979,8 +3022,8 @@ export const WorkspaceApp = ({
                     onOpenTemplates={handleOpenTemplates}
                     imageCompressionEnabled={imageCompressionEnabled}
                     onImageCompressionChange={setImageCompressionEnabled}
-                    autoSaveIntervalMs={autoSaveIntervalMs}
-                    onAutoSaveIntervalChange={setAutoSaveIntervalMs}
+                    syncIntervalMs={syncIntervalMs}
+                    onSyncIntervalChange={setSyncIntervalMs}
                     shortcutSettings={shortcutSettings}
                     onShortcutSettingsChange={setShortcutSettings}
                     onLogout={onLogout}
@@ -3032,7 +3075,6 @@ export const WorkspaceApp = ({
                       setActivePane("editor");
                     }}
                     imageCompressionEnabled={imageCompressionEnabled}
-                    autoSaveIntervalMs={autoSaveIntervalMs}
                     selectionActionBar={memoSelectionActionBar}
                     hasNextMemo={Boolean(nextMemoId)}
                     hasPreviousMemo={Boolean(previousMemoId)}

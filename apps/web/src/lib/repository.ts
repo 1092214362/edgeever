@@ -41,6 +41,7 @@ import { queueLocalAction, queueMemoCreate, queueMemoDelete, queueMemoRestore, q
 import type { MemoUpdateSyncPayload } from "@/lib/local-db";
 import { createDesktopRepository } from "@/lib/desktop-repository";
 import { isBrowserOffline } from "@/lib/network-status";
+import { notifySyncQueueDeferred } from "@/lib/sync-events";
 
 export type EdgeEverRepository = {
   listNotebooks(): Promise<{ notebooks: Notebook[] }>;
@@ -361,7 +362,7 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
     const payload: MemoUpdateSyncPayload = { ...input, memoId: memo.id };
     const updated = await putLocalMemoUpdate(scope, memo, payload);
     await queueMemoUpdate(payload, scope);
-    window.dispatchEvent(new CustomEvent("edgeever:sync-queue-changed"));
+    notifySyncQueueDeferred();
     return { memo: updated, queued: true };
   },
 

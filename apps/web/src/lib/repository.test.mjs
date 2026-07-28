@@ -7,9 +7,10 @@ globalThis.IDBKeyRange = IDBKeyRange;
 const { localDb } = await import("./local-db.ts");
 const { api } = await import("./api.ts");
 const { createWebRepository } = await import("./repository.ts");
+const { createLocalMemo } = await import("./local-mirror.ts");
 
 afterEach(async () => {
-  await localDb.transaction("rw", [localDb.templates, localDb.notebooks, localDb.memos, localDb.resources, localDb.revisions, localDb.syncMeta], async () => {
+  await localDb.transaction("rw", [localDb.templates, localDb.notebooks, localDb.memos, localDb.resources, localDb.revisions, localDb.syncMeta, localDb.syncQueue], async () => {
     await Promise.all([
       localDb.templates.clear(),
       localDb.notebooks.clear(),
@@ -17,11 +18,52 @@ afterEach(async () => {
       localDb.resources.clear(),
       localDb.revisions.clear(),
       localDb.syncMeta.clear(),
+      localDb.syncQueue.clear(),
     ]);
   });
 });
 
 describe("web repository offline boundaries", () => {
+  test("saves memo edits locally while deferring remote synchronization", async () => {
+    const previousWindow = globalThis.window;
+    const eventTarget = new EventTarget();
+    globalThis.window = eventTarget;
+    let immediateEvents = 0;
+    let deferredEvents = 0;
+    eventTarget.addEventListener("edgeever:sync-queue-changed", () => {
+      immediateEvents += 1;
+    });
+    eventTarget.addEventListener("edgeever:sync-queue-deferred", () => {
+      deferredEvents += 1;
+    });
+
+    try {
+      const scope = "https://demo.edgeever.org|user-1";
+      const memo = await createLocalMemo(scope, { notebookId: "nb-1" });
+      const repository = createWebRepository(scope);
+      const contentJson = {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Saved locally" }] }],
+      };
+
+      const result = await repository.updateMemo(memo, {
+        expectedRevision: memo.revision,
+        expectedContentHash: memo.contentHash,
+        editSessionId: "local-edit",
+        title: "",
+        contentJson,
+        tags: [],
+      });
+
+      expect(result.memo.contentText).toBe("Saved locally");
+      expect(await localDb.syncQueue.get(`memo.update:${memo.id}`)).toBeDefined();
+      expect(deferredEvents).toBe(1);
+      expect(immediateEvents).toBe(0);
+    } finally {
+      globalThis.window = previousWindow;
+    }
+  });
+
   test("uses the remote detail when the local database is blocked and navigator falsely reports offline", async () => {
     const previousOnline = globalThis.navigator?.onLine;
     if (globalThis.navigator) Object.defineProperty(globalThis.navigator, "onLine", { configurable: true, value: false });

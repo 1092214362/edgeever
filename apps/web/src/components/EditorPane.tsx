@@ -98,6 +98,7 @@ import { getMemoUpdateQueueId, isMemoUpdateAlreadyApplied, queueMemoUpdate, shou
 import { isLocalMemoId } from "@/lib/local-mirror";
 import type { EdgeEverRepository } from "@/lib/repository";
 import {
+  EDITOR_LOCAL_SAVE_DELAY_MS,
   getEditableMemoTitle,
   getNotebookMoveOptions,
 } from "@/lib/app-helpers";
@@ -525,7 +526,6 @@ type EditorPaneProps = {
   isLoading: boolean;
   contentSearchQuery?: string;
   imageCompressionEnabled: boolean;
-  autoSaveIntervalMs: number | null;
   hasNextMemo: boolean;
   hasPreviousMemo: boolean;
   onBackToList: () => void;
@@ -552,7 +552,6 @@ const MobileNativeEditorPane = ({
   repository,
   notebooks,
   isTrashView,
-  autoSaveIntervalMs,
   onBackToList,
   onSaved,
   onMobileDefaultEditConsumed,
@@ -728,15 +727,13 @@ const MobileNativeEditorPane = ({
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    if (autoSaveIntervalMs !== null) {
-      saveTimerRef.current = window.setTimeout(() => {
-        saveTimerRef.current = null;
-        if (hasUnsavedChangesRef.current) {
-          void saveCurrent();
-        }
-      }, autoSaveIntervalMs);
-    }
-  }, [autoSaveIntervalMs, persistDraft, saveCurrent]);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      if (hasUnsavedChangesRef.current) {
+        void saveCurrent();
+      }
+    }, EDITOR_LOCAL_SAVE_DELAY_MS);
+  }, [persistDraft, saveCurrent]);
 
   useEffect(() => {
     document.documentElement.classList.add("edgeever-mobile-native-editing");
@@ -1145,7 +1142,6 @@ const RichEditorPane = ({
   isLoading,
   contentSearchQuery = "",
   imageCompressionEnabled,
-  autoSaveIntervalMs,
   hasNextMemo,
   hasPreviousMemo,
   onBackToList,
@@ -2313,23 +2309,21 @@ const RichEditorPane = ({
     if (mobileSaveTimerRef.current !== null) {
       window.clearTimeout(mobileSaveTimerRef.current);
     }
-    if (autoSaveIntervalMs !== null) {
-      mobileSaveTimerRef.current = window.setTimeout(() => {
-        mobileSaveTimerRef.current = null;
-        if (
-          !memoRef.current ||
-          memoRef.current.isDeleted ||
-          !hasUnsavedChangesRef.current ||
-          saveMutation.isPending ||
-          saveState === "conflict"
-        ) {
-          return;
-        }
+    mobileSaveTimerRef.current = window.setTimeout(() => {
+      mobileSaveTimerRef.current = null;
+      if (
+        !memoRef.current ||
+        memoRef.current.isDeleted ||
+        !hasUnsavedChangesRef.current ||
+        saveMutation.isPending ||
+        saveState === "conflict"
+      ) {
+        return;
+      }
 
-        saveMutation.mutate();
-      }, autoSaveIntervalMs);
-    }
-  }, [autoSaveIntervalMs, getMobilePlainTextValue, persistCurrentDraft, saveMutation, saveState, tagsText, title]);
+      saveMutation.mutate();
+    }, EDITOR_LOCAL_SAVE_DELAY_MS);
+  }, [getMobilePlainTextValue, persistCurrentDraft, saveMutation, saveState, tagsText, title]);
 
   useEffect(() => {
     markMobilePlainTextDirtyRef.current = markMobilePlainTextDirty;
@@ -2396,16 +2390,12 @@ const RichEditorPane = ({
       return;
     }
 
-    if (autoSaveIntervalMs === null) {
-      return;
-    }
-
     const timer = window.setTimeout(() => {
       saveMutation.mutate();
-    }, autoSaveIntervalMs);
+    }, EDITOR_LOCAL_SAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [autoSaveIntervalMs, dirtyVersion, editor, hasUnsavedChanges, memo, saveMutation, saveState, useMobilePlainTextEditor]);
+  }, [dirtyVersion, editor, hasUnsavedChanges, memo, saveMutation, saveState, useMobilePlainTextEditor]);
 
   if (isSelectionMode) {
     return (
