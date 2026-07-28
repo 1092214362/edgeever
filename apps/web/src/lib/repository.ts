@@ -301,13 +301,6 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
   async getMemo(memoId, includeDeleted = false) {
     const localPromise = getLocalMemoWithoutBlocking(scope, memoId);
 
-    if (isOffline()) {
-      const local = await localPromise;
-      const usableLocal = local && (includeDeleted || !local.isDeleted) ? local : null;
-      if (usableLocal) return { memo: usableLocal };
-      throw new Error("Memo is not available in the local mirror");
-    }
-
     const remotePromise = api.getMemo(memoId, { includeDeleted });
     const firstResult = await Promise.race([
       localPromise.then((local) => ({ source: "local" as const, local })),

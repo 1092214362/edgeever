@@ -37,7 +37,7 @@ import {
   type MobileEditorReturnPreview,
 } from "@/lib/mobile-editor";
 import { cn } from "@/lib/utils";
-import { isBrowserOffline, isBrowserOnline } from "@/lib/network-status";
+import { isBrowserOffline, isBrowserOnline, verifyBrowserConnectivity } from "@/lib/network-status";
 import { createExcerpt, docToText, getNotebookDescendantIds, type Notebook, type AuthUser, type MemoSummary, type MemoDetail, type Resource, type MemoTemplate as SavedMemoTemplate } from "@edgeever/shared";
 import { toggleMobileMemoSelection } from "@edgeever/shared/mobile-ui";
 import type {
@@ -1363,8 +1363,10 @@ export const WorkspaceApp = ({
   }, [isStandaloneRuntime, mobilePullToRefreshActive, refreshLatestMemos]);
 
   useEffect(() => {
-    const updateOnlineState = () => {
-      const online = isBrowserOnline();
+    let active = true;
+    const updateOnlineState = async () => {
+      const online = await verifyBrowserConnectivity();
+      if (!active) return;
       setIsOnline(online);
       if (online) {
         void runQueuedSync();
@@ -1373,9 +1375,10 @@ export const WorkspaceApp = ({
 
     window.addEventListener("online", updateOnlineState);
     window.addEventListener("offline", updateOnlineState);
-    updateOnlineState();
+    void updateOnlineState();
 
     return () => {
+      active = false;
       window.removeEventListener("online", updateOnlineState);
       window.removeEventListener("offline", updateOnlineState);
     };

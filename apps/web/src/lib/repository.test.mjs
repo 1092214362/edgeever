@@ -22,9 +22,9 @@ afterEach(async () => {
 });
 
 describe("web repository offline boundaries", () => {
-  test("falls back to the remote detail when the local database read is blocked", async () => {
+  test("uses the remote detail when the local database is blocked and navigator falsely reports offline", async () => {
     const previousOnline = globalThis.navigator?.onLine;
-    if (globalThis.navigator) Object.defineProperty(globalThis.navigator, "onLine", { configurable: true, value: true });
+    if (globalThis.navigator) Object.defineProperty(globalThis.navigator, "onLine", { configurable: true, value: false });
     const scope = "https://demo.edgeever.org|user-1";
     const remoteMemo = {
       id: "memo-blocked",
