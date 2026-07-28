@@ -68,7 +68,7 @@ jobs:
 
           printf '%s' "$MAC_CERTIFICATE_DER_BASE64" | base64 -D > "$certificate_path"
           printf '%s' "$MAC_PRIVATE_KEY_BASE64" | base64 -D > "$private_key_path"
-          openssl rsa -in "$private_key_path" -traditional -out "$traditional_key_path"
+          openssl rsa -in "$private_key_path" -out "$traditional_key_path"
 
           security create-keychain -p "$keychain_password" "$keychain_path"
           security set-keychain-settings -lut 21600 "$keychain_path"
