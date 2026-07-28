@@ -17,6 +17,9 @@ const git = (...args) =>
 const changedFiles = git("diff", "--name-only", `${baseRef}...${headRef}`)
   .split("\n")
   .filter(Boolean);
+const runtimeChangedFiles = changedFiles.filter(
+  (file) => !file.endsWith(".md"),
+);
 
 const packageJsonChangedBeyondVersion = () => {
   if (!changedFiles.includes("package.json")) return false;
@@ -46,7 +49,7 @@ const relevantFiles =
         "scripts/verify-desktop-package.mjs",
       ]);
 
-const relevantChanges = changedFiles.filter(
+const relevantChanges = runtimeChangedFiles.filter(
   (file) =>
     relevantPrefixes.some((prefix) => file.startsWith(prefix)) ||
     relevantFiles.has(file) ||
