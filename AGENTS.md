@@ -11,9 +11,10 @@
 ## GitHub Release 约束与流程
 
 1. **版本号与基线**：使用 `vX.Y.Z` 格式（非 Draft/Prerelease）。递增根目录 `package.json`；若含移动端修改，同步更新 `apps/mobile/app.json` 的 `expo.version` 并递增 `android.versionCode`。上一个实际 Release 为审计基线。
-2. **验证命令**：必须通过 `bun run typecheck`、`bun run typecheck:mobile` 和 `bun run build:web`。
-3. **APK 构建与签名**：仅当变更影响移动端运行时代码、共享依赖、原生配置或构建工具时，执行 `bun run build:android:apk:local` 构建生产签名 APK，命名为 `edgeever-android-vX.Y.Z-arm64-v8a.apk`（签名配置必须位于仓库外 `~/.config/edgeever/android/signing.env`）。无移动端变更时复用最近兼容 APK。
-4. **Release 说明结构**：使用中英文双语格式（正文禁止包含字面量 `\n`）。功能/修复关联对应 Issue 并标记 Label，发布后回链并关闭 Issue。正文结构：
+2. **跨平台 Release 资产**：每个正式 Release 页面必须同时包含当前版本的 macOS arm64 DMG 和 Android arm64 APK；APK 命名为 `edgeever-android-vX.Y.Z-arm64-v8a.apk`。
+3. **验证命令**：必须通过 `bun run typecheck`、`bun run typecheck:mobile` 和 `bun run build:web`。
+4. **APK 构建与签名**：仅当变更影响移动端运行时代码、共享依赖、原生配置或构建工具时，执行 `bun run build:android:apk:local` 构建生产签名 APK，命名为 `edgeever-android-vX.Y.Z-arm64-v8a.apk`（签名配置必须位于仓库外 `~/.config/edgeever/android/signing.env`）。无移动端变更时复用最近兼容 APK。
+5. **Release 说明结构**：使用中英文双语格式（正文禁止包含字面量 `\n`）。功能/修复关联对应 Issue 并标记 Label，发布后回链并关闭 Issue。正文结构：
 
 ```md
 ## Key Changes
