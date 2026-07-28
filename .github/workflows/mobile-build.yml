@@ -73,7 +73,7 @@ jobs:
           chmod 600 "$RUNNER_TEMP/edgeever-upload.p12"
 
       - name: Build signed release AAB
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag == ''
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/edgeever-upload.p12
@@ -92,7 +92,7 @@ jobs:
         run: bun run build:android:apk
 
       - name: Verify release AAB signature
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag == ''
         run: |
           "$JAVA_HOME/bin/jarsigner" -verify app/build/outputs/bundle/release/*.aab
         working-directory: apps/mobile/android
@@ -104,7 +104,7 @@ jobs:
         working-directory: apps/mobile/android
 
       - name: Verify R8 deobfuscation mapping
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag == ''
         run: test -s app/build/outputs/mapping/release/mapping.txt
         working-directory: apps/mobile/android
 
@@ -118,7 +118,7 @@ jobs:
           compression-level: 0
 
       - name: Upload release AAB
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag == ''
         uses: actions/upload-artifact@v7
         with:
           name: edgeever-android-release-aab
@@ -137,7 +137,7 @@ jobs:
           gh release upload "$RELEASE_TAG" "$release_asset" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Upload R8 deobfuscation mapping
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag == ''
         uses: actions/upload-artifact@v7
         with:
           name: edgeever-android-release-mapping
