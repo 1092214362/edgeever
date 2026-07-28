@@ -16,10 +16,8 @@ on:
       - "apps/mobile/**"
       - "packages/client/**"
       - "packages/shared/**"
-      - "package.json"
       - "bun.lock"
       - "scripts/build-android-local.sh"
-      - ".github/workflows/mobile-build.yml"
 
 permissions:
   contents: write
@@ -29,8 +27,85 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  release-plan:
+    if: github.repository == 'tianma-if/edgeever' && github.event_name == 'release'
+    name: Plan Android release asset
+    runs-on: ubuntu-latest
+    outputs:
+      previous_tag: ${{ steps.plan.outputs.previous_tag }}
+      rebuild: ${{ steps.plan.outputs.rebuild }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Compare with previous formal release
+        id: plan
+        env:
+          CURRENT_TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -t release_tags < <(
+            gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+              --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name'
+          )
+          previous_tag=""
+          for release_tag in "${release_tags[@]}"; do
+            if [[ "$release_tag" != "$CURRENT_TAG" ]]; then
+              previous_tag="$release_tag"
+              break
+            fi
+          done
+          test -n "$previous_tag"
+          git fetch origin "refs/tags/${previous_tag}:refs/tags/${previous_tag}"
+          echo "previous_tag=$previous_tag" >> "$GITHUB_OUTPUT"
+          node scripts/plan-native-release.mjs mobile "$previous_tag" "$CURRENT_TAG" >> "$GITHUB_OUTPUT"
+
+  reuse-release-apk:
+    needs: release-plan
+    if: >-
+      ${{
+        github.repository == 'tianma-if/edgeever' &&
+        github.event_name == 'release' &&
+        needs.release-plan.result == 'success' &&
+        needs.release-plan.outputs.rebuild == 'false'
+      }}
+    name: Reuse Android release APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy latest compatible APK without renaming
+        env:
+          CURRENT_TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ needs.release-plan.outputs.previous_tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/native-assets"
+          gh release download "$PREVIOUS_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'edgeever-android-v*-arm64-v8a.apk' \
+            --dir "$RUNNER_TEMP/native-assets"
+          test "$(find "$RUNNER_TEMP/native-assets" -type f -name 'edgeever-android-v*-arm64-v8a.apk' | wc -l | tr -d ' ')" = "1"
+          gh release upload "$CURRENT_TAG" "$RUNNER_TEMP/native-assets/"* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
   android:
-    if: github.repository == 'tianma-if/edgeever' && (github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.ref == 'refs/heads/main')
+    needs: release-plan
+    if: >-
+      ${{
+        always() &&
+        github.repository == 'tianma-if/edgeever' &&
+        (
+          github.event_name == 'workflow_dispatch' ||
+          github.ref == 'refs/heads/main' ||
+          (
+            github.event_name == 'release' &&
+            needs.release-plan.result == 'success' &&
+            needs.release-plan.outputs.rebuild == 'true'
+          )
+        )
+      }}
     name: Build Android packages
     runs-on: [self-hosted, macOS, ARM64, edgeever-mobile]
     timeout-minutes: 45

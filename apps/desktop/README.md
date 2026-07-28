@@ -39,8 +39,12 @@ When these secrets are absent, CI produces unsigned verification artifacts.
 Private signing material is never committed to the repository.
 
 The workflow keeps `workflow_dispatch` builds as non-publishing verification
-runs. When a GitHub Release is published, each platform job publishes its
-installer and update metadata to that release through electron-builder.
+runs. When a GitHub Release is published, the workflow first compares it with
+the previous formal Release. It rebuilds and publishes the installer through
+electron-builder only when Electron, the Rust sidecar, native dependencies,
+packaging configuration, or desktop build tooling changed. Web-only Releases
+reuse the previous verified DMG, blockmap, and update metadata without renaming
+them, so the macOS runner and signing pipeline are not scheduled unnecessarily.
 
 The desktop Settings page exposes the sidecar's local backup list. Restoring a
 backup creates an additional protective backup first, restores the SQLite
