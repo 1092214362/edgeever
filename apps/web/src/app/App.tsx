@@ -27,9 +27,12 @@ const EvernoteImportGuidePane = lazy(() =>
 const LoginScreen = lazy(() => import("@/components/LoginScreen").then((module) => ({ default: module.LoginScreen })));
 const WorkspaceApp = lazy(() => import("@/components/WorkspaceApp").then((module) => ({ default: module.WorkspaceApp })));
 
-const AuthLoadingScreen = () => (
-  <div className="flex h-[100dvh] items-center justify-center bg-slate-50 text-sm font-medium text-slate-600">
-    EdgeEver
+const AuthLoadingScreen = ({ title = "EdgeEver", detail }: { title?: string; detail?: string }) => (
+  <div className="flex h-[100dvh] items-center justify-center bg-slate-50 px-6 text-center text-slate-700">
+    <div role="status" aria-live="polite">
+      <div className="text-sm font-semibold">{title}</div>
+      {detail && <div className="mt-2 text-xs text-slate-500">{detail}</div>}
+    </div>
   </div>
 );
 
@@ -179,7 +182,9 @@ const AuthenticatedWorkspace = () => {
   }, [queryClient]);
 
   if (sessionQuery.isLoading) {
-    return <AuthLoadingScreen />;
+    return desktopBridge?.isAvailable
+      ? <AuthLoadingScreen title={t("login.desktopStarting")} detail={t("login.desktopStartingDescription")} />
+      : <AuthLoadingScreen />;
   }
 
   const session = sessionQuery.data;
@@ -213,7 +218,7 @@ const AuthenticatedWorkspace = () => {
         </main>
       );
     }
-    return <AuthLoadingScreen />;
+    return <AuthLoadingScreen title={t("login.desktopPreparingData")} detail={t("login.desktopPreparingDataDescription")} />;
   }
 
   if (!session?.authenticated) {

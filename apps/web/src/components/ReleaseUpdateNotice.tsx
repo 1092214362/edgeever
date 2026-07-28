@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowUpCircle, ExternalLink, X } from "lucide-react";
+import { ArrowUpCircle, Download, ExternalLink, RefreshCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { fetchLatestRelease, isVersionOutdated, type LatestRelease } from "@/lib/version-check";
 import { dismissRelease, getDismissedRelease } from "@/lib/release-notice";
@@ -10,6 +10,8 @@ export const ReleaseUpdateNotice = () => {
   const { t } = useTranslation();
   const [release, setRelease] = useState<LatestRelease | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [nativeUpdateState, setNativeUpdateState] = useState<"idle" | "available" | "downloading" | "downloaded" | "error">("idle");
+  const desktopBridge = window.edgeeverDesktop;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -22,13 +24,48 @@ export const ReleaseUpdateNotice = () => {
   }, []);
 
   useEffect(() => {
-    if (!release) return;
+    if (!desktopBridge?.isAvailable) return;
+    let active = true;
+    const readStatus = async () => {
+      try {
+        const { state } = await desktopBridge.updateStatus();
+        if (active && (state === "available" || state === "downloaded")) setNativeUpdateState(state);
+      } catch {
+        // The release link remains available when the native updater is unavailable.
+      }
+    };
+    void readStatus();
+    const timer = window.setInterval(() => void readStatus(), 5_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [desktopBridge]);
+
+  useEffect(() => {
+    if (!release || nativeUpdateState !== "idle") return;
 
     const timer = window.setTimeout(() => setDismissed(true), AUTO_DISMISS_MS);
     return () => window.clearTimeout(timer);
-  }, [release?.tagName]);
+  }, [nativeUpdateState, release?.tagName]);
 
-  if (!release || dismissed || getDismissedRelease() === release.tagName) return null;
+  if ((!release && nativeUpdateState === "idle") || dismissed || (release && getDismissedRelease() === release.tagName)) return null;
+
+  const handleNativeUpdate = async () => {
+    if (!desktopBridge?.isAvailable) return;
+    try {
+      if (nativeUpdateState === "available") {
+        setNativeUpdateState("downloading");
+        await desktopBridge.downloadUpdate();
+      } else if (nativeUpdateState === "downloaded") {
+        await desktopBridge.installUpdate();
+      }
+    } catch {
+      setNativeUpdateState("error");
+    }
+  };
+
+  const isNativeUpdate = nativeUpdateState !== "idle";
 
   return (
     <aside
@@ -43,24 +80,33 @@ export const ReleaseUpdateNotice = () => {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold leading-5">{t("systemInfo.updateAvailableTitle")}</div>
           <div className="mt-0.5 text-xs leading-5 text-slate-500">
-            {t("systemInfo.updateAvailableDescription", { version: release.tagName })}
+            {nativeUpdateState === "downloading"
+              ? t("systemInfo.desktopUpdateDownloading")
+              : nativeUpdateState === "downloaded"
+                ? t("systemInfo.desktopUpdateReady")
+                : nativeUpdateState === "error"
+                  ? t("systemInfo.desktopUpdateFailed")
+                  : t("systemInfo.updateAvailableDescription", { version: release?.tagName ?? "" })}
           </div>
-          <a
-            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 underline underline-offset-2 hover:text-emerald-900"
-            href={release.url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t("systemInfo.viewRelease")}
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {isNativeUpdate && nativeUpdateState !== "downloading" && nativeUpdateState !== "error" && (
+              <button className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900" type="button" onClick={() => void handleNativeUpdate()}>
+                {nativeUpdateState === "downloaded" ? <RefreshCw className="h-3 w-3" /> : <Download className="h-3 w-3" />}
+                {nativeUpdateState === "downloaded" ? t("systemInfo.desktopUpdateRestart") : t("systemInfo.desktopUpdateDownload")}
+              </button>
+            )}
+            {release && <a className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 underline underline-offset-2 hover:text-emerald-900" href={release.url} target="_blank" rel="noreferrer">
+              {t("systemInfo.viewRelease")}
+              <ExternalLink className="h-3 w-3" />
+            </a>}
+          </div>
         </div>
         <button
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           type="button"
           aria-label={t("systemInfo.closeUpdateNotice")}
           onClick={() => {
-            dismissRelease(release.tagName);
+            if (release) dismissRelease(release.tagName);
             setDismissed(true);
           }}
         >
