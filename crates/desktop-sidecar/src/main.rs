@@ -224,7 +224,13 @@ fn restore_database(
         return Err("Backup path must point to a managed EdgeEver backup".to_owned());
     }
 
-    let source = Connection::open(&backup_path).map_err(|error| error.to_string())?;
+    // Windows refuses to rotate/delete a backup while a read connection still
+    // holds the managed file open. Restore from a temporary copy so retention
+    // can safely remove the selected snapshot when it is the oldest one.
+    let source_copy = root.join(".edgeever-restore-source.sqlite");
+    fs::remove_file(&source_copy).ok();
+    fs::copy(&backup_path, &source_copy).map_err(|error| error.to_string())?;
+    let source = Connection::open(&source_copy).map_err(|error| error.to_string())?;
     // A protective backup rotates the five-file retention window. Preserve the
     // selected snapshot's resource companion before that rotation can remove
     // it when the user restores the oldest retained backup.
@@ -245,6 +251,8 @@ fn restore_database(
         .run_to_completion(100, Duration::from_millis(5), None)
         .map_err(|error| error.to_string())?;
     drop(backup);
+    drop(source);
+    fs::remove_file(&source_copy).map_err(|error| error.to_string())?;
     apply_migrations(database, migrations).map_err(|error| error.to_string())?;
     let resource_source = if resource_restore_source.is_dir() {
         resource_restore_source.as_path()
