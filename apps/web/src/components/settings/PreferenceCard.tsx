@@ -45,7 +45,7 @@ export const PreferenceCard = ({
   };
 
   const syncIntervalPreference: SyncIntervalPreference =
-    syncIntervalMs === 300_000 ? "5m" : syncIntervalMs === 900_000 ? "15m" : syncIntervalMs === 1_800_000 ? "30m" : syncIntervalMs === 3_600_000 ? "1h" : syncIntervalMs === 7_200_000 ? "2h" : "1m";
+    syncIntervalMs === 300_000 ? "5m" : syncIntervalMs === 900_000 ? "15m" : syncIntervalMs === 1_800_000 ? "30m" : syncIntervalMs === 3_600_000 ? "1h" : syncIntervalMs === 7_200_000 ? "2h" : "30s";
 
   return (
     <Card className="w-full min-w-0 overflow-hidden shadow-none">
@@ -150,7 +150,7 @@ export const PreferenceCard = ({
                 const preference = value as SyncIntervalPreference;
                 writeSyncIntervalPreference(preference);
                 onSyncIntervalChange(
-                  preference === "5m" ? 300_000 : preference === "15m" ? 900_000 : preference === "30m" ? 1_800_000 : preference === "1h" ? 3_600_000 : preference === "2h" ? 7_200_000 : 60_000
+                  preference === "5m" ? 300_000 : preference === "15m" ? 900_000 : preference === "30m" ? 1_800_000 : preference === "1h" ? 3_600_000 : preference === "2h" ? 7_200_000 : 30_000
                 );
               }}
             >
@@ -158,7 +158,7 @@ export const PreferenceCard = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1m">{t("settings.syncIntervals.1m")}</SelectItem>
+                <SelectItem value="30s">{t("settings.syncIntervals.30s")}</SelectItem>
                 <SelectItem value="5m">{t("settings.syncIntervals.5m")}</SelectItem>
                 <SelectItem value="15m">{t("settings.syncIntervals.15m")}</SelectItem>
                 <SelectItem value="30m">{t("settings.syncIntervals.30m")}</SelectItem>

@@ -220,10 +220,10 @@ export const MIN_MEMO_LIST_WIDTH_PX = 300;
 export const MAX_MEMO_LIST_WIDTH_PX = 540;
 export const EDITOR_LOCAL_SAVE_DELAY_MS = 1_200;
 
-export type SyncIntervalPreference = "1m" | "5m" | "15m" | "30m" | "1h" | "2h" | "off";
-export const DEFAULT_SYNC_INTERVAL_MS = 60_000;
+export type SyncIntervalPreference = "30s" | "5m" | "15m" | "30m" | "1h" | "2h" | "off";
+export const DEFAULT_SYNC_INTERVAL_MS = 30_000;
 const SYNC_INTERVAL_VALUES: Record<SyncIntervalPreference, number | null> = {
-  "1m": 60_000,
+  "30s": 30_000,
   "5m": 300_000,
   "15m": 900_000,
   "30m": 1_800_000,
@@ -343,8 +343,11 @@ export const readSyncIntervalPreference = (): number | null => {
     const stored = (
       window.localStorage.getItem(SYNC_INTERVAL_STORAGE_KEY)
       ?? window.localStorage.getItem(LEGACY_AUTO_SAVE_INTERVAL_STORAGE_KEY)
-    ) as SyncIntervalPreference | null;
-    return stored && stored in SYNC_INTERVAL_VALUES ? SYNC_INTERVAL_VALUES[stored] : DEFAULT_SYNC_INTERVAL_MS;
+    );
+    const preference = stored === "1m" ? "30s" : stored;
+    return preference && preference in SYNC_INTERVAL_VALUES
+      ? SYNC_INTERVAL_VALUES[preference as SyncIntervalPreference]
+      : DEFAULT_SYNC_INTERVAL_MS;
   } catch {
     return DEFAULT_SYNC_INTERVAL_MS;
   }

@@ -164,7 +164,7 @@ export const enUS = {
     imageCompressionAria: "Compress note images",
     syncIntervalTitle: "Automatic sync interval",
     syncIntervalDescription: "Sync edits to the server automatically while keeping local drafts available immediately.",
-    syncIntervals: { "1m": "Every minute", "5m": "Every 5 minutes", "15m": "Every 15 minutes", "30m": "Every 30 minutes", "1h": "Every hour", "2h": "Every 2 hours" },
+    syncIntervals: { "30s": "Every 30 seconds", "5m": "Every 5 minutes", "15m": "Every 15 minutes", "30m": "Every 30 minutes", "1h": "Every hour", "2h": "Every 2 hours" },
     mermaidThemeTitle: "Diagram theme",
     mermaidThemeDescription: "Choose the visual theme for diagrams in notes.",
     editorThemeTitle: "Editor theme",

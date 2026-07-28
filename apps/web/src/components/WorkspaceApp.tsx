@@ -1172,7 +1172,7 @@ export const WorkspaceApp = ({
 
   useEffect(() => {
     writeSyncIntervalPreference(
-      syncIntervalMs === null ? "off" : syncIntervalMs === 300_000 ? "5m" : syncIntervalMs === 900_000 ? "15m" : syncIntervalMs === 1_800_000 ? "30m" : syncIntervalMs === 3_600_000 ? "1h" : syncIntervalMs === 7_200_000 ? "2h" : "1m"
+      syncIntervalMs === null ? "off" : syncIntervalMs === 300_000 ? "5m" : syncIntervalMs === 900_000 ? "15m" : syncIntervalMs === 1_800_000 ? "30m" : syncIntervalMs === 3_600_000 ? "1h" : syncIntervalMs === 7_200_000 ? "2h" : "30s"
     );
   }, [syncIntervalMs]);
 

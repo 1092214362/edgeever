@@ -164,7 +164,7 @@ export const zhCN = {
     imageCompressionAria: "是否压缩笔记内图片",
     syncIntervalTitle: "自动同步间隔",
     syncIntervalDescription: "定期将编辑内容同步到服务器，本地草稿仍会即时保留。",
-    syncIntervals: { "1m": "每 1 分钟", "5m": "每 5 分钟", "15m": "每 15 分钟", "30m": "每 30 分钟", "1h": "每 1 小时", "2h": "每 2 小时" },
+    syncIntervals: { "30s": "每 30 秒", "5m": "每 5 分钟", "15m": "每 15 分钟", "30m": "每 30 分钟", "1h": "每 1 小时", "2h": "每 2 小时" },
     mermaidThemeTitle: "图表主题",
     mermaidThemeDescription: "选择笔记中图表的视觉主题。",
     editorThemeTitle: "编辑器主题",

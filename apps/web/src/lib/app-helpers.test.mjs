@@ -71,14 +71,18 @@ describe("desktop focus mode preference", () => {
 });
 
 describe("automatic sync interval preference", () => {
-  test("defaults to one minute", () => {
+  test("defaults to 30 seconds", () => {
     installLocalStorage();
     expect(readSyncIntervalPreference()).toBe(DEFAULT_SYNC_INTERVAL_MS);
-    expect(DEFAULT_SYNC_INTERVAL_MS).toBe(60_000);
+    expect(DEFAULT_SYNC_INTERVAL_MS).toBe(30_000);
   });
 
   test("reads and writes sync intervals", () => {
     const values = installLocalStorage();
+
+    writeSyncIntervalPreference("30s");
+    expect(values.get(SYNC_INTERVAL_STORAGE_KEY)).toBe("30s");
+    expect(readSyncIntervalPreference()).toBe(30_000);
 
     writeSyncIntervalPreference("5m");
     expect(values.get(SYNC_INTERVAL_STORAGE_KEY)).toBe("5m");
@@ -91,10 +95,16 @@ describe("automatic sync interval preference", () => {
     expect(readSyncIntervalPreference()).toBe(900_000);
   });
 
+  test("migrates the former one-minute default to 30 seconds", () => {
+    const values = installLocalStorage();
+    values.set(SYNC_INTERVAL_STORAGE_KEY, "1m");
+    expect(readSyncIntervalPreference()).toBe(30_000);
+  });
+
   test("falls back to the default for unknown or unavailable storage", () => {
     const values = installLocalStorage();
     values.set(SYNC_INTERVAL_STORAGE_KEY, "unexpected");
-    expect(readSyncIntervalPreference()).toBe(60_000);
+    expect(readSyncIntervalPreference()).toBe(30_000);
 
     globalThis.window = {
       localStorage: {
@@ -103,6 +113,6 @@ describe("automatic sync interval preference", () => {
         },
       },
     };
-    expect(readSyncIntervalPreference()).toBe(60_000);
+    expect(readSyncIntervalPreference()).toBe(30_000);
   });
 });
