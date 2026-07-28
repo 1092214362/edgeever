@@ -106,6 +106,11 @@ export const LoginScreen = ({ configurationError, error, isSubmitting, onChangeI
             <LockKeyhole className="h-4 w-4 mr-1" />
             {isSubmitting ? t("login.submitting") : t("login.submit")}
           </Button>
+          {onChangeInstance ? (
+            <Button className="h-10 w-full justify-center" type="button" variant="ghost" onClick={onChangeInstance}>
+              {t("login.desktopChangeInstance")}
+            </Button>
+          ) : null}
         </form>}
       </section>
     </main>

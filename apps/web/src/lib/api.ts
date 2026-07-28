@@ -123,6 +123,7 @@ export const saveDesktopApiBaseUrl = async (value: string) => {
 
 export const resetDesktopApiBaseUrl = () => {
   if (typeof window === "undefined" || !window.edgeeverDesktop?.isAvailable) return;
+  clearCachedDesktopSession();
   window.localStorage.removeItem(DESKTOP_API_BASE_URL_STORAGE_KEY);
   void window.edgeeverDesktop.setApiBaseUrl("");
 };

@@ -11,6 +11,10 @@ globalThis.window = {
     apiBaseUrl: "",
     setApiBaseUrl: async (value) => {
       calls.push(["bridge:start", value]);
+      if (!value) {
+        calls.push(["bridge:complete", value]);
+        return value;
+      }
       await new Promise((resolve) => {
         completeSave = resolve;
       });
@@ -39,6 +43,7 @@ const {
   api,
   cacheDesktopSession,
   getCachedDesktopSession,
+  resetDesktopApiBaseUrl,
   saveDesktopApiBaseUrl,
 } = await import("./api.ts");
 
@@ -61,9 +66,32 @@ describe("desktop instance setup", () => {
     expect(storage.get(DESKTOP_API_BASE_URL_STORAGE_KEY)).toBe("https://notes.example.com");
   });
 
+  test("clears the saved instance and cached session before switching", async () => {
+    calls.length = 0;
+    storage.set(DESKTOP_API_BASE_URL_STORAGE_KEY, "https://notes.example.com");
+    cacheDesktopSession({
+      authRequired: true,
+      authenticated: true,
+      demoMode: false,
+      sessionToken: "old-instance-session",
+      user: { id: "user-1", username: "admin", displayName: null, role: "owner" },
+    });
+
+    resetDesktopApiBaseUrl();
+    await Promise.resolve();
+
+    expect(storage.has(DESKTOP_API_BASE_URL_STORAGE_KEY)).toBe(false);
+    expect(getCachedDesktopSession()).toBeNull();
+    expect(calls.slice(-2)).toEqual([
+      ["bridge:start", ""],
+      ["bridge:complete", ""],
+    ]);
+  });
+
   test("uses the desktop session token and stops network retries after a 401", async () => {
     calls.length = 0;
     events.length = 0;
+    storage.set(DESKTOP_API_BASE_URL_STORAGE_KEY, "https://notes.example.com");
     cacheDesktopSession({
       authRequired: true,
       authenticated: true,
