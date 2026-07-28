@@ -186,8 +186,23 @@ export class ApiRequestError extends Error {
   }
 }
 
+let desktopSessionRejected = false;
+
+const isDesktopAuthenticationRequest = (path: string) =>
+  path === "/api/v1/auth/login" || path === "/api/v1/auth/session";
+
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const headers = new Headers(init?.headers);
+  const isDesktop = Boolean(window.edgeeverDesktop?.isAvailable);
+  const sessionToken = isDesktop ? getCachedDesktopSession()?.sessionToken : undefined;
+
+  if (isDesktop && desktopSessionRejected && !isDesktopAuthenticationRequest(path)) {
+    throw new ApiRequestError("Authentication required", 401, "unauthorized");
+  }
+
+  if (sessionToken && !headers.has("Authorization") && path !== "/api/v1/auth/login") {
+    headers.set("Authorization", `Bearer ${sessionToken}`);
+  }
 
   if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -209,13 +224,25 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
         : response.statusText;
 
     if (response.status === 401) {
-      window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
+      if (isDesktop) {
+        clearCachedDesktopSession();
+        if (!desktopSessionRejected) {
+          desktopSessionRejected = true;
+          window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
+        }
+      } else {
+        window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
+      }
     }
 
     throw new ApiRequestError(message || "Request failed", response.status, error?.code);
   }
 
-  return response.json() as Promise<T>;
+  const body = await response.json() as T;
+  if (path === "/api/v1/auth/login") {
+    desktopSessionRejected = false;
+  }
+  return body;
 };
 
 export const api = {

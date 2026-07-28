@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 const storage = new Map();
 const calls = [];
+const events = [];
 let completeSave;
 
 globalThis.window = {
@@ -23,10 +24,23 @@ globalThis.window = {
       calls.push(["storage", value]);
       storage.set(key, value);
     },
+    removeItem: (key) => {
+      storage.delete(key);
+    },
+  },
+  dispatchEvent: (event) => {
+    events.push(event.type);
+    return true;
   },
 };
 
-const { DESKTOP_API_BASE_URL_STORAGE_KEY, saveDesktopApiBaseUrl } = await import("./api.ts");
+const {
+  DESKTOP_API_BASE_URL_STORAGE_KEY,
+  api,
+  cacheDesktopSession,
+  getCachedDesktopSession,
+  saveDesktopApiBaseUrl,
+} = await import("./api.ts");
 
 describe("desktop instance setup", () => {
   test("can retry with a valid URL after invalid input", async () => {
@@ -45,5 +59,56 @@ describe("desktop instance setup", () => {
       ["storage", "https://notes.example.com"],
     ]);
     expect(storage.get(DESKTOP_API_BASE_URL_STORAGE_KEY)).toBe("https://notes.example.com");
+  });
+
+  test("uses the desktop session token and stops network retries after a 401", async () => {
+    calls.length = 0;
+    events.length = 0;
+    cacheDesktopSession({
+      authRequired: true,
+      authenticated: true,
+      demoMode: false,
+      sessionToken: "desktop-session-token",
+      user: { id: "user-1", username: "admin", displayName: null, role: "owner" },
+    });
+
+    const requests = [];
+    globalThis.fetch = async (url, init) => {
+      requests.push({ url, authorization: new Headers(init?.headers).get("Authorization") });
+      return new Response(JSON.stringify({ error: { code: "unauthorized", message: "Authentication required" } }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    await expect(api.syncBootstrap({ limit: 200 })).rejects.toMatchObject({ status: 401 });
+    await expect(api.syncBootstrap({ limit: 200 })).rejects.toMatchObject({ status: 401 });
+
+    expect(requests).toEqual([{
+      url: "https://notes.example.com/api/v1/sync/bootstrap?limit=200",
+      authorization: "Bearer desktop-session-token",
+    }]);
+    expect(events).toEqual(["edgeever:unauthorized"]);
+    expect(getCachedDesktopSession()).toBeNull();
+
+    globalThis.fetch = async (url, init) => {
+      requests.push({ url, authorization: new Headers(init?.headers).get("Authorization") });
+      return Response.json({
+        authRequired: true,
+        authenticated: true,
+        demoMode: false,
+        sessionToken: "replacement-session-token",
+        user: { id: "user-1", username: "admin", displayName: null, role: "owner" },
+      });
+    };
+
+    const replacement = await api.login({ username: "admin", password: "secret" });
+    cacheDesktopSession(replacement);
+    await api.syncBootstrap({ limit: 200 });
+
+    expect(requests.at(-1)).toEqual({
+      url: "https://notes.example.com/api/v1/sync/bootstrap?limit=200",
+      authorization: "Bearer replacement-session-token",
+    });
   });
 });
