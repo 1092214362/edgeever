@@ -1,6 +1,6 @@
 {
   "name": "edgeever",
-  "version": "1.6.32",
+  "version": "1.6.33",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -127,6 +127,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
+    "@electron/asar": "3.4.1",
     "@types/marked": "^6.0.0",
     "@types/node": "latest",
     "@types/react": "latest",

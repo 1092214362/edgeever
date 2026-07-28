@@ -390,7 +390,7 @@ const createWindow = async () => {
     minWidth: 960,
     minHeight: 640,
     webPreferences: {
-      preload: join(currentDirectory, "../preload/index.mjs"),
+      preload: join(currentDirectory, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
