@@ -514,7 +514,7 @@ app.whenReady().then(async () => {
     }
     if (normalized === configuredApiBaseUrl) return configuredApiBaseUrl;
     configuredApiBaseUrl = normalized;
-    void writeFile(instanceUrlPath(), configuredApiBaseUrl);
+    await writeFile(instanceUrlPath(), configuredApiBaseUrl);
     if (sidecar) {
       await stopSidecar();
       const nextSidecar = await startSidecar(activeAccountId);

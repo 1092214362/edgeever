@@ -38,18 +38,22 @@ const AuthLoadingScreen = ({ title = "EdgeEver", detail }: { title?: string; det
   </div>
 );
 
-const DesktopInstanceSetup = () => {
+const DesktopInstanceSetup = ({ onConfigured }: { onConfigured: () => void }) => {
   const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const save = (event: FormEvent<HTMLFormElement>) => {
+  const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError(null);
+    setIsSaving(true);
     try {
-      saveDesktopApiBaseUrl(value);
-      window.location.reload();
+      await saveDesktopApiBaseUrl(value);
+      onConfigured();
     } catch {
       setError(t("login.desktopInstanceUrlInvalid"));
+      setIsSaving(false);
     }
   };
 
@@ -65,11 +69,14 @@ const DesktopInstanceSetup = () => {
               className="h-11 rounded-lg bg-slate-50/50 px-3.5 focus-visible:bg-white focus-visible:ring-4 focus-visible:ring-emerald-500/10"
               placeholder="https://notes.example.com"
               value={value}
-              onChange={(event) => setValue(event.target.value)}
+              onChange={(event) => {
+                setValue(event.target.value);
+                setError(null);
+              }}
             />
           </label>
           {error && <p className="text-sm text-rose-700">{error}</p>}
-          <Button className="h-11 w-full justify-center rounded-lg bg-emerald-500 font-semibold text-white transition hover:bg-emerald-600" type="submit" variant="solid">
+          <Button className="h-11 w-full justify-center rounded-lg bg-emerald-500 font-semibold text-white transition hover:bg-emerald-600" disabled={isSaving} type="submit" variant="solid">
             {t("login.desktopInstanceContinue")}
           </Button>
         </form>
@@ -256,13 +263,19 @@ const AuthenticatedWorkspace = () => {
 };
 
 export const App = () => {
+  const [desktopInstanceConfigured, setDesktopInstanceConfigured] = useState(
+    () => !isDesktopInstanceConfigurationRequired(),
+  );
+
   useEffect(() => {
     const bridge = window.edgeeverDesktop;
     const baseUrl = getConfiguredDesktopApiBaseUrl();
     if (bridge?.isAvailable && baseUrl) void bridge.setApiBaseUrl(baseUrl);
   }, []);
 
-  if (isDesktopInstanceConfigurationRequired()) return <DesktopInstanceSetup />;
+  if (!desktopInstanceConfigured) {
+    return <DesktopInstanceSetup onConfigured={() => setDesktopInstanceConfigured(true)} />;
+  }
 
   return (
     <PwaInstallProvider>

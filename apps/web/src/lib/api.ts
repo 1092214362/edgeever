@@ -109,15 +109,15 @@ export const isDesktopInstanceConfigurationRequired = () =>
   window.location.protocol === "file:" &&
   !getConfiguredDesktopApiBaseUrl();
 
-export const saveDesktopApiBaseUrl = (value: string) => {
+export const saveDesktopApiBaseUrl = async (value: string) => {
   const normalized = value.trim().replace(/\/$/, "");
   const parsed = new URL(normalized);
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error("Desktop instance URL must use http or https");
   }
 
+  await window.edgeeverDesktop?.setApiBaseUrl(normalized);
   window.localStorage.setItem(DESKTOP_API_BASE_URL_STORAGE_KEY, normalized);
-  void window.edgeeverDesktop?.setApiBaseUrl(normalized);
   return normalized;
 };
 
