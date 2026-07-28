@@ -152,15 +152,39 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+        cleanupOutdatedCaches: true,
+        additionalManifestEntries: [
+          {
+            revision: buildId,
+            url: `/index.html?edgeever-offline-shell=${encodeURIComponent(buildId)}`,
+          },
+        ],
         globIgnores: [
+          "index.html",
           "**/vendor-beautiful-mermaid-*.js",
           "**/vendor-mermaid-*.js",
           "**/mermaid.core-*.js",
           "**/*Diagram-*.js",
         ],
-        navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//, /^\/mcp\//, /^\/mobile-edit\.html$/, /^\/note-print\.html/, /^\/tiptap-ime-test\.html$/],
+        navigateFallback: null,
+        navigationPreload: true,
         runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) =>
+              request.mode === "navigate" &&
+              !["/mobile-edit.html", "/note-print.html", "/tiptap-ime-test.html"].includes(url.pathname),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "edgeever-app-shell",
+              networkTimeoutSeconds: 5,
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              precacheFallback: {
+                fallbackURL: `/index.html?edgeever-offline-shell=${encodeURIComponent(buildId)}`,
+              },
+            },
+          },
           {
             urlPattern: ({ url }) => /^\/api\/v1\/resources\/[^/]+\/blob$/.test(url.pathname),
             handler: "CacheFirst",
