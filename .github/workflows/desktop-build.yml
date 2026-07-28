@@ -83,7 +83,11 @@ jobs:
         with:
           name: edgeever-desktop-${{ matrix.name }}
           path: |
-            release/desktop/**/*.{dmg,exe,AppImage,blockmap,yml}
+            release/desktop/**/*.dmg
+            release/desktop/**/*.exe
+            release/desktop/**/*.AppImage
+            release/desktop/**/*.blockmap
+            release/desktop/**/*.yml
             release/desktop/**/*.zip
           if-no-files-found: error
           retention-days: 14
