@@ -2,6 +2,11 @@ name: Desktop build
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Prepare macOS assets on this existing Draft Release (optional)"
+        required: false
+        type: string
   release:
     types: [published]
 
@@ -10,10 +15,18 @@ permissions:
 
 jobs:
   release-plan:
-    if: github.repository == 'tianma-if/edgeever' && github.event_name == 'release'
+    if: >-
+      ${{
+        github.repository == 'tianma-if/edgeever' &&
+        (
+          github.event_name == 'release' ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        )
+      }}
     name: Plan desktop release asset
     runs-on: ubuntu-latest
     outputs:
+      asset_ready: ${{ steps.plan.outputs.asset_ready }}
       previous_tag: ${{ steps.plan.outputs.previous_tag }}
       rebuild: ${{ steps.plan.outputs.rebuild }}
     steps:
@@ -22,11 +35,24 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate Draft Release target
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          expected_version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          test "$RELEASE_TAG" = "v${expected_version}"
+          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')" = "true"
+          target_commitish="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq '.targetCommitish')"
+          test "$(git rev-parse "${target_commitish}^{commit}")" = "$(git rev-parse "${GITHUB_SHA}^{commit}")"
+
       - name: Compare with previous formal release
         id: plan
         env:
-          CURRENT_TAG: ${{ github.event.release.tag_name }}
+          CURRENT_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
           GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
         run: |
           mapfile -t release_tags < <(
             gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
@@ -42,15 +68,38 @@ jobs:
           test -n "$previous_tag"
           git fetch origin "refs/tags/${previous_tag}:refs/tags/${previous_tag}"
           echo "previous_tag=$previous_tag" >> "$GITHUB_OUTPUT"
-          node scripts/plan-native-release.mjs desktop "$previous_tag" "$CURRENT_TAG" >> "$GITHUB_OUTPUT"
+          plan_output="$(node scripts/plan-native-release.mjs desktop "$previous_tag" "$HEAD_REF")"
+          printf '%s\n' "$plan_output" >> "$GITHUB_OUTPUT"
+          rebuild="$(printf '%s\n' "$plan_output" | sed -n 's/^rebuild=//p')"
+          expected_version="$(node -p "JSON.parse(require('fs').readFileSync('apps/desktop/package.json', 'utf8')).version")"
+          if [[ "$rebuild" = "true" ]]; then
+            root_version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+            test "$expected_version" = "$root_version"
+          fi
+
+          mapfile -t current_assets < <(
+            gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${CURRENT_TAG}" \
+              --jq '.assets[].name'
+          )
+          asset_ready="$(
+            printf '%s\n' "${current_assets[@]}" |
+              node scripts/check-native-release-assets.mjs desktop "$rebuild" "$CURRENT_TAG" "$expected_version"
+          )"
+          echo "asset_ready=$asset_ready" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_EVENT_NAME" = "release" && "$asset_ready" != "true" ]]; then
+            echo "::error::Published Release assets are incomplete or incompatible. Restore the Release to Draft and prepare assets with workflow_dispatch."
+            exit 1
+          fi
 
   reuse-release-desktop:
     needs: release-plan
     if: >-
       ${{
         github.repository == 'tianma-if/edgeever' &&
-        github.event_name == 'release' &&
+        github.event_name == 'workflow_dispatch' &&
+        inputs.release_tag != '' &&
         needs.release-plan.result == 'success' &&
+        needs.release-plan.outputs.asset_ready == 'false' &&
         needs.release-plan.outputs.rebuild == 'false'
       }}
     name: Reuse macOS release assets
@@ -58,7 +107,7 @@ jobs:
     steps:
       - name: Copy latest compatible macOS assets without renaming
         env:
-          CURRENT_TAG: ${{ github.event.release.tag_name }}
+          CURRENT_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
           GH_TOKEN: ${{ github.token }}
           PREVIOUS_TAG: ${{ needs.release-plan.outputs.previous_tag }}
         run: |
@@ -81,10 +130,12 @@ jobs:
         always() &&
         github.repository == 'tianma-if/edgeever' &&
         (
-          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag == '') ||
           (
-            github.event_name == 'release' &&
+            github.event_name == 'workflow_dispatch' &&
+            inputs.release_tag != '' &&
             needs.release-plan.result == 'success' &&
+            needs.release-plan.outputs.asset_ready == 'false' &&
             needs.release-plan.outputs.rebuild == 'true'
           )
         )
@@ -222,14 +273,26 @@ jobs:
           echo "APPLE_API_ISSUER=$APPLE_API_ISSUER" >> "$GITHUB_ENV"
 
       - name: Package desktop installer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bun scripts/run-desktop-builder.mjs --publish ${{ github.event_name == 'release' && 'always' || 'never' }}
+        run: bun scripts/run-desktop-builder.mjs --publish never
 
       - name: Verify desktop installer
         env:
           EDGE_EVER_VERIFY_TARGET: darwin
         run: bun scripts/verify-desktop-package.mjs
+
+      - name: Upload verified desktop assets to Release
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          version="$(node -p "JSON.parse(require('fs').readFileSync('apps/desktop/package.json', 'utf8')).version")"
+          gh release upload "$RELEASE_TAG" \
+            "release/desktop/EdgeEver-${version}-mac-arm64.dmg" \
+            "release/desktop/EdgeEver-${version}-mac-arm64.dmg.blockmap" \
+            "release/desktop/latest-mac.yml" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
 
       - name: Upload desktop installer and metadata
         uses: actions/upload-artifact@v6
