@@ -9,7 +9,11 @@ node_modules/
 .idea/
 dist/
 build/
+release/desktop/
 coverage/
+
+# Rust sidecar build artifacts.
+target/
 
 .wrangler/
 .wrangler.generated-migrations/
