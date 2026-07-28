@@ -15,7 +15,7 @@
 3. **验证命令**：必须通过 `bun run typecheck`、`bun run typecheck:mobile` 和 `bun run build:web`。
 4. **原生资产构建与复用**：由 `scripts/plan-native-release.mjs` 决定重建或复用；桌面资产包含 `apps/web`。修改判定规则时同步更新测试。移动端重建使用 `bun run build:android:apk:local`，签名配置保存在仓库外。
 5. **Draft 内准备资产**：通过带 `release_tag` 的 `workflow_dispatch` 在 Draft 中准备并验证资产；`published` 事件只审计，禁止重新构建或上传。
-6. **macOS 最终资产验收**：验收对象必须是从 GitHub Release 页面重新下载的最终 DMG，禁止用本地构建目录中的产物代替。必须核对 Release digest/本地 SHA-256，并依次通过 `hdiutil verify`、挂载、`codesign --verify --deep --strict`、`spctl --assess --type execute`（结果必须为 `accepted` 且来源为 `Notarized Developer ID`）和 `xcrun stapler validate`。随后必须写入模拟浏览器下载的 `com.apple.quarantine` 属性，将 App 复制到临时目录并实际启动；任何一步失败都禁止发布，也禁止指导用户绕过 Gatekeeper。
+6. **macOS 最终资产验收**：验收对象必须是从 GitHub Release 页面重新下载的最终 DMG，禁止用本地构建目录中的产物代替。必须核对 Release digest/本地 SHA-256，并依次通过 `hdiutil verify`、挂载、`codesign --verify --deep --strict`、`spctl --assess --type execute`（结果必须为 `accepted` 且来源为 `Notarized Developer ID`）和 `xcrun stapler validate`。随后必须写入模拟浏览器下载的 `com.apple.quarantine` 属性，将 App 复制到临时目录并实际启动；正式发布后，再用该 DMG 覆盖安装 `/Applications/EdgeEver.app` 并启动，保留用户数据。任何一步失败都禁止发布，也禁止指导用户绕过 Gatekeeper。
 7. **桌面端真实首启冒烟测试**：凡涉及 Electron、preload、认证、实例地址、首次引导或本地配置，必须对最终打包 App 使用全新的临时 `--user-data-dir` 实际启动，不能复用开发者机器上的历史配置。测试至少覆盖 preload 桥接可用、未配置实例时实例地址为空、首次打开显示实例地址输入界面，以及保存后能进入预期流程。类型检查、Web 构建、ASAR 文件存在性检查和已有用户配置下的启动均不能替代该测试。
 8. **桌面包结构门禁**：桌面变更除通用验证命令外，必须运行桌面测试及 `EDGE_EVER_VERIFY_TARGET=darwin bun run verify:desktop-package`。验证脚本必须实际加载打包后的 preload 入口并确认桥接 API 可注册；仅检查文件存在或扩展名不视为通过。
 9. **资产不可变与工作流收尾**：最终验收后，必须确认没有重复或仍在运行的 Release 工作流会再次上传并覆盖资产。正式 Release 只保留本次计划中的一套 macOS DMG/Blockmap/更新清单和一个符合复用规则的 Android APK；发现意外、重复或被重新上传的资产时，必须先恢复 Draft、清理并重新下载验收，不能假设校验仍然有效。
