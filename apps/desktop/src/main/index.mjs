@@ -12,9 +12,13 @@ import { rotateDiagnosticLog } from "./diagnostic-log.mjs";
 import { restrictDirectory, restrictFile } from "./file-permissions.mjs";
 import { normalizeStagedResourceInput } from "./staged-resource.mjs";
 import { isMountedInstallerPath } from "./installation-location.mjs";
+import { userDataDirectoryFromArguments } from "./user-data-directory.mjs";
 import electronUpdater from "electron-updater";
 
 const { autoUpdater } = electronUpdater;
+
+const requestedUserDataDirectory = userDataDirectoryFromArguments(process.argv);
+if (requestedUserDataDirectory) app.setPath("userData", requestedUserDataDirectory);
 
 const currentDirectory = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = join(currentDirectory, "../../..");
