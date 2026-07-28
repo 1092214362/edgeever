@@ -2,7 +2,7 @@ import { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, session, net, pro
 import { existsSync } from "node:fs";
 import { appendFile, mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { SidecarRpcClient } from "./rpc.mjs";
 import { isSafeResourceId, resourceIdFromRequest } from "./resource-url.mjs";
@@ -11,7 +11,11 @@ import { accountDataDirectory, accountScopeKey } from "./account-scope.mjs";
 import { rotateDiagnosticLog } from "./diagnostic-log.mjs";
 import { restrictDirectory, restrictFile } from "./file-permissions.mjs";
 import { normalizeStagedResourceInput } from "./staged-resource.mjs";
-import { isMountedInstallerPath } from "./installation-location.mjs";
+import {
+  isMountedDiskImageVolume,
+  isMountedInstallerPath,
+  mountedInstallerCandidates,
+} from "./installation-location.mjs";
 import { userDataDirectoryFromArguments } from "./user-data-directory.mjs";
 import electronUpdater from "electron-updater";
 
@@ -94,6 +98,67 @@ const writeDiagnostic = async (event, details = {}) => {
     await restrictFile(path);
   } catch {
     // Diagnostics must never prevent the desktop app from starting or quitting.
+  }
+};
+
+const execFileAsync = (command, argumentsList) => new Promise((resolve, reject) => {
+  execFile(command, argumentsList, { encoding: "utf8" }, (error, stdout, stderr) => {
+    if (error) {
+      error.stderr = stderr;
+      reject(error);
+      return;
+    }
+    resolve({ stdout, stderr });
+  });
+});
+
+const ejectMountedMacInstallers = async () => {
+  if (!app.isPackaged || process.platform !== "darwin" || isMountedInstallerPath(app.getAppPath())) return;
+
+  let volumeNames;
+  let diskImageInfo;
+  try {
+    const entries = await readdir("/Volumes", { withFileTypes: true });
+    volumeNames = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+    ({ stdout: diskImageInfo } = await execFileAsync("/usr/bin/hdiutil", ["info"]));
+  } catch (error) {
+    void writeDiagnostic("installation.volume-scan-failed", { message: error.message });
+    return;
+  }
+
+  for (const candidate of mountedInstallerCandidates(volumeNames)) {
+    if (!isMountedDiskImageVolume(diskImageInfo, candidate.volumePath)) continue;
+    const infoPlist = join(candidate.appPath, "Contents", "Info.plist");
+    if (!existsSync(infoPlist)) continue;
+    try {
+      const { stdout } = await execFileAsync("/usr/bin/plutil", [
+        "-extract",
+        "CFBundleIdentifier",
+        "raw",
+        "-o",
+        "-",
+        infoPlist,
+      ]);
+      if (stdout.trim() !== "org.edgeever.desktop") continue;
+      let ejectError;
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          await execFileAsync("/usr/sbin/diskutil", ["eject", candidate.volumePath]);
+          ejectError = null;
+          break;
+        } catch (error) {
+          ejectError = error;
+          if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+      if (ejectError) throw ejectError;
+      void writeDiagnostic("installation.volume-ejected", { volumePath: candidate.volumePath });
+    } catch (error) {
+      void writeDiagnostic("installation.volume-eject-failed", {
+        volumePath: candidate.volumePath,
+        message: error.message,
+      });
+    }
   }
 };
 
@@ -456,20 +521,43 @@ const confirmMacInstallation = async () => {
 app.whenReady().then(async () => {
   if (app.isPackaged && isMountedInstallerPath(app.getAppPath())) {
     const isChinese = app.getLocale().toLowerCase().startsWith("zh");
-    await dialog.showMessageBox({
+    const result = await dialog.showMessageBox({
       type: "info",
-      title: isChinese ? "请先安装 EdgeEver" : "Install EdgeEver first",
+      title: isChinese ? "安装 EdgeEver" : "Install EdgeEver",
       message: isChinese
-        ? "请先将 EdgeEver 拖入“应用程序”文件夹。"
-        : "Please move EdgeEver to the Applications folder first.",
+        ? "将 EdgeEver 安装到“应用程序”文件夹并启动。"
+        : "Install EdgeEver in the Applications folder and launch it.",
       detail: isChinese
-        ? "请关闭此窗口，将 EdgeEver 拖入“应用程序”，然后推出安装盘，再从“应用程序”启动。这样可以避免 macOS 显示两个 EdgeEver。"
-        : "Close this window, drag EdgeEver to Applications, eject the installer disk, and then launch it from Applications. This prevents macOS from showing duplicate EdgeEver entries.",
-      buttons: [isChinese ? "知道了" : "Done"],
+        ? "安装完成后，EdgeEver 会自动重启正式副本并推出安装盘，避免 macOS 同时显示两个 EdgeEver 入口。"
+        : "After installation, EdgeEver relaunches the installed copy and ejects the installer disk so macOS does not keep two EdgeEver entries.",
+      buttons: [isChinese ? "安装并启动" : "Install and Launch", isChinese ? "取消" : "Cancel"],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (result.response !== 0) {
+      app.quit();
+      return;
+    }
+    try {
+      const moved = app.moveToApplicationsFolder({
+        conflictHandler: (conflictType) => conflictType !== "existsAndRunning",
+      });
+      if (moved) return;
+    } catch (error) {
+      void writeDiagnostic("installation.move-failed", { message: error.message });
+    }
+    await dialog.showMessageBox({
+      type: "error",
+      title: isChinese ? "无法完成安装" : "Could Not Install",
+      message: isChinese
+        ? "请先退出正在运行的 EdgeEver，然后重新打开安装盘并重试。"
+        : "Quit the running copy of EdgeEver, reopen the installer disk, and try again.",
+      buttons: [isChinese ? "知道了" : "OK"],
     });
     app.quit();
     return;
   }
+  await ejectMountedMacInstallers();
   if (!hasSingleInstanceLock) {
     app.quit();
     return;

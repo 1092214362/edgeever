@@ -31,10 +31,12 @@ CSC_IDENTITY_AUTO_DISCOVERY=false bun run --cwd apps/desktop dist -- --publish n
 The resulting DMG, NSIS installer, or AppImage is written under
 `release/desktop`. The CI workflow accepts optional signing secrets:
 
-On macOS, users must drag EdgeEver to `Applications`, eject the mounted DMG,
-and launch the copy from `Applications`. The packaged app refuses to run
-directly from the installer disk because macOS registers both copies in
-file-association menus, which can make EdgeEver appear twice.
+On macOS, users can double-click EdgeEver in the mounted DMG and choose
+**Install and Launch**. The app moves itself to `Applications`, relaunches the
+installed copy, and ejects any mounted EdgeEver installer images so macOS does
+not retain duplicate file-association entries. Dragging the app to
+`Applications` remains supported; launching the installed copy also performs
+the installer-image cleanup.
 
 - `EDGEEVER_MAC_CERTIFICATE_BASE64` and `EDGEEVER_MAC_CERTIFICATE_PASSWORD`
 - `EDGEEVER_APPLE_ID`, `EDGEEVER_APPLE_APP_SPECIFIC_PASSWORD`, and `EDGEEVER_APPLE_TEAM_ID`
