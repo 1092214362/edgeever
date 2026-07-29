@@ -3,7 +3,7 @@
 EdgeEver releases are prepared with a single local command. The command validates
 the repository, creates the tracking Issue, updates versions, prepares and audits
 native assets in a Draft Release, publishes the Release, and installs the final
-macOS DMG.
+macOS DMG matching the maintainer's Mac architecture.
 
 This process does not perform mobile store delivery. Google Play and App Store
 Connect delivery is a separate, explicit operation documented in
@@ -65,11 +65,13 @@ marketing versions change only when that native runtime is rebuilt. Android
 `versionCode` and iOS build numbers remain independent, monotonically increasing
 store build identifiers.
 
-When a verified DMG or APK is reused, its original filename and native version
-remain unchanged. Desktop and Android update checks derive the latest applicable
-version from their corresponding Release asset instead of comparing against the
-overall GitHub tag. This prevents an unchanged native client from repeatedly
-offering an update for a Web-only or API-only Release.
+When verified DMGs or an APK are reused, their original filenames and native
+versions remain unchanged. Every formal Release contains separate macOS arm64
+and x64 DMGs plus architecture-specific updater ZIPs. Desktop and Android update
+checks derive the latest applicable version from their corresponding Release
+asset instead of comparing against the overall GitHub tag. This prevents an
+unchanged native client from repeatedly offering an update for a Web-only or
+API-only Release.
 
 ## Automated Flow
 
@@ -83,14 +85,17 @@ offering an update for a Web-only or API-only Release.
    updated.
 4. Create a bilingual tracking Issue, commit the version changes to `main`, push,
    and create a Draft Release with bilingual notes.
-5. Dispatch the desktop and Android asset workflows concurrently, wait for both,
-   and verify filenames, sizes, and checksums before publication.
+5. Dispatch the desktop and Android asset workflows concurrently. The desktop
+   workflow builds arm64 and x64 packages on matching native runners, then
+   combines their update metadata. Verify filenames, sizes, and checksums before
+   publication.
 6. Publish the Release and wait only for the required desktop and Android
    post-publication audits.
 7. Print the Demo deployment run or workflow URL. Demo deployment continues in
    the background and does not delay release completion.
-8. Link and close the tracking Issue, download the final DMG, verify its checksum
-   and signature, replace `/Applications/EdgeEver.app`, and launch it.
+8. Link and close the tracking Issue, download the final DMG matching the
+   maintainer Mac's architecture, verify its checksum and signature, replace
+   `/Applications/EdgeEver.app`, and launch it.
 
 No Release step builds a Play AAB, starts an EAS iOS build, or uploads to a
 mobile store.

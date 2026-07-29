@@ -173,7 +173,7 @@ export const buildIssueBody = ({ changesEn, changesZh }) => [
   "## Acceptance criteria",
   "",
   "- Required type checks, Web build, and native release planning tests pass.",
-  "- The Draft Release contains an audited macOS arm64 DMG and Android arm64 APK.",
+  "- The Draft Release contains audited macOS arm64 and x64 DMGs and an Android arm64 APK.",
   "- Post-publication native asset audits pass.",
 ].join("\n");
 
@@ -200,7 +200,7 @@ export const buildReleaseNotes = ({
   "- Native release planning and asset audit tests.",
   `- Version bump: \`${bump}\`.`,
   desktopRebuild
-    ? "- Desktop release plan: rebuild, sign, notarize, and verify a new macOS arm64 DMG."
+    ? "- Desktop release plan: rebuild, sign, notarize, and verify new macOS arm64 and x64 DMGs."
     : `- Desktop release plan: reuse the verified assets from ${previousTag} with their original filenames and checksums.`,
   mobileRebuild
     ? "- Android release plan: rebuild and verify a signed arm64 APK."
@@ -222,7 +222,7 @@ export const buildReleaseNotes = ({
   "- 原生 Release 规划与资产审计测试。",
   `- 版本递增级别：\`${bump}\`。`,
   desktopRebuild
-    ? "- 桌面端 Release 计划：重新构建、签名、公证并验证新的 macOS arm64 DMG。"
+    ? "- 桌面端 Release 计划：重新构建、签名、公证并验证新的 macOS arm64 与 x64 DMG。"
     : `- 桌面端 Release 计划：复用 ${previousTag} 已验证资产，并保留原始文件名与校验和。`,
   mobileRebuild
     ? "- Android Release 计划：重新构建并验证签名 arm64 APK。"
@@ -242,14 +242,17 @@ export const reusedAssetMatches = (previousAssets, currentAssets, name) => {
   );
 };
 
-export const selectPublishedDmg = (assets) => {
+export const selectPublishedDmg = (assets, arch = process.arch) => {
+  if (!["arm64", "x64"].includes(arch)) {
+    throw new Error(`Unsupported macOS architecture for installation: ${arch}.`);
+  }
   const matches = assets.filter((asset) =>
-    /^EdgeEver-(.+)-mac-arm64\.dmg$/.test(asset.name)
+    new RegExp(`^EdgeEver-(.+)-mac-${arch}\\.dmg$`).test(asset.name)
   );
   if (matches.length !== 1) {
-    throw new Error(`Expected exactly one macOS arm64 DMG, found ${matches.length}.`);
+    throw new Error(`Expected exactly one macOS ${arch} DMG, found ${matches.length}.`);
   }
-  const version = /^EdgeEver-(.+)-mac-arm64\.dmg$/.exec(matches[0].name)?.[1];
+  const version = new RegExp(`^EdgeEver-(.+)-mac-${arch}\\.dmg$`).exec(matches[0].name)?.[1];
   if (!version || !matches[0].digest?.startsWith("sha256:")) {
     throw new Error("Published DMG is missing its version or SHA-256 digest.");
   }
@@ -517,11 +520,11 @@ const assertDraftAssets = ({
     const previousDesktopNames = previousAssets
       .map((asset) => asset.name)
       .filter((name) =>
-        /^EdgeEver-.*-mac-arm64\.dmg(?:\.blockmap)?$/.test(name) ||
+        /^EdgeEver-.*-mac-(?:arm64|x64)\.(?:dmg|zip)(?:\.blockmap)?$/.test(name) ||
         name === "latest-mac.yml"
       );
     if (
-      previousDesktopNames.length !== 3 ||
+      previousDesktopNames.length !== 9 ||
       !previousDesktopNames.every((name) =>
         reusedAssetMatches(previousAssets, assets, name)
       )

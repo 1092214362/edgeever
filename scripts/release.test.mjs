@@ -108,22 +108,27 @@ describe("release automation", () => {
     ).toBe(false);
   });
 
-  test("selects a reused DMG and derives its native version", () => {
+  test("selects the DMG matching the current Mac architecture", () => {
+    const assets = [
+      {
+        name: "EdgeEver-1.6.51-mac-arm64.dmg",
+        size: 10,
+        digest: "sha256:abc",
+      },
+      {
+        name: "EdgeEver-1.6.51-mac-x64.dmg",
+        size: 11,
+        digest: "sha256:def",
+      },
+    ];
     expect(
-      selectPublishedDmg([
-        {
-          name: "EdgeEver-1.6.51-mac-arm64.dmg",
-          size: 10,
-          digest: "sha256:abc",
-        },
-        {
-          name: "edgeever-android-v1.6.51-arm64-v8a.apk",
-          size: 10,
-          digest: "sha256:def",
-        },
-      ]),
+      selectPublishedDmg(assets, "arm64"),
     ).toMatchObject({
       asset: { name: "EdgeEver-1.6.51-mac-arm64.dmg" },
+      version: "1.6.51",
+    });
+    expect(selectPublishedDmg(assets, "x64")).toMatchObject({
+      asset: { name: "EdgeEver-1.6.51-mac-x64.dmg" },
       version: "1.6.51",
     });
   });

@@ -6,6 +6,8 @@ describe("platform release version checks", () => {
     expect(findDesktopReleaseVersion([
       "EdgeEver-1.6.50-mac-arm64.dmg",
       "EdgeEver-1.6.50-mac-arm64.dmg.blockmap",
+      "EdgeEver-1.6.50-mac-x64.dmg",
+      "EdgeEver-1.6.50-mac-x64.dmg.blockmap",
       "edgeever-android-v1.6.49-arm64-v8a.apk",
     ])).toBe("1.6.50");
   });
@@ -14,6 +16,9 @@ describe("platform release version checks", () => {
     expect(findDesktopReleaseVersion([])).toBeNull();
     expect(findDesktopReleaseVersion([
       "EdgeEver-1.6.49-mac-arm64.dmg",
+      "EdgeEver-1.6.50-mac-x64.dmg",
+    ])).toBeNull();
+    expect(findDesktopReleaseVersion([
       "EdgeEver-1.6.50-mac-arm64.dmg",
     ])).toBeNull();
   });

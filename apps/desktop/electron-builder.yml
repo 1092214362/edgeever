@@ -42,8 +42,7 @@ mac:
   category: public.app-category.productivity
   target:
     - target: dmg
-      arch:
-        - arm64
+    - target: zip
   artifactName: EdgeEver-${version}-mac-${arch}.${ext}
 dmg:
   title: "EdgeEver: double-click to install"

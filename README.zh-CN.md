@@ -48,7 +48,7 @@ EdgeEver 是一款现代化的开源笔记工作区。它为你找回经典印�
 - **高效多选与批量操作**：支持笔记批量合并、批量移动，以及笔记本拖拽排序与层级调整。
 - **离线草稿与同步队列**：网络不稳定时自动保存离线草稿，恢复连线后自动入队同步。
 - **多账号与个人空间隔离**：单实例支持创建多个独立账号，用户数据相互隔离，配备直观的管理员账号管理与安全加密机制。
-- **全平台多端覆盖**：已上架 Chrome/Edge 网页裁剪插件；支持安装为 PWA 应用；原生 Android App 已上架 [Google Play](https://play.google.com/store/apps/details?id=org.edgeever.mobile)，也可从 GitHub Releases 下载 APK；iOS App 当前仍在 App Store 审核中；原生桌面端计划基于 Electron + Rust Sidecar 构建。
+- **全平台多端覆盖**：已上架 Chrome/Edge 网页裁剪插件；支持安装为 PWA 应用；原生 Android App 已上架 [Google Play](https://play.google.com/store/apps/details?id=org.edgeever.mobile)，也可从 GitHub Releases 下载 APK；iOS App 当前仍在 App Store 审核中；原生桌面端基于 Electron + Rust Sidecar 构建。
 
 ## 部署
 
@@ -107,7 +107,7 @@ Chrome/Edge 网页裁剪插件已正式上架，您可以通过以下链接直�
 
 Android App 现已上架 [Google Play](https://play.google.com/store/apps/details?id=org.edgeever.mobile)，也可从 [GitHub Releases](https://github.com/tianma-if/edgeever/releases) 下载签名 APK。iOS App 已提交，目前仍在 App Store 审核中。
 
-原生桌面端 App 计划基于 Electron + Rust Sidecar 构建。
+原生桌面端 App 基于 Electron + Rust Sidecar 构建。GitHub Releases 分别为 Apple Silicon（`arm64`）和 Intel（`x64`）Mac 提供已签名并完成公证的 DMG。开发与未签名安装包构建方式详见 [`apps/desktop/README.md`](apps/desktop/README.md)，正式签名资产由桌面端 CI 工作流生成。
 
 ## 技术栈
 

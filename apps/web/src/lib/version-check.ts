@@ -8,13 +8,22 @@ export type LatestRelease = {
   url: string;
 };
 
-const DESKTOP_ASSET_PATTERN = /^EdgeEver-(\d+\.\d+\.\d+)-mac-arm64\.dmg$/;
+const DESKTOP_ASSET_PATTERN = /^EdgeEver-(\d+\.\d+\.\d+)-mac-(arm64|x64)\.dmg$/;
 
 export const findDesktopReleaseVersion = (assetNames: string[]) => {
-  const versions = assetNames
-    .map((name) => DESKTOP_ASSET_PATTERN.exec(name)?.[1])
-    .filter((version): version is string => Boolean(version));
-  return versions.length === 1 ? versions[0] : null;
+  const versions = new Map<string, string>();
+  for (const name of assetNames) {
+    const match = DESKTOP_ASSET_PATTERN.exec(name);
+    if (!match) continue;
+    if (versions.has(match[2])) return null;
+    versions.set(match[2], match[1]);
+  }
+  return (
+    versions.size === 2 &&
+    versions.get("arm64") === versions.get("x64")
+  )
+    ? versions.get("arm64")!
+    : null;
 };
 
 const parseVersion = (value: string) => {
@@ -78,7 +87,7 @@ export const fetchLatestRelease = async (signal?: AbortSignal): Promise<LatestRe
   );
   const isDesktop = Boolean(window.edgeeverDesktop?.isAvailable);
   if (isDesktop && !desktopVersion) {
-    throw new Error("Release response does not contain exactly one desktop DMG");
+    throw new Error("Release response does not contain matching arm64 and x64 desktop DMGs");
   }
   const release = {
     tagName: payload.tag_name,

@@ -105,7 +105,7 @@ The Chrome/Edge web clipper is officially published. You can install it directly
 
 The Android app is now available on [Google Play](https://play.google.com/store/apps/details?id=org.edgeever.mobile), with signed APKs also available from [GitHub Releases](https://github.com/tianma-if/edgeever/releases). The iOS app has been submitted and is currently under App Store review.
 
-The native desktop app is built with Electron and a Rust sidecar. Development and unsigned installer instructions are available in [`apps/desktop/README.md`](apps/desktop/README.md); signed release artifacts are produced by the desktop CI workflow.
+The native desktop app is built with Electron and a Rust sidecar. GitHub Releases provide separate signed and notarized DMGs for Apple Silicon (`arm64`) and Intel (`x64`) Macs. Development and unsigned installer instructions are available in [`apps/desktop/README.md`](apps/desktop/README.md); signed release artifacts are produced by the desktop CI workflow.
 
 ## Tech Stack
 
