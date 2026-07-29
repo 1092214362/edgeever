@@ -571,7 +571,6 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
-  await ejectMountedMacInstallers();
   if (!hasSingleInstanceLock) {
     app.quit();
     return;
@@ -674,6 +673,10 @@ app.whenReady().then(async () => {
   });
 
   await createWindow();
+  // Inspecting and ejecting mounted disk images invokes macOS command-line
+  // tools and may take several seconds. Keep that maintenance off the
+  // user-visible critical path so the first installed launch opens promptly.
+  await ejectMountedMacInstallers();
   await confirmMacInstallation();
   configureAutoUpdater();
   handleOpenTarget(process.argv);
