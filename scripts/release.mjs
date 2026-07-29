@@ -219,6 +219,20 @@ export const reusedAssetMatches = (previousAssets, currentAssets, name) => {
   );
 };
 
+export const selectPublishedDmg = (assets) => {
+  const matches = assets.filter((asset) =>
+    /^EdgeEver-(.+)-mac-arm64\.dmg$/.test(asset.name)
+  );
+  if (matches.length !== 1) {
+    throw new Error(`Expected exactly one macOS arm64 DMG, found ${matches.length}.`);
+  }
+  const version = /^EdgeEver-(.+)-mac-arm64\.dmg$/.exec(matches[0].name)?.[1];
+  if (!version || !matches[0].digest?.startsWith("sha256:")) {
+    throw new Error("Published DMG is missing its version or SHA-256 digest.");
+  }
+  return { asset: matches[0], version };
+};
+
 const run = (executable, args, { capture = false, allowFailure = false } = {}) => {
   const result = spawnSync(executable, args, {
     cwd: resolve("."),
@@ -502,14 +516,11 @@ const sha256File = (path) => new Promise((resolveHash, rejectHash) => {
   stream.on("end", () => resolveHash(hash.digest("hex")));
 });
 
-const installPublishedDmg = async ({ repository, tag, version, assets }) => {
+export const installPublishedDmg = async ({ repository, tag, assets }) => {
   if (process.platform !== "darwin") {
     throw new Error("Final DMG installation requires macOS; use --skip-install elsewhere.");
   }
-  const dmg = assets.find((asset) => asset.name === `EdgeEver-${version}-mac-arm64.dmg`);
-  if (!dmg?.digest?.startsWith("sha256:")) {
-    throw new Error("Published DMG is missing its SHA-256 digest.");
-  }
+  const { asset: dmg, version: nativeVersion } = selectPublishedDmg(assets);
 
   const temporaryDirectory = mkdtempSync(join(tmpdir(), "edgeever-release-"));
   const mountDirectory = join(temporaryDirectory, "mount");
@@ -570,8 +581,10 @@ const installPublishedDmg = async ({ repository, tag, version, assets }) => {
         ["read", join(installedApp, "Contents/Info.plist"), "CFBundleShortVersionString"],
         { capture: true },
       );
-      if (installedVersion !== version) {
-        throw new Error(`Installed app version is ${installedVersion}, expected ${version}.`);
+      if (installedVersion !== nativeVersion) {
+        throw new Error(
+          `Installed app version is ${installedVersion}, expected reused native version ${nativeVersion}.`,
+        );
       }
       run("codesign", ["--verify", "--deep", "--strict", installedApp]);
     } catch (error) {
@@ -584,7 +597,9 @@ const installPublishedDmg = async ({ repository, tag, version, assets }) => {
       throw error;
     }
     run("open", ["-a", installedApp]);
-    console.log(`[release] installed and launched EdgeEver ${version}`);
+    console.log(
+      `[release] installed and launched EdgeEver ${nativeVersion} from ${tag}`,
+    );
     if (backupPath) {
       console.log(`[release] previous app backup: ${backupPath}`);
     }
@@ -596,6 +611,19 @@ const installPublishedDmg = async ({ repository, tag, version, assets }) => {
       rmSync(temporaryDirectory, { recursive: true, force: true });
     }
   }
+};
+
+export const installReleaseDmg = async ({ repository, tag }) => {
+  const published = ghJson([
+    "release",
+    "view",
+    tag,
+    "--repo",
+    repository,
+    "--json",
+    "assets",
+  ]);
+  await installPublishedDmg({ repository, tag, assets: published.assets });
 };
 
 const releaseMain = async (options) => {
@@ -869,20 +897,9 @@ const releaseMain = async (options) => {
   console.log(`[release] ${tag} is complete; Demo deployment is not blocking completion`);
 
   if (!options.skipInstall) {
-    const published = ghJson([
-      "release",
-      "view",
-      tag,
-      "--repo",
-      options.repository,
-      "--json",
-      "assets",
-    ]);
-    await installPublishedDmg({
+    await installReleaseDmg({
       repository: options.repository,
       tag,
-      version: nextVersion,
-      assets: published.assets,
     });
   }
 };

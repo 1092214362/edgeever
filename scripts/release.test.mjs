@@ -5,6 +5,7 @@ import {
   nextPatchVersion,
   parseReleaseArgs,
   reusedAssetMatches,
+  selectPublishedDmg,
 } from "./release.mjs";
 
 describe("release automation", () => {
@@ -79,5 +80,25 @@ describe("release automation", () => {
     expect(
       reusedAssetMatches(previous, [{ ...previous[0], digest: "sha256:def" }], "app.apk"),
     ).toBe(false);
+  });
+
+  test("selects a reused DMG and derives its native version", () => {
+    expect(
+      selectPublishedDmg([
+        {
+          name: "EdgeEver-1.6.51-mac-arm64.dmg",
+          size: 10,
+          digest: "sha256:abc",
+        },
+        {
+          name: "edgeever-android-v1.6.51-arm64-v8a.apk",
+          size: 10,
+          digest: "sha256:def",
+        },
+      ]),
+    ).toMatchObject({
+      asset: { name: "EdgeEver-1.6.51-mac-arm64.dmg" },
+      version: "1.6.51",
+    });
   });
 });
