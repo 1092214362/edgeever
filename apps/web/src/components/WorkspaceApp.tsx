@@ -672,6 +672,7 @@ export const WorkspaceApp = ({
   const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
   const [createdMemoEditId, setCreatedMemoEditId] = useState<string | null>(null);
   const pendingCreatedMemoIdRef = useRef<string | null>(null);
+  const creatingMemoSelectionRef = useRef(false);
   const [selectedMemoIds, setSelectedMemoIds] = useState<Set<string>>(new Set());
   const [memoSelectionMode, setMemoSelectionMode] = useState(false);
   const [selectionMoveTargetNotebookId, setSelectionMoveTargetNotebookId] = useState("");
@@ -1064,6 +1065,7 @@ export const WorkspaceApp = ({
 
   const clearPendingCreatedMemo = useCallback(() => {
     pendingCreatedMemoIdRef.current = null;
+    creatingMemoSelectionRef.current = false;
   }, []);
 
   const applyMobileEditorReturnPreview = useCallback((memoId: string | null) => {
@@ -1542,6 +1544,10 @@ export const WorkspaceApp = ({
   useEffect(() => {
     const selectedMemoInList = selectedMemoId ? memos.some((memo) => memo.id === selectedMemoId) : false;
 
+    if (creatingMemoSelectionRef.current || pendingCreatedMemoIdRef.current) {
+      return;
+    }
+
     if (createdMemoEditId && selectedMemoId === createdMemoEditId) {
       // Keep the create request alive until the editor consumes it. The new
       // memo can appear in the list before its detail query has mounted the
@@ -1649,6 +1655,10 @@ export const WorkspaceApp = ({
       if (!isDesktopViewport()) {
         openStandaloneMobileEditor(data.memo.id);
       }
+    },
+    onError: () => {
+      clearPendingCreatedMemo();
+      setCreatedMemoEditId(null);
     },
   });
 
@@ -2049,6 +2059,7 @@ export const WorkspaceApp = ({
 
     setTemplatesOpen(false);
     setMobileBottomNavActive("home");
+    creatingMemoSelectionRef.current = true;
     createMemoMutation.mutate({
       notebookId: targetNotebookId,
       title: template?.title ?? "",
