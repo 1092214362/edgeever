@@ -1,6 +1,6 @@
 {
   "name": "edgeever",
-  "version": "1.6.51",
+  "version": "1.6.52",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -17,7 +17,7 @@
     "dev:remote": "concurrently -k -n api,web -c cyan,magenta \"bun run dev:api:remote\" \"bun run dev:web\"",
     "dev:api:remote": "bun scripts/run-wrangler.mjs dev --remote --port 8787",
     "dev:web": "vite --config apps/web/vite.config.ts --host 127.0.0.1 --port 5173",
-  "dev:desktop": "concurrently -k -n web,desktop -c magenta,cyan \"bun run dev:web\" \"bun run --cwd apps/desktop dev\"",
+    "dev:desktop": "concurrently -k -n web,desktop -c magenta,cyan \"bun run dev:web\" \"bun run --cwd apps/desktop dev\"",
     "dev:mobile": "bun --cwd apps/mobile expo start",
     "prepare:mobile:icons": "bun scripts/prepare-mobile-icons.mjs",
     "build:android:fast": "bash scripts/build-android-local.sh fast",
