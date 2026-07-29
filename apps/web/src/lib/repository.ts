@@ -354,7 +354,11 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
       createdAt: memo.createdAt,
       updatedAt: memo.updatedAt,
     });
-    window.dispatchEvent(new CustomEvent("edgeever:sync-queue-changed"));
+    // Let the mutation success handler commit the new memo's selection before
+    // the queue worker starts remapping its temporary ID. Otherwise the sync
+    // callback can win the race and the list effect falls back to the first
+    // memo (the demo welcome note).
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("edgeever:sync-queue-changed")), 0);
     return { memo };
   },
 
