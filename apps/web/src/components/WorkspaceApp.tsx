@@ -671,6 +671,7 @@ export const WorkspaceApp = ({
   const autoSelectedDemoNotebookRef = useRef(false);
   const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
   const [createdMemoEditId, setCreatedMemoEditId] = useState<string | null>(null);
+  const pendingCreatedMemoIdRef = useRef<string | null>(null);
   const [selectedMemoIds, setSelectedMemoIds] = useState<Set<string>>(new Set());
   const [memoSelectionMode, setMemoSelectionMode] = useState(false);
   const [selectionMoveTargetNotebookId, setSelectionMoveTargetNotebookId] = useState("");
@@ -799,9 +800,14 @@ export const WorkspaceApp = ({
         onSynced: async (memo, item) => {
           if (item.kind === "memo.create") {
             await replaceLocalMemoId(localDataScope, item.memoId, memo);
-            if (selectedMemoId === item.memoId) {
+            if (selectedMemoId === item.memoId || pendingCreatedMemoIdRef.current === item.memoId) {
               setSelectedMemoId(memo.id);
-              setCreatedMemoEditId(null);
+              // Keep the create intent attached to the remapped memo until
+              // the editor has consumed it. The list query may still contain
+              // the pre-sync snapshot for one render and would otherwise
+              // fall back to the first memo (the demo welcome note).
+              setCreatedMemoEditId(memo.id);
+              pendingCreatedMemoIdRef.current = memo.id;
             }
           } else {
             await putLocalMemo(localDataScope, memo);
@@ -1054,7 +1060,9 @@ export const WorkspaceApp = ({
     setMemoSelectionMode(false);
   }, []);
 
-  const clearPendingCreatedMemo = useCallback(() => {}, []);
+  const clearPendingCreatedMemo = useCallback(() => {
+    pendingCreatedMemoIdRef.current = null;
+  }, []);
 
   const applyMobileEditorReturnPreview = useCallback((memoId: string | null) => {
     const returnPreview = readMobileEditorReturnPreview(memoId);
@@ -1631,6 +1639,7 @@ export const WorkspaceApp = ({
       ]);
       navigateWorkspaceHome();
       setRightView("editor");
+      pendingCreatedMemoIdRef.current = data.memo.id;
       setCreatedMemoEditId(data.memo.id);
       setSelectedMemoId(data.memo.id);
       setActivePane("editor");
@@ -2056,6 +2065,7 @@ export const WorkspaceApp = ({
   };
 
   const handleMobileDefaultEditConsumed = useCallback(() => {
+    pendingCreatedMemoIdRef.current = null;
     setCreatedMemoEditId(null);
   }, []);
 
