@@ -1166,6 +1166,7 @@ const RichEditorPane = ({
   const [tagsText, setTagsText] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "queued" | "error" | "conflict">("idle");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hydratedEditorMemoId, setHydratedEditorMemoId] = useState<string | null>(null);
   const [dirtyVersion, setDirtyVersion] = useState(0);
   const [, setEditorStateVersion] = useState(0);
   const [editorContentVersion, setEditorContentVersion] = useState(0);
@@ -1413,7 +1414,7 @@ const RichEditorPane = ({
     content: memo
       ? resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown)
       : { type: "doc", content: [{ type: "paragraph" }] },
-    editable: Boolean(memo && !effectiveReadOnly),
+    editable: Boolean(memo && !effectiveReadOnly && hydratedEditorMemoId === memo.id),
     editorProps: {
       attributes: {
         class: "prose prose-slate max-w-none focus:outline-none min-h-[300px] px-4 py-3 sm:px-7",
@@ -1887,6 +1888,7 @@ const RichEditorPane = ({
       memoRef.current = null;
       editSessionRef.current = null;
       hydratedMemoIdRef.current = null;
+      setHydratedEditorMemoId(null);
       editingMemoIdRef.current = null;
       hasUnsavedChangesRef.current = false;
       setHasUnsavedChanges(false);
@@ -1908,6 +1910,7 @@ const RichEditorPane = ({
 
     if (!sameMemo) {
       hydratedMemoIdRef.current = null;
+      setHydratedEditorMemoId(null);
     }
 
     if (sameMemo && hasUnsavedChangesRef.current && !memo.isDeleted) {
@@ -1969,6 +1972,7 @@ const RichEditorPane = ({
 
       hydratedMemoIdRef.current = memo.id;
       editSessionRef.current = editSessionResponse?.editSession ?? (requiresLocalEditSession(memo) ? createLocalEditSession(memo) : null);
+      setHydratedEditorMemoId(memo.id);
 
       window.setTimeout(() => {
         hydratingRef.current = false;
@@ -2001,9 +2005,9 @@ const RichEditorPane = ({
 
   useEffect(() => {
     if (isEditorReady(editor)) {
-      editor.setEditable(Boolean(memo && !effectiveReadOnly));
+      editor.setEditable(Boolean(memo && !effectiveReadOnly && hydratedEditorMemoId === memo.id));
     }
-  }, [editor, effectiveReadOnly, memo]);
+  }, [editor, effectiveReadOnly, hydratedEditorMemoId, memo]);
 
   useEffect(() => {
     if (!isEditorReady(editor) || !memo) {
