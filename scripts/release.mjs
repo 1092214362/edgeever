@@ -689,8 +689,8 @@ const releaseMain = async (options) => {
       `package.json version ${rootPackage.version} must match ${previousVersion}, or ${expectedNextVersion} with a resumable Draft.`,
     );
   }
-  const nextVersion = resumedDraft ? rootPackage.version : expectedNextVersion;
-  const tag = `v${nextVersion}`;
+  const releaseVersion = resumedDraft ? rootPackage.version : expectedNextVersion;
+  const tag = `v${releaseVersion}`;
   const changedFiles = changedFilesBetween(previousTag, headShaBeforeRelease);
   if (changedFiles.length === 0) {
     throw new Error(`There are no committed changes after ${previousTag}.`);
@@ -747,7 +747,7 @@ const releaseMain = async (options) => {
     console.log(`[release] created Issue #${issueNumber}: ${issueUrl}`);
 
     const versionPaths = updateReleaseVersions({
-      nextVersion,
+      nextVersion: releaseVersion,
       desktopRebuild: desktopPlan.rebuild,
       mobileRebuild: mobilePlan.rebuild,
     });
@@ -829,7 +829,7 @@ const releaseMain = async (options) => {
     assets: draft.assets,
     previousAssets: latestRelease.assets,
     tag,
-    version: nextVersion,
+    version: releaseVersion,
     desktopRebuild: desktopPlan.rebuild,
     mobileRebuild: mobilePlan.rebuild,
   });
