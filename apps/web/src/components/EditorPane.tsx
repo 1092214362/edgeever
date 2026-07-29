@@ -2028,6 +2028,20 @@ const RichEditorPane = ({
     };
   }, [editor, markDirty, memo, persistCurrentDraft]);
 
+  useEffect(() => {
+    const handleSyncCompleted = (event: Event) => {
+      const result = (event as CustomEvent<{ failed?: number; conflicted?: number }>).detail;
+      if ((result?.failed ?? 0) > 0 || (result?.conflicted ?? 0) > 0 || hasUnsavedChangesRef.current) {
+        return;
+      }
+
+      setSaveState((current) => current === "queued" ? "saved" : current);
+    };
+
+    window.addEventListener("edgeever:sync-completed", handleSyncCompleted);
+    return () => window.removeEventListener("edgeever:sync-completed", handleSyncCompleted);
+  }, []);
+
   const handleMarkdownModeChange = useCallback(() => {
     if (effectiveReadOnly || !isEditorReady(editor)) {
       return;

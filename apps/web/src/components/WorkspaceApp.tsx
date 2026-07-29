@@ -785,7 +785,8 @@ export const WorkspaceApp = ({
     try {
       if (window.edgeeverDesktop?.isAvailable) {
         const { getDesktopSyncSummary, syncDesktopData } = await import("@/lib/desktop-sync");
-        await syncDesktopData();
+        const result = await syncDesktopData();
+        window.dispatchEvent(new CustomEvent("edgeever:sync-completed", { detail: result }));
         setSyncSummary(await getDesktopSyncSummary());
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["memos"] }),
@@ -795,7 +796,7 @@ export const WorkspaceApp = ({
         return;
       }
       const { syncQueuedChanges } = await import("@/lib/sync-queue");
-      await syncQueuedChanges({
+      const result = await syncQueuedChanges({
         scope: localDataScope,
         onSynced: async (memo, item) => {
           if (item.kind === "memo.create") {
@@ -857,6 +858,7 @@ export const WorkspaceApp = ({
           ]);
         },
       });
+      window.dispatchEvent(new CustomEvent("edgeever:sync-completed", { detail: result }));
     } finally {
       setIsSyncingQueuedChanges(false);
     }
