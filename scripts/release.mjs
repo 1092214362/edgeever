@@ -37,6 +37,8 @@ export const RELEASE_VALIDATIONS = [
       "scripts/plan-native-release.test.mjs",
       "scripts/check-native-release-assets.test.mjs",
       "scripts/release.test.mjs",
+      "scripts/validate-store-delivery.test.mjs",
+      "scripts/store-delivery.test.mjs",
     ],
   },
 ];

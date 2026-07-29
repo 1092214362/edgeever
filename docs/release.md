@@ -5,6 +5,10 @@ the repository, creates the tracking Issue, updates versions, prepares and audit
 native assets in a Draft Release, publishes the Release, and installs the final
 macOS DMG.
 
+This process does not perform mobile store delivery. Google Play and App Store
+Connect delivery is a separate, explicit operation documented in
+[Mobile Store Delivery](store-delivery.md).
+
 ## Prerequisites
 
 - Run the command on macOS from a clean `main` branch that exactly matches
@@ -50,6 +54,9 @@ maintainer releases should install and launch the published application.
    the background and does not delay release completion.
 8. Link and close the tracking Issue, download the final DMG, verify its checksum
    and signature, replace `/Applications/EdgeEver.app`, and launch it.
+
+No Release step builds a Play AAB, starts an EAS iOS build, or uploads to a
+mobile store.
 
 The release version commit includes the standard GitHub Actions skip marker.
 Draft asset workflows are dispatched explicitly, so this avoids an unnecessary

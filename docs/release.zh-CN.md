@@ -4,6 +4,9 @@ EdgeEver 使用一条本地命令准备 Release。该命令会检查仓库、创
 更新版本、在 Draft Release 中准备并审计原生资产、正式发布 Release，并安装最终
 的 macOS DMG。
 
+该流程不执行移动端商店交付。Google Play 和 App Store Connect 交付是独立且
+需要显式触发的操作，详见[移动端商店交付](store-delivery.zh-CN.md)。
+
 ## 前置条件
 
 - 在 macOS 上执行，当前必须是干净的 `main` 分支，并且与 `origin/main` 完全一致。
@@ -44,6 +47,8 @@ GitHub 状态。`--skip-install` 会跳过发布后的 DMG 安装，仅适用于
    完成。
 8. 回链并关闭跟踪 Issue，下载最终 DMG，验证校验和与签名，覆盖
    `/Applications/EdgeEver.app` 并启动。
+
+Release 流程不会构建 Play AAB、启动 EAS iOS Build，也不会上传到移动端商店。
 
 版本发布提交会包含 GitHub Actions 的标准跳过标记。Draft 资产工作流由脚本
 显式触发，因此可以避免一次不必要的 push 触发 Android 构建，同时不会跳过
