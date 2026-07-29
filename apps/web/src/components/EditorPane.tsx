@@ -1287,13 +1287,27 @@ const RichEditorPane = ({
           }
 
           const currentEditor = editorRef.current;
-          if (!isMobileViewport) {
-            if (isEditorReady(currentEditor) && hydratedMemoIdRef.current === memo.id) {
-              currentEditor.commands.focus("end");
-              onMobileDefaultEditConsumed();
-              return;
+            if (!isMobileViewport) {
+              if (isEditorReady(currentEditor) && hydratedMemoIdRef.current === memo.id) {
+                currentEditor.commands.focus("end");
+                onMobileDefaultEditConsumed();
+                // Consuming the create request updates the parent and can
+                // briefly blur the editor during that rerender. Restore the
+                // caret after the update has committed so a new note is
+                // immediately ready for typing.
+                window.setTimeout(() => {
+                  if (cancelled || memoRef.current?.id !== memo.id) {
+                    return;
+                  }
+
+                  const activeEditor = editorRef.current;
+                  if (isEditorReady(activeEditor)) {
+                    activeEditor.commands.focus("end");
+                  }
+                }, 0);
+                return;
+              }
             }
-          }
 
           // The editor is mounted before its memo hydration/edit session
           // finishes. Keep retrying across that async boundary so a newly
