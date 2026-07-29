@@ -1290,11 +1290,11 @@ const RichEditorPane = ({
             if (!isMobileViewport) {
               if (isEditorReady(currentEditor) && hydratedMemoIdRef.current === memo.id) {
                 currentEditor.commands.focus("end");
-                onMobileDefaultEditConsumed();
                 // Consuming the create request updates the parent and can
-                // briefly blur the editor during that rerender. Restore the
-                // caret after the update has committed so a new note is
-                // immediately ready for typing.
+                // briefly blur the editor during that rerender. Mobile
+                // standalone editing consumes the request above; desktop
+                // keeps it alive until the list has observed the new memo so
+                // a background refresh cannot select the previous memo.
                 window.setTimeout(() => {
                   if (cancelled || memoRef.current?.id !== memo.id) {
                     return;
