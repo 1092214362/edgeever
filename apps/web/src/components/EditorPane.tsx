@@ -1214,7 +1214,7 @@ const RichEditorPane = ({
   useEffect(() => {
     const controller = new AbortController();
     void fetchLatestRelease(controller.signal)
-      .then((release) => setUpdateAvailable(isVersionOutdated(__EDGEEVER_APP_VERSION__, release.tagName)))
+      .then((release) => setUpdateAvailable(isVersionOutdated(__EDGEEVER_APP_VERSION__, release.version)))
       .catch(() => undefined);
     const handleReleaseStatus = () => setUpdateAvailable(true);
     window.addEventListener(RELEASE_STATUS_EVENT, handleReleaseStatus);

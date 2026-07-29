@@ -4,7 +4,17 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 
 export type LatestRelease = {
   tagName: string;
+  version: string;
   url: string;
+};
+
+const DESKTOP_ASSET_PATTERN = /^EdgeEver-(\d+\.\d+\.\d+)-mac-arm64\.dmg$/;
+
+export const findDesktopReleaseVersion = (assetNames: string[]) => {
+  const versions = assetNames
+    .map((name) => DESKTOP_ASSET_PATTERN.exec(name)?.[1])
+    .filter((version): version is string => Boolean(version));
+  return versions.length === 1 ? versions[0] : null;
 };
 
 const parseVersion = (value: string) => {
@@ -28,9 +38,17 @@ const readCachedRelease = (): LatestRelease | null => {
   try {
     const cached = JSON.parse(window.sessionStorage.getItem(CACHE_KEY) ?? "null") as {
       expiresAt?: number;
-      release?: LatestRelease;
+      release?: Partial<LatestRelease>;
     } | null;
-    return cached?.expiresAt && cached.expiresAt > Date.now() && cached.release ? cached.release : null;
+    return (
+      cached?.expiresAt &&
+      cached.expiresAt > Date.now() &&
+      typeof cached.release?.tagName === "string" &&
+      typeof cached.release.version === "string" &&
+      typeof cached.release.url === "string"
+    )
+      ? cached.release as LatestRelease
+      : null;
   } catch {
     return null;
   }
@@ -46,10 +64,27 @@ export const fetchLatestRelease = async (signal?: AbortSignal): Promise<LatestRe
   });
   if (!response.ok) throw new Error(`Release lookup failed with ${response.status}`);
 
-  const payload = (await response.json()) as { html_url?: string; tag_name?: string };
+  const payload = (await response.json()) as {
+    assets?: Array<{ name?: unknown }>;
+    html_url?: string;
+    tag_name?: string;
+  };
   if (!payload.tag_name || !payload.html_url) throw new Error("Release response is incomplete");
 
-  const release = { tagName: payload.tag_name, url: payload.html_url };
+  const desktopVersion = findDesktopReleaseVersion(
+    payload.assets
+      ?.map((asset) => asset.name)
+      .filter((name): name is string => typeof name === "string") ?? []
+  );
+  const isDesktop = Boolean(window.edgeeverDesktop?.isAvailable);
+  if (isDesktop && !desktopVersion) {
+    throw new Error("Release response does not contain exactly one desktop DMG");
+  }
+  const release = {
+    tagName: payload.tag_name,
+    version: isDesktop ? desktopVersion! : payload.tag_name,
+    url: payload.html_url,
+  };
   try {
     window.sessionStorage.setItem(CACHE_KEY, JSON.stringify({ expiresAt: Date.now() + CACHE_TTL_MS, release }));
   } catch {
