@@ -54,6 +54,8 @@ GitHub 状态。`--skip-install` 会跳过发布后的 DMG 安装，仅适用于
 对应的原生展示版本。Android `versionCode` 和 iOS Build Number 继续作为独立、
 严格递增的商店构建标识。
 
+正式 Tag 及其对应的 GitHub Release 标题均统一使用 `vX.Y.Z`。
+
 复用已验证的 DMG 或 APK 时，保留其原始文件名和原生版本。每个正式 Release
 都同时包含独立的 macOS arm64 与 x64 DMG，以及按架构区分的更新 ZIP。桌面端
 和 Android 更新检查从各自在 Release 中的资产读取适用版本，而不是直接比较

@@ -161,6 +161,13 @@ export const nextVersion = (version, bump) => {
   return `${major}.${minor}.${patch + 1}`;
 };
 
+export const buildReleaseTitle = (tag) => {
+  if (!/^v\d+\.\d+\.\d+$/.test(tag)) {
+    throw new Error(`Expected a stable vX.Y.Z tag, received: ${tag}`);
+  }
+  return tag;
+};
+
 export const buildIssueBody = ({ changesEn, changesZh }) => [
   "## Summary",
   "",
@@ -778,7 +785,7 @@ const releaseMain = async (options) => {
       "--target",
       releaseSha,
       "--title",
-      tag,
+      buildReleaseTitle(tag),
       "--draft",
       "--notes",
       notes,

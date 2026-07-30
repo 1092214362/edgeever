@@ -65,6 +65,8 @@ marketing versions change only when that native runtime is rebuilt. Android
 `versionCode` and iOS build numbers remain independent, monotonically increasing
 store build identifiers.
 
+Stable tags and their GitHub Release titles both use `vX.Y.Z`.
+
 When verified DMGs or an APK are reused, their original filenames and native
 versions remain unchanged. Every formal Release contains separate macOS arm64
 and x64 DMGs plus architecture-specific updater ZIPs. Desktop and Android update

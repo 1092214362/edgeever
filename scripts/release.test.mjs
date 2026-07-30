@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildIssueBody,
   buildReleaseNotes,
+  buildReleaseTitle,
   nextVersion,
   parseReleaseArgs,
   reusedAssetMatches,
@@ -53,6 +54,11 @@ describe("release automation", () => {
     expect(nextVersion("1.6.50", "major")).toBe("2.0.0");
     expect(() => nextVersion("1.6", "patch")).toThrow("stable X.Y.Z");
     expect(() => nextVersion("1.6.50", "automatic")).toThrow("patch, minor, or major");
+  });
+
+  test("uses the stable tag as the GitHub Release title", () => {
+    expect(buildReleaseTitle("v1.6.55")).toBe("v1.6.55");
+    expect(() => buildReleaseTitle("1.6.55")).toThrow("stable vX.Y.Z tag");
   });
 
   test("requires an explicit version bump", () => {
