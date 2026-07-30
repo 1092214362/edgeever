@@ -29,6 +29,11 @@ extraResources:
     to: web
     filter:
       - "**/*"
+  - from: assets
+    to: tray
+    filter:
+      - "trayTemplate.png"
+      - "trayTemplate@2x.png"
   - from: ../../migrations
     to: migrations
     filter:
