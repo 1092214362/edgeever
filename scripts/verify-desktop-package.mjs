@@ -27,8 +27,9 @@ const requestedArch = process.env.EDGE_EVER_DESKTOP_ARCH ?? process.arch;
 
 const verifyMachOArch = (path, arch, label) => {
   const result = spawnSync("lipo", ["-archs", path], { encoding: "utf8" });
+  const expectedArch = arch === "x64" ? "x86_64" : arch;
   assert.equal(result.status, 0, `${label} architecture inspection failed: ${result.stderr || result.stdout}`);
-  assert.deepEqual(result.stdout.trim().split(/\s+/), [arch], `${label} must contain only ${arch}`);
+  assert.deepEqual(result.stdout.trim().split(/\s+/), [expectedArch], `${label} must contain only ${expectedArch}`);
 };
 
 for (const sidecarPath of files.filter((path) => /[\\/]resources[\\/]sidecar[\\/]edgeever-sidecar(?:\.exe)?$/i.test(path))) {
