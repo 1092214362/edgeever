@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowUpCircle, CheckCircle2, Copy, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { detectWebClientKind } from "@/lib/client-environment";
 import { cn } from "@/lib/utils";
 import { fetchLatestRelease, isVersionOutdated, type LatestRelease } from "@/lib/version-check";
 import { copyTextToClipboard } from "./settings-utils";
@@ -37,9 +38,13 @@ const getDeploymentDescription = (t: (key: string) => string) => {
 export const getWebSystemInfoItems = (t: (key: string) => string, language: string): SystemInfoItem[] => {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || t("systemInfo.unknown");
   const userAgent = navigator.userAgent;
-  const standalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (navigator as NavigatorWithStandalone).standalone === true;
+  const clientKind = detectWebClientKind({
+    desktopBridgeAvailable: window.edgeeverDesktop?.isAvailable === true,
+    displayModeStandalone:
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches,
+    navigatorStandalone: (navigator as NavigatorWithStandalone).standalone === true,
+  });
 
   return [
     { label: t("systemInfo.version"), value: `v${__EDGEEVER_APP_VERSION__}` },
@@ -50,12 +55,14 @@ export const getWebSystemInfoItems = (t: (key: string) => string, language: stri
         : t("systemInfo.unknown"),
     },
     { label: t("systemInfo.build"), value: __EDGEEVER_BUILD_LABEL__ },
+    { label: t("systemInfo.client"), value: t(`systemInfo.clients.${clientKind}`) },
     { label: t("systemInfo.deployment"), value: getDeploymentDescription(t) },
-    { label: t("systemInfo.browser"), value: detectBrowser(userAgent) ?? t("systemInfo.unknown") },
+    ...(clientKind === "desktopApp"
+      ? []
+      : [{ label: t("systemInfo.browser"), value: detectBrowser(userAgent) ?? t("systemInfo.unknown") }]),
     { label: t("systemInfo.os"), value: detectOperatingSystem(userAgent, navigator.platform) ?? t("systemInfo.unknown") },
     { label: t("systemInfo.language"), value: navigator.language || language },
     { label: t("systemInfo.timeZone"), value: timeZone },
-    { label: t("systemInfo.installMode"), value: standalone ? t("systemInfo.standalone") : t("systemInfo.browserMode") },
   ];
 };
 
