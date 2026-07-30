@@ -127,6 +127,7 @@ jobs:
         uses: expo/expo-github-action@v8
         with:
           eas-version: 21.4.0
+          packager: npm
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Restore Android upload keystore
@@ -195,6 +196,7 @@ jobs:
         uses: expo/expo-github-action@v8
         with:
           eas-version: 21.4.0
+          packager: npm
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Set up Ruby and fastlane

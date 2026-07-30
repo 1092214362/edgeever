@@ -39,5 +39,6 @@ describe("store delivery command", () => {
     expect(workflow).not.toContain("bunx eas-cli");
     expect(workflow.match(/uses: expo\/expo-github-action@v8/g)).toHaveLength(2);
     expect(workflow.match(/eas-version: 21\.4\.0/g)).toHaveLength(2);
+    expect(workflow.match(/packager: npm/g)).toHaveLength(2);
   });
 });
