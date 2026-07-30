@@ -82,6 +82,10 @@ Complete setup in 4 simple web steps:
 
 > 📖 For full step-by-step instructions and configuration details, see the [Online Deployment Guide](docs/deploy-cloudflare-button.md).
 
+---
+
+> 💡 **Deployment Tip (Cloudflare R2 Billing)**: Although Cloudflare R2 offers a free tier, it requires binding a payment method (such as a dual-currency credit card) to activate. Based on personal experience, for users in mainland China, VISA cards from China Merchants Bank (CMB) or Shanghai Pudong Development Bank (SPDB) are typically the fastest to get verified (and most of these cards have no annual fees or easily waivable ones, so there are no extra holding costs).
+
 ## Multi-Account Login
 
 Once deployed, a single instance supports multi-account login.
