@@ -43,7 +43,8 @@ if (requestedPlatform === "darwin") {
   assert.ok(existsSync(join(outputDirectory, `EdgeEver-${version}-mac-${requestedArch}.dmg.blockmap`)), `macOS package must contain the current ${requestedArch} DMG blockmap`);
   assert.ok(existsSync(join(outputDirectory, `EdgeEver-${version}-mac-${requestedArch}.zip`)), `macOS package must contain the current ${requestedArch} update ZIP`);
   assert.ok(existsSync(join(outputDirectory, `EdgeEver-${version}-mac-${requestedArch}.zip.blockmap`)), `macOS package must contain the current ${requestedArch} ZIP blockmap`);
-  const unpackedApp = join(outputDirectory, `mac-${requestedArch}`, "EdgeEver.app");
+  const unpackedDirectory = requestedArch === "x64" ? "mac" : `mac-${requestedArch}`;
+  const unpackedApp = join(outputDirectory, unpackedDirectory, "EdgeEver.app");
   assert.ok(existsSync(unpackedApp), "macOS package must contain the unpacked app bundle");
   const executable = join(unpackedApp, "Contents", "MacOS", "EdgeEver");
   const appResources = join(unpackedApp, "Contents", "Resources");
