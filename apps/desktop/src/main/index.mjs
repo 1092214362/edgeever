@@ -5,6 +5,7 @@ import { basename, join } from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { SidecarRpcClient } from "./rpc.mjs";
+import { resourceRequestHeaders } from "./resource-request.mjs";
 import { isSafeResourceId, resourceIdFromRequest } from "./resource-url.mjs";
 import { isSupportedAssociatedFile } from "./file-association.mjs";
 import { accountDataDirectory, accountScopeKey } from "./account-scope.mjs";
@@ -359,8 +360,8 @@ const registerResourceProtocol = () => {
     const sourceUrl = `${configuredApiBaseUrl}/api/v1/resources/${encodeURIComponent(resourceId)}/blob`;
     try {
       const cookies = await session.defaultSession.cookies.get({ url: sourceUrl });
-      const cookieHeader = cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
-      const response = await net.fetch(sourceUrl, cookieHeader ? { headers: { Cookie: cookieHeader } } : undefined);
+      const headers = resourceRequestHeaders({ cookies, sessionToken: desktopSessionToken });
+      const response = await net.fetch(sourceUrl, { headers });
       if (!response.ok) return new Response("Resource request failed", { status: response.status });
       const body = Buffer.from(await response.arrayBuffer());
       await mkdir(directory, { recursive: true });
