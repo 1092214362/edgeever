@@ -12,11 +12,9 @@ author: "EdgeEver Team"
 tags: [flomo, migration, mcp]
 ---
 
-迁移不需要 flomo Max 或 flomo MCP。使用 flomo 提供的 HTML 全量导出，再由已经配置好的 **EdgeEver MCP** 导入即可。
-
 ### 步骤 1：导出 flomo
 
-在 flomo 网页版或桌面客户端中，点击左上角用户名及会员标识右侧的小下拉箭头，在账户菜单中进入 **设置 → 账号详情**，然后滚动账号详情内容区到页面最下方，点击全局导出并下载 HTML 导出 ZIP。请勿修改或重新打包 ZIP 内的目录结构。
+在 flomo 网页版或桌面客户端中，点击左上角用户名及会员标识右侧的小下拉箭头，在账户菜单中进入 **设置 → 账号详情**，然后滚动账号详情内容区到页面最下方，点击全局导出并下载 HTML 导出 ZIP。
 
 ### 步骤 2：配置 EdgeEver MCP
 

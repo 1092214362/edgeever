@@ -2,11 +2,9 @@
 
 [简体中文](flomo-migration-guide.md) | [English](flomo-migration-guide.en-US.md)
 
-The migration does not require flomo Max or flomo MCP. Export all notes as HTML with flomo's user-facing export, then let an AI Agent with the configured **EdgeEver MCP** import them idempotently. Give the export to an Agent that supports local files and MCP, then send one prompt.
-
 ### Step 1: Export flomo
 
-In the flomo Web app or desktop client, click the small arrow next to your username and membership badge in the upper-left corner. Open **Settings → Account details** from the account menu, scroll the Account details pane to the very bottom, and download the full HTML export ZIP. Keep the ZIP directory structure unchanged.
+In the flomo Web app or desktop client, click the small arrow next to your username and membership badge in the upper-left corner. Open **Settings → Account details** from the account menu, scroll the Account details pane to the very bottom, and download the full HTML export ZIP.
 
 ### Step 2: Configure EdgeEver MCP
 
