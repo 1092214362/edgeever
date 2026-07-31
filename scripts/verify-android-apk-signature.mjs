@@ -10,27 +10,35 @@ const normalizeFingerprint = (value) =>
   value.toLowerCase().replace(/[^0-9a-f]/g, "");
 
 export const verifyAndroidSignerOutput = (output) => {
-  const signerDigests = [
+  const digestMatches = [
     ...output.matchAll(
-      /^Signer #\d+ certificate SHA-256 digest:\s*(.+)$/gim,
+      /^(?:Signer #\d+|V\d+(?:\.\d+)? Signer:) certificate SHA-256 digest:\s*(.+)$/gim,
     ),
-  ]
+  ];
+  const signerDigests = digestMatches
     .map((match) => normalizeFingerprint(match[1]))
     .filter((digest) => digest.length === 64);
+  const uniqueSignerDigests = [...new Set(signerDigests)];
+  const reportedSignerCount = output.match(
+    /^Number of signers:\s*(\d+)$/im,
+  )?.[1];
+  const signerCount = reportedSignerCount
+    ? Number(reportedSignerCount)
+    : signerDigests.length;
 
-  if (signerDigests.length !== 1) {
+  if (signerCount !== 1 || uniqueSignerDigests.length !== 1) {
     throw new Error(
-      `Expected exactly one Android signer, found ${signerDigests.length}.`,
+      `Expected exactly one Android signer, found ${signerCount}.`,
     );
   }
 
-  if (signerDigests[0] !== EDGE_EVER_ANDROID_SIGNER_SHA256) {
+  if (uniqueSignerDigests[0] !== EDGE_EVER_ANDROID_SIGNER_SHA256) {
     throw new Error(
-      `Android signer mismatch: expected ${EDGE_EVER_ANDROID_SIGNER_SHA256}, received ${signerDigests[0]}.`,
+      `Android signer mismatch: expected ${EDGE_EVER_ANDROID_SIGNER_SHA256}, received ${uniqueSignerDigests[0]}.`,
     );
   }
 
-  return signerDigests[0];
+  return uniqueSignerDigests[0];
 };
 
 const findApkSigner = (explicitPath) => {
