@@ -58,6 +58,28 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
+      ],
+      [
+        "expo-sharing",
+        {
+          "ios": {
+            "enabled": true,
+            "activationRule": {
+              "supportsText": true,
+              "supportsWebPageWithMaxCount": 1,
+              "supportsWebUrlWithMaxCount": 1
+            }
+          },
+          "android": {
+            "enabled": true,
+            "multipleShareMimeTypes": [
+              "text/plain"
+            ],
+            "singleShareMimeTypes": [
+              "text/plain"
+            ]
+          }
+        }
       ]
     ],
     "experiments": {
