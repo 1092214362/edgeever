@@ -769,7 +769,7 @@ app.post("/api/v1/auth/change-password", zValidator("json", ChangePasswordSchema
 });
 
 app.get("/api/v1/users", async (c) => {
-  const auth = await authenticateSession(c, true);
+  const auth = await authenticateRequest(c, true);
   if (!auth) return unauthorized(c, "Authentication required.");
   c.set("auth", auth);
   const denied = requireOwner(c);
@@ -787,7 +787,7 @@ app.get("/api/v1/users", async (c) => {
 });
 
 app.post("/api/v1/users", zValidator("json", UserCreateSchema), async (c) => {
-  const auth = await authenticateSession(c, true);
+  const auth = await authenticateRequest(c, true);
   if (!auth) return unauthorized(c, "Authentication required.");
   c.set("auth", auth);
   const denied = requireOwner(c);
@@ -824,7 +824,7 @@ app.post("/api/v1/users", zValidator("json", UserCreateSchema), async (c) => {
 });
 
 app.patch("/api/v1/users/:id", zValidator("json", UserUpdateSchema), async (c) => {
-  const auth = await authenticateSession(c, true);
+  const auth = await authenticateRequest(c, true);
   if (!auth) return unauthorized(c, "Authentication required.");
   c.set("auth", auth);
   const denied = requireOwner(c);
