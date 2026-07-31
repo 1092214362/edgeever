@@ -7,14 +7,16 @@ export const EDGE_EVER_ANDROID_SIGNER_SHA256 =
   "22bf52a9501c89020f5acc966960152c826bfa64f31e578e858d088f8cd75d87";
 
 const normalizeFingerprint = (value) =>
-  value.toLowerCase().replaceAll(":", "").trim();
+  value.toLowerCase().replace(/[^0-9a-f]/g, "");
 
 export const verifyAndroidSignerOutput = (output) => {
   const signerDigests = [
     ...output.matchAll(
-      /Signer #\d+ certificate SHA-256 digest:\s*([0-9a-f:]+)/gi,
+      /^Signer #\d+ certificate SHA-256 digest:\s*(.+)$/gim,
     ),
-  ].map((match) => normalizeFingerprint(match[1]));
+  ]
+    .map((match) => normalizeFingerprint(match[1]))
+    .filter((digest) => digest.length === 64);
 
   if (signerDigests.length !== 1) {
     throw new Error(
@@ -81,7 +83,13 @@ const run = () => {
     throw new Error(`apksigner rejected ${apkPath}.`);
   }
 
-  const signerSha256 = verifyAndroidSignerOutput(output);
+  let signerSha256;
+  try {
+    signerSha256 = verifyAndroidSignerOutput(output);
+  } catch (error) {
+    process.stderr.write(output);
+    throw error;
+  }
   process.stdout.write(`Android signer SHA-256: ${signerSha256}\n`);
 };
 
