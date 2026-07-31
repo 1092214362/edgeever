@@ -11,6 +11,12 @@ export type MobileWebClipDraft = {
   title: string;
 };
 
+export type MobileRenderedWebPage = {
+  contentHtml: string;
+  finalUrl?: string;
+  title?: string;
+};
+
 const URL_PATTERN = /https?:\/\/[^\s<>"'）)]+/i;
 const WECHAT_ARTICLE_HOSTS = new Set(["mp.weixin.qq.com"]);
 const BLOCK_TAGS = new Set([
@@ -87,6 +93,7 @@ export const buildMobileWebClipDraft = async (
   const fetcher = options.fetcher ?? fetch;
   const capturedAt = options.capturedAt ?? new Date();
   let html = "";
+  let finalUrl = sourceUrl;
 
   try {
     const response = await fetcher(sourceUrl, {
@@ -97,6 +104,7 @@ export const buildMobileWebClipDraft = async (
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
+    finalUrl = response.url || sourceUrl;
     html = await response.text();
   } catch {
     return buildFallbackDraft(sourceUrl, capturedAt);
@@ -106,13 +114,30 @@ export const buildMobileWebClipDraft = async (
   const articleHtml = isWeChatArticleUrl(sourceUrl)
     ? extractElementInnerHtmlById(html, "js_content")
     : extractFirstElementInnerHtml(html, ["article", "main"]);
-  const body = htmlToMarkdown(articleHtml || "");
+  return buildMobileWebClipDraftFromRenderedPage(
+    sourceUrl,
+    {
+      contentHtml: articleHtml,
+      finalUrl,
+      title,
+    },
+    { capturedAt },
+  );
+};
+
+export const buildMobileWebClipDraftFromRenderedPage = (
+  sourceUrl: string,
+  page: MobileRenderedWebPage,
+  options: {
+    capturedAt?: Date;
+  } = {},
+): MobileWebClipDraft => {
+  const capturedAt = options.capturedAt ?? new Date();
+  const title = normalizeInlineText(page.title ?? "") || hostnameTitle(sourceUrl);
+  const body = htmlToMarkdown(page.contentHtml, page.finalUrl || sourceUrl);
 
   if (!body) {
-    return {
-      ...buildFallbackDraft(sourceUrl, capturedAt),
-      title,
-    };
+    return { ...buildFallbackDraft(sourceUrl, capturedAt), title };
   }
 
   return {
@@ -145,7 +170,7 @@ export const extractPageTitle = (html: string) => {
   return titleMatch ? normalizeInlineText(stripTags(titleMatch[1])) : "";
 };
 
-export const htmlToMarkdown = (html: string) => {
+export const htmlToMarkdown = (html: string, baseUrl?: string) => {
   if (!html.trim()) {
     return "";
   }
@@ -159,8 +184,12 @@ export const htmlToMarkdown = (html: string) => {
     if (!src || src.startsWith("data:")) {
       return "";
     }
+    const resolvedSrc = resolveWebUrl(src, baseUrl);
+    if (!resolvedSrc) {
+      return "";
+    }
     const alt = normalizeInlineText(readAttribute(tag, "alt") || "图片");
-    return `\n\n![${escapeMarkdownText(alt)}](${src})\n\n`;
+    return `\n\n![${escapeMarkdownText(alt)}](${resolvedSrc})\n\n`;
   });
 
   value = value.replace(/<a\b[^>]*>([\s\S]*?)<\/a\s*>/gi, (full, inner: string) => {
@@ -169,7 +198,10 @@ export const htmlToMarkdown = (html: string) => {
     if (!href || /^javascript:/i.test(href)) {
       return label;
     }
-    return `[${escapeMarkdownText(label || href)}](${href})`;
+    const resolvedHref = resolveWebUrl(href, baseUrl);
+    return resolvedHref
+      ? `[${escapeMarkdownText(label || resolvedHref)}](${resolvedHref})`
+      : label;
   });
 
   value = value
@@ -277,6 +309,17 @@ const readAttribute = (tag: string, name: string) => {
 const stripTags = (value: string) => value.replace(/<[^>]*>/g, " ");
 const normalizeInlineText = (value: string) => decodeHtmlEntities(value).replace(/\s+/g, " ").trim();
 const escapeMarkdownText = (value: string) => value.replace(/([\\[\]])/g, "\\$1");
+const resolveWebUrl = (value: string, baseUrl?: string) => {
+  try {
+    const url = baseUrl ? new URL(value, baseUrl) : new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+    return /^https?:\/\//i.test(value) ? value : url.toString();
+  } catch {
+    return "";
+  }
+};
 
 const decodeHtmlEntities = (value: string) =>
   value.replace(/&(#x?[0-9a-f]+|[a-z][a-z0-9]+);?/gi, (entity, key: string) => {

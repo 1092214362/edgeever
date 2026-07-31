@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildMobileWebClipDraft,
+  buildMobileWebClipDraftFromRenderedPage,
   extractPageTitle,
   getSharedWebUrl,
   htmlToMarkdown,
@@ -50,6 +51,33 @@ describe("mobile web clip", () => {
     expect(draft.contentMarkdown).toContain("开头");
     expect(draft.contentMarkdown).toContain("嵌套正文");
     expect(draft.contentMarkdown).toContain("2026-07-31T00:00:00.000Z");
+  });
+
+  test("builds a WeChat clip from a rendered WebView page", () => {
+    const draft = buildMobileWebClipDraftFromRenderedPage(
+      "https://mp.weixin.qq.com/s/rendered",
+      {
+        title: "渲染后的公众号标题 &amp; 更多",
+        finalUrl: "https://mp.weixin.qq.com/s/rendered",
+        contentHtml: `
+          <section>
+            <p>这是浏览器渲染后提取的正文。</p>
+            <img data-src="//mmbiz.qpic.cn/example.jpg" alt="文章配图">
+            <a href="/s/related">相关文章</a>
+          </section>
+        `,
+      },
+      { capturedAt: new Date("2026-07-31T00:00:00.000Z") },
+    );
+
+    expect(draft.title).toBe("渲染后的公众号标题 & 更多");
+    expect(draft.contentMarkdown).toContain("这是浏览器渲染后提取的正文。");
+    expect(draft.contentMarkdown).toContain(
+      "![文章配图](https://mmbiz.qpic.cn/example.jpg)",
+    );
+    expect(draft.contentMarkdown).toContain(
+      "[相关文章](https://mp.weixin.qq.com/s/related)",
+    );
   });
 
   test("keeps the source URL when fetching fails", async () => {

@@ -108,6 +108,7 @@ import { AccountSecurityPanel } from "./AccountSecurityModal";
 import { beginEditorStartup, markStartup, recordEditorStartup } from "../lib/startup-performance";
 import { prepareUploadAsset } from "../lib/mobile-image-upload";
 import EditorRuntimePrewarm from "../components/EditorRuntimePrewarm";
+import MobileWebClipCapture from "../components/MobileWebClipCapture";
 import { showEdgeEverKeyboard } from "../../modules/edgeever-keyboard";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
 import { resolveMobileThemeStyles, useMobileTheme, type MobileResolvedTheme } from "../lib/mobile-theme";
@@ -116,7 +117,10 @@ import { MobileMermaidDiagram, MobileMermaidProvider } from "../components/Mobil
 import { getMobileMarkdownFenceLanguage, trimMobileMarkdownFenceContent } from "../lib/mobile-mermaid";
 import {
   buildMobileWebClipDraft,
+  buildMobileWebClipDraftFromRenderedPage,
   getSharedWebUrl,
+  isWeChatArticleUrl,
+  type MobileRenderedWebPage,
   type MobileSharedPayload,
   type MobileWebClipDraft,
 } from "../lib/mobile-web-clip";
@@ -202,6 +206,7 @@ export const WorkspaceScreen = ({
   const [searchText, setSearchText] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [incomingClipDraft, setIncomingClipDraft] = useState<MobileWebClipDraft | null>(null);
+  const [incomingClipCaptureUrl, setIncomingClipCaptureUrl] = useState<string | null>(null);
   const [isImportingShare, setIsImportingShare] = useState(false);
   const [notesActionsOpen, setNotesActionsOpen] = useState(false);
   const [notebookPickerOpen, setNotebookPickerOpen] = useState(false);
@@ -564,6 +569,43 @@ export const WorkspaceScreen = ({
     setCreateOpen(true);
   };
 
+  const openIncomingClipDraft = useCallback((draft: MobileWebClipDraft) => {
+    beginEditorStartup();
+    setIncomingClipDraft(draft);
+    setActiveView("notes");
+    setMemoView("notebook");
+    setCreateOpen(true);
+  }, []);
+
+  const finishIncomingShare = useCallback(() => {
+    setIncomingClipCaptureUrl(null);
+    setIsImportingShare(false);
+    onIncomingShareHandledRef.current?.();
+  }, []);
+
+  const handleRenderedClipCaptured = useCallback((page: MobileRenderedWebPage) => {
+    if (!incomingClipCaptureUrl) return;
+    openIncomingClipDraft(
+      buildMobileWebClipDraftFromRenderedPage(incomingClipCaptureUrl, page),
+    );
+    finishIncomingShare();
+  }, [finishIncomingShare, incomingClipCaptureUrl, openIncomingClipDraft]);
+
+  const handleRenderedClipFailed = useCallback((message: string) => {
+    const sourceUrl = incomingClipCaptureUrl;
+    if (!sourceUrl) return;
+    setIncomingClipCaptureUrl(null);
+    void buildMobileWebClipDraft(sourceUrl)
+      .then((draft) => {
+        openIncomingClipDraft(draft);
+        Alert.alert(
+          "正文剪藏失败",
+          `${message} 已保留文章链接，你可以稍后重新分享重试。`,
+        );
+      })
+      .finally(finishIncomingShare);
+  }, [finishIncomingShare, incomingClipCaptureUrl, openIncomingClipDraft]);
+
   useEffect(() => {
     const sourceUrl = incomingShareUrl;
     if (!sourceUrl) {
@@ -591,16 +633,18 @@ export const WorkspaceScreen = ({
     let active = true;
     processedShareUrlRef.current = sourceUrl;
     setIsImportingShare(true);
+    if (isWeChatArticleUrl(sourceUrl)) {
+      setIncomingClipCaptureUrl(sourceUrl);
+      return () => {
+        active = false;
+      };
+    }
     void buildMobileWebClipDraft(sourceUrl)
       .then((draft) => {
         if (!active) {
           return;
         }
-        beginEditorStartup();
-        setIncomingClipDraft(draft);
-        setActiveView("notes");
-        setMemoView("notebook");
-        setCreateOpen(true);
+        openIncomingClipDraft(draft);
       })
       .catch(() => {
         if (active) {
@@ -617,7 +661,13 @@ export const WorkspaceScreen = ({
     return () => {
       active = false;
     };
-  }, [incomingSharePayloads.length, incomingShareUrl, notebooks.length, notebooksQuery.isSuccess]);
+  }, [
+    incomingSharePayloads.length,
+    incomingShareUrl,
+    notebooks.length,
+    notebooksQuery.isSuccess,
+    openIncomingClipDraft,
+  ]);
 
   useEffect(() => {
     if (selectedMemo && !selectedMemo.isDeleted) {
@@ -1219,6 +1269,13 @@ export const WorkspaceScreen = ({
             <Text style={styles.shareImportTitle}>正在剪藏文章</Text>
             <Text style={styles.shareImportDescription}>正在提取标题、正文和图片链接…</Text>
           </View>
+          {incomingClipCaptureUrl ? (
+            <MobileWebClipCapture
+              onCaptured={handleRenderedClipCaptured}
+              onFailed={handleRenderedClipFailed}
+              url={incomingClipCaptureUrl}
+            />
+          ) : null}
         </View>
       </Modal>
 
