@@ -7077,8 +7077,8 @@ const getResourceRowsForMemo = async (db: D1Database, workspaceId: string, memoI
 const listResourcesForMemo = async (db: D1Database, workspaceId: string, memoId: string): Promise<Resource[]> => {
   const rows = await db
     .prepare(
-      `SELECT id, memo_id, original_memo_id, bucket_name, object_key, kind, mime_type,
-              filename, byte_size, sha256, width, height, created_at, updated_at
+      `SELECT r.id, r.memo_id, r.original_memo_id, r.bucket_name, r.object_key, r.kind, r.mime_type,
+              r.filename, r.byte_size, r.sha256, r.width, r.height, r.created_at, r.updated_at
        FROM resources r
        INNER JOIN memos m ON m.id = r.memo_id
        WHERE r.memo_id = ? AND m.workspace_id = ? AND r.is_deleted = 0

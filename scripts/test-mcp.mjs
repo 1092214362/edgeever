@@ -222,26 +222,35 @@ assert.equal(body.result.structuredContent.results[0].status, "would_create");
 assert.equal(sqlite.query("SELECT COUNT(*) AS count FROM memo_import_sources").get().count, 1);
 assert.equal(sqlite.query("SELECT COUNT(*) AS count FROM memos WHERE id = ?").get(importedMemoId).count, 1);
 
-response = await fetchMcp(rpc(14, "tools/call", { name: "unknown_tool", arguments: {} }));
+sqlite.run(
+  `INSERT INTO resources (id, memo_id, bucket_name, object_key, kind, mime_type, filename, byte_size)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ["res_imported", importedMemoId, "test-resources", "mcp/imported.txt", "attachment", "text/plain", "imported.txt", 12],
+);
+body = await callTool(14, "list_memo_resources", { memoId: importedMemoId });
+assert.equal(body.result.isError, false);
+assert.deepEqual(body.result.structuredContent.resources.map((resource) => resource.id), ["res_imported"]);
+
+response = await fetchMcp(rpc(15, "tools/call", { name: "unknown_tool", arguments: {} }));
 assert.equal(response.status, 400);
 body = await response.json();
 assert.equal(body.error.code, -32602);
 
-response = await fetchMcp([rpc(15, "tools/list")]);
+response = await fetchMcp([rpc(16, "tools/list")]);
 assert.equal(response.status, 400);
 
-response = await fetchMcp(rpc(16, "tools/list"), {
+response = await fetchMcp(rpc(17, "tools/list"), {
   headers: { "MCP-Protocol-Version": "2099-01-01" },
 });
 assert.equal(response.status, 400);
 
-response = await fetchMcp(rpc(17, "tools/list"), { headers: { Origin: "https://attacker.example" } });
+response = await fetchMcp(rpc(18, "tools/list"), { headers: { Origin: "https://attacker.example" } });
 assert.equal(response.status, 403);
 
-response = await fetchMcp(rpc(18, "tools/list"), { headers: { Accept: "application/json" } });
+response = await fetchMcp(rpc(19, "tools/list"), { headers: { Accept: "application/json" } });
 assert.equal(response.status, 406);
 
-response = await fetchMcp(rpc(19, "tools/list"), { headers: { "Content-Type": "text/plain" } });
+response = await fetchMcp(rpc(20, "tools/list"), { headers: { "Content-Type": "text/plain" } });
 assert.equal(response.status, 415);
 
 response = await fetchMcp({ jsonrpc: "2.0", method: "notifications/initialized" });
