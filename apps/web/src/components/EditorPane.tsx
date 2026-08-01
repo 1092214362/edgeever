@@ -2302,10 +2302,29 @@ const RichEditorPane = ({
                     : t("editor.uploadState.fileUploading")}
               </span>
             )}
-            <span className={cn("hidden rounded-md px-2 py-1 text-xs font-medium sm:inline-flex", saveStateClassName)}>
+            <span
+              key={`${saveState}-${String(hasUnsavedChanges)}`}
+              className={cn("edgeever-status-settle hidden items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium sm:inline-flex", saveStateClassName)}
+              role="status"
+              aria-live="polite"
+            >
+              {saveState === "saving" ? (
+                <LoaderCircle className="h-3 w-3 animate-spin" aria-hidden="true" />
+              ) : saveState === "error" || saveState === "conflict" || saveState === "queued" ? (
+                <CircleAlert className="h-3 w-3" aria-hidden="true" />
+              ) : hasUnsavedChanges ? (
+                <Pencil className="h-3 w-3" aria-hidden="true" />
+              ) : (
+                <Check className="h-3 w-3" aria-hidden="true" />
+              )}
               {saveLabel}
             </span>
-            <span className={cn("inline-flex max-w-[5.5rem] truncate rounded-full px-2 py-1 text-[11px] font-medium sm:hidden", mobileStatusClassName)}>
+            <span
+              key={`${imageUploadState}-${saveState}-${String(hasUnsavedChanges)}`}
+              className={cn("edgeever-status-settle inline-flex max-w-[5.5rem] truncate rounded-full px-2 py-1 text-[11px] font-medium sm:hidden", mobileStatusClassName)}
+              role="status"
+              aria-live="polite"
+            >
               {mobileStatusLabel}
             </span>
             {mobileEditingActive && !readOnly && (

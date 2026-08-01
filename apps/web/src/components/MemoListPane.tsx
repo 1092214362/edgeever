@@ -132,7 +132,7 @@ export const MemoSelectionActionBar = ({
 
   return (
     <div className="hidden h-full min-h-0 flex-1 items-center justify-start bg-white px-16 py-10 lg:flex lg:pl-44 xl:px-24 xl:pl-44">
-      <div className="w-72 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg">
+      <div className="edgeever-pane-enter w-72 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg">
         <div className="flex h-9 items-center gap-2 px-3 text-xs font-semibold text-slate-400">
           <CheckSquare className="h-4 w-4" />
           {getSelectionCountLabel(selectedCount, t)}
@@ -1286,7 +1286,7 @@ export const MemoListPane = ({
         {hasListConstraint && (
           <div
             className={cn(
-              "mt-3 flex min-h-8 items-center gap-2 rounded-md border px-3 py-1.5 text-xs",
+              "edgeever-content-enter mt-3 flex min-h-8 items-center gap-2 rounded-md border px-3 py-1.5 text-xs",
               searchActive
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-[inset_3px_0_0_#10b981]"
                 : "border-slate-200 bg-white text-slate-500"

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronRight, MoreHorizontal, Notebook as NotebookIcon, Plus, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Notebook as NotebookIcon, Plus, Pencil, Trash2 } from "lucide-react";
 import type { NotebookNode, NotebookDropPosition } from "@/lib/app-helpers";
 import {
   hasMemoDragData,
@@ -206,7 +206,13 @@ export const NotebookTreeItem = ({
                 aria-label={open ? t("notebookTree.collapse", { name: node.name }) : t("notebookTree.expand", { name: node.name })}
                 aria-expanded={open}
               >
-                {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-150 ease-out",
+                    open ? "rotate-0" : "-rotate-90"
+                  )}
+                  aria-hidden="true"
+                />
               </button>
             ) : (
               <span className="h-6 w-5 shrink-0" aria-hidden="true" />
@@ -291,7 +297,7 @@ export const NotebookTreeItem = ({
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </button>
               {actionsOpen && (
-                <div className="absolute right-0 top-8 z-50 w-44 overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-lg">
+                <div className="edgeever-popover-enter absolute right-0 top-8 z-50 w-44 overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-lg">
                   <button
                     className="flex h-9 w-full items-center gap-2 rounded-sm px-2 text-left text-sm outline-none hover:bg-slate-100"
                     type="button"
@@ -375,7 +381,7 @@ export const NotebookTreeItem = ({
       </ContextMenu>
 
       {hasChildren && open ? (
-        <div className="mt-1 space-y-1">
+        <div className="edgeever-tree-enter mt-1 space-y-1">
           {node.children.map((child) => (
             <NotebookTreeItem
               key={child.id}

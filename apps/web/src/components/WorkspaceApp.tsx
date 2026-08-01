@@ -105,6 +105,24 @@ const isDesktopViewport = () => window.matchMedia("(min-width: 1024px)").matches
 const PULL_TO_REFRESH_TRIGGER_PX = 72;
 const PULL_TO_REFRESH_MAX_PX = 96;
 
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => unknown;
+};
+
+const runWorkspaceViewTransition = (update: () => void) => {
+  const viewTransitionDocument = document as ViewTransitionDocument;
+
+  if (
+    !viewTransitionDocument.startViewTransition ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    update();
+    return;
+  }
+
+  viewTransitionDocument.startViewTransition(update);
+};
+
 const isStandaloneApp = () =>
   window.matchMedia("(display-mode: standalone)").matches ||
   window.matchMedia("(display-mode: fullscreen)").matches ||
@@ -2330,8 +2348,10 @@ export const WorkspaceApp = ({
   };
 
   const updateDesktopFocusMode = useCallback((enabled: boolean) => {
-    setDesktopFocusMode(enabled);
-    writeDesktopFocusModePreference(enabled);
+    runWorkspaceViewTransition(() => {
+      setDesktopFocusMode(enabled);
+      writeDesktopFocusModePreference(enabled);
+    });
   }, []);
 
   const toggleDesktopFocusMode = useCallback(() => {
@@ -2939,8 +2959,9 @@ export const WorkspaceApp = ({
           <section className={cn("min-h-0 min-w-0 bg-white lg:block", visibleActivePane === "editor" ? "block" : "hidden")}>
             {shouldRenderRightPane && (
               <Suspense fallback={<PaneLoadingFallback label={rightPaneLoadingLabel} />}>
-                {rightView === "settings" ? (
-                  <SettingsPane
+                <div key={rightView} className="edgeever-pane-enter h-full min-h-0 min-w-0">
+                  {rightView === "settings" ? (
+                    <SettingsPane
                     onClose={handleCloseSettings}
                     onOpenTemplates={handleOpenTemplates}
                     imageCompressionEnabled={imageCompressionEnabled}
@@ -2956,12 +2977,12 @@ export const WorkspaceApp = ({
                     isOwner={authRequired && user?.role === "owner"}
                     user={user}
                   />
-                ) : rightView === "assets" ? (
-                  <AssetsPane onClose={handleCloseAssets} activeMemo={selectedMemo} repository={repository} />
-                ) : rightView === "tags" ? (
-                  <TagsPane onClose={handleCloseAssets} repository={repository} />
-                ) : rightView === "templates" ? (
-                  <TemplatesPane
+                  ) : rightView === "assets" ? (
+                    <AssetsPane onClose={handleCloseAssets} activeMemo={selectedMemo} repository={repository} />
+                  ) : rightView === "tags" ? (
+                    <TagsPane onClose={handleCloseAssets} repository={repository} />
+                  ) : rightView === "templates" ? (
+                    <TemplatesPane
                     canCreateMemo={canCreateMemo}
                     isCreating={createMemoMutation.isPending || createTemplateMutation.isPending}
                     onClose={handleCloseTemplates}
@@ -2976,10 +2997,10 @@ export const WorkspaceApp = ({
                       await updateTemplateMutation.mutateAsync({ templateId, payload });
                     }}
                   />
-                ) : rightView === "evernote-migration" ? (
-                  <EvernoteImportGuidePane onClose={() => setRightView("settings")} />
-                ) : (
-                  <EditorPane
+                  ) : rightView === "evernote-migration" ? (
+                    <EvernoteImportGuidePane onClose={() => setRightView("settings")} />
+                  ) : (
+                    <EditorPane
                     memo={selectedMemo}
                     repository={repository}
                     desktopFocusMode={desktopFocusModeActive}
@@ -3057,8 +3078,9 @@ export const WorkspaceApp = ({
                     }}
                     onMobileDefaultEditConsumed={handleMobileDefaultEditConsumed}
                     onSaveAsTemplate={handleSaveAsTemplate}
-                  />
-                )}
+                    />
+                  )}
+                </div>
               </Suspense>
             )}
           </section>

@@ -207,16 +207,22 @@ const SyncStatusBar = ({
         : "border-slate-200 bg-white text-slate-500";
 
   return (
-    <div className={cn("mb-3 flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 transition-all duration-200", statusClassName)}>
-      {!isOnline ? (
-        <CloudOff className="h-4 w-4 shrink-0" />
-      ) : summary.conflict > 0 ? (
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-      ) : hasQueuedWork || isSyncing ? (
-        <RefreshCw className={cn("h-4 w-4 shrink-0", isSyncing && "animate-spin")} />
-      ) : (
-        <CheckCircle2 className="h-4 w-4 shrink-0" />
-      )}
+    <div
+      className={cn("mb-3 flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 transition-all duration-200", statusClassName)}
+      role="status"
+      aria-live="polite"
+    >
+      <span key={label} className="edgeever-status-settle flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
+        {!isOnline ? (
+          <CloudOff className="h-4 w-4" />
+        ) : summary.conflict > 0 ? (
+          <AlertTriangle className="h-4 w-4" />
+        ) : hasQueuedWork || isSyncing ? (
+          <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+        ) : (
+          <CheckCircle2 className="h-4 w-4" />
+        )}
+      </span>
       <span className="min-w-0 flex-1 truncate text-xs font-medium">{label}</span>
       {summary.conflict > 0 && (
         <button

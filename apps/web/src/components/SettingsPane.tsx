@@ -276,7 +276,7 @@ export const SettingsPane = ({
 
           {/* 右侧设置内容区 */}
           <main className="flex-1 min-w-0 overflow-y-auto pr-2">
-            <div className="grid gap-4">
+            <div key={activeTab} className="edgeever-content-enter grid gap-4">
               {renderTabContent(activeTab)}
             </div>
           </main>
@@ -345,7 +345,7 @@ export const SettingsPane = ({
             </div>
           ) : (
             /* 详情页面 */
-            <div className="grid gap-4">
+            <div key={activeMobileTab} className="edgeever-content-enter grid gap-4">
               {renderTabContent(activeMobileTab)}
             </div>
           )}
