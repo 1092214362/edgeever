@@ -10,6 +10,7 @@ import {
   LoginSchema,
   LoginDeviceSessionUpdateSchema,
   markdownToDoc,
+  resolveMergedMemoTitle,
   isSuspiciousMemoOverwrite,
   isMemoEditBindingValid,
   JsonBackupResourceMetadataSchema,
@@ -5717,20 +5718,6 @@ const parseDoc = (json: string): TiptapDoc => {
 const normalizeMemoTitle = (value: string | null | undefined) => {
   const title = value?.trim();
   return title || DEFAULT_MEMO_TITLE;
-};
-
-const isCustomMemoTitle = (value: string | null | undefined) => {
-  const title = value?.trim();
-  return Boolean(title && title !== DEFAULT_MEMO_TITLE);
-};
-
-const resolveMergedMemoTitle = (inputTitle: string | undefined, sourceMemos: Array<{ title: string | null }>) => {
-  const title = inputTitle?.trim();
-  if (title) {
-    return title;
-  }
-
-  return sourceMemos.find((memo) => isCustomMemoTitle(memo.title))?.title?.trim() ?? `合并笔记 ${new Date().toLocaleDateString("zh-CN")}`;
 };
 
 const normalizeMemoListSort = (value: string | undefined): MemoListSortMode =>

@@ -161,6 +161,16 @@ describe("local mirror", () => {
     expect((await getLocalMemo(scope, second.id))?.mergedIntoMemoId).toBe(merged?.id);
   });
 
+  test("uses a custom source title when the first merged memo is untitled", async () => {
+    const scope = createLocalDataScope("https://demo.edgeever.org", "user-1");
+    const untitled = await createLocalMemo(scope, { notebookId: "inbox", title: "无标题笔记", contentMarkdown: "one" });
+    const titled = await createLocalMemo(scope, { notebookId: "inbox", title: "手动设置的标题", contentMarkdown: "two" });
+
+    const merged = await mergeLocalMemos(scope, { memoIds: [untitled.id, titled.id] });
+
+    expect(merged?.title).toBe("手动设置的标题");
+  });
+
   test("caches memo revisions by account scope", async () => {
     const scope = createLocalDataScope("https://demo.edgeever.org", "user-1");
     const memo = await createLocalMemo(scope, { notebookId: "inbox" });

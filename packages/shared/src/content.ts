@@ -27,6 +27,22 @@ export type TiptapDoc = {
 
 export const DEFAULT_MEMO_TITLE = "无标题笔记";
 
+export const resolveMergedMemoTitle = (
+  inputTitle: string | null | undefined,
+  sourceMemos: Array<{ title: string | null | undefined }>,
+  date = new Date(),
+) => {
+  const explicitTitle = inputTitle?.trim();
+  if (explicitTitle) {
+    return explicitTitle;
+  }
+
+  const customTitle = sourceMemos
+    .map((memo) => memo.title?.trim())
+    .find((title): title is string => Boolean(title && title !== DEFAULT_MEMO_TITLE));
+  return customTitle ?? `合并笔记 ${date.toLocaleDateString("zh-CN")}`;
+};
+
 export const emptyDoc = (): TiptapDoc => ({
   type: "doc",
   content: [{ type: "paragraph" }],

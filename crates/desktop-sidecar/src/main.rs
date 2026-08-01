@@ -763,8 +763,8 @@ fn merge_memos(database: &Connection, params: &Value) -> Result<Value, String> {
         .get("title")
         .and_then(Value::as_str)
         .filter(|value| !value.trim().is_empty())
-        .map(str::to_owned)
-        .or_else(|| titles.into_iter().find(|value| !value.starts_with("nb_")))
+        .map(|value| value.trim().to_owned())
+        .or_else(|| resolve_custom_merge_title(titles.iter().map(String::as_str)))
         .unwrap_or_default();
     tags.sort();
     tags.dedup();
@@ -791,6 +791,14 @@ fn merge_memos(database: &Connection, params: &Value) -> Result<Value, String> {
         &json!({ "memoIds": ids, "notebookId": notebook_id, "title": title, "temporaryId": id }),
     )?;
     memo_value(database, &id, true).map(|memo| json!({ "memo": memo }))
+}
+
+fn resolve_custom_merge_title<'a>(titles: impl IntoIterator<Item = &'a str>) -> Option<String> {
+    titles
+        .into_iter()
+        .map(str::trim)
+        .find(|title| !title.is_empty() && *title != "无标题笔记")
+        .map(str::to_owned)
 }
 
 fn list_memos(database: &Connection, params: &Value) -> Result<Value, String> {
@@ -1549,5 +1557,14 @@ mod tests {
         let first = content_hash("same", &json);
         assert_eq!(first, content_hash("same", &json));
         assert_ne!(first, content_hash("different", &json));
+    }
+
+    #[test]
+    fn merge_title_skips_untitled_sources() {
+        assert_eq!(
+            resolve_custom_merge_title(["无标题笔记", "  手动标题  ", "另一个标题"]),
+            Some("手动标题".to_owned())
+        );
+        assert_eq!(resolve_custom_merge_title(["无标题笔记", "  "]), None);
     }
 }

@@ -1,4 +1,4 @@
-import { createExcerpt, docToText, markdownToDoc, type MemoDetail, type MemoRevision, type MemoSummary, type MemoTemplate, type Notebook, type ResourceListItem, type TagSummary, type TiptapDoc } from "@edgeever/shared";
+import { createExcerpt, docToText, markdownToDoc, resolveMergedMemoTitle, type MemoDetail, type MemoRevision, type MemoSummary, type MemoTemplate, type Notebook, type ResourceListItem, type TagSummary, type TiptapDoc } from "@edgeever/shared";
 import type { MemoFilterMode, MemoSortMode } from "@/lib/app-helpers";
 import { api, type SyncChangesResponse } from "@/lib/api";
 import { localDb, type LocalMemo, type LocalNotebook, type LocalResource, type LocalRevision } from "@/lib/local-db";
@@ -563,7 +563,7 @@ export const mergeLocalMemos = async (scope: string, input: { memoIds: string[];
   const contentMarkdown = sources.map((memo) => memo.contentMarkdown).filter(Boolean).join("\n\n---\n\n");
   const memo = await createLocalMemo(scope, {
     notebookId: input.notebookId ?? sources[0]!.notebookId,
-    title: input.title ?? sources[0]!.title ?? "",
+    title: resolveMergedMemoTitle(input.title, sources),
     contentMarkdown,
     tags: [...new Set(sources.flatMap((source) => source.tags))],
   });
