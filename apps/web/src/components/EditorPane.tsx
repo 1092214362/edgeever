@@ -8,6 +8,7 @@ import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import { useTranslation } from "react-i18next";
+import * as m from "motion/react-m";
 import {
   ChevronLeft,
   ChevronRight,
@@ -114,6 +115,7 @@ import { shouldOpenEditorLink } from "@/lib/editor-link-click";
 import { processFilesSequentially } from "@/lib/file-batch";
 import { MEMO_ID_REMAPPED_EVENT } from "@/lib/sync-events";
 import { useStandaloneMobileEditor } from "@/hooks/useStandaloneMobileEditor";
+import { statusSettleMotion } from "@/lib/motion";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
@@ -2302,11 +2304,12 @@ const RichEditorPane = ({
                     : t("editor.uploadState.fileUploading")}
               </span>
             )}
-            <span
+            <m.span
               key={`${saveState}-${String(hasUnsavedChanges)}`}
-              className={cn("edgeever-status-settle hidden items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium sm:inline-flex", saveStateClassName)}
+              className={cn("hidden items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium sm:inline-flex", saveStateClassName)}
               role="status"
               aria-live="polite"
+              {...statusSettleMotion}
             >
               {saveState === "saving" ? (
                 <LoaderCircle className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -2318,15 +2321,16 @@ const RichEditorPane = ({
                 <Check className="h-3 w-3" aria-hidden="true" />
               )}
               {saveLabel}
-            </span>
-            <span
+            </m.span>
+            <m.span
               key={`${imageUploadState}-${saveState}-${String(hasUnsavedChanges)}`}
-              className={cn("edgeever-status-settle inline-flex max-w-[5.5rem] truncate rounded-full px-2 py-1 text-[11px] font-medium sm:hidden", mobileStatusClassName)}
+              className={cn("inline-flex max-w-[5.5rem] truncate rounded-full px-2 py-1 text-[11px] font-medium sm:hidden", mobileStatusClassName)}
               role="status"
               aria-live="polite"
+              {...statusSettleMotion}
             >
               {mobileStatusLabel}
-            </span>
+            </m.span>
             {mobileEditingActive && !readOnly && (
               <button
                 className="inline-flex h-8 items-center justify-center rounded-full bg-slate-950 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-500 sm:hidden"

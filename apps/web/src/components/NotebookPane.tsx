@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import * as m from "motion/react-m";
 import {
   ChevronLeft,
   Plus,
@@ -47,6 +48,7 @@ import {
 } from "@/lib/app-helpers";
 import { usePwaInstall } from "./PwaInstallContext";
 import type { EdgeEverRepository } from "@/lib/repository";
+import { statusSettleMotion } from "@/lib/motion";
 
 const NOTEBOOK_DRAG_SCROLL_EDGE_PX = 56;
 const NOTEBOOK_DRAG_SCROLL_MAX_STEP_PX = 18;
@@ -212,7 +214,12 @@ const SyncStatusBar = ({
       role="status"
       aria-live="polite"
     >
-      <span key={label} className="edgeever-status-settle flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
+      <m.span
+        key={label}
+        className="flex h-4 w-4 shrink-0 items-center justify-center"
+        aria-hidden="true"
+        {...statusSettleMotion}
+      >
         {!isOnline ? (
           <CloudOff className="h-4 w-4" />
         ) : summary.conflict > 0 ? (
@@ -222,7 +229,7 @@ const SyncStatusBar = ({
         ) : (
           <CheckCircle2 className="h-4 w-4" />
         )}
-      </span>
+      </m.span>
       <span className="min-w-0 flex-1 truncate text-xs font-medium">{label}</span>
       {summary.conflict > 0 && (
         <button

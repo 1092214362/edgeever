@@ -1,8 +1,10 @@
 import { useRef, useState, useEffect, type DragEvent, type MouseEvent, type PointerEvent as ReactPointerEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
+import * as m from "motion/react-m";
 import { Star, Check, MoreHorizontal, RotateCcw, Trash2 } from "lucide-react";
 import type { MemoSummary } from "@edgeever/shared";
 import { cn } from "@/lib/utils";
+import { selectionSettleMotion } from "@/lib/motion";
 import type { MemoListDensity } from "@/lib/app-helpers";
 import { isDefaultMemoTitle, MEMO_DRAG_MIME, setMemoDragPreview } from "@/lib/app-helpers";
 
@@ -320,9 +322,10 @@ export const MemoCard = ({
       )}
     >
       {!selectionMode && selected ? (
-        <span
-          className="edgeever-selection-settle pointer-events-none absolute inset-y-3 left-0 z-10 hidden w-[3px] rounded-r-full bg-emerald-500 lg:block"
+        <m.span
+          className="pointer-events-none absolute inset-y-3 left-0 z-10 hidden w-[3px] origin-center rounded-r-full bg-emerald-500 lg:block"
           aria-hidden="true"
+          {...selectionSettleMotion}
         />
       ) : null}
       <div className={cn("flex min-h-[132px] items-center", listDensity === "compact" && "min-h-[84px] lg:min-h-[76px]")}>

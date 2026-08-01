@@ -16,6 +16,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient, type QueryClie
 import { Home, Search, UserRound, Plus, ChevronDown, ChevronRight, RefreshCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
+import * as m from "motion/react-m";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -100,6 +101,8 @@ import {
   type WorkspaceRefreshMode,
 } from "@/lib/workspace-refresh";
 import { useWorkspaceSyncLifecycle } from "@/hooks/useWorkspaceSyncLifecycle";
+import { paneEnterMotion } from "@/lib/motion";
+import { WorkspaceMotionProvider } from "./WorkspaceMotionProvider";
 
 const isDesktopViewport = () => window.matchMedia("(min-width: 1024px)").matches;
 const PULL_TO_REFRESH_TRIGGER_PX = 72;
@@ -2739,7 +2742,8 @@ export const WorkspaceApp = ({
         : t("workspace.pullToRefresh.pullPage");
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-slate-50 text-slate-950">
+    <WorkspaceMotionProvider>
+      <div className="flex h-[100dvh] overflow-hidden bg-slate-50 text-slate-950">
       {pullToRefreshVisible && (
         <div
           className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex justify-center lg:hidden"
@@ -2959,7 +2963,7 @@ export const WorkspaceApp = ({
           <section className={cn("min-h-0 min-w-0 bg-white lg:block", visibleActivePane === "editor" ? "block" : "hidden")}>
             {shouldRenderRightPane && (
               <Suspense fallback={<PaneLoadingFallback label={rightPaneLoadingLabel} />}>
-                <div key={rightView} className="edgeever-pane-enter h-full min-h-0 min-w-0">
+                <m.div key={rightView} className="h-full min-h-0 min-w-0" {...paneEnterMotion}>
                   {rightView === "settings" ? (
                     <SettingsPane
                     onClose={handleCloseSettings}
@@ -3080,7 +3084,7 @@ export const WorkspaceApp = ({
                     onSaveAsTemplate={handleSaveAsTemplate}
                     />
                   )}
-                </div>
+                </m.div>
               </Suspense>
             )}
           </section>
@@ -3175,7 +3179,8 @@ export const WorkspaceApp = ({
           onSelect={handleSelectNotebook}
         />
       )}
-    </div>
+      </div>
+    </WorkspaceMotionProvider>
   );
 };
 export default WorkspaceApp;

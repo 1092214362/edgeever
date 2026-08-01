@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
+import * as m from "motion/react-m";
 import { ChevronDown, MoreHorizontal, Notebook as NotebookIcon, Plus, Pencil, Trash2 } from "lucide-react";
 import type { NotebookNode, NotebookDropPosition } from "@/lib/app-helpers";
 import {
@@ -21,6 +22,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { contentEnterMotion, treeEnterMotion } from "@/lib/motion";
 
 const NOTEBOOK_DRAG_EXPAND_DELAY_MS = 520;
 
@@ -297,7 +299,7 @@ export const NotebookTreeItem = ({
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </button>
               {actionsOpen && (
-                <div className="edgeever-popover-enter absolute right-0 top-8 z-50 w-44 overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-lg">
+                <m.div className="absolute right-0 top-8 z-50 w-44 overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-lg" {...contentEnterMotion}>
                   <button
                     className="flex h-9 w-full items-center gap-2 rounded-sm px-2 text-left text-sm outline-none hover:bg-slate-100"
                     type="button"
@@ -339,7 +341,7 @@ export const NotebookTreeItem = ({
                     </button>
                   </>
                 )}
-                </div>
+                </m.div>
               )}
             </div>
             {dropPosition === "before" && (
@@ -381,7 +383,7 @@ export const NotebookTreeItem = ({
       </ContextMenu>
 
       {hasChildren && open ? (
-        <div className="edgeever-tree-enter mt-1 space-y-1">
+        <m.div className="mt-1 space-y-1" {...treeEnterMotion}>
           {node.children.map((child) => (
             <NotebookTreeItem
               key={child.id}
@@ -399,7 +401,7 @@ export const NotebookTreeItem = ({
               onExpandSiblings={onExpandSiblings}
             />
           ))}
-        </div>
+        </m.div>
       ) : null}
     </div>
   );
