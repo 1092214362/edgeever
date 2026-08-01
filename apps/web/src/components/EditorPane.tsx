@@ -113,6 +113,7 @@ import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-
 import { isBrowserOffline } from "@/lib/network-status";
 import { shouldOpenEditorLink } from "@/lib/editor-link-click";
 import { processFilesSequentially } from "@/lib/file-batch";
+import { MEMO_ID_REMAPPED_EVENT } from "@/lib/sync-events";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
@@ -1248,6 +1249,47 @@ const RichEditorPane = ({
   const hasUnsavedChangesRef = useRef(false);
   const editingMemoIdRef = useRef<string | null>(memo?.id ?? null);
   const imageCompressionEnabledRef = useRef(imageCompressionEnabled);
+
+  useEffect(() => {
+    const handleMemoIdRemapped = (event: Event) => {
+      const mappings = (event as CustomEvent<ReadonlyMap<string, string>>).detail;
+      const currentMemo = memoRef.current;
+      if (!currentMemo || !mappings) return;
+
+      const nextMemoId = mappings.get(currentMemo.id);
+      if (!nextMemoId || nextMemoId === currentMemo.id) return;
+
+      const previousMemoId = currentMemo.id;
+      memoRef.current = { ...currentMemo, id: nextMemoId };
+      if (editingMemoIdRef.current === previousMemoId) editingMemoIdRef.current = nextMemoId;
+      if (hydratedMemoIdRef.current === previousMemoId) {
+        hydratedMemoIdRef.current = nextMemoId;
+        setHydratedEditorMemoId(nextMemoId);
+      }
+      if (editSessionRef.current?.memoId === previousMemoId) {
+        editSessionRef.current = {
+          ...editSessionRef.current,
+          id: `local-edit:${nextMemoId}`,
+          memoId: nextMemoId,
+        };
+      }
+
+      // A draft may already have been persisted during image processing.
+      // Move it to the durable server id so a reload cannot orphan it under
+      // the temporary id.
+      void localDb.drafts.get(previousMemoId).then(async (draft) => {
+        if (!draft) return;
+        await localDb.drafts.put({ ...draft, memoId: nextMemoId });
+        await localDb.drafts.delete(previousMemoId);
+      }).catch(() => {
+        // The live editor content remains authoritative; draft persistence can
+        // retry on the next editor update.
+      });
+    };
+
+    window.addEventListener(MEMO_ID_REMAPPED_EVENT, handleMemoIdRemapped);
+    return () => window.removeEventListener(MEMO_ID_REMAPPED_EVENT, handleMemoIdRemapped);
+  }, []);
 
   const focusMobileInputTarget = useCallback(() => {
     if (mobileTextAreaRef.current) {

@@ -1,6 +1,14 @@
 export type WorkspaceRefreshMode = "background" | "manual";
+export type WorkspaceMemoView = "notebook" | "trash";
 
 export const BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS = 30_000;
+
+export const shouldNavigateHomeWhenOpeningMemo = (view: WorkspaceMemoView) => view !== "trash";
+
+export const resolveSyncedMemoId = (
+  memoIdMappings: ReadonlyMap<string, string>,
+  memoId: string | null,
+) => memoId ? memoIdMappings.get(memoId) ?? memoId : null;
 
 export type WorkspaceRefreshResult = {
   changed: number;

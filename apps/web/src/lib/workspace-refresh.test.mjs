@@ -3,11 +3,26 @@ import { describe, it } from "node:test";
 import {
   BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS,
   refreshWorkspaceData,
+  resolveSyncedMemoId,
+  shouldNavigateHomeWhenOpeningMemo,
 } from "./workspace-refresh.ts";
 
 describe("refreshWorkspaceData", () => {
   it("uses a shared 30-second background refresh interval", () => {
     assert.equal(BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS, 30_000);
+  });
+
+  it("keeps the trash route when opening a deleted memo", () => {
+    assert.equal(shouldNavigateHomeWhenOpeningMemo("trash"), false);
+    assert.equal(shouldNavigateHomeWhenOpeningMemo("notebook"), true);
+  });
+
+  it("keeps the active memo attached when desktop sync replaces a temporary id", () => {
+    const mappings = new Map([["memo_local_1", "memo_remote_1"]]);
+
+    assert.equal(resolveSyncedMemoId(mappings, "memo_local_1"), "memo_remote_1");
+    assert.equal(resolveSyncedMemoId(mappings, "memo_existing"), "memo_existing");
+    assert.equal(resolveSyncedMemoId(mappings, null), null);
   });
 
   it("pushes local changes before pulling and invalidating during a manual refresh", async () => {

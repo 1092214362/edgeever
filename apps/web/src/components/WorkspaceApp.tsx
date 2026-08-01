@@ -84,7 +84,7 @@ import {
 import { useBrowserBackLayer } from "@/lib/app-hooks";
 import { updateMemoSummaryInLists, type MemoListQueryData } from "@/lib/memo-list-cache";
 import type { SyncQueueSummary } from "@/lib/sync-queue";
-import { SYNC_QUEUE_DEFERRED_EVENT } from "@/lib/sync-events";
+import { notifyMemoIdRemapped, SYNC_QUEUE_DEFERRED_EVENT } from "@/lib/sync-events";
 import {
   createLocalDataScope,
   putLocalMemo,
@@ -95,6 +95,8 @@ import { createRepository } from "@/lib/repository";
 import {
   BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS,
   refreshWorkspaceData,
+  resolveSyncedMemoId,
+  shouldNavigateHomeWhenOpeningMemo,
   type WorkspaceRefreshMode,
 } from "@/lib/workspace-refresh";
 
@@ -793,6 +795,17 @@ export const WorkspaceApp = ({
       if (window.edgeeverDesktop?.isAvailable) {
         const { getDesktopSyncSummary, syncDesktopData } = await import("@/lib/desktop-sync");
         const result = await syncDesktopData();
+        if (result.memoIdMappings.size > 0) {
+          // Let the mounted editor transfer its live draft identity before
+          // React switches the selected memo to the server id.
+          notifyMemoIdRemapped(result.memoIdMappings);
+          pendingCreatedMemoIdRef.current = resolveSyncedMemoId(
+            result.memoIdMappings,
+            pendingCreatedMemoIdRef.current,
+          );
+          setCreatedMemoEditId((current) => resolveSyncedMemoId(result.memoIdMappings, current));
+          setSelectedMemoId((current) => resolveSyncedMemoId(result.memoIdMappings, current));
+        }
         window.dispatchEvent(new CustomEvent("edgeever:sync-completed", { detail: result }));
         setSyncSummary(await getDesktopSyncSummary());
         await Promise.all([
@@ -3013,7 +3026,9 @@ export const WorkspaceApp = ({
               }}
               onBackFromTrash={handleSelectAllMemos}
               onOpenMemo={(memoId) => {
-                navigateWorkspaceHome();
+                if (shouldNavigateHomeWhenOpeningMemo(memoView)) {
+                  navigateWorkspaceHome();
+                }
                 setRightView("editor");
                 clearPendingCreatedMemo();
                 setCreatedMemoEditId(null);
