@@ -38,7 +38,7 @@ import {
   type MobileEditorReturnPreview,
 } from "@/lib/mobile-editor";
 import { cn } from "@/lib/utils";
-import { isBrowserOffline, isBrowserOnline, verifyBrowserConnectivity } from "@/lib/network-status";
+import { isBrowserOffline, isBrowserOnline } from "@/lib/network-status";
 import { createExcerpt, docToText, getNotebookDescendantIds, resolveMemoContentDoc, type Notebook, type AuthUser, type MemoSummary, type MemoDetail, type Resource, type MemoTemplate as SavedMemoTemplate } from "@edgeever/shared";
 import { toggleMobileMemoSelection } from "@edgeever/shared/mobile-ui";
 import type {
@@ -83,8 +83,8 @@ import {
 } from "@/lib/app-helpers";
 import { useBrowserBackLayer } from "@/lib/app-hooks";
 import { updateMemoSummaryInLists, type MemoListQueryData } from "@/lib/memo-list-cache";
-import type { SyncQueueSummary } from "@/lib/sync-queue";
-import { notifyMemoIdRemapped, SYNC_QUEUE_DEFERRED_EVENT } from "@/lib/sync-events";
+import { emptySyncQueueSummary, type SyncQueueSummary } from "@/lib/sync-queue";
+import { notifyMemoIdRemapped } from "@/lib/sync-events";
 import {
   createLocalDataScope,
   putLocalMemo,
@@ -93,12 +93,12 @@ import {
 } from "@/lib/local-mirror";
 import { createRepository } from "@/lib/repository";
 import {
-  BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS,
   refreshWorkspaceData,
   resolveSyncedMemoId,
   shouldNavigateHomeWhenOpeningMemo,
   type WorkspaceRefreshMode,
 } from "@/lib/workspace-refresh";
+import { useWorkspaceSyncLifecycle } from "@/hooks/useWorkspaceSyncLifecycle";
 
 const isDesktopViewport = () => window.matchMedia("(min-width: 1024px)").matches;
 const PULL_TO_REFRESH_TRIGGER_PX = 72;
@@ -140,14 +140,6 @@ const SETTINGS_PATH = "/settings";
 const TEMPLATES_PATH = "/templates";
 const TRASH_VIEW_SEARCH = "?view=trash";
 const getMobileEditorReturnMemoId = (search: string) => new URLSearchParams(search).get(MOBILE_EDITOR_RETURN_PARAM);
-const emptySyncQueueSummary = (): SyncQueueSummary => ({
-  total: 0,
-  pending: 0,
-  syncing: 0,
-  conflict: 0,
-  error: 0,
-});
-
 const PaneLoadingFallback = ({ label = "Loading" }: { label?: string }) => (
   <div className="flex h-full min-h-0 items-center justify-center bg-white text-sm font-medium text-slate-400" role="status">
     {label}
@@ -748,9 +740,6 @@ export const WorkspaceApp = ({
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const isPullRefreshingRef = useRef(false);
   const skipNextHomeRouteSyncRef = useRef(false);
-  const deferredSyncTimerRef = useRef<number | null>(null);
-  const deferredSyncPendingRef = useRef(false);
-  const runQueuedSyncRef = useRef<() => Promise<void>>(async () => undefined);
 
   const [mobileListActionsOpen, setMobileListActionsOpen] = useState(false);
   const [mobileMoveOpen, setMobileMoveOpen] = useState(false);
@@ -981,57 +970,6 @@ export const WorkspaceApp = ({
     queryFn: () => repository.listTemplates(),
     enabled: rightView === "templates",
   });
-
-  useEffect(() => {
-    let cancelled = false;
-    let timeoutId: number | null = null;
-    let idleId: number | null = null;
-
-    const refreshLocalMirror = async () => {
-      try {
-        if (!cancelled) await refreshWorkspaceFromServer("background");
-      } catch {
-        // The existing remote queries remain the safe fallback when local
-        // mirror sync is unavailable (for example before login or offline).
-      }
-    };
-
-    const scheduleRefresh = (delay: number) => {
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-      timeoutId = window.setTimeout(() => {
-        timeoutId = null;
-        const idleWindow = window as Window & {
-          requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-          cancelIdleCallback?: (id: number) => void;
-        };
-        if (idleWindow.requestIdleCallback) {
-          idleId = idleWindow.requestIdleCallback(() => void refreshLocalMirror(), { timeout: 2500 });
-        } else {
-          void refreshLocalMirror();
-        }
-      }, delay);
-    };
-
-    // Do not compete with the first remote queries for bandwidth. The initial
-    // screen can render from the remote fallback; the full local snapshot is
-    // hydrated once the browser is idle.
-    scheduleRefresh(1200);
-    const handleOnline = () => scheduleRefresh(300);
-    window.addEventListener("online", handleOnline);
-    return () => {
-      cancelled = true;
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-      const idleWindow = window as Window & { cancelIdleCallback?: (id: number) => void };
-      if (idleId !== null) {
-        idleWindow.cancelIdleCallback?.(idleId);
-      }
-      window.removeEventListener("online", handleOnline);
-    };
-  }, [refreshWorkspaceFromServer]);
 
   const savedTemplates = templatesQuery.data?.templates ?? [];
 
@@ -1408,111 +1346,13 @@ export const WorkspaceApp = ({
     };
   }, [mobilePullToRefreshActive, refreshLatestMemos]);
 
-  useEffect(() => {
-    let active = true;
-    const updateOnlineState = async () => {
-      const online = await verifyBrowserConnectivity();
-      if (!active) return;
-      setIsOnline(online);
-      if (online) {
-        void refreshWorkspaceFromServer("manual").catch(() => {
-          // Keep the current local mirror available when reconnect sync fails.
-        });
-      }
-    };
-
-    window.addEventListener("online", updateOnlineState);
-    window.addEventListener("offline", updateOnlineState);
-    void updateOnlineState();
-
-    return () => {
-      active = false;
-      window.removeEventListener("online", updateOnlineState);
-      window.removeEventListener("offline", updateOnlineState);
-    };
-  }, [refreshWorkspaceFromServer]);
-
-  useEffect(() => {
-    runQueuedSyncRef.current = runQueuedSync;
-  }, [runQueuedSync]);
-
-  useEffect(() => {
-    const handleQueueChanged = () => {
-      deferredSyncPendingRef.current = false;
-      if (deferredSyncTimerRef.current !== null) {
-        window.clearTimeout(deferredSyncTimerRef.current);
-        deferredSyncTimerRef.current = null;
-      }
-      void runQueuedSync();
-    };
-    window.addEventListener("edgeever:sync-queue-changed", handleQueueChanged);
-    return () => window.removeEventListener("edgeever:sync-queue-changed", handleQueueChanged);
-  }, [runQueuedSync]);
-
-  useEffect(() => {
-    const scheduleDeferredSync = () => {
-      deferredSyncPendingRef.current = true;
-      if (deferredSyncTimerRef.current !== null) {
-        window.clearTimeout(deferredSyncTimerRef.current);
-        deferredSyncTimerRef.current = null;
-      }
-      if (syncIntervalMs === null) {
-        return;
-      }
-      deferredSyncTimerRef.current = window.setTimeout(() => {
-        deferredSyncTimerRef.current = null;
-        deferredSyncPendingRef.current = false;
-        void runQueuedSyncRef.current();
-      }, syncIntervalMs);
-    };
-
-    window.addEventListener(SYNC_QUEUE_DEFERRED_EVENT, scheduleDeferredSync);
-    if (deferredSyncPendingRef.current) {
-      scheduleDeferredSync();
-    }
-    return () => {
-      window.removeEventListener(SYNC_QUEUE_DEFERRED_EVENT, scheduleDeferredSync);
-      if (deferredSyncTimerRef.current !== null) {
-        window.clearTimeout(deferredSyncTimerRef.current);
-        deferredSyncTimerRef.current = null;
-      }
-    };
-  }, [syncIntervalMs]);
-
-  useEffect(() => {
-    const refreshVisibleWorkspace = () => {
-      if (document.visibilityState === "hidden" || isBrowserOffline()) {
-        return;
-      }
-
-      void refreshWorkspaceFromServer("background").catch(() => {
-        // A later focus, visibility, or interval refresh will retry.
-      });
-    };
-
-    const intervalId = window.setInterval(refreshVisibleWorkspace, BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS);
-    window.addEventListener("focus", refreshVisibleWorkspace);
-    window.addEventListener("pageshow", refreshVisibleWorkspace);
-    document.addEventListener("visibilitychange", refreshVisibleWorkspace);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", refreshVisibleWorkspace);
-      window.removeEventListener("pageshow", refreshVisibleWorkspace);
-      document.removeEventListener("visibilitychange", refreshVisibleWorkspace);
-    };
-  }, [refreshWorkspaceFromServer]);
-
-  useEffect(() => {
-    if (syncSummary.total === 0) {
-      return;
-    }
-    const timer = window.setInterval(() => {
-      void runQueuedSync();
-    }, 15_000);
-
-    return () => window.clearInterval(timer);
-  }, [runQueuedSync, syncSummary.total]);
+  useWorkspaceSyncLifecycle({
+    pendingSyncCount: syncSummary.total,
+    refreshWorkspace: refreshWorkspaceFromServer,
+    runQueuedSync,
+    setOnline: setIsOnline,
+    syncIntervalMs,
+  });
 
   const selectedNotebookDescendantIds = useMemo(
     () => (selectedNotebookId ? getNotebookDescendantIds(notebooks, selectedNotebookId) : []),
