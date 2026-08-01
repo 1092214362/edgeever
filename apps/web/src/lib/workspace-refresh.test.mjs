@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS,
   refreshWorkspaceData,
+  resolveCreatedMemoSelection,
   resolveSyncedMemoId,
   shouldNavigateHomeWhenOpeningMemo,
 } from "./workspace-refresh.ts";
@@ -23,6 +24,12 @@ describe("refreshWorkspaceData", () => {
     assert.equal(resolveSyncedMemoId(mappings, "memo_local_1"), "memo_remote_1");
     assert.equal(resolveSyncedMemoId(mappings, "memo_existing"), "memo_existing");
     assert.equal(resolveSyncedMemoId(mappings, null), null);
+  });
+
+  it("remaps a created memo selection without closing over the selected memo state", () => {
+    assert.equal(resolveCreatedMemoSelection("memo_local_1", null, "memo_local_1", "memo_remote_1"), "memo_remote_1");
+    assert.equal(resolveCreatedMemoSelection("memo_other", "memo_local_1", "memo_local_1", "memo_remote_1"), "memo_remote_1");
+    assert.equal(resolveCreatedMemoSelection("memo_other", null, "memo_local_1", "memo_remote_1"), "memo_other");
   });
 
   it("pushes local changes before pulling and invalidating during a manual refresh", async () => {

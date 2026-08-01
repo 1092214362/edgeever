@@ -10,6 +10,15 @@ export const resolveSyncedMemoId = (
   memoId: string | null,
 ) => memoId ? memoIdMappings.get(memoId) ?? memoId : null;
 
+export const resolveCreatedMemoSelection = (
+  currentMemoId: string | null,
+  pendingMemoId: string | null,
+  temporaryMemoId: string,
+  remoteMemoId: string,
+) => currentMemoId === temporaryMemoId || pendingMemoId === temporaryMemoId
+  ? remoteMemoId
+  : currentMemoId;
+
 export type WorkspaceRefreshResult = {
   changed: number;
   skipped: boolean;

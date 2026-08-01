@@ -94,6 +94,7 @@ import {
 import { createRepository } from "@/lib/repository";
 import {
   refreshWorkspaceData,
+  resolveCreatedMemoSelection,
   resolveSyncedMemoId,
   shouldNavigateHomeWhenOpeningMemo,
   type WorkspaceRefreshMode,
@@ -670,6 +671,8 @@ export const WorkspaceApp = ({
   const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
   const autoSelectedDemoNotebookRef = useRef(false);
   const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
+  const selectedMemoIdRef = useRef(selectedMemoId);
+  selectedMemoIdRef.current = selectedMemoId;
   const [createdMemoEditId, setCreatedMemoEditId] = useState<string | null>(null);
   const pendingCreatedMemoIdRef = useRef<string | null>(null);
   const creatingMemoSelectionRef = useRef(false);
@@ -810,7 +813,14 @@ export const WorkspaceApp = ({
         onSynced: async (memo, item) => {
           if (item.kind === "memo.create") {
             await replaceLocalMemoId(localDataScope, item.memoId, memo);
-            if (selectedMemoId === item.memoId || pendingCreatedMemoIdRef.current === item.memoId) {
+            const remappedSelection = resolveCreatedMemoSelection(
+              selectedMemoIdRef.current,
+              pendingCreatedMemoIdRef.current,
+              item.memoId,
+              memo.id,
+            );
+            if (remappedSelection === memo.id) {
+              selectedMemoIdRef.current = memo.id;
               setSelectedMemoId(memo.id);
               // Keep the create intent attached to the remapped memo until
               // the editor has consumed it. The list query may still contain
@@ -871,7 +881,7 @@ export const WorkspaceApp = ({
     } finally {
       setIsSyncingQueuedChanges(false);
     }
-  }, [localDataScope, queryClient, selectedMemoId]);
+  }, [localDataScope, queryClient]);
 
   const discardConflictsNow = useCallback(async () => {
     if (!isOnline) return;
