@@ -809,12 +809,19 @@ fn list_memos(database: &Connection, params: &Value) -> Result<Value, String> {
         .unwrap_or("")
         .trim()
         .to_owned();
-    let notebook_id = params.get("notebookId").and_then(Value::as_str);
     let notebook_ids = params
         .get("notebookIds")
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
+    // A notebookIds collection represents the complete notebook subtree and
+    // therefore supersedes the singular notebookId. Applying both filters
+    // would reduce the subtree back to the parent notebook alone.
+    let notebook_id = if notebook_ids.is_empty() {
+        params.get("notebookId").and_then(Value::as_str)
+    } else {
+        None
+    };
     let notebook_ids_json = Value::Array(notebook_ids).to_string();
     let filter = match params.get("filter").and_then(Value::as_str) {
         Some("pinned") => " AND m.is_pinned = 1",

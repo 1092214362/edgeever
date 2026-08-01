@@ -195,7 +195,7 @@ export const createDesktopRepository = (): EdgeEverRepository => ({
   listMemos: (params) => {
     const rpcParams: DesktopMemoListParams = {
       ...params,
-      notebookId: params.notebookId ?? params.notebookIds?.[0] ?? null,
+      notebookId: params.notebookIds?.length ? null : (params.notebookId ?? null),
     };
     return request("memo.list", rpcParams);
   },
