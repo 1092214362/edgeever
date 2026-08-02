@@ -185,6 +185,7 @@ export const zhCN = {
       default: "系统默认",
       "minimal-emerald": "minimal品牌绿",
       "outline-emerald": "Outline 品牌绿",
+      "wechat-green": "微信经典绿",
       custom: "自定义",
     },
     customEditorTheme: {
