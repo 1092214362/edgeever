@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, ExternalLink, Link2, LoaderCircle, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,6 +25,7 @@ export const ShareMemoDialog = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const copyResetTimerRef = useRef<number | null>(null);
   const queryKey = ["memo-share", memoId] as const;
   const shareQuery = useQuery({
     queryKey,
@@ -45,6 +46,9 @@ export const ShareMemoDialog = ({
     revokeMutation.reset();
     setCopyState("idle");
   }, [memoId]);
+  useEffect(() => () => {
+    if (copyResetTimerRef.current !== null) window.clearTimeout(copyResetTimerRef.current);
+  }, []);
 
   const share = shareQuery.data?.share ?? null;
   const shareUrl = share ? getPublicShareUrl(share.token) : "";
@@ -54,7 +58,11 @@ export const ShareMemoDialog = ({
   const copyLink = async () => {
     const copied = await copyTextToClipboard(shareUrl);
     setCopyState(copied ? "copied" : "error");
-    window.setTimeout(() => setCopyState("idle"), 1800);
+    if (copyResetTimerRef.current !== null) window.clearTimeout(copyResetTimerRef.current);
+    copyResetTimerRef.current = window.setTimeout(() => {
+      setCopyState("idle");
+      copyResetTimerRef.current = null;
+    }, 3000);
   };
 
   return (
@@ -77,7 +85,12 @@ export const ShareMemoDialog = ({
             <>
               <div className="flex gap-2">
                 <Input value={shareUrl} readOnly aria-label={t("sharing.linkLabel")} className="min-w-0 font-mono text-xs" />
-                <Button variant="outline" onClick={() => void copyLink()}>
+                <Button
+                  variant={copyState === "copied" ? "solid" : copyState === "error" ? "danger" : "outline"}
+                  className="min-w-28"
+                  aria-live="polite"
+                  onClick={() => void copyLink()}
+                >
                   {copyState === "copied" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {t(copyState === "copied" ? "sharing.copied" : copyState === "error" ? "sharing.copyFailed" : "sharing.copy")}
                 </Button>
