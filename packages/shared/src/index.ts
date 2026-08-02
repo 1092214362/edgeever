@@ -8,6 +8,7 @@ export * from "./note-links";
 export * from "./notebooks";
 export * from "./revision-diff";
 export * from "./schemas";
+export * from "./sharing";
 export * from "./sync";
 export * from "./desktop-rpc";
 export * from "./types";
