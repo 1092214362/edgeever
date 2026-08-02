@@ -266,6 +266,11 @@ export const MemoDetailModal = ({
     };
 
     return {
+      code_block: (node, _children, _parents, markdownStyles, inheritedStyles = {}) => (
+        <RNText key={node.key} selectable style={[inheritedStyles, markdownStyles.code_block]}>
+          {node.content.endsWith("\n") ? node.content.slice(0, -1) : node.content}
+        </RNText>
+      ),
       fence: (node, _children, _parents, markdownStyles, inheritedStyles = {}) => {
         const language = getMobileMarkdownFenceLanguage((node as ASTNode & { sourceInfo?: string }).sourceInfo);
         const content = trimMobileMarkdownFenceContent(node.content);
@@ -279,7 +284,7 @@ export const MemoDetailModal = ({
             />
           );
         }
-        return <RNText key={node.key} style={[inheritedStyles, markdownStyles.fence]}>{content}</RNText>;
+        return <RNText key={node.key} selectable style={[inheritedStyles, markdownStyles.fence]}>{content}</RNText>;
       },
       image: (node, _children, _parents, markdownStyles) => (
         <AuthenticatedResourceImage
@@ -311,6 +316,11 @@ export const MemoDetailModal = ({
         );
       },
       td: (node, children, parents, markdownStyles) => renderTableCell(node, children, parents, markdownStyles, false),
+      textgroup: (node, children, _parents, markdownStyles) => (
+        <RNText key={node.key} selectable style={markdownStyles.textgroup}>
+          {children}
+        </RNText>
+      ),
       th: (node, children, parents, markdownStyles) => renderTableCell(node, children, parents, markdownStyles, true),
     };
   }, [resolvedLocale, resolvedTheme, session, viewportWidth]);
@@ -394,16 +404,17 @@ export const MemoDetailModal = ({
           </View>
         ) : memo ? (
           <ScrollView contentContainerStyle={styles.detailContent}>
-            <Text style={styles.detailTitle}>{memo.title?.trim() || DEFAULT_MEMO_TITLE}</Text>
+            <Text selectable style={styles.detailTitle}>{memo.title?.trim() || DEFAULT_MEMO_TITLE}</Text>
             <View style={styles.detailMetaRow}>
               <View style={styles.detailNotebookButton}>
-                <Text numberOfLines={1} style={styles.detailNotebookName}>{notebookName}</Text>
+                <Text numberOfLines={1} selectable style={styles.detailNotebookName}>{notebookName}</Text>
                 <ChevronDown color="#94a3b8" size={14} />
               </View>
               <View style={styles.detailTagsGroup}>
                 <Tag color="#64748b" size={16} />
                 <Text
                   numberOfLines={1}
+                  selectable
                   style={[styles.detailTagsInline, memo.tags.length === 0 && styles.detailTagsPlaceholder]}
                 >
                   {memo.tags.length ? memo.tags.join(", ") : "添加标签，用逗号分隔"}
@@ -501,7 +512,7 @@ const HighlightedDetailText = ({
   text: string;
 }) => {
   if (matches.length === 0) {
-    return <Text style={styles.detailMarkdown}>{text}</Text>;
+    return <Text selectable style={styles.detailMarkdown}>{text}</Text>;
   }
 
   const segments: ReactNode[] = [];
@@ -524,7 +535,7 @@ const HighlightedDetailText = ({
     segments.push(text.slice(cursor));
   }
 
-  return <Text style={styles.detailMarkdown}>{segments}</Text>;
+  return <Text selectable style={styles.detailMarkdown}>{segments}</Text>;
 };
 
 
