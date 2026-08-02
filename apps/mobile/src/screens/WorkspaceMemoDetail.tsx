@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { resolveMemoContentMarkdown, type MemoDetail } from "@edgeever/shared";
-import { ActivityIndicator, Image as RNImage, Platform, ScrollView, StyleSheet, Text as RNText, useWindowDimensions, View, type ImageStyle, type StyleProp, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image as RNImage, Platform, ScrollView, StyleSheet, Text as RNText, useWindowDimensions, View, type ImageStyle, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Markdown, { type ASTNode, type RenderRules } from "react-native-markdown-display";
@@ -265,8 +265,19 @@ export const MemoDetailModal = ({
       );
     };
 
-    // Keep the library's default textgroup rule. Making every Markdown text group
-    // selectable flattens Android's native block layout, including horizontal rules.
+    const renderSelectableTextBlock = (
+      node: ASTNode,
+      children: ReactNode[],
+      markdownStyles: Record<string, StyleProp<ViewStyle>>,
+    ) => (
+      <RNText key={node.key} selectable style={markdownStyles[node.type] as StyleProp<TextStyle>}>
+        {children}
+      </RNText>
+    );
+
+    // Select complete block-level text nodes instead of every inline text group.
+    // Android then keeps dividers and other View-based blocks in the native layout
+    // while still exposing the system copy menu for normal note text.
     return {
       code_block: (node, _children, _parents, markdownStyles, inheritedStyles = {}) => (
         <RNText key={node.key} selectable style={[inheritedStyles, markdownStyles.code_block]}>
@@ -298,6 +309,13 @@ export const MemoDetailModal = ({
           style={markdownStyles._VIEW_SAFE_image}
         />
       ),
+      heading1: (node, children, _parents, markdownStyles) => renderSelectableTextBlock(node, children, markdownStyles),
+      heading2: (node, children, _parents, markdownStyles) => renderSelectableTextBlock(node, children, markdownStyles),
+      heading3: (node, children, _parents, markdownStyles) => renderSelectableTextBlock(node, children, markdownStyles),
+      heading4: (node, children, _parents, markdownStyles) => renderSelectableTextBlock(node, children, markdownStyles),
+      heading5: (node, children, _parents, markdownStyles) => renderSelectableTextBlock(node, children, markdownStyles),
+      heading6: (node, children, _parents, markdownStyles) => renderSelectableTextBlock(node, children, markdownStyles),
+      paragraph: (node, children, _parents, markdownStyles) => renderSelectableTextBlock(node, children, markdownStyles),
       table: (node, children, parents, markdownStyles) => {
         const columnCount = getTableColumnCount(node, parents);
         const tableWidth = columnCount > DETAIL_TABLE_FIT_COLUMN_COUNT
@@ -593,6 +611,11 @@ const detailMarkdownStyles = StyleSheet.create({
     lineHeight: 26,
     marginBottom: 6,
     marginTop: 14,
+  },
+  hr: {
+    backgroundColor: "#66ca80",
+    height: 1,
+    marginVertical: 24,
   },
   link: {
     color: "#059669",
