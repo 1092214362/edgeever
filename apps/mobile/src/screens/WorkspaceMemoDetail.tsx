@@ -265,6 +265,8 @@ export const MemoDetailModal = ({
       );
     };
 
+    // Keep the library's default textgroup rule. Making every Markdown text group
+    // selectable flattens Android's native block layout, including horizontal rules.
     return {
       code_block: (node, _children, _parents, markdownStyles, inheritedStyles = {}) => (
         <RNText key={node.key} selectable style={[inheritedStyles, markdownStyles.code_block]}>
@@ -316,11 +318,6 @@ export const MemoDetailModal = ({
         );
       },
       td: (node, children, parents, markdownStyles) => renderTableCell(node, children, parents, markdownStyles, false),
-      textgroup: (node, children, _parents, markdownStyles) => (
-        <RNText key={node.key} selectable style={markdownStyles.textgroup}>
-          {children}
-        </RNText>
-      ),
       th: (node, children, parents, markdownStyles) => renderTableCell(node, children, parents, markdownStyles, true),
     };
   }, [resolvedLocale, resolvedTheme, session, viewportWidth]);
