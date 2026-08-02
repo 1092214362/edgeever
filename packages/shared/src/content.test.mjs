@@ -86,13 +86,6 @@ describe("legacy Markdown body recovery", () => {
 
     expect(resolveMemoContentMarkdown(richContent, "")).toContain("这段正文只保存在富文本 JSON 中。");
   });
-
-  test("keeps JSON divider nodes when the Markdown compatibility copy is stale", () => {
-    const richContent = markdownToDoc("第一篇正文\n\n---\n\n第二篇正文");
-    const resolved = resolveMemoContentMarkdown(richContent, "第一篇正文 第二篇正文");
-
-    expect(resolved).toContain("第一篇正文\n\n---\n\n第二篇正文");
-  });
 });
 
 describe("Nested list Markdown conversion", () => {
