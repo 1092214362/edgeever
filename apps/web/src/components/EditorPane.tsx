@@ -2749,7 +2749,8 @@ const RichEditorPane = ({
           editorTheme === "default" ||
           editorTheme === "minimal-emerald" ||
           editorTheme === "outline-emerald" ||
-          editorTheme === "wechat-green"
+          editorTheme === "wechat-green" ||
+          editorTheme === "modern-mint"
             ? editorTheme
             : "custom"
         }
@@ -2761,7 +2762,8 @@ const RichEditorPane = ({
           ...(editorTheme !== "default" &&
           editorTheme !== "minimal-emerald" &&
           editorTheme !== "outline-emerald" &&
-          editorTheme !== "wechat-green"
+          editorTheme !== "wechat-green" &&
+          editorTheme !== "modern-mint"
             ? {
                 "--editor-theme-bg": (resolvedTheme === "dark" ? customEditorTheme.dark : customEditorTheme.light).background,
                 "--editor-theme-text": (resolvedTheme === "dark" ? customEditorTheme.dark : customEditorTheme.light).text,
@@ -2781,6 +2783,7 @@ const RichEditorPane = ({
           editorTheme !== "minimal-emerald" &&
           editorTheme !== "outline-emerald" &&
           editorTheme !== "wechat-green" &&
+          editorTheme !== "modern-mint" &&
           customEditorTheme.customCss && (
             <style
               data-theme-custom-css
