@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { MemoDetail } from "@edgeever/shared";
+import { resolveMemoContentMarkdown, type MemoDetail } from "@edgeever/shared";
 import { ActivityIndicator, Image as RNImage, Platform, ScrollView, StyleSheet, Text as RNText, useWindowDimensions, View, type ImageStyle, type StyleProp, type ViewStyle } from "react-native";
 import { Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -321,7 +321,9 @@ export const MemoDetailModal = ({
       th: (node, children, parents, markdownStyles) => renderTableCell(node, children, parents, markdownStyles, true),
     };
   }, [resolvedLocale, resolvedTheme, session, viewportWidth]);
-  const detailText = memo?.contentMarkdown || memo?.contentText || "没有正文内容";
+  const detailText = memo
+    ? resolveMemoContentMarkdown(memo.contentJson, memo.contentMarkdown) || memo.contentText || "没有正文内容"
+    : "没有正文内容";
   const searchMatches = useMemo(() => getTextSearchMatches(detailText, searchQuery), [detailText, searchQuery]);
   const searchMatchLabel = searchQuery.trim() ? `${searchMatches.length > 0 ? activeMatchIndex + 1 : 0}/${searchMatches.length}` : "0/0";
   const syncStatusLabel = isSaving || syncStatus === "syncing"
