@@ -5,6 +5,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
+import { mergeAttributes } from "@tiptap/core";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import { useTranslation } from "react-i18next";
@@ -86,6 +87,7 @@ import {
   type MemoEditSession,
   type TiptapDoc,
   createMemoLinkHref,
+  getImageReferrerPolicy,
   parseMemoLinkHref,
 } from "@edgeever/shared";
 import {
@@ -375,7 +377,13 @@ const ResizableImageNodeView = ({ editor, node, selected, updateAttributes }: No
       style={{ width: `${width}%` }}
       data-width={width}
     >
-      <img src={src} alt={alt} title={title || undefined} draggable={false} />
+      <img
+        src={src}
+        alt={alt}
+        title={title || undefined}
+        draggable={false}
+        referrerPolicy={getImageReferrerPolicy(src)}
+      />
       {editable && selected && (
         <div className="edgeever-image-controls" contentEditable={false}>
           <div className="edgeever-image-presets" aria-label={t("editor.imageScale")}>
@@ -423,6 +431,17 @@ const ResizableImage = Image.extend({
   },
   addNodeView() {
     return ReactNodeViewRenderer(ResizableImageNodeView);
+  },
+  renderHTML({ HTMLAttributes }) {
+    const referrerPolicy = getImageReferrerPolicy(HTMLAttributes.src);
+    return [
+      "img",
+      mergeAttributes(
+        this.options.HTMLAttributes,
+        HTMLAttributes,
+        referrerPolicy ? { referrerpolicy: referrerPolicy } : {},
+      ),
+    ];
   },
 });
 

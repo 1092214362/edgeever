@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { EdgeEverCodeBlock, codeBlockLowlight } from "@/lib/code-block";
 import {
   parseImageWidth,
+  getImageReferrerPolicy,
   resolveMemoContentDoc,
   rewriteMemoResourcesForShare,
   type PublicMemoShare,
@@ -30,6 +31,17 @@ const SharedImage = Image.extend({
         },
       },
     };
+  },
+  renderHTML({ HTMLAttributes }) {
+    const referrerPolicy = getImageReferrerPolicy(HTMLAttributes.src);
+    return [
+      "img",
+      mergeAttributes(
+        this.options.HTMLAttributes,
+        HTMLAttributes,
+        referrerPolicy ? { referrerpolicy: referrerPolicy } : {},
+      ),
+    ];
   },
 });
 
