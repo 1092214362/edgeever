@@ -460,23 +460,13 @@ export const NotebookPane = ({
         </div>
       )}
 
-      <div
-        ref={notebookScrollRef}
-        className="flex-1 overflow-y-auto px-3 py-4"
-        onDragEnd={stopNotebookDragAutoScroll}
-        onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            stopNotebookDragAutoScroll();
-          }
-        }}
-        onDragOver={handleNotebookScrollDragOver}
-        onDrop={stopNotebookDragAutoScroll}
-      >
-        <div className="mb-4 hidden overflow-hidden rounded-full border border-slate-200 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.06)] lg:flex">
+      <div className="hidden shrink-0 px-3 pb-4 pt-4 lg:block">
+        <div className="flex overflow-hidden rounded-full border border-slate-200 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.06)]">
           <button
-            className="flex h-14 min-w-0 flex-1 items-center gap-3 px-3 text-left transition-all duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="group flex h-14 min-w-0 flex-1 items-center gap-3 px-3 text-left transition-all duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             title={t("notebookPane.newMemo")}
+            aria-label={t("notebookPane.newMemo")}
             onClick={onCreateMemo}
             disabled={!canCreateMemo || isCreatingMemo}
           >
@@ -486,6 +476,20 @@ export const NotebookPane = ({
             <span className="min-w-0 truncate text-sm font-semibold text-slate-950">{t("notebookPane.newMemo")}</span>
           </button>
         </div>
+      </div>
+
+      <div
+        ref={notebookScrollRef}
+        className="flex-1 overflow-y-auto px-3 py-4 lg:pt-0"
+        onDragEnd={stopNotebookDragAutoScroll}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            stopNotebookDragAutoScroll();
+          }
+        }}
+        onDragOver={handleNotebookScrollDragOver}
+        onDrop={stopNotebookDragAutoScroll}
+      >
         {showTemplateEntry && (
           <button
             className="mb-3 hidden h-8 w-full items-center justify-start gap-2 rounded-md px-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50 lg:flex"
