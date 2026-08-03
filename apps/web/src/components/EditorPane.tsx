@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect, useCallback, useMemo, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, type CSSProperties, type FocusEvent as ReactFocusEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { NodeViewWrapper, ReactNodeViewRenderer, useEditor, EditorContent, type Editor, type NodeViewProps } from "@tiptap/react";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -146,6 +147,49 @@ const IconTooltip = ({ label, children }: { label: string; children: ReactNode }
       <TooltipContent side="bottom">{label}</TooltipContent>
     </Tooltip>
   </TooltipProvider>
+);
+
+type NoteLinkHintPosition = {
+  left: number;
+  top: number;
+  placement: "above" | "below";
+};
+
+const getNoteLinkFromEventTarget = (target: EventTarget | null) =>
+  target instanceof Element
+    ? target.closest<HTMLAnchorElement>('a.edgeever-note-link, a[href^="#memo="]')
+    : null;
+
+const getNoteLinkHintPosition = (link: HTMLAnchorElement): NoteLinkHintPosition => {
+  const rect = link.getBoundingClientRect();
+  const placement = rect.top < 48 ? "below" : "above";
+
+  return {
+    left: Math.min(Math.max(rect.left + rect.width / 2, 12), window.innerWidth - 12),
+    top: placement === "above" ? rect.top - 8 : rect.bottom + 8,
+    placement,
+  };
+};
+
+const NoteLinkInteractionHint = ({
+  label,
+  position,
+}: {
+  label: string;
+  position: NoteLinkHintPosition;
+}) => createPortal(
+  <div
+    role="tooltip"
+    className="pointer-events-none fixed z-[100] whitespace-nowrap rounded-md bg-slate-950 px-2.5 py-1.5 text-xs font-medium text-white shadow-md"
+    style={{
+      left: position.left,
+      top: position.top,
+      transform: position.placement === "above" ? "translate(-50%, -100%)" : "translateX(-50%)",
+    }}
+  >
+    {label}
+  </div>,
+  document.body
 );
 
 type NoteSearchMatch = {
@@ -657,6 +701,7 @@ const RichEditorPane = ({
   const [noteSearchIndex, setNoteSearchIndex] = useState(0);
   const [noteLinkPickerOpen, setNoteLinkPickerOpen] = useState(false);
   const [noteLinkQuery, setNoteLinkQuery] = useState("");
+  const [noteLinkHintPosition, setNoteLinkHintPosition] = useState<NoteLinkHintPosition | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia(MOBILE_EDITOR_QUERY).matches
   );
@@ -670,6 +715,10 @@ const RichEditorPane = ({
   const [mobileImeDebugActiveElement, setMobileImeDebugActiveElement] = useState(getActiveElementLabel);
   const [mobileImeDebugEvents, setMobileImeDebugEvents] = useState<MobileImeDebugEntry[]>([]);
   const [wechatCopyState, setWechatCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+  const noteLinkModifier = useMemo(
+    () => typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.platform) ? "⌘" : "Ctrl",
+    []
+  );
   const noteLinkResultsQuery = useQuery({
     queryKey: ["memo-link-search", noteLinkQuery],
     queryFn: () => repository.listMemos({ q: noteLinkQuery, limit: 20 }),
@@ -1046,6 +1095,63 @@ const RichEditorPane = ({
     setNoteLinkPickerOpen(false);
     setNoteLinkQuery("");
   }, [editor, effectiveReadOnly, memo?.id, t]);
+
+  const showNoteLinkHint = useCallback((target: EventTarget | null) => {
+    if (!editor?.isEditable || isMobileViewport) {
+      return;
+    }
+
+    const link = getNoteLinkFromEventTarget(target);
+    if (link) {
+      setNoteLinkHintPosition(getNoteLinkHintPosition(link));
+    }
+  }, [editor?.isEditable, isMobileViewport]);
+
+  const handleEditorMouseOver = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    showNoteLinkHint(event.target);
+  }, [showNoteLinkHint]);
+
+  const handleEditorMouseOut = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    const link = getNoteLinkFromEventTarget(event.target);
+    if (!link || (event.relatedTarget instanceof Node && link.contains(event.relatedTarget))) {
+      return;
+    }
+    setNoteLinkHintPosition(null);
+  }, []);
+
+  const handleEditorClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button === 0 && !event.ctrlKey && !event.metaKey) {
+      showNoteLinkHint(event.target);
+    }
+  }, [showNoteLinkHint]);
+
+  const handleEditorFocusCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
+    showNoteLinkHint(event.target);
+  }, [showNoteLinkHint]);
+
+  const handleEditorBlurCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
+    if (!getNoteLinkFromEventTarget(event.relatedTarget)) {
+      setNoteLinkHintPosition(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!noteLinkHintPosition) {
+      return;
+    }
+
+    const hideHint = () => setNoteLinkHintPosition(null);
+    window.addEventListener("resize", hideHint);
+    window.addEventListener("scroll", hideHint, true);
+    return () => {
+      window.removeEventListener("resize", hideHint);
+      window.removeEventListener("scroll", hideHint, true);
+    };
+  }, [noteLinkHintPosition]);
+
+  useEffect(() => {
+    setNoteLinkHintPosition(null);
+  }, [memo?.id, isMarkdownMode]);
 
   useEffect(() => {
     imageCompressionEnabledRef.current = imageCompressionEnabled;
@@ -2858,7 +2964,15 @@ const RichEditorPane = ({
                 placeholder={`# ${t("editor.placeholder")}`}
               />
             ) : (
-              <EditorContent editor={editor} />
+              <div
+                onMouseOver={handleEditorMouseOver}
+                onMouseOut={handleEditorMouseOut}
+                onClickCapture={handleEditorClickCapture}
+                onFocusCapture={handleEditorFocusCapture}
+                onBlurCapture={handleEditorBlurCapture}
+              >
+                <EditorContent editor={editor} />
+              </div>
             )}
           </div>
           {!isMobileViewport && !useMobilePlainTextEditor && !useMarkdownSourceEditor && (
@@ -2871,6 +2985,13 @@ const RichEditorPane = ({
           )}
         </div>
       </div>
+
+      {noteLinkHintPosition && (
+        <NoteLinkInteractionHint
+          label={t("noteLinkPicker.openHint", { modifier: noteLinkModifier })}
+          position={noteLinkHintPosition}
+        />
+      )}
 
       {false && useMobilePlainTextEditor && (
         <div className="fixed left-2 right-2 top-[max(3.5rem,env(safe-area-inset-top))] z-[70] rounded-md border border-amber-200 bg-amber-50/95 p-2 text-[11px] text-slate-800 shadow-lg backdrop-blur sm:hidden">

@@ -756,6 +756,7 @@ export const zhCN = {
     empty: "没有找到可引用的笔记",
     loading: "正在搜索笔记...",
     close: "关闭引用笔记",
+    openHint: "按住 {{modifier}} 并点击可直接跳转",
   },
   mobileNotebookPicker: {
     title: "切换笔记本",
