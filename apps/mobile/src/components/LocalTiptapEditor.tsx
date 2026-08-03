@@ -8,7 +8,6 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import type { Mark } from "@tiptap/pm/model";
 import * as Clipboard from "expo-clipboard";
 import { getImageReferrerPolicy, getResourceIdFromUrl, type TiptapDoc } from "@edgeever/shared";
 import {
@@ -441,10 +440,12 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     if (!target) return;
     const range = findMobileAttachmentRange(editor, target.resourceId);
     if (!range) return;
+    const linkMark = editor.schema.marks.link?.create(range.linkAttrs);
+    if (!linkMark) return;
     editor.view.dispatch(editor.state.tr.replaceWith(
       range.from,
       range.to,
-      editor.schema.text(`${props.locale === "en-US" ? "Attachment: " : "附件："}${filenameValue}`, [...range.marks])
+      editor.schema.text(`${props.locale === "en-US" ? "Attachment: " : "附件："}${filenameValue}`, [linkMark])
     ));
   }, [editor, props.locale]);
 
@@ -1268,19 +1269,19 @@ const createProtectedImageExtension = (
 
 type TiptapEditor = NonNullable<ReturnType<typeof useEditor>>;
 type ImageUploadPlaceholderMatch = { nodeSize: number; pos: number };
-type AttachmentRange = { from: number; marks: readonly Mark[]; to: number };
+type AttachmentRange = { from: number; linkAttrs: Record<string, unknown>; to: number };
 
 const findMobileAttachmentRange = (editor: TiptapEditor, resourceId: string): AttachmentRange | null => {
   let match: AttachmentRange | null = null;
   editor.state.doc.descendants((node, pos) => {
     if (!node.isText || !node.text) return;
-    const hasResourceLink = node.marks.some((mark) =>
+    const resourceLink = node.marks.find((mark) =>
       mark.type.name === "link" &&
       typeof mark.attrs.href === "string" &&
       getResourceIdFromUrl(mark.attrs.href) === resourceId
     );
-    if (!hasResourceLink) return;
-    match = { from: pos, marks: node.marks, to: pos + node.nodeSize };
+    if (!resourceLink) return;
+    match = { from: pos, linkAttrs: resourceLink.attrs, to: pos + node.nodeSize };
     return false;
   });
   return match;
