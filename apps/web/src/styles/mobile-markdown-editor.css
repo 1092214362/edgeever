@@ -518,7 +518,8 @@ input {
   align-items: center;
   justify-content: center;
   overflow: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
   padding: 4rem 0.75rem 0.75rem;
   border: 1px solid #d9e2dc;
   border-radius: 8px;
