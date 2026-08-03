@@ -107,6 +107,7 @@ import {
   EDITOR_LOCAL_SAVE_DELAY_MS,
   getEditableMemoTitle,
   getNotebookMoveOptions,
+  type MemoDocumentActionRequest,
 } from "@/lib/app-helpers";
 import { copyEditorToWeChat, copyMarkdownToWeChat } from "@/lib/wechat-copy";
 import { ThemeBlock } from "./ThemeBlock";
@@ -610,6 +611,8 @@ type EditorPaneProps = {
   onSaveAsTemplate: (memo: MemoDetail, name: string) => Promise<void>;
   searchFocusToken: number;
   replaceFocusToken: number;
+  documentActionRequest?: MemoDocumentActionRequest | null;
+  onDocumentActionConsumed?: (requestId: number) => void;
   selectionActionBar?: ReactNode;
   onOpenMemo?: (memoId: string) => void;
 };
@@ -671,6 +674,8 @@ const RichEditorPane = ({
   onSaveAsTemplate,
   searchFocusToken,
   replaceFocusToken,
+  documentActionRequest,
+  onDocumentActionConsumed,
   selectionActionBar,
   onOpenMemo,
   onRequestMobileNativeEdit,
@@ -1745,8 +1750,13 @@ const RichEditorPane = ({
     }
   }, [editor, markdownSource, useMarkdownSourceEditor]);
 
-  const handleExportPdf = useCallback(() => {
+  const handleExportPdf = useCallback((preopenedWindow?: Window | null) => {
     if (!isEditorReady(editor) || !memo) {
+      return;
+    }
+
+    if (preopenedWindow === null) {
+      window.alert(t("editor.pdfExport.popupBlocked"));
       return;
     }
 
@@ -1756,22 +1766,25 @@ const RichEditorPane = ({
         ? markdownToDoc(markdownSource)
         : editor.getJSON() as TiptapDoc;
     const html = serializeNoteDocumentForPrint(editor, currentDocument);
-    const opened = openNotePrintPreview({
-      title: title.trim() || t("common.untitledMemo"),
-      notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
-      tags: parseTagsText(tagsText),
-      updatedAt: formatDateTime(memo.updatedAt),
-      html,
-      language: i18n.resolvedLanguage ?? i18n.language,
-      labels: {
-        close: t("editor.pdfExport.close"),
-        error: t("editor.pdfExport.error"),
-        hint: t("editor.pdfExport.hint"),
-        preparing: t("editor.pdfExport.preparing"),
-        print: t("editor.pdfExport.print"),
-        ready: t("editor.pdfExport.ready"),
+    const opened = openNotePrintPreview(
+      {
+        title: title.trim() || t("common.untitledMemo"),
+        notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
+        tags: parseTagsText(tagsText),
+        updatedAt: formatDateTime(memo.updatedAt),
+        html,
+        language: i18n.resolvedLanguage ?? i18n.language,
+        labels: {
+          close: t("editor.pdfExport.close"),
+          error: t("editor.pdfExport.error"),
+          hint: t("editor.pdfExport.hint"),
+          preparing: t("editor.pdfExport.preparing"),
+          print: t("editor.pdfExport.print"),
+          ready: t("editor.pdfExport.ready"),
+        },
       },
-    });
+      preopenedWindow ?? undefined,
+    );
 
     if (!opened) {
       window.alert(t("editor.pdfExport.popupBlocked"));
@@ -1815,6 +1828,68 @@ const RichEditorPane = ({
     title,
     useMarkdownSourceEditor,
     useMobilePlainTextEditor,
+  ]);
+
+  const handleSaveAsTemplate = useCallback(() => {
+    if (!memo) {
+      return;
+    }
+
+    const name = window.prompt(t("templates.templateNamePrompt"), memo.title || "");
+    if (!name?.trim()) {
+      return;
+    }
+
+    const currentMarkdown = useMobilePlainTextEditor
+      ? getMobilePlainTextValue()
+      : isEditorReady(editor)
+        ? docToMarkdown(editor.getJSON() as TiptapDoc)
+        : memo.contentMarkdown;
+    const currentTemplateMemo: MemoDetail = {
+      ...memo,
+      title,
+      tags: parseTagsText(tagsText),
+      contentJson: markdownToDoc(currentMarkdown),
+      contentMarkdown: currentMarkdown,
+    };
+    void onSaveAsTemplate(currentTemplateMemo, name.trim());
+  }, [editor, getMobilePlainTextValue, memo, onSaveAsTemplate, t, tagsText, title, useMobilePlainTextEditor]);
+
+  useEffect(() => {
+    if (
+      !documentActionRequest ||
+      documentActionRequest.memoId !== memo?.id ||
+      hydratedEditorMemoId !== memo.id ||
+      !isEditorReady(editor)
+    ) {
+      return;
+    }
+
+    onDocumentActionConsumed?.(documentActionRequest.id);
+
+    switch (documentActionRequest.action) {
+      case "share":
+        setShareOpen(true);
+        break;
+      case "export-markdown":
+        handleExportMarkdown();
+        break;
+      case "export-pdf":
+        handleExportPdf(documentActionRequest.printWindow);
+        break;
+      case "save-as-template":
+        handleSaveAsTemplate();
+        break;
+    }
+  }, [
+    documentActionRequest,
+    editor,
+    handleExportMarkdown,
+    handleExportPdf,
+    handleSaveAsTemplate,
+    hydratedEditorMemoId,
+    memo,
+    onDocumentActionConsumed,
   ]);
 
   useEffect(() => {
@@ -2653,7 +2728,7 @@ const RichEditorPane = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
-                  onClick={handleExportPdf}
+                  onClick={() => handleExportPdf()}
                 >
                   <Printer className="h-4 w-4 text-slate-500" />
                   {t("editor.exportPdf")}
@@ -2680,24 +2755,7 @@ const RichEditorPane = ({
                   <>
                     <DropdownMenuItem
                       className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
-                      onClick={() => {
-                        const name = window.prompt(t("templates.templateNamePrompt"), memo.title || "");
-                        if (name?.trim()) {
-                          const currentMarkdown = useMobilePlainTextEditor
-                            ? getMobilePlainTextValue()
-                            : isEditorReady(editor)
-                              ? docToMarkdown(editor.getJSON() as TiptapDoc)
-                              : memo.contentMarkdown;
-                          const currentTemplateMemo: MemoDetail = {
-                            ...memo,
-                            title,
-                            tags: parseTagsText(tagsText),
-                            contentJson: markdownToDoc(currentMarkdown),
-                            contentMarkdown: currentMarkdown,
-                          };
-                          void onSaveAsTemplate(currentTemplateMemo, name.trim());
-                        }
-                      }}
+                      onClick={handleSaveAsTemplate}
                     >
                       <Pencil className="h-4 w-4 text-slate-500" />
                       {t("templates.saveAsTemplate")}
