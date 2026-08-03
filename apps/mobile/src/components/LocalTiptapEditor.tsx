@@ -8,8 +8,9 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import type { Mark } from "@tiptap/pm/model";
 import * as Clipboard from "expo-clipboard";
-import { getImageReferrerPolicy, type TiptapDoc } from "@edgeever/shared";
+import { getImageReferrerPolicy, getResourceIdFromUrl, type TiptapDoc } from "@edgeever/shared";
 import {
   DEFAULT_IMAGE_WIDTH_PERCENT,
   IMAGE_WIDTH_PRESETS,
@@ -44,6 +45,8 @@ export interface LocalTiptapEditorRef extends DOMImperativeFactory {
   cancelImageUpload: (uploadId: DOMValue) => void;
   completeImageUpload: (uploadId: DOMValue, imageUrl: DOMValue, alt: DOMValue) => void;
   appendAttachment: (attachmentUrl: DOMValue, filename: DOMValue) => void;
+  removeAttachment: (targetJson: DOMValue) => void;
+  renameAttachment: (targetJson: DOMValue, filename: DOMValue) => void;
   flush: () => void;
   focusEnd: () => void;
   replaceAll: (query: DOMValue, replacement: DOMValue) => void;
@@ -58,6 +61,7 @@ type LocalTiptapEditorProps = {
   dom?: DOMProps;
   onChange: (content: EditorDoc) => Promise<void>;
   onLoadResource: (source: string) => Promise<string | null>;
+  onAttachmentPress?: (targetJson: string) => Promise<void>;
   onPickImage: () => Promise<void>;
   onReady: (startupMs: number) => Promise<void>;
   onSearchResult?: (count: number, index: number) => Promise<void>;
@@ -77,6 +81,47 @@ type MermaidRendererProps = {
 const CHANGE_IDLE_MS = 500;
 const TRANSIENT_IMAGE_UPLOAD_META = "edgeeverImageUploadPlaceholder";
 const ignoreSearchResult = async () => undefined;
+
+type EditorAttachmentTarget = {
+  filename: string;
+  href: string;
+  resourceId: string;
+};
+
+const parseMobileAttachmentTarget = (value: string): EditorAttachmentTarget | null => {
+  try {
+    const parsed = JSON.parse(value) as Partial<EditorAttachmentTarget>;
+    if (typeof parsed.href !== "string" || typeof parsed.filename !== "string") return null;
+    const resourceId = getResourceIdFromUrl(parsed.href);
+    if (!resourceId || (parsed.resourceId && parsed.resourceId !== resourceId)) return null;
+    return { filename: parsed.filename, href: parsed.href, resourceId };
+  } catch {
+    return null;
+  }
+};
+
+const normalizeEditorAttachmentFilename = (label: string, resourceId: string) =>
+  label.replace(/^\s*(?:附件[：:]|Attachment:)\s*/i, "").trim() || resourceId;
+
+const handleMobileAttachmentEvent = (
+  event: Event,
+  onAttachmentPress?: (targetJson: string) => Promise<void>
+) => {
+  const element = event.target instanceof Element ? event.target : null;
+  const link = element?.closest<HTMLAnchorElement>('a.edgeever-attachment-link, a[href*="/api/v1/resources/"]');
+  const href = link?.getAttribute("href") ?? "";
+  const resourceId = getResourceIdFromUrl(href);
+  if (!link || !resourceId || !onAttachmentPress) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+  void onAttachmentPress(JSON.stringify({
+    filename: normalizeEditorAttachmentFilename(link.textContent ?? "", resourceId),
+    href,
+    resourceId,
+  } satisfies EditorAttachmentTarget));
+  return true;
+};
 
 const getMobileMermaidTheme = (theme: "light" | "dark") => THEMES[theme === "dark" ? "zinc-dark" : "zinc-light"];
 
@@ -235,12 +280,14 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   const pendingImageSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const onChangeRef = useRef(props.onChange);
   const onLoadResourceRef = useRef(props.onLoadResource);
+  const onAttachmentPressRef = useRef(props.onAttachmentPress);
   const onPickImageRef = useRef(props.onPickImage);
   const onReadyRef = useRef(props.onReady);
   const onSearchResultRef = useRef(props.onSearchResult ?? ignoreSearchResult);
 
   onChangeRef.current = props.onChange;
   onLoadResourceRef.current = props.onLoadResource;
+  onAttachmentPressRef.current = props.onAttachmentPress;
   onPickImageRef.current = props.onPickImage;
   onReadyRef.current = props.onReady;
   onSearchResultRef.current = props.onSearchResult ?? ignoreSearchResult;
@@ -256,7 +303,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   const editor = useEditor({
     autofocus: props.autoFocus ? "end" : false,
     extensions: [
-      StarterKit.configure({ codeBlock: false }),
+      StarterKit.configure({ codeBlock: false, link: { openOnClick: false } }),
       mermaidCodeBlockExtension,
       protectedImageExtension,
       TableKit.configure({
@@ -269,6 +316,10 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     content: resolveImageSources(props.content, props.baseUrl),
     editorProps: {
       attributes: getMobileEditorInputAttributes("edgeever-editor-content"),
+      handleClick: (_view, _pos, event) => handleMobileAttachmentEvent(event, onAttachmentPressRef.current),
+      handleDOMEvents: {
+        contextmenu: (_view, event) => handleMobileAttachmentEvent(event, onAttachmentPressRef.current),
+      },
     },
     onUpdate: ({ editor: activeEditor, transaction }) => {
       if (transaction.getMeta(TRANSIENT_IMAGE_UPLOAD_META)) {
@@ -371,7 +422,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       type: "paragraph",
       content: [{
         type: "text",
-        text: `附件：${filenameValue}`,
+        text: `${props.locale === "en-US" ? "Attachment: " : "附件："}${filenameValue}`,
         marks: [{
           type: "link",
           attrs: {
@@ -382,7 +433,42 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
         }],
       }],
     }).run();
-  }, [editor, props.baseUrl]);
+  }, [editor, props.baseUrl, props.locale]);
+
+  const renameAttachment = useCallback((targetJsonValue: DOMValue, filenameValue: DOMValue) => {
+    if (!editor || typeof targetJsonValue !== "string" || typeof filenameValue !== "string") return;
+    const target = parseMobileAttachmentTarget(targetJsonValue);
+    if (!target) return;
+    const range = findMobileAttachmentRange(editor, target.resourceId);
+    if (!range) return;
+    editor.view.dispatch(editor.state.tr.replaceWith(
+      range.from,
+      range.to,
+      editor.schema.text(`${props.locale === "en-US" ? "Attachment: " : "附件："}${filenameValue}`, [...range.marks])
+    ));
+  }, [editor, props.locale]);
+
+  const removeAttachment = useCallback((targetJsonValue: DOMValue) => {
+    if (!editor || typeof targetJsonValue !== "string") return;
+    const target = parseMobileAttachmentTarget(targetJsonValue);
+    if (!target) return;
+    const range = findMobileAttachmentRange(editor, target.resourceId);
+    if (!range) return;
+    const resolved = editor.state.doc.resolve(range.from);
+    let from = range.from;
+    let to = range.to;
+    for (let depth = resolved.depth; depth > 0; depth -= 1) {
+      const node = resolved.node(depth);
+      if (node.type.name !== "paragraph") continue;
+      const nodeFrom = resolved.before(depth);
+      if (range.from === nodeFrom + 1 && range.to === nodeFrom + node.nodeSize - 1) {
+        from = nodeFrom;
+        to = nodeFrom + node.nodeSize;
+      }
+      break;
+    }
+    editor.view.dispatch(editor.state.tr.delete(from, to));
+  }, [editor]);
 
   useDOMImperativeHandle(
     props.ref,
@@ -393,10 +479,12 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       appendAttachment,
       flush,
       focusEnd: () => editor?.commands.focus("end"),
+      removeAttachment,
+      renameAttachment,
       replaceAll,
       search,
     }),
-    [appendAttachment, beginImageUpload, cancelImageUpload, completeImageUpload, editor, flush, replaceAll, search]
+    [appendAttachment, beginImageUpload, cancelImageUpload, completeImageUpload, editor, flush, removeAttachment, renameAttachment, replaceAll, search]
   );
 
   useEffect(() => {
@@ -1180,6 +1268,23 @@ const createProtectedImageExtension = (
 
 type TiptapEditor = NonNullable<ReturnType<typeof useEditor>>;
 type ImageUploadPlaceholderMatch = { nodeSize: number; pos: number };
+type AttachmentRange = { from: number; marks: readonly Mark[]; to: number };
+
+const findMobileAttachmentRange = (editor: TiptapEditor, resourceId: string): AttachmentRange | null => {
+  let match: AttachmentRange | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText || !node.text) return;
+    const hasResourceLink = node.marks.some((mark) =>
+      mark.type.name === "link" &&
+      typeof mark.attrs.href === "string" &&
+      getResourceIdFromUrl(mark.attrs.href) === resourceId
+    );
+    if (!hasResourceLink) return;
+    match = { from: pos, marks: node.marks, to: pos + node.nodeSize };
+    return false;
+  });
+  return match;
+};
 
 const findImageUploadPlaceholder = (
   editor: TiptapEditor,
@@ -1276,6 +1381,9 @@ const getEditorStyles = (theme: "light" | "dark") => `
   .edgeever-editor-content pre { overflow-x: auto; border-radius: 10px; padding: 14px 90px 14px 14px; background: #0f172a; color: #e2e8f0; }
   .edgeever-editor-content code { border-radius: 4px; padding: 2px 4px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; }
   .edgeever-editor-content pre code { padding: 0; background: transparent; }
+  .edgeever-editor-content a.edgeever-attachment-link, .edgeever-editor-content a[href*="/api/v1/resources/"] { display: flex; min-height: 58px; align-items: center; gap: 10px; margin: 8px 0; border: 1px solid ${theme === "dark" ? "#334155" : "#cbd5e1"}; border-radius: 12px; padding: 10px 12px; background: ${theme === "dark" ? "#172033" : "#f8fafc"}; color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"}; font-size: 15px; font-weight: 700; line-height: 1.35; text-decoration: none; }
+  .edgeever-editor-content a.edgeever-attachment-link::before, .edgeever-editor-content a[href*="/api/v1/resources/"]::before { display: inline-flex; width: 38px; height: 38px; flex: 0 0 38px; align-items: center; justify-content: center; border-radius: 9px; background: ${theme === "dark" ? "#134e4a" : "#ecfdf5"}; content: "📎"; font-size: 18px; }
+  .edgeever-editor-content a.edgeever-attachment-link::after, .edgeever-editor-content a[href*="/api/v1/resources/"]::after { margin-left: auto; color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; content: "⋯"; font-size: 22px; font-weight: 700; }
   .edgeever-code-block, .edgeever-mermaid-code-block { position: relative; margin: 18px 0; overflow: visible; background: transparent; }
   .edgeever-code-copy-button { position: absolute; top: 8px; right: 8px; z-index: 1; border: 1px solid ${theme === "dark" ? "#475569" : "#cbded1"}; border-radius: 6px; padding: 5px 8px; background: ${theme === "dark" ? "rgba(30, 41, 59, 0.94)" : "rgba(247, 251, 248, 0.94)"}; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; font: inherit; font-size: 12px; line-height: 1.35; }
   .edgeever-code-copy-button:active { border-color: #0f766e; color: ${theme === "dark" ? "#86efac" : "#0f766e"}; }
