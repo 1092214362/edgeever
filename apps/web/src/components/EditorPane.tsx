@@ -71,7 +71,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useTheme } from "./ThemeProvider";
 import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
-import { ShareMemoDialog } from "./dialogs/ShareMemoDialog";
+import { memoShareQueryKey, ShareMemoDialog } from "./dialogs/ShareMemoDialog";
 import { api } from "@/lib/api";
 import { isDesktopResourceRuntime, stageDesktopResource, toDesktopResourceUrl } from "@/lib/desktop-resources";
 import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
@@ -731,6 +731,18 @@ const RichEditorPane = ({
   }, []);
   const notebookOptions = useMemo(() => getNotebookMoveOptions(notebooks), [notebooks]);
   const readOnly = isTrashView || Boolean(memo?.isDeleted);
+  const shareMemoId = memo && !readOnly && !isLocalMemoId(memo.id) ? memo.id : null;
+  const shareStatusQuery = useQuery({
+    queryKey: memoShareQueryKey(shareMemoId ?? ""),
+    queryFn: () => {
+      if (!shareMemoId) throw new Error("Memo share query requires a memo id");
+      return api.getMemoShare(shareMemoId);
+    },
+    enabled: Boolean(shareMemoId),
+    retry: false,
+    staleTime: 30_000,
+  });
+  const isMemoShared = Boolean(shareStatusQuery.data?.share);
   const mobileDefaultEditRequested = Boolean(memo?.id && memo.id === mobileDefaultEditMemoId && !readOnly);
   const mobileEditingActive = isMobileEditing || mobileDefaultEditRequested;
 
@@ -2410,6 +2422,18 @@ const RichEditorPane = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
+            {isMemoShared && (
+              <button
+                className="inline-flex h-8 items-center gap-1.5 rounded-full bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                type="button"
+                title={t("sharing.manage")}
+                aria-label={t("sharing.manage")}
+                onClick={() => setShareOpen(true)}
+              >
+                <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("sharing.active")}</span>
+              </button>
+            )}
             <span
               className="hidden whitespace-nowrap px-1.5 text-xs tabular-nums text-slate-400 sm:inline-flex"
               title={t("editor.characterCount", { count: characterCount })}
@@ -2609,12 +2633,15 @@ const RichEditorPane = ({
                 </DropdownMenuItem>
                 {!readOnly && (
                   <DropdownMenuItem
-                    className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                    className={cn(
+                      "flex h-9 w-full items-center gap-2 px-3 text-left text-sm hover:bg-slate-50 cursor-pointer outline-none",
+                      isMemoShared ? "bg-emerald-50 text-emerald-800" : "text-slate-700",
+                    )}
                     disabled={isLocalMemoId(memo.id)}
                     onClick={() => setShareOpen(true)}
                   >
-                    <Link2 className="h-4 w-4 text-slate-500" />
-                    {t("sharing.action")}
+                    <Link2 className={cn("h-4 w-4", isMemoShared ? "text-emerald-600" : "text-slate-500")} />
+                    {t(isMemoShared ? "sharing.manage" : "sharing.action")}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem

@@ -667,6 +667,8 @@ export const enUS = {
   },
   sharing: {
     action: "Share note",
+    active: "Shared",
+    manage: "Manage sharing",
     title: "Share note",
     description: "Anyone with the link can view the latest saved version of this note without signing in.",
     linkLabel: "Public share link",

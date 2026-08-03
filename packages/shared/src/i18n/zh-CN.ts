@@ -667,6 +667,8 @@ export const zhCN = {
   },
   sharing: {
     action: "分享笔记",
+    active: "正在分享",
+    manage: "管理分享",
     title: "分享笔记",
     description: "任何获得链接的人无需登录，即可查看这篇笔记最新保存的内容。",
     linkLabel: "公开分享链接",
