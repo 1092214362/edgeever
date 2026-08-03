@@ -65,7 +65,7 @@ EdgeEver 采用纯 Serverless 架构，完全运行在 Cloudflare 免费配额�
 请在线完成 EdgeEver 部署：
 1. Fork https://github.com/tianma-if/edgeever。
 2. 将这个 Fork 导入 Cloudflare Workers & Pages。
-3. 配置 D1、R2、`EDGE_EVER_AUTH_PASSWORD` Worker Secret 和生产环境 `main` 构建。
+3. 配置 D1、R2、`EDGE_EVER_AUTH_USERNAME`（预填为 `admin`，可自定义）、`EDGE_EVER_AUTH_PASSWORD` Worker Secret 和生产环境 `main` 构建。
 4. 启动首次构建，验证 `/api/health`、`/api/openapi.json` 和登录。
 5. 启用并手动运行一次 `Update deployed EdgeEver`。
 ```
@@ -78,7 +78,7 @@ EdgeEver 采用纯 Serverless 架构，完全运行在 Cloudflare 免费配额�
 
 1. **Fork 仓库**：在 GitHub 点击右上角 **Fork**，将项目 Fork 到您的个人账户下。
 2. **导入 Cloudflare**：登录 Cloudflare 控制台，进入 **Workers & Pages**，选择导入该 Fork 仓库。
-3. **绑定资源与密码**：绑定 D1 数据库（`DB`）、R2 存储桶（`RESOURCES`），并添加 Worker Secret `EDGE_EVER_AUTH_PASSWORD` 作为登录密码。
+3. **绑定资源与登录凭据**：绑定 D1 数据库（`DB`）、R2 存储桶（`RESOURCES`），设置 `EDGE_EVER_AUTH_USERNAME`（默认为 `admin`，可自定义），并添加 Worker Secret `EDGE_EVER_AUTH_PASSWORD` 作为管理员登录密码。
 4. **启动构建与验证**：使用默认构建配置启动首次构建，部署完成后访问 `/api/health` 确认返回 `200` 即可开始使用。
 
 > 📖 包含具体参数与构建命令的详细步骤，请查看 [在线部署完整文档](docs/deploy-cloudflare-button.zh-CN.md)。
