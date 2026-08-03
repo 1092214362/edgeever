@@ -27,6 +27,7 @@ import {
   UserUpdateSchema,
   RestoreJsonMemosSchema,
   RestoreJsonNotebooksSchema,
+  ResourceUpdateSchema,
   type ApiToken,
   type CreatedApiToken,
   type MemoDetail,
@@ -2304,6 +2305,77 @@ app.get("/api/v1/resources/:id/blob", async (c) => {
   headers.set("X-Content-Type-Options", "nosniff");
 
   return new Response(object.body, { headers });
+});
+
+app.patch("/api/v1/resources/:id", zValidator("json", ResourceUpdateSchema), async (c) => {
+  const denied = requireScopes(c, "write:resources");
+
+  if (denied) {
+    return denied;
+  }
+
+  const resourceId = c.req.param("id");
+  const resource = await getResourceRow(c.env.storage.db, getWorkspaceId(c), resourceId);
+
+  if (!resource) {
+    return notFound(c, "Resource not found");
+  }
+
+  const filename = normalizeFilename(c.req.valid("json").filename);
+  if (!filename) {
+    return badRequest(c, "Resource filename is required.");
+  }
+
+  const now = isoNow();
+  const actor = getAuditActor(c);
+  await c.env.storage.db.batch([
+    c.env.storage.db.prepare(
+      `UPDATE resources SET filename = ?, updated_at = ? WHERE id = ?`
+    ).bind(filename, now, resourceId),
+    auditStatement(c.env.storage.db, actor.actorType, actor.actorId, "resource.rename", "resource", resourceId, {
+      memoId: resource.memo_id,
+      previousFilename: resource.filename,
+      filename,
+    }),
+  ]);
+
+  const updated = await getResourceRow(c.env.storage.db, getWorkspaceId(c), resourceId);
+  if (!updated) {
+    return notFound(c, "Resource not found");
+  }
+
+  return c.json({ resource: mapResource(updated) });
+});
+
+app.delete("/api/v1/resources/:id", async (c) => {
+  const denied = requireScopes(c, "write:resources");
+
+  if (denied) {
+    return denied;
+  }
+
+  const resourceId = c.req.param("id");
+  const resource = await getResourceRow(c.env.storage.db, getWorkspaceId(c), resourceId);
+
+  if (!resource) {
+    return notFound(c, "Resource not found");
+  }
+
+  const now = isoNow();
+  const actor = getAuditActor(c);
+  await c.env.storage.db.batch([
+    c.env.storage.db.prepare(
+      `UPDATE resources SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?`
+    ).bind(now, now, resourceId),
+    auditStatement(c.env.storage.db, actor.actorType, actor.actorId, "resource.delete", "resource", resourceId, {
+      memoId: resource.memo_id,
+      filename: resource.filename,
+      byteSize: resource.byte_size,
+    }),
+  ]);
+  await c.env.storage.resources.delete(resource.object_key);
+
+  return c.json({ ok: true });
 });
 
 app.post("/api/v1/demo/reset", async (c) => {

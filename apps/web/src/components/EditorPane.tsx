@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { NodeViewWrapper, ReactNodeViewRenderer, useEditor, EditorContent, type Editor, type NodeViewProps } from "@tiptap/react";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import type { Mark } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import { mergeAttributes } from "@tiptap/core";
@@ -64,6 +65,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EditorToolbar } from "./EditorToolbar";
 import { EditorOutline } from "./EditorOutline";
 import { WeChatIcon } from "./WeChatIcon";
@@ -122,6 +131,7 @@ import { processFilesSequentially } from "@/lib/file-batch";
 import { MEMO_ID_REMAPPED_EVENT } from "@/lib/sync-events";
 import { useStandaloneMobileEditor } from "@/hooks/useStandaloneMobileEditor";
 import { statusSettleMotion } from "@/lib/motion";
+import { getAttachmentFilenameFromLabel, getAttachmentResourceId } from "@/lib/attachment-links";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
@@ -155,6 +165,25 @@ type NoteLinkHintPosition = {
   top: number;
   placement: "above" | "below";
 };
+
+type AttachmentMenuTarget = {
+  href: string;
+  filename: string;
+  resourceId: string | null;
+  position: NoteLinkHintPosition;
+};
+
+type AttachmentDialogState = {
+  action: "rename" | "delete";
+  target: AttachmentMenuTarget;
+};
+
+const getAttachmentLinkFromEventTarget = (target: EventTarget | null) =>
+  target instanceof Element
+    ? target.closest<HTMLAnchorElement>(
+        'a.edgeever-attachment-link, a[href*="/api/v1/resources/"], a[href^="edgeever-resource://"]'
+      )
+    : null;
 
 const getNoteLinkFromEventTarget = (target: EventTarget | null) =>
   target instanceof Element
@@ -192,6 +221,90 @@ const NoteLinkInteractionHint = ({
   </div>,
   document.body
 );
+
+const AttachmentActionMenu = ({
+  target,
+  canMutate,
+  labels,
+  onDownload,
+  onRename,
+  onDelete,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  target: AttachmentMenuTarget;
+  canMutate: boolean;
+  labels: { download: string; rename: string; delete: string; unavailable: string };
+  onDownload: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: (event: ReactMouseEvent<HTMLDivElement>) => void;
+}) => createPortal(
+  <div
+    data-edgeever-attachment-menu
+    role="toolbar"
+    aria-label={labels.download}
+    className="fixed z-[110] flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+    style={{
+      left: target.position.left,
+      top: target.position.top,
+      transform: target.position.placement === "above" ? "translate(-50%, -100%)" : "translateX(-50%)",
+    }}
+    onMouseEnter={onMouseEnter}
+    onMouseLeave={onMouseLeave}
+  >
+    <Button type="button" size="sm" variant="ghost" title={labels.download} onClick={onDownload}>
+      <FileDown className="h-3.5 w-3.5" />
+      {labels.download}
+    </Button>
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      title={canMutate ? labels.rename : labels.unavailable}
+      disabled={!canMutate}
+      onClick={onRename}
+    >
+      <Pencil className="h-3.5 w-3.5" />
+      {labels.rename}
+    </Button>
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      className="text-slate-600 hover:bg-rose-50 hover:text-rose-600"
+      title={canMutate ? labels.delete : labels.unavailable}
+      disabled={!canMutate}
+      onClick={onDelete}
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+      {labels.delete}
+    </Button>
+  </div>,
+  document.body
+);
+
+const findAttachmentLinkRange = (
+  editor: Editor,
+  href: string
+): { from: number; to: number; marks: readonly Mark[] } | null => {
+  let from: number | null = null;
+  let to: number | null = null;
+  let marks: readonly Mark[] = [];
+
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText || !node.text) return;
+    const linkMark = node.marks.find((mark) => mark.type.name === "link" && mark.attrs.href === href);
+    if (!linkMark) return;
+    from = from === null ? pos : Math.min(from, pos);
+    to = to === null ? pos + node.nodeSize : Math.max(to, pos + node.nodeSize);
+    marks = node.marks;
+  });
+
+  if (from === null || to === null) return null;
+  return { from: from as number, to: to as number, marks };
+};
 
 type NoteSearchMatch = {
   from: number;
@@ -707,6 +820,11 @@ const RichEditorPane = ({
   const [noteLinkPickerOpen, setNoteLinkPickerOpen] = useState(false);
   const [noteLinkQuery, setNoteLinkQuery] = useState("");
   const [noteLinkHintPosition, setNoteLinkHintPosition] = useState<NoteLinkHintPosition | null>(null);
+  const [attachmentMenuTarget, setAttachmentMenuTarget] = useState<AttachmentMenuTarget | null>(null);
+  const [attachmentDialog, setAttachmentDialog] = useState<AttachmentDialogState | null>(null);
+  const [attachmentFilename, setAttachmentFilename] = useState("");
+  const [attachmentActionPending, setAttachmentActionPending] = useState(false);
+  const [attachmentActionError, setAttachmentActionError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia(MOBILE_EDITOR_QUERY).matches
   );
@@ -785,6 +903,7 @@ const RichEditorPane = ({
   const hasUnsavedChangesRef = useRef(false);
   const editingMemoIdRef = useRef<string | null>(memo?.id ?? null);
   const imageCompressionEnabledRef = useRef(imageCompressionEnabled);
+  const attachmentMenuHideTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleMemoIdRemapped = (event: Event) => {
@@ -1113,6 +1232,38 @@ const RichEditorPane = ({
     setNoteLinkQuery("");
   }, [editor, effectiveReadOnly, memo?.id, t]);
 
+  const cancelAttachmentMenuHide = useCallback(() => {
+    if (attachmentMenuHideTimerRef.current !== null) {
+      window.clearTimeout(attachmentMenuHideTimerRef.current);
+      attachmentMenuHideTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleAttachmentMenuHide = useCallback(() => {
+    cancelAttachmentMenuHide();
+    attachmentMenuHideTimerRef.current = window.setTimeout(() => {
+      attachmentMenuHideTimerRef.current = null;
+      setAttachmentMenuTarget(null);
+    }, 120);
+  }, [cancelAttachmentMenuHide]);
+
+  const showAttachmentMenu = useCallback((target: EventTarget | null) => {
+    if (isMobileViewport) return false;
+    const link = getAttachmentLinkFromEventTarget(target);
+    if (!link) return false;
+
+    const href = link.getAttribute("href") || "";
+    cancelAttachmentMenuHide();
+    setNoteLinkHintPosition(null);
+    setAttachmentMenuTarget({
+      href,
+      filename: getAttachmentFilenameFromLabel(link.textContent || "") || getAttachmentResourceId(href) || "attachment",
+      resourceId: getAttachmentResourceId(href),
+      position: getNoteLinkHintPosition(link),
+    });
+    return true;
+  }, [cancelAttachmentMenuHide, isMobileViewport]);
+
   const showNoteLinkHint = useCallback((target: EventTarget | null) => {
     if (!editor?.isEditable || isMobileViewport) {
       return;
@@ -1125,16 +1276,31 @@ const RichEditorPane = ({
   }, [editor?.isEditable, isMobileViewport]);
 
   const handleEditorMouseOver = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (showAttachmentMenu(event.target)) return;
     showNoteLinkHint(event.target);
-  }, [showNoteLinkHint]);
+  }, [showAttachmentMenu, showNoteLinkHint]);
 
   const handleEditorMouseOut = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    const attachmentLink = getAttachmentLinkFromEventTarget(event.target);
+    if (attachmentLink) {
+      const relatedTarget = event.relatedTarget;
+      if (
+        relatedTarget instanceof Node &&
+        (attachmentLink.contains(relatedTarget) ||
+          (relatedTarget instanceof Element && relatedTarget.closest("[data-edgeever-attachment-menu]")))
+      ) {
+        return;
+      }
+      scheduleAttachmentMenuHide();
+      return;
+    }
+
     const link = getNoteLinkFromEventTarget(event.target);
     if (!link || (event.relatedTarget instanceof Node && link.contains(event.relatedTarget))) {
       return;
     }
     setNoteLinkHintPosition(null);
-  }, []);
+  }, [scheduleAttachmentMenuHide]);
 
   const handleEditorClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button === 0 && !event.ctrlKey && !event.metaKey) {
@@ -1143,8 +1309,9 @@ const RichEditorPane = ({
   }, [showNoteLinkHint]);
 
   const handleEditorFocusCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
+    if (showAttachmentMenu(event.target)) return;
     showNoteLinkHint(event.target);
-  }, [showNoteLinkHint]);
+  }, [showAttachmentMenu, showNoteLinkHint]);
 
   const handleEditorBlurCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
     if (!getNoteLinkFromEventTarget(event.relatedTarget)) {
@@ -1167,8 +1334,27 @@ const RichEditorPane = ({
   }, [noteLinkHintPosition]);
 
   useEffect(() => {
+    if (!attachmentMenuTarget) return;
+    const hideMenu = () => setAttachmentMenuTarget(null);
+    window.addEventListener("resize", hideMenu);
+    window.addEventListener("scroll", hideMenu, true);
+    return () => {
+      window.removeEventListener("resize", hideMenu);
+      window.removeEventListener("scroll", hideMenu, true);
+    };
+  }, [attachmentMenuTarget]);
+
+  useEffect(() => {
     setNoteLinkHintPosition(null);
+    setAttachmentMenuTarget(null);
+    setAttachmentDialog(null);
   }, [memo?.id, isMarkdownMode]);
+
+  useEffect(() => () => {
+    if (attachmentMenuHideTimerRef.current !== null) {
+      window.clearTimeout(attachmentMenuHideTimerRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     imageCompressionEnabledRef.current = imageCompressionEnabled;
@@ -2024,6 +2210,103 @@ const RichEditorPane = ({
       setSaveState("error");
     },
   });
+
+  const replaceAttachmentLabel = useCallback((target: AttachmentMenuTarget, filename: string) => {
+    const activeEditor = editorRef.current;
+    if (!isEditorReady(activeEditor)) return;
+    const range = findAttachmentLinkRange(activeEditor, target.href);
+    if (!range) return;
+    activeEditor.view.dispatch(
+      activeEditor.state.tr.replaceWith(
+        range.from,
+        range.to,
+        activeEditor.schema.text(t("editor.attachmentLabel", { filename }), [...range.marks])
+      )
+    );
+  }, [t]);
+
+  const removeAttachmentLink = useCallback((target: AttachmentMenuTarget) => {
+    const activeEditor = editorRef.current;
+    if (!isEditorReady(activeEditor)) return;
+    const range = findAttachmentLinkRange(activeEditor, target.href);
+    if (!range) return;
+
+    const resolved = activeEditor.state.doc.resolve(range.from);
+    let deleteFrom = range.from;
+    let deleteTo = range.to;
+    for (let depth = resolved.depth; depth > 0; depth -= 1) {
+      const node = resolved.node(depth);
+      if (node.type.name !== "paragraph") continue;
+      const nodeFrom = resolved.before(depth);
+      if (range.from === nodeFrom + 1 && range.to === nodeFrom + node.nodeSize - 1) {
+        deleteFrom = nodeFrom;
+        deleteTo = nodeFrom + node.nodeSize;
+      }
+      break;
+    }
+
+    activeEditor.view.dispatch(activeEditor.state.tr.delete(deleteFrom, deleteTo));
+  }, []);
+
+  const handleAttachmentDownload = useCallback(async (target: AttachmentMenuTarget) => {
+    setAttachmentMenuTarget(null);
+    setAttachmentActionError(null);
+    try {
+      const blob = await api.getResourceBlob(target.href);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = target.filename || target.resourceId || "attachment";
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    } catch (error) {
+      setAttachmentActionError(error instanceof Error ? error.message : t("editor.attachmentActions.failed"));
+    }
+  }, [t]);
+
+  const openAttachmentDialog = useCallback((action: AttachmentDialogState["action"], target: AttachmentMenuTarget) => {
+    setAttachmentMenuTarget(null);
+    setAttachmentActionError(null);
+    setAttachmentFilename(target.filename);
+    setAttachmentDialog({ action, target });
+  }, []);
+
+  const handleAttachmentRename = useCallback(async () => {
+    const target = attachmentDialog?.action === "rename" ? attachmentDialog.target : null;
+    const filename = attachmentFilename.trim();
+    if (!target?.resourceId || !filename || attachmentActionPending) return;
+
+    setAttachmentActionPending(true);
+    setAttachmentActionError(null);
+    try {
+      const result = await repository.renameResource(target.resourceId, filename);
+      replaceAttachmentLabel(target, result.resource.filename || filename);
+      await queryClient.invalidateQueries({ queryKey: ["resources"] });
+      setAttachmentDialog(null);
+    } catch (error) {
+      setAttachmentActionError(error instanceof Error ? error.message : t("editor.attachmentActions.failed"));
+    } finally {
+      setAttachmentActionPending(false);
+    }
+  }, [attachmentActionPending, attachmentDialog, attachmentFilename, queryClient, replaceAttachmentLabel, repository, t]);
+
+  const handleAttachmentDelete = useCallback(async () => {
+    const target = attachmentDialog?.action === "delete" ? attachmentDialog.target : null;
+    if (!target?.resourceId || attachmentActionPending) return;
+
+    setAttachmentActionPending(true);
+    setAttachmentActionError(null);
+    try {
+      await repository.deleteResource(target.resourceId);
+      removeAttachmentLink(target);
+      await queryClient.invalidateQueries({ queryKey: ["resources"] });
+      setAttachmentDialog(null);
+    } catch (error) {
+      setAttachmentActionError(error instanceof Error ? error.message : t("editor.attachmentActions.failed"));
+    } finally {
+      setAttachmentActionPending(false);
+    }
+  }, [attachmentActionPending, attachmentDialog, queryClient, removeAttachmentLink, repository, t]);
 
   const clearMobileEditorTimers = useCallback(() => {
     if (mobileDraftTimerRef.current !== null) {
@@ -3076,6 +3359,112 @@ const RichEditorPane = ({
           label={t("noteLinkPicker.openHint", { modifier: noteLinkModifier })}
           position={noteLinkHintPosition}
         />
+      )}
+
+      {attachmentMenuTarget && (
+        <AttachmentActionMenu
+          target={attachmentMenuTarget}
+          canMutate={Boolean(
+            attachmentMenuTarget.resourceId &&
+            !attachmentMenuTarget.resourceId.startsWith("local_resource_") &&
+            editor?.isEditable &&
+            !effectiveReadOnly
+          )}
+          labels={{
+            download: t("editor.attachmentActions.download"),
+            rename: t("editor.attachmentActions.rename"),
+            delete: t("editor.attachmentActions.delete"),
+            unavailable: t("editor.attachmentActions.unavailableUntilSynced"),
+          }}
+          onDownload={() => void handleAttachmentDownload(attachmentMenuTarget)}
+          onRename={() => openAttachmentDialog("rename", attachmentMenuTarget)}
+          onDelete={() => openAttachmentDialog("delete", attachmentMenuTarget)}
+          onMouseEnter={cancelAttachmentMenuHide}
+          onMouseLeave={(event) => {
+            if (getAttachmentLinkFromEventTarget(event.relatedTarget)) {
+              cancelAttachmentMenuHide();
+              return;
+            }
+            scheduleAttachmentMenuHide();
+          }}
+        />
+      )}
+
+      <Dialog
+        open={attachmentDialog?.action === "rename"}
+        onOpenChange={(open) => {
+          if (!open && !attachmentActionPending) setAttachmentDialog(null);
+        }}
+      >
+        <DialogContent>
+          <form
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleAttachmentRename();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>{t("editor.attachmentActions.renameTitle")}</DialogTitle>
+              <DialogDescription>{t("editor.attachmentActions.renameDescription")}</DialogDescription>
+            </DialogHeader>
+            <label className="grid gap-2 text-sm font-medium text-slate-700">
+              {t("editor.attachmentActions.filenameLabel")}
+              <Input
+                autoFocus
+                value={attachmentFilename}
+                maxLength={160}
+                disabled={attachmentActionPending}
+                onChange={(event) => setAttachmentFilename(event.target.value)}
+              />
+            </label>
+            {attachmentActionError && (
+              <p className="text-sm text-rose-600" role="alert">{attachmentActionError}</p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="ghost" disabled={attachmentActionPending} onClick={() => setAttachmentDialog(null)}>
+                {t("common.cancel")}
+              </Button>
+              <Button type="submit" variant="solid" disabled={attachmentActionPending || !attachmentFilename.trim()}>
+                {attachmentActionPending ? t("common.saving") : t("common.save")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={attachmentDialog?.action === "delete"}
+        onOpenChange={(open) => {
+          if (!open && !attachmentActionPending) setAttachmentDialog(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("editor.attachmentActions.deleteTitle")}</DialogTitle>
+            <DialogDescription>{t("editor.attachmentActions.deleteDescription")}</DialogDescription>
+          </DialogHeader>
+          <p className="truncate rounded-md bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+            {attachmentDialog?.target.filename}
+          </p>
+          {attachmentActionError && (
+            <p className="text-sm text-rose-600" role="alert">{attachmentActionError}</p>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="ghost" disabled={attachmentActionPending} onClick={() => setAttachmentDialog(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="button" variant="danger" disabled={attachmentActionPending} onClick={() => void handleAttachmentDelete()}>
+              {attachmentActionPending ? t("common.processing") : t("common.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {attachmentActionError && !attachmentDialog && (
+        <div className="fixed bottom-5 left-1/2 z-[120] -translate-x-1/2 rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow-lg" role="alert">
+          {attachmentActionError}
+        </div>
       )}
 
       {false && useMobilePlainTextEditor && (
