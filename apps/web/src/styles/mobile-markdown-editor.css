@@ -537,10 +537,10 @@ input {
 
 .edgeever-mobile-tiptap-content .edgeever-mermaid-svg svg {
   display: block;
-  width: 100%;
+  width: auto;
   max-width: 100%;
   height: auto;
-  max-height: none;
+  max-height: 440px;
 }
 
 .edgeever-mobile-tiptap-content .edgeever-mermaid-source {
