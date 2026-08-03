@@ -46,12 +46,12 @@ import {
   readNotebookSortPreference,
   writeNotebookSortPreference,
 } from "@/lib/app-helpers";
-import { usePwaInstall } from "./PwaInstallContext";
 import type { EdgeEverRepository } from "@/lib/repository";
 import { statusSettleMotion } from "@/lib/motion";
 
 const NOTEBOOK_DRAG_SCROLL_EDGE_PX = 56;
 const NOTEBOOK_DRAG_SCROLL_MAX_STEP_PX = 18;
+const DESKTOP_DOWNLOAD_URL = "https://github.com/tianma-if/edgeever/releases/latest";
 
 const SidebarNavButton = ({
   active = false,
@@ -329,7 +329,6 @@ export const NotebookPane = ({
   const { t } = useTranslation();
   // Temporarily keep template actions out of the primary workspace navigation.
   const showTemplateEntry = true;
-  const { isInstallable, install } = usePwaInstall();
   const clipperInstallUrl = typeof navigator !== "undefined" && /Firefox\//.test(navigator.userAgent)
     ? "https://github.com/tianma-if/edgeever/tree/main/apps/extension#firefox"
     : "https://chromewebstore.google.com/detail/edgeever-web-clipper/gjadpfmanienmlofajibkfkkpfdkclgo";
@@ -586,19 +585,27 @@ export const NotebookPane = ({
 
       <footer className="border-t border-slate-200 bg-white/80 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-sm">
         <div className="space-y-1">
-          {isInstallable && (
-            <button
-              onClick={install}
-              className="flex h-8 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-semibold leading-none text-emerald-700 hover:bg-emerald-50 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-              type="button"
-              title={t("pwa.sidebarInstallTitle") || "安装桌面客户端"}
-              aria-label={t("pwa.sidebarInstallTitle") || "安装桌面客户端"}
+          {!window.edgeeverDesktop?.isAvailable && (
+            <a
+              href={DESKTOP_DOWNLOAD_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex min-h-11 w-full items-start gap-3 rounded-md px-3 py-2 text-left text-emerald-700 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+              title={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
+              aria-label={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
             >
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center mt-0.5">
                 <Download className="h-4 w-4 text-emerald-600" />
               </span>
-              <span className="min-w-0 flex-1 truncate">{t("pwa.sidebarInstall") || "安装桌面客户端"}</span>
-            </button>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold leading-4">
+                  {t("pwa.sidebarInstall") || "下载桌面客户端"}
+                </span>
+                <span className="mt-1 block truncate whitespace-nowrap text-[11px] font-normal leading-4 text-slate-400">
+                  {t("pwa.sidebarInstallAvailability") || "Mac 可用 · Windows 敬请期待"}
+                </span>
+              </span>
+            </a>
           )}
           {demoMode && (
             <a

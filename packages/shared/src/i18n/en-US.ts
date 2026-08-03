@@ -1021,8 +1021,9 @@ export const enUS = {
     latestWithBuild: "You are running the latest version ({{buildLabel}}).",
     refreshNow: "Refresh now",
     closeNotice: "Close update notice",
-    sidebarInstall: "Install Client",
-    sidebarInstallTitle: "Install EdgeEver Desktop App",
+    sidebarInstall: "Download Desktop Client",
+    sidebarInstallTitle: "Download the EdgeEver Desktop Client",
+    sidebarInstallAvailability: "Mac available · Windows coming soon",
     sidebarClipper: "Install Web Clipper",
     sidebarClipperTitle: "Install the EdgeEver Web Clipper",
     iosPrompt: {

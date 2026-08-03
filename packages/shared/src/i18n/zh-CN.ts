@@ -1021,8 +1021,9 @@ export const zhCN = {
     latestWithBuild: "当前应用已是最新版本（{{buildLabel}}）。",
     refreshNow: "立即刷新",
     closeNotice: "关闭更新通知",
-    sidebarInstall: "安装桌面客户端",
-    sidebarInstallTitle: "安装 EdgeEver 桌面端",
+    sidebarInstall: "下载桌面客户端",
+    sidebarInstallTitle: "下载 EdgeEver 桌面客户端",
+    sidebarInstallAvailability: "Mac 可用 · Windows 敬请期待",
     sidebarClipper: "安装浏览器剪藏插件",
     sidebarClipperTitle: "安装 EdgeEver 浏览器剪藏插件",
     iosPrompt: {
