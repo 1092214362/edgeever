@@ -117,7 +117,6 @@ macOS App 可从 [GitHub Releases](https://github.com/tianma-if/edgeever/release
 ## 社区与反馈
 
 - Bug、功能建议和部署问题请优先提交 [GitHub Issues](https://github.com/tianma-if/edgeever/issues)，方便后续用户检索和复用解决方案。
-- 微信：`m1245207870`（请备注 EdgeEver）
 
 ### 微信交流群
 
