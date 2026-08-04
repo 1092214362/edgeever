@@ -650,7 +650,7 @@ textarea {
 .ProseMirror .edgeever-image-controls {
   position: absolute;
   right: 0.5rem;
-  bottom: 0.5rem;
+  top: 0.5rem;
   z-index: 2;
   display: flex;
   align-items: center;
@@ -672,30 +672,18 @@ textarea {
 .ProseMirror .edgeever-image-preset {
   display: inline-flex;
   min-width: 3rem;
-  min-height: 2.5rem;
-  flex-direction: column;
+  min-height: 2rem;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
   border-radius: 6px;
   color: #475569;
   font-size: 0.75rem;
   font-weight: 700;
 }
 
-.ProseMirror .edgeever-image-preset-percent {
-  color: #94a3b8;
-  font-size: 0.625rem;
-  font-weight: 600;
-}
-
 .ProseMirror .edgeever-image-preset:hover,
 .ProseMirror .edgeever-image-preset.is-active {
   background: var(--brand-green-muted);
-  color: var(--brand-green-text);
-}
-
-.ProseMirror .edgeever-image-preset.is-active .edgeever-image-preset-percent {
   color: var(--brand-green-text);
 }
 

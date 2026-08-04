@@ -583,7 +583,7 @@ export const enUS = {
     resizeImage: "Drag to resize image width",
     resourceActions: {
       download: "Download",
-      saveAs: "Save as",
+      saveAs: "Export",
       rename: "Rename",
       delete: "Delete",
       unavailable: "This action is available after the resource has synced and the note is editable",

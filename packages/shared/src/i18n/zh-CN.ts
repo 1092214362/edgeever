@@ -583,7 +583,7 @@ export const zhCN = {
     resizeImage: "拖拽调整图片宽度",
     resourceActions: {
       download: "下载",
-      saveAs: "另存为",
+      saveAs: "导出",
       rename: "重命名",
       delete: "删除",
       unavailable: "资源同步完成且当前笔记可编辑后才能执行此操作",

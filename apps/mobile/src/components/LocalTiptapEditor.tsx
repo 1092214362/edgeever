@@ -1014,15 +1014,12 @@ const createMobileImageSizeControls = (
     const label = getMobileEditorImageWidthPresetLabel(preset.id, locale);
     button.type = "button";
     button.className = "edgeever-image-size-button";
-    button.setAttribute("aria-label", `${label}，${preset.width}%`);
+    button.setAttribute("aria-label", label);
     button.setAttribute("aria-pressed", "false");
 
     const labelNode = document.createElement("span");
     labelNode.textContent = label;
-    const percentNode = document.createElement("span");
-    percentNode.className = "edgeever-image-size-percent";
-    percentNode.textContent = `${preset.width}%`;
-    button.append(labelNode, percentNode);
+    button.append(labelNode);
 
     button.addEventListener("pointerdown", (event) => {
       event.preventDefault();
@@ -1475,13 +1472,11 @@ const getEditorStyles = (theme: "light" | "dark") => `
   .edgeever-image-node, .edgeever-image-upload-result { position: relative; display: block; max-width: 100%; margin: 14px auto; line-height: 0; }
   .edgeever-image-node > img, .edgeever-image-upload-result > img { width: 100%; margin: 0; }
   .edgeever-image-node.is-selected > img, .edgeever-image-upload-result.is-selected > img { outline: 2px solid #0f766e; outline-offset: 3px; }
-  .edgeever-image-actions { position: absolute; top: 8px; right: 8px; z-index: 3; display: inline-flex; width: 42px; height: 42px; appearance: none; align-items: center; justify-content: center; border: 1px solid ${theme === "dark" ? "#475569" : "#cbd5e1"}; border-radius: 999px; background: ${theme === "dark" ? "rgba(15, 23, 42, 0.9)" : "rgba(255, 255, 255, 0.92)"}; color: ${theme === "dark" ? "#e2e8f0" : "#334155"}; font-size: 24px; font-weight: 700; line-height: 1; box-shadow: 0 3px 12px rgba(15, 23, 42, 0.2); }
-  .edgeever-image-size-controls { position: absolute; left: 50%; bottom: 8px; z-index: 2; display: flex; width: max-content; max-width: calc(100vw - 40px); align-items: center; gap: 3px; transform: translateX(-50%); border: 1px solid ${theme === "dark" ? "#475569" : "#bbf7d0"}; border-radius: 9px; padding: 4px; background: ${theme === "dark" ? "rgba(15, 23, 42, 0.96)" : "rgba(255, 255, 255, 0.96)"}; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2); line-height: 1.15; }
+  .edgeever-image-actions { position: absolute; right: 8px; bottom: 8px; z-index: 3; display: inline-flex; width: 42px; height: 42px; appearance: none; align-items: center; justify-content: center; border: 1px solid ${theme === "dark" ? "#475569" : "#cbd5e1"}; border-radius: 999px; background: ${theme === "dark" ? "rgba(15, 23, 42, 0.9)" : "rgba(255, 255, 255, 0.92)"}; color: ${theme === "dark" ? "#e2e8f0" : "#334155"}; font-size: 24px; font-weight: 700; line-height: 1; box-shadow: 0 3px 12px rgba(15, 23, 42, 0.2); }
+  .edgeever-image-size-controls { position: absolute; top: 8px; left: 50%; z-index: 2; display: flex; width: max-content; max-width: calc(100vw - 40px); align-items: center; gap: 3px; transform: translateX(-50%); border: 1px solid ${theme === "dark" ? "#475569" : "#bbf7d0"}; border-radius: 9px; padding: 4px; background: ${theme === "dark" ? "rgba(15, 23, 42, 0.96)" : "rgba(255, 255, 255, 0.96)"}; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2); line-height: 1.15; }
   .edgeever-image-size-controls[hidden] { display: none; }
-  .edgeever-image-size-button { display: inline-flex; min-width: 52px; min-height: 44px; appearance: none; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 7px; padding: 4px 7px; background: transparent; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; font: inherit; font-size: 12px; font-weight: 700; }
+  .edgeever-image-size-button { display: inline-flex; min-width: 52px; min-height: 38px; appearance: none; align-items: center; justify-content: center; border: 0; border-radius: 7px; padding: 4px 7px; background: transparent; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; font: inherit; font-size: 12px; font-weight: 700; }
   .edgeever-image-size-button.is-active { background: ${theme === "dark" ? "#134e4a" : "#ccfbf1"}; color: ${theme === "dark" ? "#99f6e4" : "#0f766e"}; }
-  .edgeever-image-size-percent { color: ${theme === "dark" ? "#94a3b8" : "#94a3b8"}; font-size: 10px; font-weight: 600; }
-  .edgeever-image-size-button.is-active .edgeever-image-size-percent { color: inherit; }
   .edgeever-image-upload-spinner { width: 18px; height: 18px; border: 2px solid ${theme === "dark" ? "#475569" : "#cbd5e1"}; border-top-color: #0f766e; border-radius: 999px; animation: edgeever-image-upload-spin 0.8s linear infinite; }
   @keyframes edgeever-image-upload-spin { to { transform: rotate(360deg); } }
   .edgeever-editor-content hr { margin: 24px 0; border: 0; border-top: 1px solid #cbd5e1; }
