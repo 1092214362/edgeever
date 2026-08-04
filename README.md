@@ -114,6 +114,10 @@ The macOS app is available from [GitHub Releases](https://github.com/tianma-if/e
 
 On platforms without a native client, EdgeEver can be installed as a PWA using Chrome or Edge.
 
+## Community and Feedback
+
+- Bugs, feature requests, and deployment issues: [GitHub Issues](https://github.com/tianma-if/edgeever/issues)
+
 ## Tech Stack
 
 - Bun workspace monorepo with Web, API, official site, and shared type package.
@@ -220,10 +224,6 @@ If you want to migrate notes from other platforms to EdgeEver, please refer to t
 - **flomo Migration**: Please refer to [docs/flomo-migration-guide.md](docs/flomo-migration-guide.md)
 - **Memos Migration**: Please refer to [docs/memos-migration-guide.md](docs/memos-migration-guide.md)
 - **Notion Migration**: Please refer to [docs/notion-migration-guide.md](docs/notion-migration-guide.md)
-
-## Community and Feedback
-
-- Bugs, feature requests, and deployment issues: [GitHub Issues](https://github.com/tianma-if/edgeever/issues)
 
 ## Docker Deployment Roadmap
 

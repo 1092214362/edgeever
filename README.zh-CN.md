@@ -114,6 +114,21 @@ macOS App 可从 [GitHub Releases](https://github.com/tianma-if/edgeever/release
 
 暂无原生客户端的平台，可通过 Chrome 或 Edge 将 EdgeEver 安装为 PWA 使用。
 
+## 社区与反馈
+
+- Bug、功能建议和部署问题请优先提交 [GitHub Issues](https://github.com/tianma-if/edgeever/issues)，方便后续用户检索和复用解决方案。
+- 微信：`m1245207870`（请备注 EdgeEver）
+
+### 微信交流群
+
+欢迎加入 EdgeEver AI 交流群，讨论 EdgeEver 使用、AI 工具、智能体、工作流和其他 AI 话题。
+
+> 群二维码 7 天内有效。如果二维码过期，请添加微信 `m1245207870`，并备注“EdgeEver 进群”。
+
+<p align="center">
+  <img src="assets/wechat-group-qr.jpg" alt="EdgeEver AI 交流群二维码" width="260" />
+</p>
+
 ## 技术栈
 
 - Bun workspace monorepo，包含 Web、API、官网与共享类型包。
@@ -220,21 +235,6 @@ Cloudflare Worker 侧执行图片处理会消耗计算/图片处理额度，因�
 - **印象笔记（Evernote）的迁入**：请参考 [docs/evernote-migration-guide.md](docs/evernote-migration-guide.md)
 - **Memos 笔记的迁入**：请参考 [docs/memos-migration-guide.md](docs/memos-migration-guide.md)
 - **Notion 笔记的迁入**：请参考 [docs/notion-migration-guide.md](docs/notion-migration-guide.md)
-
-## 社区与反馈
-
-- Bug、功能建议和部署问题请优先提交 [GitHub Issues](https://github.com/tianma-if/edgeever/issues)，方便后续用户检索和复用解决方案。
-- 微信：`m1245207870`（请备注 EdgeEver）
-
-### 微信交流群
-
-欢迎加入 EdgeEver AI 交流群，讨论 EdgeEver 使用、AI 工具、智能体、工作流和其他 AI 话题。
-
-> 群二维码 7 天内有效。如果二维码过期，请添加微信 `m1245207870`，并备注“EdgeEver 进群”。
-
-<p align="center">
-  <img src="assets/wechat-group-qr.jpg" alt="EdgeEver AI 交流群二维码" width="360" />
-</p>
 
 ## Docker 部署规划
 
