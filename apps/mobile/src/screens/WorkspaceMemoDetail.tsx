@@ -705,7 +705,7 @@ const detailMarkdownStyles = StyleSheet.create({
     marginVertical: 8,
   },
   paragraph: {
-    marginBottom: 10,
+    marginBottom: MEMO_CONTENT_STYLE.body.paragraphSpacing,
     marginTop: 0,
   },
   strong: {
