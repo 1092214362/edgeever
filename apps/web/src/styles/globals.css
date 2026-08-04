@@ -144,6 +144,15 @@ body,
   overflow: hidden;
 }
 
+/* Public share pages are standalone and must scroll the document. */
+html:has(.edgeever-public-share),
+html:has(.edgeever-public-share) body,
+html:has(.edgeever-public-share) #root {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+
 html.edgeever-mobile-native-editing,
 html.edgeever-mobile-native-editing body,
 html.edgeever-mobile-native-editing #root {
