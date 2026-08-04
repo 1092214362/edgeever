@@ -101,7 +101,6 @@ import {
 import { AccountSecurityPanel } from "./AccountSecurityModal";
 import { beginEditorStartup, markStartup, recordEditorStartup } from "../lib/startup-performance";
 import { prepareUploadAsset } from "../lib/mobile-image-upload";
-import EditorRuntimePrewarm from "../components/EditorRuntimePrewarm";
 import MobileWebClipCapture from "../components/MobileWebClipCapture";
 import { showEdgeEverKeyboard } from "../../modules/edgeever-keyboard";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
@@ -208,7 +207,6 @@ export const WorkspaceScreen = ({
   const [notesActionsOpen, setNotesActionsOpen] = useState(false);
   const [notebookPickerOpen, setNotebookPickerOpen] = useState(false);
   const [richEditingSession, setRichEditingSession] = useState<RichEditingSession | null>(null);
-  const [editorRuntimeWarm, setEditorRuntimeWarm] = useState(false);
   const [revisionMemo, setRevisionMemo] = useState<MemoDetail | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMemoIds, setSelectedMemoIds] = useState<Set<string>>(() => new Set());
@@ -347,26 +345,6 @@ export const WorkspaceScreen = ({
     const task = InteractionManager.runAfterInteractions(() => markStartup("workspace-interactive"));
     return () => task.cancel();
   }, []);
-
-  useEffect(() => {
-    if (!notebooksQuery.data || !memosQuery.data || editorRuntimeWarm) {
-      return;
-    }
-
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    const task = InteractionManager.runAfterInteractions(() => {
-      // Keep first-screen work isolated from Chromium/WebKit startup. A short
-      // idle window is still early enough to finish before a normal edit flow.
-      timeout = setTimeout(() => setEditorRuntimeWarm(true), 600);
-    });
-
-    return () => {
-      task.cancel();
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-    };
-  }, [editorRuntimeWarm, memosQuery.data, notebooksQuery.data]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -1106,16 +1084,6 @@ export const WorkspaceScreen = ({
         visible={Boolean(selectedMemoId)}
       />
 
-      {editorRuntimeWarm ? (
-        <EditorRuntimePrewarm
-          dom={{
-            bounces: false,
-            containerStyle: styles.editorRuntimePrewarm,
-            scrollEnabled: false,
-            style: styles.editorRuntimePrewarm,
-          }}
-        />
-      ) : null}
       {notebookPickerOpen ? <NotebookPickerModal
         activeNotebookId={activeNotebookId}
         notebooks={notebooks}
