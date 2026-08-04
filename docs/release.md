@@ -16,6 +16,8 @@ Connect delivery is a separate, explicit operation documented in
 - Authenticate GitHub CLI with access to `tianma-if/edgeever`.
 - Commit all user-facing changes before starting the release.
 - Ensure every English change bullet has a corresponding Chinese bullet.
+- Decide which bilingual bullet covers every commit since the previous formal
+  Release. Non-user-facing commits still require an explicit exclusion reason.
 
 ## Command
 
@@ -25,11 +27,35 @@ bun run release -- \
   --issue-title "Improve the release workflow" \
   --label enhancement \
   --change-en "Run required release checks in parallel." \
-  --change-zh "并行执行发布所需检查。"
+  --change-zh "并行执行发布所需检查。" \
+  --change-commit "abcdef1"
 ```
 
-Repeat `--change-en` and `--change-zh` in matching pairs when a Release contains
-multiple changes. Repeat `--label` when the tracking Issue needs multiple labels.
+Repeat `--change-en`, `--change-zh`, and `--change-commit` in matching groups
+when a Release contains multiple changes. The first `--change-commit` maps to
+the first English/Chinese bullet pair, the second maps to the second pair, and
+so on. Use comma-separated SHAs when one bullet covers multiple commits:
+
+```bash
+--change-commit "abcdef1,1234567"
+```
+
+Every commit in the previous-formal-Release-to-`HEAD` range must be covered by
+at least one bilingual bullet. Explicitly exclude a commit that has no public
+user impact with a concrete reason:
+
+```bash
+--ignore-commit "89abcde:test-only coverage"
+```
+
+The command fails before validation, Issue creation, version changes, or Draft
+creation if a commit is uncovered, an exclusion has no reason, or a referenced
+SHA is outside the Release range. Release version commits created by this
+script are recognized automatically when resuming a Draft. The resolved mapping
+and exclusion reasons are recorded in the tracking Issue for auditability, but
+are not added to the public Release notes.
+
+Repeat `--label` when the tracking Issue needs multiple labels.
 Public Release notes contain only user-visible changes, their impact, and any
 required upgrade or migration guidance. Type checks, build commands, signing,
 notarization, and asset-audit details remain in GitHub Actions and the linked
@@ -51,10 +77,11 @@ The command calculates the next stable version and resets lower components:
 becomes `2.0.0`. Commit prefixes may inform the choice, but do not select it
 automatically because code scope and product impact are not equivalent.
 
-Use `--dry-run` to inspect the native rebuild plan and generated bilingual notes
-without changing local or GitHub state. `--skip-install` skips the post-release
-DMG installation and is intended for exceptional or non-macOS runs; normal
-maintainer releases should install and launch the published application.
+Use `--dry-run` to inspect commit coverage, the native rebuild plan, and
+generated bilingual notes without changing local or GitHub state.
+`--skip-install` skips the post-release DMG installation and is intended for
+exceptional or non-macOS runs; normal maintainer releases should install and
+launch the published application.
 
 ## Release Cadence and Platform Versions
 
@@ -83,23 +110,25 @@ API-only Release.
 
 1. Verify `main`, the working tree, GitHub authentication, the latest formal
    Release, and the local/remote commit relationship.
-2. Run Web type checking, mobile type checking, the Web production build, and
+2. Audit every commit since the latest formal Release. Require each commit to
+   map to a bilingual public change or an explicit non-user-facing exclusion.
+3. Run Web type checking, mobile type checking, the Web production build, and
    release-planning tests concurrently.
-3. Calculate the explicit `patch`, `minor`, or `major` version bump, then use
+4. Calculate the explicit `patch`, `minor`, or `major` version bump, then use
    `scripts/plan-native-release.mjs` to determine whether desktop and Android
    assets must be rebuilt or can be reused. Only affected native versions are
    updated.
-4. Create a bilingual tracking Issue, commit the version changes to `main`, push,
+5. Create a bilingual tracking Issue, commit the version changes to `main`, push,
    and create a Draft Release with bilingual notes.
-5. Dispatch the desktop and Android asset workflows concurrently. The desktop
+6. Dispatch the desktop and Android asset workflows concurrently. The desktop
    workflow builds arm64 and x64 packages on matching native runners, then
    combines their update metadata. Verify filenames, sizes, and checksums before
    publication.
-6. Publish the Release and wait only for the required desktop and Android
+7. Publish the Release and wait only for the required desktop and Android
    post-publication audits.
-7. Print the Demo deployment run or workflow URL. Demo deployment continues in
+8. Print the Demo deployment run or workflow URL. Demo deployment continues in
    the background and does not delay release completion.
-8. Link and close the tracking Issue, download the final DMG matching the
+9. Link and close the tracking Issue, download the final DMG matching the
    maintainer Mac's architecture, verify its checksum and signature, replace
    `/Applications/EdgeEver.app`, and launch it.
 
@@ -113,6 +142,8 @@ push-triggered Android build without skipping required release builds.
 ## Failure and Resume Behavior
 
 - A validation or Draft asset failure leaves the Release unpublished.
+- An uncovered or invalidly excluded commit stops the command before it writes
+  local versions or creates any GitHub Issue or Release.
 - If the process stops after the version commit and Draft creation, rerun the
   same command. A Draft whose version and target match the current `main` commit
   is resumed instead of creating another Issue, commit, or Release.
