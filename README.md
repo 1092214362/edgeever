@@ -106,6 +106,8 @@ Developers can also use the [extension development guide](apps/extension/README.
 
 ## Native Clients
 
+Native clients offer a smoother, more reliable experience with deeper system integration, local storage, and offline editing. Changes sync incrementally when connectivity returns, making them ideal for frequent use and unreliable network conditions.
+
 The Android app is now available on [Google Play](https://play.google.com/store/apps/details?id=org.edgeever.mobile), with signed APKs also available from [GitHub Releases](https://github.com/tianma-if/edgeever/releases). The iOS app has been submitted and is currently under App Store review.
 
 The macOS app is available from [GitHub Releases](https://github.com/tianma-if/edgeever/releases). The Windows version will be released once the code-signing certificate issue is resolved.

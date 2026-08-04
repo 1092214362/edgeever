@@ -106,6 +106,8 @@ EdgeEver 采用纯 Serverless 架构，完全运行在 Cloudflare 免费配额�
 
 ## 关于客户端
 
+原生客户端提供更流畅、稳定的使用体验，以及更完善的系统级集成，并支持本地存储与离线编辑。恢复联网后，内容会自动增量同步，适合高频使用和弱网场景。
+
 Android App 现已上架 [Google Play](https://play.google.com/store/apps/details?id=org.edgeever.mobile)，也可从 [GitHub Releases](https://github.com/tianma-if/edgeever/releases) 下载签名 APK。iOS App 已提交，目前仍在 App Store 审核中。
 
 macOS App 可从 [GitHub Releases](https://github.com/tianma-if/edgeever/releases) 下载。Windows 版本正在处理代码签名证书问题，解决后即可发布。
