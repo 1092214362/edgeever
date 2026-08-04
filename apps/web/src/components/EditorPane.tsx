@@ -167,16 +167,36 @@ type NoteLinkHintPosition = {
 };
 
 type AttachmentMenuTarget = {
-  href: string;
+  kind: "attachment";
+  url: string;
   filename: string;
   resourceId: string | null;
   position: NoteLinkHintPosition;
 };
 
-type AttachmentDialogState = {
-  action: "rename" | "delete";
-  target: AttachmentMenuTarget;
+type ImageMenuTarget = {
+  kind: "image";
+  url: string;
+  filename: string;
+  resourceId: string | null;
+  position: NoteLinkHintPosition;
+  updateAttributes: (attributes: Record<string, unknown>) => void;
+  deleteNode: () => void;
 };
+
+type ResourceMenuTarget = AttachmentMenuTarget | ImageMenuTarget;
+
+type ResourceDialogState = {
+  action: "rename" | "delete";
+  target: ResourceMenuTarget;
+};
+
+type ImageMenuRequestDetail = Omit<ImageMenuTarget, "kind" | "position"> & {
+  element: HTMLElement;
+};
+
+const IMAGE_MENU_SHOW_EVENT = "edgeever:image-menu-show";
+const IMAGE_MENU_HIDE_EVENT = "edgeever:image-menu-hide";
 
 const getAttachmentLinkFromEventTarget = (target: EventTarget | null) =>
   target instanceof Element
@@ -222,27 +242,31 @@ const NoteLinkInteractionHint = ({
   document.body
 );
 
-const AttachmentActionMenu = ({
+const ResourceActionMenu = ({
   target,
-  canMutate,
+  canRename,
+  canDelete,
   labels,
   onDownload,
+  onSaveAs,
   onRename,
   onDelete,
   onMouseEnter,
   onMouseLeave,
 }: {
-  target: AttachmentMenuTarget;
-  canMutate: boolean;
-  labels: { download: string; rename: string; delete: string; unavailable: string };
+  target: ResourceMenuTarget;
+  canRename: boolean;
+  canDelete: boolean;
+  labels: { download: string; saveAs: string; rename: string; delete: string; unavailable: string };
   onDownload: () => void;
+  onSaveAs: () => void;
   onRename: () => void;
   onDelete: () => void;
   onMouseEnter: () => void;
-  onMouseLeave: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  onMouseLeave: () => void;
 }) => createPortal(
   <div
-    data-edgeever-attachment-menu
+    data-edgeever-resource-menu
     role="toolbar"
     aria-label={labels.download}
     className="fixed z-[110] flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
@@ -258,12 +282,16 @@ const AttachmentActionMenu = ({
       <FileDown className="h-3.5 w-3.5" />
       {labels.download}
     </Button>
+    <Button type="button" size="sm" variant="ghost" title={labels.saveAs} onClick={onSaveAs}>
+      <Save className="h-3.5 w-3.5" />
+      {labels.saveAs}
+    </Button>
     <Button
       type="button"
       size="sm"
       variant="ghost"
-      title={canMutate ? labels.rename : labels.unavailable}
-      disabled={!canMutate}
+      title={canRename ? labels.rename : labels.unavailable}
+      disabled={!canRename}
       onClick={onRename}
     >
       <Pencil className="h-3.5 w-3.5" />
@@ -274,8 +302,8 @@ const AttachmentActionMenu = ({
       size="sm"
       variant="ghost"
       className="text-slate-600 hover:bg-rose-50 hover:text-rose-600"
-      title={canMutate ? labels.delete : labels.unavailable}
-      disabled={!canMutate}
+      title={canDelete ? labels.delete : labels.unavailable}
+      disabled={!canDelete}
       onClick={onDelete}
     >
       <Trash2 className="h-3.5 w-3.5" />
@@ -461,7 +489,7 @@ const getResourceFilesFromDataTransfer = (dataTransfer: DataTransfer | null) => 
   return files.filter((file) => file.size > 0);
 };
 
-const ResizableImageNodeView = ({ editor, node, selected, updateAttributes }: NodeViewProps) => {
+const ResizableImageNodeView = ({ editor, node, selected, updateAttributes, deleteNode }: NodeViewProps) => {
   const { t } = useTranslation();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [previewWidth, setPreviewWidth] = useState<number | null>(null);
@@ -471,6 +499,25 @@ const ResizableImageNodeView = ({ editor, node, selected, updateAttributes }: No
   const alt = typeof node.attrs.alt === "string" ? node.attrs.alt : "";
   const title = typeof node.attrs.title === "string" ? node.attrs.title : "";
   const src = typeof node.attrs.src === "string" ? node.attrs.src : "";
+
+  const requestImageMenu = useCallback(() => {
+    const element = wrapperRef.current;
+    if (!element || !src) return;
+    window.dispatchEvent(new CustomEvent<ImageMenuRequestDetail>(IMAGE_MENU_SHOW_EVENT, {
+      detail: {
+        element,
+        url: src,
+        filename: title || alt || getAttachmentResourceId(src) || "image",
+        resourceId: getAttachmentResourceId(src),
+        updateAttributes,
+        deleteNode,
+      },
+    }));
+  }, [alt, deleteNode, src, title, updateAttributes]);
+
+  const hideImageMenu = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(IMAGE_MENU_HIDE_EVENT));
+  }, []);
 
   const updateWidth = useCallback(
     (nextWidth: number) => {
@@ -534,6 +581,12 @@ const ResizableImageNodeView = ({ editor, node, selected, updateAttributes }: No
       className={cn("edgeever-image-node", selected && "is-selected")}
       style={{ width: `${width}%` }}
       data-width={width}
+      onMouseEnter={requestImageMenu}
+      onMouseLeave={hideImageMenu}
+      onContextMenu={(event: ReactMouseEvent<HTMLElement>) => {
+        event.preventDefault();
+        requestImageMenu();
+      }}
     >
       <img
         src={src}
@@ -820,11 +873,11 @@ const RichEditorPane = ({
   const [noteLinkPickerOpen, setNoteLinkPickerOpen] = useState(false);
   const [noteLinkQuery, setNoteLinkQuery] = useState("");
   const [noteLinkHintPosition, setNoteLinkHintPosition] = useState<NoteLinkHintPosition | null>(null);
-  const [attachmentMenuTarget, setAttachmentMenuTarget] = useState<AttachmentMenuTarget | null>(null);
-  const [attachmentDialog, setAttachmentDialog] = useState<AttachmentDialogState | null>(null);
-  const [attachmentFilename, setAttachmentFilename] = useState("");
-  const [attachmentActionPending, setAttachmentActionPending] = useState(false);
-  const [attachmentActionError, setAttachmentActionError] = useState<string | null>(null);
+  const [resourceMenuTarget, setResourceMenuTarget] = useState<ResourceMenuTarget | null>(null);
+  const [resourceDialog, setResourceDialog] = useState<ResourceDialogState | null>(null);
+  const [resourceFilename, setResourceFilename] = useState("");
+  const [resourceActionPending, setResourceActionPending] = useState(false);
+  const [resourceActionError, setResourceActionError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia(MOBILE_EDITOR_QUERY).matches
   );
@@ -903,7 +956,7 @@ const RichEditorPane = ({
   const hasUnsavedChangesRef = useRef(false);
   const editingMemoIdRef = useRef<string | null>(memo?.id ?? null);
   const imageCompressionEnabledRef = useRef(imageCompressionEnabled);
-  const attachmentMenuHideTimerRef = useRef<number | null>(null);
+  const resourceMenuHideTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleMemoIdRemapped = (event: Event) => {
@@ -1232,20 +1285,47 @@ const RichEditorPane = ({
     setNoteLinkQuery("");
   }, [editor, effectiveReadOnly, memo?.id, t]);
 
-  const cancelAttachmentMenuHide = useCallback(() => {
-    if (attachmentMenuHideTimerRef.current !== null) {
-      window.clearTimeout(attachmentMenuHideTimerRef.current);
-      attachmentMenuHideTimerRef.current = null;
+  const cancelResourceMenuHide = useCallback(() => {
+    if (resourceMenuHideTimerRef.current !== null) {
+      window.clearTimeout(resourceMenuHideTimerRef.current);
+      resourceMenuHideTimerRef.current = null;
     }
   }, []);
 
-  const scheduleAttachmentMenuHide = useCallback(() => {
-    cancelAttachmentMenuHide();
-    attachmentMenuHideTimerRef.current = window.setTimeout(() => {
-      attachmentMenuHideTimerRef.current = null;
-      setAttachmentMenuTarget(null);
-    }, 120);
-  }, [cancelAttachmentMenuHide]);
+  const scheduleResourceMenuHide = useCallback(() => {
+    cancelResourceMenuHide();
+    resourceMenuHideTimerRef.current = window.setTimeout(() => {
+      resourceMenuHideTimerRef.current = null;
+      setResourceMenuTarget(null);
+    }, 160);
+  }, [cancelResourceMenuHide]);
+
+  useEffect(() => {
+    const showImageMenu = (event: Event) => {
+      if (isMobileViewport) return;
+      const detail = (event as CustomEvent<ImageMenuRequestDetail>).detail;
+      if (!detail?.element) return;
+      cancelResourceMenuHide();
+      const rect = detail.element.getBoundingClientRect();
+      const placement = rect.top < 56 ? "below" : "above";
+      setResourceMenuTarget({
+        ...detail,
+        kind: "image",
+        position: {
+          left: Math.min(Math.max(rect.left + rect.width / 2, 12), window.innerWidth - 12),
+          top: placement === "above" ? rect.top - 8 : rect.bottom + 8,
+          placement,
+        },
+      });
+    };
+    const hideImageMenu = () => scheduleResourceMenuHide();
+    window.addEventListener(IMAGE_MENU_SHOW_EVENT, showImageMenu);
+    window.addEventListener(IMAGE_MENU_HIDE_EVENT, hideImageMenu);
+    return () => {
+      window.removeEventListener(IMAGE_MENU_SHOW_EVENT, showImageMenu);
+      window.removeEventListener(IMAGE_MENU_HIDE_EVENT, hideImageMenu);
+    };
+  }, [cancelResourceMenuHide, isMobileViewport, scheduleResourceMenuHide]);
 
   const showAttachmentMenu = useCallback((target: EventTarget | null) => {
     if (isMobileViewport) return false;
@@ -1253,16 +1333,17 @@ const RichEditorPane = ({
     if (!link) return false;
 
     const href = link.getAttribute("href") || "";
-    cancelAttachmentMenuHide();
+    cancelResourceMenuHide();
     setNoteLinkHintPosition(null);
-    setAttachmentMenuTarget({
-      href,
+    setResourceMenuTarget({
+      kind: "attachment",
+      url: href,
       filename: getAttachmentFilenameFromLabel(link.textContent || "") || getAttachmentResourceId(href) || "attachment",
       resourceId: getAttachmentResourceId(href),
       position: getNoteLinkHintPosition(link),
     });
     return true;
-  }, [cancelAttachmentMenuHide, isMobileViewport]);
+  }, [cancelResourceMenuHide, isMobileViewport]);
 
   const showNoteLinkHint = useCallback((target: EventTarget | null) => {
     if (!editor?.isEditable || isMobileViewport) {
@@ -1287,11 +1368,11 @@ const RichEditorPane = ({
       if (
         relatedTarget instanceof Node &&
         (attachmentLink.contains(relatedTarget) ||
-          (relatedTarget instanceof Element && relatedTarget.closest("[data-edgeever-attachment-menu]")))
+          (relatedTarget instanceof Element && relatedTarget.closest("[data-edgeever-resource-menu]")))
       ) {
         return;
       }
-      scheduleAttachmentMenuHide();
+      scheduleResourceMenuHide();
       return;
     }
 
@@ -1300,7 +1381,7 @@ const RichEditorPane = ({
       return;
     }
     setNoteLinkHintPosition(null);
-  }, [scheduleAttachmentMenuHide]);
+  }, [scheduleResourceMenuHide]);
 
   const handleEditorClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button === 0 && !event.ctrlKey && !event.metaKey) {
@@ -1334,25 +1415,25 @@ const RichEditorPane = ({
   }, [noteLinkHintPosition]);
 
   useEffect(() => {
-    if (!attachmentMenuTarget) return;
-    const hideMenu = () => setAttachmentMenuTarget(null);
+    if (!resourceMenuTarget) return;
+    const hideMenu = () => setResourceMenuTarget(null);
     window.addEventListener("resize", hideMenu);
     window.addEventListener("scroll", hideMenu, true);
     return () => {
       window.removeEventListener("resize", hideMenu);
       window.removeEventListener("scroll", hideMenu, true);
     };
-  }, [attachmentMenuTarget]);
+  }, [resourceMenuTarget]);
 
   useEffect(() => {
     setNoteLinkHintPosition(null);
-    setAttachmentMenuTarget(null);
-    setAttachmentDialog(null);
+    setResourceMenuTarget(null);
+    setResourceDialog(null);
   }, [memo?.id, isMarkdownMode]);
 
   useEffect(() => () => {
-    if (attachmentMenuHideTimerRef.current !== null) {
-      window.clearTimeout(attachmentMenuHideTimerRef.current);
+    if (resourceMenuHideTimerRef.current !== null) {
+      window.clearTimeout(resourceMenuHideTimerRef.current);
     }
   }, []);
 
@@ -2214,7 +2295,7 @@ const RichEditorPane = ({
   const replaceAttachmentLabel = useCallback((target: AttachmentMenuTarget, filename: string) => {
     const activeEditor = editorRef.current;
     if (!isEditorReady(activeEditor)) return;
-    const range = findAttachmentLinkRange(activeEditor, target.href);
+    const range = findAttachmentLinkRange(activeEditor, target.url);
     if (!range) return;
     activeEditor.view.dispatch(
       activeEditor.state.tr.replaceWith(
@@ -2228,7 +2309,7 @@ const RichEditorPane = ({
   const removeAttachmentLink = useCallback((target: AttachmentMenuTarget) => {
     const activeEditor = editorRef.current;
     if (!isEditorReady(activeEditor)) return;
-    const range = findAttachmentLinkRange(activeEditor, target.href);
+    const range = findAttachmentLinkRange(activeEditor, target.url);
     if (!range) return;
 
     const resolved = activeEditor.state.doc.resolve(range.from);
@@ -2248,65 +2329,123 @@ const RichEditorPane = ({
     activeEditor.view.dispatch(activeEditor.state.tr.delete(deleteFrom, deleteTo));
   }, []);
 
-  const handleAttachmentDownload = useCallback(async (target: AttachmentMenuTarget) => {
-    setAttachmentMenuTarget(null);
-    setAttachmentActionError(null);
-    try {
-      const blob = await api.getResourceBlob(target.href);
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = target.filename || target.resourceId || "attachment";
-      anchor.click();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-    } catch (error) {
-      setAttachmentActionError(error instanceof Error ? error.message : t("editor.attachmentActions.failed"));
-    }
-  }, [t]);
+  const getResourceActionFailure = useCallback((target: ResourceMenuTarget) =>
+    target.kind === "image" ? t("editor.imageActions.failed") : t("editor.attachmentActions.failed"), [t]);
 
-  const openAttachmentDialog = useCallback((action: AttachmentDialogState["action"], target: AttachmentMenuTarget) => {
-    setAttachmentMenuTarget(null);
-    setAttachmentActionError(null);
-    setAttachmentFilename(target.filename);
-    setAttachmentDialog({ action, target });
+  const fetchResourceBlob = useCallback(async (target: ResourceMenuTarget) => {
+    try {
+      return await api.getResourceBlob(target.url);
+    } catch (error) {
+      if (target.resourceId) throw error;
+      const response = await fetch(target.url);
+      if (!response.ok) throw new Error(response.statusText || getResourceActionFailure(target));
+      return response.blob();
+    }
+  }, [getResourceActionFailure]);
+
+  const downloadBlob = useCallback((blob: Blob, filename: string) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
   }, []);
 
-  const handleAttachmentRename = useCallback(async () => {
-    const target = attachmentDialog?.action === "rename" ? attachmentDialog.target : null;
-    const filename = attachmentFilename.trim();
-    if (!target?.resourceId || !filename || attachmentActionPending) return;
+  const handleResourceDownload = useCallback(async (target: ResourceMenuTarget) => {
+    setResourceMenuTarget(null);
+    setResourceActionError(null);
+    try {
+      downloadBlob(await fetchResourceBlob(target), target.filename);
+    } catch (error) {
+      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
+    }
+  }, [downloadBlob, fetchResourceBlob, getResourceActionFailure]);
 
-    setAttachmentActionPending(true);
-    setAttachmentActionError(null);
+  const handleResourceSaveAs = useCallback(async (target: ResourceMenuTarget) => {
+    setResourceMenuTarget(null);
+    setResourceActionError(null);
+    try {
+      const savePicker = (window as Window & {
+        showSaveFilePicker?: (options: { suggestedName: string }) => Promise<{
+          createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }>;
+        }>;
+      }).showSaveFilePicker;
+
+      if (!savePicker) {
+        downloadBlob(await fetchResourceBlob(target), target.filename);
+        return;
+      }
+
+      const handle = await savePicker.call(window, { suggestedName: target.filename });
+      const blob = await fetchResourceBlob(target);
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
+    }
+  }, [downloadBlob, fetchResourceBlob, getResourceActionFailure]);
+
+  const openResourceDialog = useCallback((action: ResourceDialogState["action"], target: ResourceMenuTarget) => {
+    setResourceMenuTarget(null);
+    setResourceActionError(null);
+    setResourceFilename(target.filename);
+    setResourceDialog({ action, target });
+  }, []);
+
+  const handleResourceRename = useCallback(async () => {
+    const target = resourceDialog?.action === "rename" ? resourceDialog.target : null;
+    const filename = resourceFilename.trim();
+    if (!target?.resourceId || !filename || resourceActionPending) return;
+
+    setResourceActionPending(true);
+    setResourceActionError(null);
     try {
       const result = await repository.renameResource(target.resourceId, filename);
-      replaceAttachmentLabel(target, result.resource.filename || filename);
+      const nextFilename = result.resource.filename || filename;
+      if (target.kind === "image") {
+        target.updateAttributes({ alt: nextFilename, title: nextFilename });
+      } else {
+        replaceAttachmentLabel(target, nextFilename);
+      }
       await queryClient.invalidateQueries({ queryKey: ["resources"] });
-      setAttachmentDialog(null);
+      setResourceDialog(null);
     } catch (error) {
-      setAttachmentActionError(error instanceof Error ? error.message : t("editor.attachmentActions.failed"));
+      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
     } finally {
-      setAttachmentActionPending(false);
+      setResourceActionPending(false);
     }
-  }, [attachmentActionPending, attachmentDialog, attachmentFilename, queryClient, replaceAttachmentLabel, repository, t]);
+  }, [getResourceActionFailure, queryClient, replaceAttachmentLabel, repository, resourceActionPending, resourceDialog, resourceFilename]);
 
-  const handleAttachmentDelete = useCallback(async () => {
-    const target = attachmentDialog?.action === "delete" ? attachmentDialog.target : null;
-    if (!target?.resourceId || attachmentActionPending) return;
+  const handleResourceDelete = useCallback(async () => {
+    const target = resourceDialog?.action === "delete" ? resourceDialog.target : null;
+    if (!target || resourceActionPending) return;
 
-    setAttachmentActionPending(true);
-    setAttachmentActionError(null);
+    setResourceActionPending(true);
+    setResourceActionError(null);
     try {
-      await repository.deleteResource(target.resourceId);
-      removeAttachmentLink(target);
-      await queryClient.invalidateQueries({ queryKey: ["resources"] });
-      setAttachmentDialog(null);
+      if (target.kind === "image" && target.url.startsWith("edgeever-staged://") && window.edgeeverDesktop) {
+        const stagedUrl = new URL(target.url);
+        const stagedId = decodeURIComponent(stagedUrl.hostname || stagedUrl.pathname.replace(/^\//, ""));
+        if (stagedId) await window.edgeeverDesktop.removeStagedResource(stagedId);
+      } else if (target.resourceId && !target.resourceId.startsWith("local_resource_")) {
+        await repository.deleteResource(target.resourceId);
+        await queryClient.invalidateQueries({ queryKey: ["resources"] });
+      }
+      if (target.kind === "image") {
+        target.deleteNode();
+      } else {
+        removeAttachmentLink(target);
+      }
+      setResourceDialog(null);
     } catch (error) {
-      setAttachmentActionError(error instanceof Error ? error.message : t("editor.attachmentActions.failed"));
+      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
     } finally {
-      setAttachmentActionPending(false);
+      setResourceActionPending(false);
     }
-  }, [attachmentActionPending, attachmentDialog, queryClient, removeAttachmentLink, repository, t]);
+  }, [getResourceActionFailure, queryClient, removeAttachmentLink, repository, resourceActionPending, resourceDialog]);
 
   const clearMobileEditorTimers = useCallback(() => {
     if (mobileDraftTimerRef.current !== null) {
@@ -2657,6 +2796,29 @@ const RichEditorPane = ({
       },
     });
   };
+
+  const resourceMenuLabels = {
+    download: t("editor.resourceActions.download"),
+    saveAs: t("editor.resourceActions.saveAs"),
+    rename: t("editor.resourceActions.rename"),
+    delete: t("editor.resourceActions.delete"),
+    unavailable: t("editor.resourceActions.unavailable"),
+  };
+  const resourceDialogLabels = resourceDialog?.target.kind === "image"
+    ? {
+        renameTitle: t("editor.imageActions.renameTitle"),
+        renameDescription: t("editor.imageActions.renameDescription"),
+        filenameLabel: t("editor.imageActions.filenameLabel"),
+        deleteTitle: t("editor.imageActions.deleteTitle"),
+        deleteDescription: t("editor.imageActions.deleteDescription"),
+      }
+    : {
+        renameTitle: t("editor.attachmentActions.renameTitle"),
+        renameDescription: t("editor.attachmentActions.renameDescription"),
+        filenameLabel: t("editor.attachmentActions.filenameLabel"),
+        deleteTitle: t("editor.attachmentActions.deleteTitle"),
+        deleteDescription: t("editor.attachmentActions.deleteDescription"),
+      };
 
   return (
     <div className="relative flex h-full min-w-0 flex-col bg-white">
@@ -3361,39 +3523,36 @@ const RichEditorPane = ({
         />
       )}
 
-      {attachmentMenuTarget && (
-        <AttachmentActionMenu
-          target={attachmentMenuTarget}
-          canMutate={Boolean(
-            attachmentMenuTarget.resourceId &&
-            !attachmentMenuTarget.resourceId.startsWith("local_resource_") &&
+      {resourceMenuTarget && (
+        <ResourceActionMenu
+          target={resourceMenuTarget}
+          canRename={Boolean(
+            resourceMenuTarget.resourceId &&
+            !resourceMenuTarget.resourceId.startsWith("local_resource_") &&
             editor?.isEditable &&
             !effectiveReadOnly
           )}
-          labels={{
-            download: t("editor.attachmentActions.download"),
-            rename: t("editor.attachmentActions.rename"),
-            delete: t("editor.attachmentActions.delete"),
-            unavailable: t("editor.attachmentActions.unavailableUntilSynced"),
-          }}
-          onDownload={() => void handleAttachmentDownload(attachmentMenuTarget)}
-          onRename={() => openAttachmentDialog("rename", attachmentMenuTarget)}
-          onDelete={() => openAttachmentDialog("delete", attachmentMenuTarget)}
-          onMouseEnter={cancelAttachmentMenuHide}
-          onMouseLeave={(event) => {
-            if (getAttachmentLinkFromEventTarget(event.relatedTarget)) {
-              cancelAttachmentMenuHide();
-              return;
-            }
-            scheduleAttachmentMenuHide();
-          }}
+          canDelete={Boolean(
+            editor?.isEditable &&
+            !effectiveReadOnly &&
+            (resourceMenuTarget.kind === "image" || (
+              resourceMenuTarget.resourceId && !resourceMenuTarget.resourceId.startsWith("local_resource_")
+            ))
+          )}
+          labels={resourceMenuLabels}
+          onDownload={() => void handleResourceDownload(resourceMenuTarget)}
+          onSaveAs={() => void handleResourceSaveAs(resourceMenuTarget)}
+          onRename={() => openResourceDialog("rename", resourceMenuTarget)}
+          onDelete={() => openResourceDialog("delete", resourceMenuTarget)}
+          onMouseEnter={cancelResourceMenuHide}
+          onMouseLeave={scheduleResourceMenuHide}
         />
       )}
 
       <Dialog
-        open={attachmentDialog?.action === "rename"}
+        open={resourceDialog?.action === "rename"}
         onOpenChange={(open) => {
-          if (!open && !attachmentActionPending) setAttachmentDialog(null);
+          if (!open && !resourceActionPending) setResourceDialog(null);
         }}
       >
         <DialogContent>
@@ -3401,32 +3560,32 @@ const RichEditorPane = ({
             className="contents"
             onSubmit={(event) => {
               event.preventDefault();
-              void handleAttachmentRename();
+              void handleResourceRename();
             }}
           >
             <DialogHeader>
-              <DialogTitle>{t("editor.attachmentActions.renameTitle")}</DialogTitle>
-              <DialogDescription>{t("editor.attachmentActions.renameDescription")}</DialogDescription>
+              <DialogTitle>{resourceDialogLabels.renameTitle}</DialogTitle>
+              <DialogDescription>{resourceDialogLabels.renameDescription}</DialogDescription>
             </DialogHeader>
             <label className="grid gap-2 text-sm font-medium text-slate-700">
-              {t("editor.attachmentActions.filenameLabel")}
+              {resourceDialogLabels.filenameLabel}
               <Input
                 autoFocus
-                value={attachmentFilename}
+                value={resourceFilename}
                 maxLength={160}
-                disabled={attachmentActionPending}
-                onChange={(event) => setAttachmentFilename(event.target.value)}
+                disabled={resourceActionPending}
+                onChange={(event) => setResourceFilename(event.target.value)}
               />
             </label>
-            {attachmentActionError && (
-              <p className="text-sm text-rose-600" role="alert">{attachmentActionError}</p>
+            {resourceActionError && (
+              <p className="text-sm text-rose-600" role="alert">{resourceActionError}</p>
             )}
             <DialogFooter>
-              <Button type="button" variant="ghost" disabled={attachmentActionPending} onClick={() => setAttachmentDialog(null)}>
+              <Button type="button" variant="ghost" disabled={resourceActionPending} onClick={() => setResourceDialog(null)}>
                 {t("common.cancel")}
               </Button>
-              <Button type="submit" variant="solid" disabled={attachmentActionPending || !attachmentFilename.trim()}>
-                {attachmentActionPending ? t("common.saving") : t("common.save")}
+              <Button type="submit" variant="solid" disabled={resourceActionPending || !resourceFilename.trim()}>
+                {resourceActionPending ? t("common.saving") : t("common.save")}
               </Button>
             </DialogFooter>
           </form>
@@ -3434,36 +3593,36 @@ const RichEditorPane = ({
       </Dialog>
 
       <Dialog
-        open={attachmentDialog?.action === "delete"}
+        open={resourceDialog?.action === "delete"}
         onOpenChange={(open) => {
-          if (!open && !attachmentActionPending) setAttachmentDialog(null);
+          if (!open && !resourceActionPending) setResourceDialog(null);
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("editor.attachmentActions.deleteTitle")}</DialogTitle>
-            <DialogDescription>{t("editor.attachmentActions.deleteDescription")}</DialogDescription>
+            <DialogTitle>{resourceDialogLabels.deleteTitle}</DialogTitle>
+            <DialogDescription>{resourceDialogLabels.deleteDescription}</DialogDescription>
           </DialogHeader>
           <p className="truncate rounded-md bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
-            {attachmentDialog?.target.filename}
+            {resourceDialog?.target.filename}
           </p>
-          {attachmentActionError && (
-            <p className="text-sm text-rose-600" role="alert">{attachmentActionError}</p>
+          {resourceActionError && (
+            <p className="text-sm text-rose-600" role="alert">{resourceActionError}</p>
           )}
           <DialogFooter>
-            <Button type="button" variant="ghost" disabled={attachmentActionPending} onClick={() => setAttachmentDialog(null)}>
+            <Button type="button" variant="ghost" disabled={resourceActionPending} onClick={() => setResourceDialog(null)}>
               {t("common.cancel")}
             </Button>
-            <Button type="button" variant="danger" disabled={attachmentActionPending} onClick={() => void handleAttachmentDelete()}>
-              {attachmentActionPending ? t("common.processing") : t("common.delete")}
+            <Button type="button" variant="danger" disabled={resourceActionPending} onClick={() => void handleResourceDelete()}>
+              {resourceActionPending ? t("common.processing") : t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {attachmentActionError && !attachmentDialog && (
+      {resourceActionError && !resourceDialog && (
         <div className="fixed bottom-5 left-1/2 z-[120] -translate-x-1/2 rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow-lg" role="alert">
-          {attachmentActionError}
+          {resourceActionError}
         </div>
       )}
 
