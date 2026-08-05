@@ -1672,27 +1672,46 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-editor-content pre { max-width: 100%; overflow-x: auto; border-radius: 10px; padding: 14px 90px 14px 14px; background: #0f172a; color: #e2e8f0; font-size: 0.9rem; }
   .edgeever-editor-content code { border-radius: 4px; padding: 2px 4px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; font-size: 0.9em; }
   .edgeever-editor-content pre code { padding: 0; background: transparent; font-size: inherit; }
+  /* Compact attachment chips: still ≥48px touch height, less vertical bulk than 58px. */
   .edgeever-editor-content a.edgeever-attachment-link, .edgeever-editor-content a[href*="/api/v1/resources/"] {
     display: flex;
     min-width: 0;
     max-width: 100%;
-    min-height: 58px;
+    min-height: 48px;
     align-items: center;
-    gap: 10px;
-    margin: 8px 0;
+    gap: 8px;
+    margin: 6px 0;
     border: 1px solid ${theme === "dark" ? "#334155" : "#cbd5e1"};
-    border-radius: 12px;
-    padding: 10px 12px;
+    border-radius: 10px;
+    padding: 7px 10px;
     background: ${theme === "dark" ? "#172033" : "#f8fafc"};
     color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
-    font-size: 1rem;
+    font-size: 0.93rem;
     font-weight: 700;
-    line-height: 1.35;
+    line-height: 1.3;
     text-decoration: none;
     overflow: hidden;
   }
-  .edgeever-editor-content a.edgeever-attachment-link::before, .edgeever-editor-content a[href*="/api/v1/resources/"]::before { display: inline-flex; width: 38px; height: 38px; flex: 0 0 38px; align-items: center; justify-content: center; border-radius: 9px; background: ${theme === "dark" ? "#134e4a" : "#ecfdf5"}; content: "📎"; font-size: 18px; }
-  .edgeever-editor-content a.edgeever-attachment-link::after, .edgeever-editor-content a[href*="/api/v1/resources/"]::after { margin-left: auto; flex: 0 0 auto; color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; content: "⋯"; font-size: 22px; font-weight: 700; }
+  .edgeever-editor-content a.edgeever-attachment-link::before, .edgeever-editor-content a[href*="/api/v1/resources/"]::before {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: ${theme === "dark" ? "#134e4a" : "#ecfdf5"};
+    content: "📎";
+    font-size: 15px;
+  }
+  .edgeever-editor-content a.edgeever-attachment-link::after, .edgeever-editor-content a[href*="/api/v1/resources/"]::after {
+    margin-left: auto;
+    flex: 0 0 auto;
+    color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
+    content: "⋯";
+    font-size: 18px;
+    font-weight: 700;
+  }
   .edgeever-code-block, .edgeever-mermaid-code-block { position: relative; margin: 18px 0; overflow: visible; background: transparent; }
   .edgeever-code-copy-button { position: absolute; top: 8px; right: 8px; z-index: 1; border: 1px solid ${theme === "dark" ? "#475569" : "#cbded1"}; border-radius: 6px; padding: 5px 8px; background: ${theme === "dark" ? "rgba(30, 41, 59, 0.94)" : "rgba(247, 251, 248, 0.94)"}; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; font: inherit; font-size: 12px; line-height: 1.35; }
   .edgeever-code-copy-button:active { border-color: #0f766e; color: ${theme === "dark" ? "#86efac" : "#0f766e"}; }
