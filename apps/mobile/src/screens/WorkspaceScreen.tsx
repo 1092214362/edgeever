@@ -1914,7 +1914,7 @@ const CreateMemoModal = ({
     const result = await saveMobileResourceAs(client, target);
     if (result.kind === "saf") {
       Alert.alert(
-        resolvedLocale === "en-US" ? "Exported" : "导出成功",
+        resolvedLocale === "en-US" ? "Downloaded" : "下载成功",
         resolvedLocale === "en-US" ? `Saved ${result.filename}` : `已保存：${result.filename}`
       );
     }
@@ -2466,7 +2466,7 @@ const RichEditorModal = ({
     const result = await saveMobileResourceAs(client, target);
     if (result.kind === "saf") {
       Alert.alert(
-        resolvedLocale === "en-US" ? "Exported" : "导出成功",
+        resolvedLocale === "en-US" ? "Downloaded" : "下载成功",
         resolvedLocale === "en-US" ? `Saved ${result.filename}` : `已保存：${result.filename}`
       );
     }

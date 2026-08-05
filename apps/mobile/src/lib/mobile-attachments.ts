@@ -243,7 +243,7 @@ export const resolveExportFilename = (filename: string, mimeType: string) => {
 export class MobileResourceCancelledError extends Error {
   readonly code = "cancelled" as const;
 
-  constructor(message = "已取消导出") {
+  constructor(message = "已取消下载") {
     super(message);
     this.name = "MobileResourceCancelledError";
   }
@@ -291,7 +291,7 @@ export const openMobileResource = async (client: AttachmentClient, target: Mobil
 };
 
 /**
- * Export resource to a user-chosen folder (Android SAF) or the system share sheet.
+ * Download resource to a user-chosen folder (Android SAF) or the system share sheet.
  * Android: the action sheet Modal must be closed first — SAF needs a free activity
  * result channel; otherwise the folder picker never appears and it looks like a no-op.
  */
@@ -307,7 +307,7 @@ export const saveMobileResourceAs = async (client: AttachmentClient, target: Mob
       const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
       if (!permission.granted) {
         // Do not return null — callers treated that as success and closed the sheet.
-        throw new MobileResourceCancelledError("已取消导出");
+        throw new MobileResourceCancelledError("已取消下载");
       }
       const destination = await FileSystem.StorageAccessFramework.createFileAsync(
         permission.directoryUri,
@@ -323,9 +323,9 @@ export const saveMobileResourceAs = async (client: AttachmentClient, target: Mob
       if (error instanceof MobileResourceCancelledError) {
         throw error;
       }
-      // SAF is flaky on some OEM builds — fall back to the share sheet so export still works.
+      // SAF is flaky on some OEM builds — fall back to the share sheet so download still works.
       await shareCachedResource(file.uri, {
-        dialogTitle: `导出 ${exportName}`,
+        dialogTitle: `下载 ${exportName}`,
         mimeType,
       });
       return { kind: "share" as const, uri: file.uri, filename: exportName };
@@ -333,7 +333,7 @@ export const saveMobileResourceAs = async (client: AttachmentClient, target: Mob
   }
 
   await shareCachedResource(file.uri, {
-    dialogTitle: `导出 ${exportName}`,
+    dialogTitle: `下载 ${exportName}`,
     mimeType,
   });
   return { kind: "share" as const, uri: file.uri, filename: exportName };
