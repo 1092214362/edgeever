@@ -529,6 +529,7 @@ export const enUS = {
     moreActions: "More actions",
     restoreMemo: "Restore note",
     deleteMemo: "Delete note",
+    permanentDelete: "Delete permanently",
   },
   assets: {
     uploadNth: "Uploading file {{current}}/{{total}}...",

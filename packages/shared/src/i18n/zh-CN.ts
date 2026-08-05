@@ -529,6 +529,7 @@ export const zhCN = {
     moreActions: "更多操作",
     restoreMemo: "恢复笔记",
     deleteMemo: "删除笔记",
+    permanentDelete: "永久删除",
   },
   assets: {
     uploadNth: "正在上传第 {{current}}/{{total}} 个文件...",
