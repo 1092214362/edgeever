@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Modal, StyleSheet, View } from "react-native";
-import { Download, FileText, HardDrive, MoreHorizontal, Pencil, Trash2, X } from "./icons";
+import { FileText, HardDrive, MoreHorizontal, Pencil, Share2, Trash2, X } from "./icons";
 import { Pressable, Text, TextInput } from "./LocalizedText";
 import {
   MobileResourceCancelledError,
@@ -28,7 +28,8 @@ const copy = {
     delete: "删除",
     attachmentDeleteConfirm: "附件会从存储空间和当前笔记中永久删除，此操作无法撤销。",
     attachmentDeleteTitle: "删除附件",
-    download: "下载",
+    // Opens the system share sheet (not a silent download-to-folder).
+    share: "分享",
     exportFailed: "无法导出",
     failed: "资源操作失败，请重试。",
     filename: "文件名",
@@ -48,7 +49,8 @@ const copy = {
     delete: "Delete",
     attachmentDeleteConfirm: "The attachment will be permanently removed from storage and this note. This cannot be undone.",
     attachmentDeleteTitle: "Delete attachment",
-    download: "Download",
+    // Opens the system share sheet (not a silent download-to-folder).
+    share: "Share",
     exportFailed: "Unable to export",
     failed: "The resource action failed. Try again.",
     filename: "Filename",
@@ -83,7 +85,7 @@ export const MobileAttachmentCard = ({
   return (
     <View style={[styles.card, dark && styles.cardDark]}>
       <Pressable
-        accessibilityHint={resolvedLocale === "en-US" ? "Downloads the attachment and opens the system file menu" : "下载附件并打开系统文件菜单"}
+        accessibilityHint={resolvedLocale === "en-US" ? "Opens the system share sheet for this attachment" : "打开系统分享面板分享此附件"}
         accessibilityLabel={target.filename}
         accessibilityRole="button"
         disabled={busy}
@@ -166,7 +168,7 @@ export const MobileResourceActions = ({
   };
 
   /**
-   * Download / export open Android system UI (share sheet or SAF folder picker).
+   * Share / export open Android system UI (share sheet or SAF folder picker).
    * Dismiss our Modal first so the activity-result channel is free — otherwise SAF
    * often never appears and the tap looks like a dead button.
    */
@@ -216,8 +218,8 @@ export const MobileResourceActions = ({
           {mode === "actions" ? (
             <View style={styles.actions}>
               <ResourceActionRow
-                icon={<Download color="#0f172a" size={19} />}
-                label={labels.download}
+                icon={<Share2 color="#0f172a" size={19} />}
+                label={labels.share}
                 onPress={() => void runSystemUiAction((current) => onDownload(current), labels.failed)}
                 pending={pending}
               />
