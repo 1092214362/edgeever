@@ -39,11 +39,12 @@ import {
   type LocalMemoListParams,
   type LocalMemoListResponse,
 } from "@/lib/local-mirror";
-import { queueLocalAction, queueMemoCreate, queueMemoDelete, queueMemoRestore, queueMemoUpdate } from "@/lib/sync-queue";
-import type { MemoUpdateSyncPayload } from "@/lib/local-db";
+import { getMemoUpdateQueueId, queueLocalAction, queueMemoCreate, queueMemoDelete, queueMemoRestore, queueMemoUpdate } from "@/lib/sync-queue";
+import { localDb, type MemoUpdateSyncPayload } from "@/lib/local-db";
 import { createDesktopRepository } from "@/lib/desktop-repository";
 import { isBrowserOffline } from "@/lib/network-status";
 import { notifySyncQueueDeferred } from "@/lib/sync-events";
+import { isActiveLocalMemoUpdateStatus, shouldAcceptRemoteMemoDetail } from "@/lib/memo-detail-freshness";
 
 export type EdgeEverRepository = {
   listNotebooks(): Promise<{ notebooks: Notebook[] }>;
@@ -93,6 +94,40 @@ const cacheMemoWithoutBlocking = (scope: string, memo: MemoDetail) => {
   void putLocalMemo(scope, memo).catch(() => {
     // Cache persistence must never prevent a remote detail from rendering.
   });
+};
+
+const hasActiveLocalMemoUpdate = async (memoId: string) => {
+  const item = await localDb.syncQueue.get(getMemoUpdateQueueId(memoId));
+  return isActiveLocalMemoUpdateStatus(item?.status);
+};
+
+/**
+ * Persist and surface a remote detail only when it is strictly fresher than the
+ * local mirror (and no memo.update is still waiting to push). Returns whether
+ * the remote snapshot was accepted.
+ */
+const acceptRemoteMemoDetail = async (
+  scope: string,
+  remote: MemoDetail,
+  local: MemoDetail | null | undefined,
+  options: { emitRefreshEvent?: boolean } = {},
+) => {
+  // Re-read local + queue at decision time: a save may land during the network RTT.
+  // Use the non-blocking local read so a stuck IndexedDB never freezes getMemo.
+  const [latestLocal, pendingLocalUpdate] = await Promise.all([
+    getLocalMemoWithoutBlocking(scope, remote.id),
+    hasActiveLocalMemoUpdate(remote.id),
+  ]);
+  const baseline = latestLocal ?? local ?? null;
+  if (!shouldAcceptRemoteMemoDetail(baseline, remote, { hasPendingLocalUpdate: pendingLocalUpdate })) {
+    return false;
+  }
+
+  cacheMemoWithoutBlocking(scope, remote);
+  if (options.emitRefreshEvent) {
+    window.dispatchEvent(new CustomEvent("edgeever:memo-detail-refreshed", { detail: remote }));
+  }
+  return true;
 };
 
 export const createWebRepository = (scope: string): EdgeEverRepository => {
@@ -332,6 +367,16 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
     ]);
 
     if (firstResult.source === "remote") {
+      const local = await localPromise;
+      const usableLocal = local && (includeDeleted || !local.isDeleted) ? local : null;
+      const accepted = await acceptRemoteMemoDetail(scope, firstResult.remote.memo, usableLocal);
+      if (accepted) {
+        return firstResult.remote;
+      }
+      if (usableLocal) {
+        return { memo: usableLocal };
+      }
+      // No usable local snapshot — surface remote even if queue checks rejected it.
       cacheMemoWithoutBlocking(scope, firstResult.remote.memo);
       return firstResult.remote;
     }
@@ -342,9 +387,8 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
     if (usableLocal) {
       if (firstResult.source === "local") {
         void remotePromise
-          .then((remote) => {
-            cacheMemoWithoutBlocking(scope, remote.memo);
-            window.dispatchEvent(new CustomEvent("edgeever:memo-detail-refreshed", { detail: remote.memo }));
+          .then(async (remote) => {
+            await acceptRemoteMemoDetail(scope, remote.memo, usableLocal, { emitRefreshEvent: true });
           })
           .catch(() => {
             // The local detail remains usable when the background refresh fails.
