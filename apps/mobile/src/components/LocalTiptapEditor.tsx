@@ -1725,15 +1725,20 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-mermaid-message { color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
   .edgeever-mermaid-error { color: ${theme === "dark" ? "#fda4af" : "#be123c"}; }
   .edgeever-editor-content img { display: block; max-width: 100%; height: auto; margin: 14px auto; border-radius: 10px; }
-  /* Use % of the content box, not 100vw — vw inside expo-dom WebViews can disagree
-     with the real layout width and force the whole page wider than the screen. */
+  /* Shared by preview + edit (same LocalTiptapEditor styles).
+     Prefer shrinking columns to the content box (≈4 equal cols on a phone) with
+     text wrap; when n * col-width still exceeds the wrapper, scroll inside
+     .tableWrapper only — never widen the page via 100vw / desktop col widths. */
   .edgeever-editor-content .tableWrapper {
-    --mobile-table-column-width: clamp(4.75rem, 42%, 12rem);
+    /* ~24% of wrapper → 4 cols fit; more cols overflow and scroll */
+    --mobile-table-column-width: clamp(4.25rem, 24cqi, 10rem);
+    container-type: inline-size;
     display: block;
     width: 100%;
     max-width: 100%;
     min-width: 0;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     margin-top: 20px;
     margin-right: 0;
@@ -1743,7 +1748,15 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     border-radius: 2px;
     background: ${theme === "dark" ? "#0f172a" : "#fff"};
     overscroll-behavior-inline: contain;
-    scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  }
+  .edgeever-editor-content .tableWrapper::-webkit-scrollbar {
+    height: 6px;
+  }
+  .edgeever-editor-content .tableWrapper::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(100, 116, 139, 0.4);
   }
   .edgeever-editor-content table {
     width: max-content;
@@ -1753,18 +1766,23 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     border-spacing: 0;
     table-layout: fixed;
   }
-  .edgeever-editor-content table col { width: var(--mobile-table-column-width) !important; }
+  /* Override TipTap/desktop col widths with the mobile equal-ish column budget. */
+  .edgeever-editor-content table col {
+    width: var(--mobile-table-column-width) !important;
+    min-width: var(--mobile-table-column-width) !important;
+  }
   .edgeever-editor-content th, .edgeever-editor-content td {
     position: relative;
     width: var(--mobile-table-column-width);
     min-width: var(--mobile-table-column-width);
-    max-width: 14rem;
+    max-width: var(--mobile-table-column-width);
     border: 0;
     border-right: 1px solid ${theme === "dark" ? "#334155" : "#dedede"};
     border-bottom: 1px solid ${theme === "dark" ? "#334155" : "#dedede"};
-    padding: 7px 12px;
+    padding: 6px 8px;
     text-align: left;
     vertical-align: top;
+    white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
     line-height: 1.4;
