@@ -111,6 +111,11 @@ const baseWorkspaceStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  settingsMenuTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
   settingsFeedbackCopy: {
     flex: 1,
     gap: 1,
@@ -120,6 +125,10 @@ const baseWorkspaceStyles = StyleSheet.create({
     color: "#64748b",
     fontSize: 12,
     lineHeight: 17,
+  },
+  settingsUpdateDescription: {
+    color: "#047857",
+    fontWeight: "600",
   },
   settingsFeedbackIcon: {
     backgroundColor: "#f1f5f9",
