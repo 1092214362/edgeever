@@ -1584,30 +1584,87 @@ const removeImageUploadPlaceholder = (editor: TiptapEditor, source: string) => {
 const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }) => `
   :root { color-scheme: ${theme}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   * { box-sizing: border-box; }
-  html, body, #root { width: 100%; height: 100%; margin: 0; background: ${theme === "dark" ? "#0f172a" : "#fff"}; }
+  /* Cap layout to the WebView viewport. Wide tables/attachments must scroll
+     inside their own wrappers — never expand the page and clip on the right. */
+  html, body, #root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    background: ${theme === "dark" ? "#0f172a" : "#fff"};
+  }
   body { overflow: hidden; color: ${theme === "dark" ? "#f8fafc" : "#0f172a"}; }
-  .edgeever-editor-shell { display: flex; height: 100%; min-height: 100%; flex-direction: column; background: ${theme === "dark" ? "#0f172a" : "#fff"}; }
+  .edgeever-editor-shell {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 100%;
+    flex-direction: column;
+    background: ${theme === "dark" ? "#0f172a" : "#fff"};
+    overflow: hidden;
+  }
   .edgeever-viewer-shell { -webkit-user-select: text; user-select: text; }
   .edgeever-editor-toolbar { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; min-height: 38px; overflow-x: auto; padding: 6px 12px; border-block: 1px solid ${theme === "dark" ? "#334155" : "#f1f5f9"}; background: ${theme === "dark" ? "#0f172a" : "#fff"}; scrollbar-width: none; }
   .edgeever-editor-toolbar::-webkit-scrollbar { display: none; }
   .edgeever-editor-toolbar button { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 36px; min-height: 32px; padding: 0; border: 1px solid transparent; border-radius: 999px; background: transparent; color: ${theme === "dark" ? "#cbd5e1" : "#64748b"}; }
   .edgeever-editor-toolbar button:active, .edgeever-editor-toolbar button.is-active { border-color: ${theme === "dark" ? "#166534" : "#bbf7d0"}; background: ${theme === "dark" ? "#14532d" : "#ecfdf5"}; color: ${theme === "dark" ? "#86efac" : "#047857"}; }
   .edgeever-editor-toolbar button:disabled { opacity: 0.38; }
-  .tiptap { min-height: 100%; outline: none; }
-  .edgeever-editor-shell > div:last-child { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-  .edgeever-editor-content { min-height: 100%; padding: 18px 12px 32px; font-size: 17px; line-height: ${MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize}; word-break: break-word; caret-color: ${options?.viewer ? "transparent" : "#0f766e"}; }
+  .tiptap { min-height: 100%; max-width: 100%; min-width: 0; outline: none; }
+  .edgeever-editor-shell > div:last-child {
+    min-height: 0;
+    min-width: 0;
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .edgeever-editor-content {
+    min-height: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 18px 12px 32px;
+    font-size: 17px;
+    line-height: ${MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize};
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    caret-color: ${options?.viewer ? "transparent" : "#0f766e"};
+  }
   .edgeever-viewer-content { -webkit-user-select: text; user-select: text; cursor: text; }
   .edgeever-editor-content > :first-child { margin-top: 0; }
-  .edgeever-editor-content p { margin: 0 0 ${MEMO_CONTENT_STYLE.body.paragraphSpacing}px; padding: 0; line-height: ${MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize}; }
+  .edgeever-editor-content p { margin: 0 0 ${MEMO_CONTENT_STYLE.body.paragraphSpacing}px; padding: 0; max-width: 100%; line-height: ${MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize}; }
   .edgeever-editor-content p.is-editor-empty:first-child::before { float: left; height: 0; color: #94a3b8; content: attr(data-placeholder); pointer-events: none; }
-  .edgeever-editor-content h1, .edgeever-editor-content h2, .edgeever-editor-content h3 { line-height: 1.3; }
-  .edgeever-editor-content blockquote { margin-left: 0; padding-left: 14px; border-left: 3px solid #5eead4; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; }
-  .edgeever-editor-content pre { overflow-x: auto; border-radius: 10px; padding: 14px 90px 14px 14px; background: #0f172a; color: #e2e8f0; }
+  .edgeever-editor-content h1, .edgeever-editor-content h2, .edgeever-editor-content h3 { line-height: 1.3; max-width: 100%; overflow-wrap: anywhere; }
+  .edgeever-editor-content blockquote { margin-left: 0; max-width: 100%; padding-left: 14px; border-left: 3px solid #5eead4; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; }
+  .edgeever-editor-content pre { max-width: 100%; overflow-x: auto; border-radius: 10px; padding: 14px 90px 14px 14px; background: #0f172a; color: #e2e8f0; }
   .edgeever-editor-content code { border-radius: 4px; padding: 2px 4px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; }
   .edgeever-editor-content pre code { padding: 0; background: transparent; }
-  .edgeever-editor-content a.edgeever-attachment-link, .edgeever-editor-content a[href*="/api/v1/resources/"] { display: flex; min-height: 58px; align-items: center; gap: 10px; margin: 8px 0; border: 1px solid ${theme === "dark" ? "#334155" : "#cbd5e1"}; border-radius: 12px; padding: 10px 12px; background: ${theme === "dark" ? "#172033" : "#f8fafc"}; color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"}; font-size: 15px; font-weight: 700; line-height: 1.35; text-decoration: none; }
+  .edgeever-editor-content a.edgeever-attachment-link, .edgeever-editor-content a[href*="/api/v1/resources/"] {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 58px;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+    border: 1px solid ${theme === "dark" ? "#334155" : "#cbd5e1"};
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: ${theme === "dark" ? "#172033" : "#f8fafc"};
+    color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-decoration: none;
+    overflow: hidden;
+  }
   .edgeever-editor-content a.edgeever-attachment-link::before, .edgeever-editor-content a[href*="/api/v1/resources/"]::before { display: inline-flex; width: 38px; height: 38px; flex: 0 0 38px; align-items: center; justify-content: center; border-radius: 9px; background: ${theme === "dark" ? "#134e4a" : "#ecfdf5"}; content: "📎"; font-size: 18px; }
-  .edgeever-editor-content a.edgeever-attachment-link::after, .edgeever-editor-content a[href*="/api/v1/resources/"]::after { margin-left: auto; color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; content: "⋯"; font-size: 22px; font-weight: 700; }
+  .edgeever-editor-content a.edgeever-attachment-link::after, .edgeever-editor-content a[href*="/api/v1/resources/"]::after { margin-left: auto; flex: 0 0 auto; color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; content: "⋯"; font-size: 22px; font-weight: 700; }
   .edgeever-code-block, .edgeever-mermaid-code-block { position: relative; margin: 18px 0; overflow: visible; background: transparent; }
   .edgeever-code-copy-button { position: absolute; top: 8px; right: 8px; z-index: 1; border: 1px solid ${theme === "dark" ? "#475569" : "#cbded1"}; border-radius: 6px; padding: 5px 8px; background: ${theme === "dark" ? "rgba(30, 41, 59, 0.94)" : "rgba(247, 251, 248, 0.94)"}; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; font: inherit; font-size: 12px; line-height: 1.35; }
   .edgeever-code-copy-button:active { border-color: #0f766e; color: ${theme === "dark" ? "#86efac" : "#0f766e"}; }
@@ -1621,10 +1678,51 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-mermaid-message { color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
   .edgeever-mermaid-error { color: ${theme === "dark" ? "#fda4af" : "#be123c"}; }
   .edgeever-editor-content img { display: block; max-width: 100%; height: auto; margin: 14px auto; border-radius: 10px; }
-  .edgeever-editor-content .tableWrapper { --mobile-table-column-width: clamp(5.5rem, calc((100vw - 3rem) / 3), 14rem); width: 100%; max-width: 100%; overflow-x: auto; margin-top: 20px; margin-right: auto; margin-bottom: 20px; margin-left: 0; border: 1px solid ${theme === "dark" ? "#334155" : "#d8d8d8"}; border-radius: 2px; background: ${theme === "dark" ? "#0f172a" : "#fff"}; overscroll-behavior-inline: contain; scrollbar-color: rgba(100, 116, 139, 0.28) transparent; }
-  .edgeever-editor-content table { width: max-content; min-width: 100% !important; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  /* Use % of the content box, not 100vw — vw inside expo-dom WebViews can disagree
+     with the real layout width and force the whole page wider than the screen. */
+  .edgeever-editor-content .tableWrapper {
+    --mobile-table-column-width: clamp(4.75rem, 42%, 12rem);
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 20px;
+    margin-right: 0;
+    margin-bottom: 20px;
+    margin-left: 0;
+    border: 1px solid ${theme === "dark" ? "#334155" : "#d8d8d8"};
+    border-radius: 2px;
+    background: ${theme === "dark" ? "#0f172a" : "#fff"};
+    overscroll-behavior-inline: contain;
+    scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
+  }
+  .edgeever-editor-content table {
+    width: max-content;
+    max-width: none;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+  }
   .edgeever-editor-content table col { width: var(--mobile-table-column-width) !important; }
-  .edgeever-editor-content th, .edgeever-editor-content td { position: relative; width: var(--mobile-table-column-width); min-width: var(--mobile-table-column-width); border: 0; border-right: 1px solid ${theme === "dark" ? "#334155" : "#dedede"}; border-bottom: 1px solid ${theme === "dark" ? "#334155" : "#dedede"}; padding: 7px 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; line-height: 1.4; transition: background-color 120ms ease; }
+  .edgeever-editor-content th, .edgeever-editor-content td {
+    position: relative;
+    width: var(--mobile-table-column-width);
+    min-width: var(--mobile-table-column-width);
+    max-width: 14rem;
+    border: 0;
+    border-right: 1px solid ${theme === "dark" ? "#334155" : "#dedede"};
+    border-bottom: 1px solid ${theme === "dark" ? "#334155" : "#dedede"};
+    padding: 7px 12px;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.4;
+    transition: background-color 120ms ease;
+  }
   .edgeever-editor-content th { background: ${theme === "dark" ? "#27303f" : "#f0f0f0"}; color: ${theme === "dark" ? "#f8fafc" : "#111827"}; font-size: 14px; font-weight: 700; }
   .edgeever-editor-content th:last-child, .edgeever-editor-content td:last-child { border-right: 0; }
   .edgeever-editor-content tr:last-child td { border-bottom: 0; }
