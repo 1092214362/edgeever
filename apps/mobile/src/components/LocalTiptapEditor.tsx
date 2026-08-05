@@ -121,6 +121,39 @@ const parseMobileResourceTarget = (value: string): EditorResourceTarget | null =
 const normalizeEditorAttachmentFilename = (label: string, resourceId: string) =>
   label.replace(/^\s*(?:附件[：:]|Attachment:)\s*/i, "").trim() || resourceId;
 
+/** Accept both `/api/v1/resources/:id/blob` and bare `/api/v1/resources/:id` image srcs. */
+const getMobileImageResourceId = (href: string): string | null => {
+  const fromBlob = getResourceIdFromUrl(href);
+  if (fromBlob) return fromBlob;
+  try {
+    const parsed = new URL(href, "http://edgeever.local");
+    const match = parsed.pathname.match(/^\/api\/v1\/resources\/([^/]+)\/?$/);
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeMobileResourceHref = (href: string, resourceId: string) => {
+  if (getResourceIdFromUrl(href)) return href;
+  if (href.startsWith("/api/v1/resources/")) {
+    return `/api/v1/resources/${encodeURIComponent(resourceId)}/blob`;
+  }
+  return href;
+};
+
+const buildImageResourceTargetJson = (figure: HTMLElement): string | null => {
+  const href = figure.dataset.resourceHref ?? "";
+  const resourceId = getMobileImageResourceId(href);
+  if (!resourceId) return null;
+  return JSON.stringify({
+    filename: figure.dataset.resourceFilename || `image-${resourceId}`,
+    href: normalizeMobileResourceHref(href, resourceId),
+    kind: "image",
+    resourceId,
+  } satisfies EditorResourceTarget);
+};
+
 const handleMobileResourceEvent = (
   event: Event,
   onResourcePress?: (targetJson: string) => Promise<void>,
@@ -129,13 +162,13 @@ const handleMobileResourceEvent = (
   const element = event.target instanceof Element ? event.target : null;
   const link = element?.closest<HTMLAnchorElement>('a.edgeever-attachment-link, a[href*="/api/v1/resources/"]');
   const href = link?.getAttribute("href") ?? "";
-  const resourceId = getResourceIdFromUrl(href);
+  const resourceId = getResourceIdFromUrl(href) ?? getMobileImageResourceId(href);
   if (link && resourceId && onResourcePress) {
     event.preventDefault();
     event.stopPropagation();
     void onResourcePress(JSON.stringify({
       filename: normalizeEditorAttachmentFilename(link.textContent ?? "", resourceId),
-      href,
+      href: normalizeMobileResourceHref(href, resourceId),
       kind: "attachment",
       resourceId,
     } satisfies EditorResourceTarget));
@@ -144,19 +177,15 @@ const handleMobileResourceEvent = (
 
   const imageFigure = element?.closest<HTMLElement>("figure.edgeever-image-node");
   const imageHref = imageFigure?.dataset.resourceHref ?? "";
-  const imageResourceId = getResourceIdFromUrl(imageHref);
   if (!imageFigure || !imageHref) return false;
 
   const imageActionRequested = event.type === "contextmenu" || Boolean(element?.closest(".edgeever-image-actions"));
-  if (imageActionRequested && imageResourceId && onResourcePress) {
+  if (imageActionRequested && onResourcePress) {
+    const targetJson = buildImageResourceTargetJson(imageFigure);
+    if (!targetJson) return false;
     event.preventDefault();
     event.stopPropagation();
-    void onResourcePress(JSON.stringify({
-      filename: imageFigure.dataset.resourceFilename || `image-${imageResourceId}`,
-      href: imageHref,
-      kind: "image",
-      resourceId: imageResourceId,
-    } satisfies EditorResourceTarget));
+    void onResourcePress(targetJson);
     return true;
   }
 
@@ -351,7 +380,13 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       props.baseUrl,
       props.locale,
       (source) => onLoadResourceRef.current(source),
-      { readOnly: isViewer }
+      {
+        readOnly: isViewer,
+        // NodeView binds ⋯ / image taps directly — Android WebView often drops
+        // click after pointerdown preventDefault, so PM handleClick is not enough.
+        onResourcePress: (targetJson) => onResourcePressRef.current?.(targetJson),
+        onImagePreview: (payloadJson) => onImagePreviewRef.current?.(payloadJson),
+      }
     ),
     [isViewer, props.baseUrl, props.locale]
   );
@@ -1130,7 +1165,11 @@ const createProtectedImageExtension = (
   baseUrl: string,
   locale: "zh-CN" | "en-US",
   loadResource: (source: string) => Promise<string | null>,
-  options?: { readOnly?: boolean }
+  options?: {
+    readOnly?: boolean;
+    onResourcePress?: (targetJson: string) => void | Promise<void>;
+    onImagePreview?: (payloadJson: string) => void | Promise<void>;
+  }
 ) => Image.extend({
   addAttributes() {
     return {
@@ -1168,6 +1207,37 @@ const createProtectedImageExtension = (
       if (readOnly) {
         sizeControls.setVisible(false);
       }
+
+      const emitImageResourcePress = (figure: HTMLElement) => {
+        const targetJson = buildImageResourceTargetJson(figure);
+        if (!targetJson || !options?.onResourcePress) return false;
+        void options.onResourcePress(targetJson);
+        return true;
+      };
+
+      const emitImagePreview = (figure: HTMLElement) => {
+        if (!options?.onImagePreview) return false;
+        const source = figure.dataset.resourceHref ?? "";
+        if (!source) return false;
+        void options.onImagePreview(JSON.stringify({
+          alt: figure.dataset.resourceFilename || "",
+          source,
+        }));
+        return true;
+      };
+
+      const bindImageActionButton = (figure: HTMLElement, button: HTMLButtonElement) => {
+        // Only stop bubbling so the editor doesn't steal focus/selection.
+        // preventDefault on pointerdown suppresses click on Android WebView.
+        button.addEventListener("pointerdown", (event) => {
+          event.stopPropagation();
+        });
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          emitImageResourcePress(figure);
+        });
+      };
 
       if (isMobileImageUploadPlaceholderSource(node.attrs.src)) {
         const placeholder = document.createElement("div");
@@ -1315,10 +1385,19 @@ const createProtectedImageExtension = (
       actionButton.contentEditable = "false";
       actionButton.setAttribute("aria-label", locale === "en-US" ? "Image actions" : "图片操作");
       actionButton.textContent = "⋯";
-      actionButton.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      });
+      bindImageActionButton(wrapper, actionButton);
+      if (readOnly) {
+        image.style.cursor = "zoom-in";
+        image.addEventListener("click", (event) => {
+          // Ignore taps that originated on the ⋯ control (event target would be button).
+          if (event.target instanceof Element && event.target.closest(".edgeever-image-actions")) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          emitImagePreview(wrapper);
+        });
+      }
       wrapper.append(image, actionButton, sizeControls.dom);
       const imageType = node.type;
       let requestId = 0;
