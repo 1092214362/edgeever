@@ -1581,8 +1581,19 @@ const removeImageUploadPlaceholder = (editor: TiptapEditor, source: string) => {
   }).run();
 };
 
-const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }) => `
-  :root { color-scheme: ${theme}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }) => {
+  const bodyFontSize = MEMO_CONTENT_STYLE.body.fontSize;
+  const bodyLineHeight = MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize;
+  const paragraphSpacing = MEMO_CONTENT_STYLE.body.paragraphSpacing;
+  return `
+  :root {
+    color-scheme: ${theme};
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    /* Match PC/Web memo body (MEMO_CONTENT_STYLE) so notes don't feel oversized on phone. */
+    --editor-body-font-size: ${bodyFontSize}px;
+    --editor-body-line-height: ${bodyLineHeight};
+    --editor-paragraph-spacing: ${paragraphSpacing}px;
+  }
   * { box-sizing: border-box; }
   /* Cap layout to the WebView viewport. Wide tables/attachments must scroll
      inside their own wrappers — never expand the page and clip on the right. */
@@ -1594,7 +1605,8 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     margin: 0;
     background: ${theme === "dark" ? "#0f172a" : "#fff"};
   }
-  body { overflow: hidden; color: ${theme === "dark" ? "#f8fafc" : "#0f172a"}; }
+  html { font-size: var(--editor-body-font-size); }
+  body { overflow: hidden; color: ${theme === "dark" ? "#f8fafc" : "#0f172a"}; font-size: 1rem; }
   .edgeever-editor-shell {
     display: flex;
     width: 100%;
@@ -1629,21 +1641,37 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     max-width: 100%;
     min-width: 0;
     padding: 18px 12px 32px;
-    font-size: 17px;
-    line-height: ${MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize};
+    font-size: 1rem;
+    line-height: var(--editor-body-line-height);
     overflow-wrap: anywhere;
     word-break: break-word;
     caret-color: ${options?.viewer ? "transparent" : "#0f766e"};
   }
   .edgeever-viewer-content { -webkit-user-select: text; user-select: text; cursor: text; }
   .edgeever-editor-content > :first-child { margin-top: 0; }
-  .edgeever-editor-content p { margin: 0 0 ${MEMO_CONTENT_STYLE.body.paragraphSpacing}px; padding: 0; max-width: 100%; line-height: ${MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize}; }
+  .edgeever-editor-content p {
+    margin: 0 0 var(--editor-paragraph-spacing) 0;
+    padding: 0;
+    max-width: 100%;
+    font-size: 1rem;
+    line-height: var(--editor-body-line-height);
+  }
   .edgeever-editor-content p.is-editor-empty:first-child::before { float: left; height: 0; color: #94a3b8; content: attr(data-placeholder); pointer-events: none; }
-  .edgeever-editor-content h1, .edgeever-editor-content h2, .edgeever-editor-content h3 { line-height: 1.3; max-width: 100%; overflow-wrap: anywhere; }
+  .edgeever-editor-content h1,
+  .edgeever-editor-content h2,
+  .edgeever-editor-content h3 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+    font-weight: 800;
+  }
+  .edgeever-editor-content h1 { margin: 0.7em 0 0.4em; font-size: 1.6rem; }
+  .edgeever-editor-content h2 { margin: 0.85em 0 0.35em; font-size: 1.35rem; }
+  .edgeever-editor-content h3 { margin: 0.75em 0 0.3em; font-size: 1.15rem; }
   .edgeever-editor-content blockquote { margin-left: 0; max-width: 100%; padding-left: 14px; border-left: 3px solid #5eead4; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; }
-  .edgeever-editor-content pre { max-width: 100%; overflow-x: auto; border-radius: 10px; padding: 14px 90px 14px 14px; background: #0f172a; color: #e2e8f0; }
-  .edgeever-editor-content code { border-radius: 4px; padding: 2px 4px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; }
-  .edgeever-editor-content pre code { padding: 0; background: transparent; }
+  .edgeever-editor-content pre { max-width: 100%; overflow-x: auto; border-radius: 10px; padding: 14px 90px 14px 14px; background: #0f172a; color: #e2e8f0; font-size: 0.9rem; }
+  .edgeever-editor-content code { border-radius: 4px; padding: 2px 4px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; font-size: 0.9em; }
+  .edgeever-editor-content pre code { padding: 0; background: transparent; font-size: inherit; }
   .edgeever-editor-content a.edgeever-attachment-link, .edgeever-editor-content a[href*="/api/v1/resources/"] {
     display: flex;
     min-width: 0;
@@ -1657,7 +1685,7 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     padding: 10px 12px;
     background: ${theme === "dark" ? "#172033" : "#f8fafc"};
     color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
-    font-size: 15px;
+    font-size: 1rem;
     font-weight: 700;
     line-height: 1.35;
     text-decoration: none;
@@ -1723,7 +1751,7 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     line-height: 1.4;
     transition: background-color 120ms ease;
   }
-  .edgeever-editor-content th { background: ${theme === "dark" ? "#27303f" : "#f0f0f0"}; color: ${theme === "dark" ? "#f8fafc" : "#111827"}; font-size: 14px; font-weight: 700; }
+  .edgeever-editor-content th { background: ${theme === "dark" ? "#27303f" : "#f0f0f0"}; color: ${theme === "dark" ? "#f8fafc" : "#111827"}; font-size: 0.93rem; font-weight: 700; }
   .edgeever-editor-content th:last-child, .edgeever-editor-content td:last-child { border-right: 0; }
   .edgeever-editor-content tr:last-child td { border-bottom: 0; }
   .edgeever-editor-content tbody tr:nth-child(even) td { background: ${theme === "dark" ? "#182235" : "#f8f8f8"}; }
@@ -1745,3 +1773,5 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   @keyframes edgeever-image-upload-spin { to { transform: rotate(360deg); } }
   .edgeever-editor-content hr { margin: 24px 0; border: 0; border-top: 1px solid #cbd5e1; }
 `;
+};
+
