@@ -216,6 +216,12 @@ Image compression happens in the Web client before upload and is controlled by t
 
 EdgeEver avoids Worker-side image processing to reduce compute and image-processing quota usage. REST API and MCP upload paths store the file content provided by the client without additional server-side compression.
 
+## Advanced Object Storage
+
+The instance owner can open **Settings → Advanced → OSS object storage** to send new images and attachments to an S3-compatible service such as Alibaba Cloud OSS, Tencent COS, AWS S3, MinIO, or R2. Existing resources stay in their original store, so changing the default does not migrate or break historical attachments.
+
+Before saving third-party credentials on a Cloudflare deployment, configure the `EDGE_EVER_STORAGE_ENCRYPTION_KEY` Worker Secret with a random value of at least 32 characters. EdgeEver uses this instance-level key to encrypt the access secret stored in D1. Keep the key stable and backed up; it is required to read resources that use the external store.
+
 ## Migration
 
 If you want to migrate notes from other platforms to EdgeEver, please refer to the following simple migration guides:

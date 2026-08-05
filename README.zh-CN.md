@@ -227,6 +227,12 @@ https://你的域名/api/openapi.json
 
 Cloudflare Worker 侧执行图片处理会消耗计算/图片处理额度，因此 EdgeEver 将图片压缩放在 Web 客户端完成；REST API 或 MCP 上传入口会按客户端提供的文件内容直接入库，不再由服务端自动压缩。
 
+## 高级对象存储
+
+实例 Owner 可以进入**设置 → 高级设置 → OSS 对象存储**，让后续上传的图片和附件写入兼容 S3 API 的阿里云 OSS、腾讯云 COS、AWS S3、MinIO 或 R2。已有资源继续保留在原存储中，因此切换默认存储不会迁移历史附件，也不会让历史附件失效。
+
+在 Cloudflare 部署中保存第三方凭据前，需要先配置一个至少 32 个字符的随机 `EDGE_EVER_STORAGE_ENCRYPTION_KEY` Worker Secret。EdgeEver 会用这个实例级密钥加密保存在 D1 中的访问密钥。请保持该密钥稳定并妥善备份；读取外部存储中的资源时仍需要它。
+
 ## 导入与迁移 (Migration)
 
 如果你想从其他笔记软件迁移到 EdgeEver，请参考以下极简迁移指引：
