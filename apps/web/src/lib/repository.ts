@@ -39,7 +39,7 @@ import {
   type LocalMemoListParams,
   type LocalMemoListResponse,
 } from "@/lib/local-mirror";
-import { getMemoUpdateQueueId, queueLocalAction, queueMemoCreate, queueMemoDelete, queueMemoRestore, queueMemoUpdate } from "@/lib/sync-queue";
+import { discardWebMemoConflict, getMemoUpdateQueueId, queueLocalAction, queueMemoCreate, queueMemoDelete, queueMemoRestore, queueMemoUpdate } from "@/lib/sync-queue";
 import { localDb, type MemoUpdateSyncPayload } from "@/lib/local-db";
 import { createDesktopRepository } from "@/lib/desktop-repository";
 import { isBrowserOffline } from "@/lib/network-status";
@@ -73,6 +73,11 @@ export type EdgeEverRepository = {
   getMemo(memoId: string, includeDeleted?: boolean): Promise<{ memo: MemoDetail }>;
   createMemo(input: { notebookId: string; title?: string; contentMarkdown?: string; tags?: string[] }): Promise<{ memo: MemoDetail }>;
   updateMemo(memo: MemoDetail, input: Omit<MemoUpdateSyncPayload, "memoId">): Promise<{ memo: MemoDetail; queued: true }>;
+  /**
+   * Drop the local conflicted draft for a note and replace the local copy with
+   * the authoritative cloud memo so the editor can rehydrate cleanly.
+   */
+  adoptCloudMemo(memoId: string): Promise<{ memo: MemoDetail }>;
   deleteMemo(memoId: string, permanent?: boolean): Promise<{ ok: true }>;
   restoreMemo(memoId: string): Promise<{ memo: MemoDetail; queued: true }>;
   listMemoRevisions(memoId: string): Promise<{ revisions: MemoRevision[] }>;
@@ -432,6 +437,11 @@ export const createWebRepository = (scope: string): EdgeEverRepository => {
     await queueMemoUpdate(payload, scope);
     notifySyncQueueDeferred();
     return { memo: updated, queued: true };
+  },
+
+  async adoptCloudMemo(memoId) {
+    const memo = await discardWebMemoConflict(scope, memoId);
+    return { memo };
   },
 
   async deleteMemo(memoId, permanent = false) {

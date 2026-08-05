@@ -207,6 +207,37 @@ export const discardWebConflicts = async (scope: string) => {
   return discarded;
 };
 
+/**
+ * Discard a single note's local conflict/draft and replace the local mirror
+ * with the authoritative cloud memo so the editor can rehydrate cleanly.
+ */
+export const discardWebMemoConflict = async (scope: string, memoId: string) => {
+  const remote = await api.getMemo(memoId, { includeDeleted: true });
+  const { putLocalMemo } = await import("@/lib/local-mirror");
+  await putLocalMemo(scope, remote.memo);
+  await localDb.drafts.delete(memoId);
+
+  const queueId = getMemoUpdateQueueId(memoId);
+  const queued = await localDb.syncQueue.get(queueId);
+  if (queued) {
+    await localDb.syncQueue.delete(queueId);
+  }
+
+  // Older clients could leave unscoped conflict rows; clear any leftover
+  // conflict update for this memo under the current scope as well.
+  for (const item of await localDb.syncQueue.where("status").equals("conflict").toArray()) {
+    if (item.memoId !== memoId) continue;
+    if (item.scope && item.scope !== scope) continue;
+    if (item.id === queueId) continue;
+    await localDb.syncQueue.delete(item.id);
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("edgeever:sync-queue-changed"));
+  }
+  return remote.memo;
+};
+
 export const isMemoUpdateAlreadyApplied = (memo: MemoDetail, item: SyncQueueItem) => {
   if (item.kind !== "memo.update") {
     return false;

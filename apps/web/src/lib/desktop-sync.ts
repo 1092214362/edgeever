@@ -505,3 +505,31 @@ export const discardDesktopConflicts = async () => {
 
   return discarded;
 };
+
+/**
+ * Discard a single note's conflicted desktop outbox item and replace the local
+ * store with the authoritative cloud memo.
+ */
+export const discardDesktopMemoConflict = async (memoId: string) => {
+  const remote = await api.getMemo(memoId, { includeDeleted: true });
+  await request("sync.apply", {
+    changes: [{ entityType: "memo", operation: "upsert", entityId: remote.memo.id, memo: remote.memo, notebook: null }],
+  });
+
+  const response = await request("sync.outbox.list", { limit: 200 });
+  for (const item of response.items) {
+    if (item.entityId !== memoId || item.status !== "conflict") {
+      continue;
+    }
+    if (item.kind === "memo.update") {
+      await request("sync.outbox.ack", { id: item.id, remoteMemo: remote.memo });
+    } else {
+      await request("sync.outbox.discard", { id: item.id });
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("edgeever:sync-queue-changed"));
+  }
+  return remote.memo;
+};

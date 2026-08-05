@@ -294,7 +294,9 @@ export const MemoDetailModal = ({
   isSharing,
   memo,
   notebookName,
+  onAdoptCloudVersion,
   onClose,
+  onCopyLocalDraft,
   onDelete,
   onDeleteResource,
   onRichEdit,
@@ -313,7 +315,9 @@ export const MemoDetailModal = ({
   isSharing: boolean;
   memo: MemoDetail | null;
   notebookName: string;
+  onAdoptCloudVersion: (memo: MemoDetail) => void;
   onClose: () => void;
+  onCopyLocalDraft: (memo: MemoDetail) => void;
   onDelete: (memo: MemoDetail) => void;
   onDeleteResource: (memo: MemoDetail, target: MobileResourceTarget) => Promise<void>;
   onRichEdit: (memo: MemoDetail) => void;
@@ -505,6 +509,40 @@ export const MemoDetailModal = ({
             ) : null}
           </View>
         </View>
+
+        {syncStatus === "conflict" && memo ? (
+          <View style={styles.conflictBanner}>
+            <Text style={styles.conflictBannerText}>
+              云端笔记已在其他标签页、设备，或离线期间被更新。可先复制本地草稿，再采用云端版本后继续编辑。
+            </Text>
+            <View style={styles.conflictBannerActions}>
+              <Pressable
+                accessibilityLabel="采用云端并重新加载"
+                accessibilityRole="button"
+                onPress={() => onAdoptCloudVersion(memo)}
+                style={styles.conflictBannerPrimaryButton}
+              >
+                <Text style={styles.conflictBannerPrimaryButtonText}>采用云端并重新加载</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="复制本地草稿"
+                accessibilityRole="button"
+                onPress={() => onCopyLocalDraft(memo)}
+                style={styles.conflictBannerSecondaryButton}
+              >
+                <Text style={styles.conflictBannerSecondaryButtonText}>复制本地草稿</Text>
+              </Pressable>
+              <Pressable
+                accessibilityLabel="查看并处理同步冲突"
+                accessibilityRole="button"
+                onPress={() => onResolveSyncConflict(memo)}
+                style={styles.conflictBannerSecondaryButton}
+              >
+                <Text style={styles.conflictBannerSecondaryButtonText}>更多</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         {isLoading ? (
           <View style={styles.centerState}>

@@ -111,11 +111,13 @@ import { compressImageForUpload } from "@/lib/image-compression";
 import { localDb, type MemoUpdateSyncPayload } from "@/lib/local-db";
 import { getMemoUpdateQueueId, isMemoUpdateAlreadyApplied, queueMemoUpdate, shouldQueueMemoSaveError } from "@/lib/sync-queue";
 import {
+  formatLocalDraftClipboardText,
   formatMemoSaveConflictReason,
   getMemoSaveConflictInfo,
   getMemoSaveConflictInfoFromQueueItem,
   type MemoSaveConflictInfo,
 } from "@/lib/memo-save-conflict";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { isLocalMemoId } from "@/lib/local-mirror";
 import { shouldAcceptRemoteMemoDetail } from "@/lib/memo-detail-freshness";
 import type { EdgeEverRepository } from "@/lib/repository";
@@ -864,6 +866,8 @@ const RichEditorPane = ({
   const [tagsText, setTagsText] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "queued" | "error" | "conflict">("idle");
   const [saveConflictInfo, setSaveConflictInfo] = useState<MemoSaveConflictInfo | null>(null);
+  const [conflictActionPending, setConflictActionPending] = useState<"adopt" | "copy" | null>(null);
+  const [conflictActionMessage, setConflictActionMessage] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hydratedEditorMemoId, setHydratedEditorMemoId] = useState<string | null>(null);
   const [dirtyVersion, setDirtyVersion] = useState(0);
@@ -2754,6 +2758,135 @@ const RichEditorPane = ({
     [saveConflictInfo, saveState, t],
   );
 
+  useEffect(() => {
+    if (saveState !== "conflict") {
+      setConflictActionPending(null);
+      setConflictActionMessage(null);
+    }
+  }, [saveState]);
+
+  const getLocalDraftMarkdown = useCallback(() => {
+    if (useMobilePlainTextEditor) {
+      return getMobilePlainTextValue();
+    }
+    if (useMarkdownSourceEditor) {
+      return markdownSource;
+    }
+    const contentJson = getCurrentContentJson();
+    if (contentJson) {
+      return docToMarkdown(contentJson);
+    }
+    return memo?.contentMarkdown ?? "";
+  }, [
+    getCurrentContentJson,
+    getMobilePlainTextValue,
+    markdownSource,
+    memo?.contentMarkdown,
+    useMarkdownSourceEditor,
+    useMobilePlainTextEditor,
+  ]);
+
+  const handleCopyLocalDraft = useCallback(async () => {
+    if (conflictActionPending) {
+      return;
+    }
+
+    setConflictActionPending("copy");
+    setConflictActionMessage(null);
+    try {
+      const text = formatLocalDraftClipboardText({
+        title,
+        tags: parseTagsText(tagsText),
+        contentMarkdown: getLocalDraftMarkdown(),
+      });
+      const copied = await copyTextToClipboard(text);
+      if (!copied) {
+        setConflictActionMessage(t("editor.saveState.conflictCopyDraftFailed"));
+        return;
+      }
+      setConflictActionMessage(t("editor.saveState.conflictCopyDraftDone"));
+      window.setTimeout(() => {
+        setConflictActionMessage((current) =>
+          current === t("editor.saveState.conflictCopyDraftDone") ? null : current
+        );
+      }, 2000);
+    } catch {
+      setConflictActionMessage(t("editor.saveState.conflictCopyDraftFailed"));
+    } finally {
+      setConflictActionPending(null);
+    }
+  }, [conflictActionPending, getLocalDraftMarkdown, t, tagsText, title]);
+
+  const handleAdoptCloudAndReload = useCallback(async () => {
+    const currentMemo = memoRef.current;
+    if (!currentMemo || conflictActionPending === "adopt") {
+      return;
+    }
+
+    setConflictActionPending("adopt");
+    setConflictActionMessage(null);
+    try {
+      const { memo: remoteMemo } = await repository.adoptCloudMemo(currentMemo.id);
+      await onSaved(remoteMemo);
+
+      hasUnsavedChangesRef.current = false;
+      setHasUnsavedChanges(false);
+      setSaveConflictInfo(null);
+      setSaveState("idle");
+      setConflictActionMessage(null);
+
+      const nextTitle = getEditableMemoTitle(remoteMemo.title);
+      const nextTagsText = remoteMemo.tags.join(", ");
+      const nextContent = resolveMemoContentDoc(remoteMemo.contentJson, remoteMemo.contentMarkdown);
+      const nextMarkdown = remoteMemo.contentMarkdown || docToMarkdown(nextContent);
+
+      memoRef.current = remoteMemo;
+      editSessionRef.current = null;
+      hydratedMemoIdRef.current = remoteMemo.id;
+      setHydratedEditorMemoId(remoteMemo.id);
+      editingMemoIdRef.current = remoteMemo.id;
+      appliedEditorSourceKeyRef.current = `memo:${remoteMemo.id}:${remoteMemo.revision}:${remoteMemo.updatedAt}:${remoteMemo.contentHash}:${nextTitle}:${nextTagsText}:${nextMarkdown}`;
+
+      setTitle(nextTitle);
+      setTagsText(nextTagsText);
+      setMobilePlainText(nextMarkdown);
+      setMarkdownSource(nextMarkdown);
+      setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
+
+      const currentEditor = editorRef.current;
+      if (isEditorReady(currentEditor)) {
+        hydratingRef.current = true;
+        try {
+          currentEditor.commands.setContent(nextContent);
+        } catch (err) {
+          console.error("Failed to apply cloud memo after conflict resolve:", err);
+          currentEditor.commands.setContent(markdownToDoc(nextMarkdown));
+        }
+        window.setTimeout(() => {
+          hydratingRef.current = false;
+        }, 0);
+      }
+
+      if (requiresLocalEditSession(remoteMemo)) {
+        editSessionRef.current = createLocalEditSession(remoteMemo);
+      } else {
+        void api.createMemoEditSession(remoteMemo.id).then((response) => {
+          if (editingMemoIdRef.current !== remoteMemo.id) return;
+          editSessionRef.current = response.editSession;
+        }).catch(() => {
+          if (editingMemoIdRef.current !== remoteMemo.id) return;
+          editSessionRef.current = createLocalEditSession(remoteMemo);
+        });
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["memo", remoteMemo.id] });
+    } catch {
+      setConflictActionMessage(t("editor.saveState.conflictAdoptFailed"));
+    } finally {
+      setConflictActionPending(null);
+    }
+  }, [conflictActionPending, onSaved, queryClient, repository, t]);
+
   if (isSelectionMode) {
     return (
       <div className="flex h-full min-w-0 flex-col bg-white">
@@ -3565,11 +3698,40 @@ const RichEditorPane = ({
         )}
         {saveState === "conflict" && saveConflictReason ? (
           <div
-            className="flex items-start gap-2 border-t border-rose-100 bg-rose-50 px-3 py-2 text-xs leading-relaxed text-rose-800 sm:px-5"
+            className="flex flex-col gap-2 border-t border-rose-100 bg-rose-50 px-3 py-2 text-xs leading-relaxed text-rose-800 sm:px-5"
             role="alert"
           >
-            <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>{saveConflictReason}</span>
+            <div className="flex items-start gap-2">
+              <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">{saveConflictReason}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pl-5">
+              <Button
+                size="sm"
+                variant="solid"
+                className="h-7 bg-rose-700 px-2.5 text-[11px] text-white hover:bg-rose-800"
+                disabled={conflictActionPending !== null}
+                onClick={() => void handleAdoptCloudAndReload()}
+              >
+                {conflictActionPending === "adopt"
+                  ? t("editor.saveState.conflictAdopting")
+                  : t("editor.saveState.conflictAdoptCloud")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2.5 text-[11px] text-rose-800 hover:bg-rose-100"
+                disabled={conflictActionPending !== null}
+                onClick={() => void handleCopyLocalDraft()}
+              >
+                {t("editor.saveState.conflictCopyDraft")}
+              </Button>
+              {conflictActionMessage ? (
+                <span className="text-[11px] font-medium text-rose-700" role="status" aria-live="polite">
+                  {conflictActionMessage}
+                </span>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </header>

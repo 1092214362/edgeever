@@ -1490,6 +1490,48 @@ const baseWorkspaceStyles = StyleSheet.create({
     color: "#c2410c",
     fontWeight: "700",
   },
+  conflictBanner: {
+    backgroundColor: "#fff1f2",
+    borderBottomColor: "#fecdd3",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  conflictBannerText: {
+    color: "#9f1239",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  conflictBannerActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  conflictBannerPrimaryButton: {
+    backgroundColor: "#be123c",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  conflictBannerPrimaryButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  conflictBannerSecondaryButton: {
+    backgroundColor: "#fff",
+    borderColor: "#fecdd3",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  conflictBannerSecondaryButtonText: {
+    color: "#9f1239",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   detailMetaRow: {
     alignItems: "center",
     flexDirection: "row",
