@@ -188,7 +188,13 @@ const syncOutboxItem = async (item: DesktopOutboxItem, stagedRewrites: StagedRes
     const editSessionResponse = await api.createMemoEditSession(memoId);
     const editSession = editSessionResponse.editSession;
     if (editSession.baseRevision !== Number(payload.expectedRevision) || editSession.baseContentHash !== String(payload.expectedContentHash ?? "")) {
-      throw new ApiRequestError("Note changed before the offline draft could sync.", 409, "revision_conflict");
+      throw new ApiRequestError("Note changed before the offline draft could sync.", 409, "revision_conflict", {
+        expectedRevision: Number(payload.expectedRevision),
+        currentRevision: editSession.baseRevision,
+        expectedContentHash: String(payload.expectedContentHash ?? ""),
+        currentContentHash: editSession.baseContentHash,
+        source: "offline_sync",
+      });
     }
     const data = await api.updateMemo(memoId, {
       expectedRevision: Number(payload.expectedRevision),
@@ -344,7 +350,8 @@ const syncOutbox = async (stagedRewrites: StagedResourceRewrite[], onlyKinds?: S
       }
       synced += 1;
     } catch (error) {
-      const conflict = error instanceof ApiRequestError && error.code === "revision_conflict";
+      const conflict = error instanceof ApiRequestError
+        && (error.code === "revision_conflict" || error.code === "content_conflict" || error.code === "edit_session_conflict");
       await request("sync.outbox.fail", { id: item.id, error: error instanceof Error ? error.message : String(error), conflict });
       if (conflict) conflicted += 1;
       else failed += 1;

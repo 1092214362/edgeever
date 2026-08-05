@@ -652,6 +652,14 @@ export const zhCN = {
       conflict: "有冲突",
       error: "保存失败",
       unsaved: "未保存",
+      conflictReason: {
+        revisionWithVersions: "云端笔记已更新（本地基于版本 {{expected}}，云端已是 {{current}}）。常见原因：其他标签页/设备，或 Demo 上其他人修改了同一条笔记。请重新加载后再编辑。",
+        revision: "云端笔记已在其他位置被更新。常见原因：其他标签页/设备，或多人同时编辑。请重新加载后再编辑。",
+        content: "打开笔记后，云端内容已变化。请重新加载后再保存。",
+        editSession: "当前编辑会话已失效或过期。请重新打开笔记后再保存。",
+        offlineStale: "离线或待同步期间，云端笔记已被更新，本地草稿无法直接覆盖。可复制本地内容后重新加载，或采用云端版本。",
+        generic: "保存时版本不一致。请重新加载笔记，或采用云端版本后再编辑。",
+      },
     },
     uploadState: {
       failed: "上传失败",

@@ -110,6 +110,12 @@ import { codeBlockLowlight, EdgeEverCodeBlock } from "@/lib/code-block";
 import { compressImageForUpload } from "@/lib/image-compression";
 import { localDb, type MemoUpdateSyncPayload } from "@/lib/local-db";
 import { getMemoUpdateQueueId, isMemoUpdateAlreadyApplied, queueMemoUpdate, shouldQueueMemoSaveError } from "@/lib/sync-queue";
+import {
+  formatMemoSaveConflictReason,
+  getMemoSaveConflictInfo,
+  getMemoSaveConflictInfoFromQueueItem,
+  type MemoSaveConflictInfo,
+} from "@/lib/memo-save-conflict";
 import { isLocalMemoId } from "@/lib/local-mirror";
 import { shouldAcceptRemoteMemoDetail } from "@/lib/memo-detail-freshness";
 import type { EdgeEverRepository } from "@/lib/repository";
@@ -857,6 +863,7 @@ const RichEditorPane = ({
   const [title, setTitle] = useState("");
   const [tagsText, setTagsText] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "queued" | "error" | "conflict">("idle");
+  const [saveConflictInfo, setSaveConflictInfo] = useState<MemoSaveConflictInfo | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hydratedEditorMemoId, setHydratedEditorMemoId] = useState<string | null>(null);
   const [dirtyVersion, setDirtyVersion] = useState(0);
@@ -1973,7 +1980,9 @@ const RichEditorPane = ({
         editingMemoIdRef.current = memo.id;
         appliedEditorSourceKeyRef.current = sourceKey;
         if (queuedUpdate) {
-          setSaveState(syncStatusToSaveState(queuedUpdate.status));
+          const nextState = syncStatusToSaveState(queuedUpdate.status);
+          setSaveState(nextState);
+          setSaveConflictInfo(nextState === "conflict" ? getMemoSaveConflictInfoFromQueueItem(queuedUpdate) : null);
         }
         if (requiresLocalEditSession(memo)) {
           editSessionRef.current = editSessionRef.current ?? createLocalEditSession(memo);
@@ -1999,7 +2008,14 @@ const RichEditorPane = ({
       editingMemoIdRef.current = memo.id;
       hasUnsavedChangesRef.current = nextHasUnsavedChanges;
       setHasUnsavedChanges(nextHasUnsavedChanges);
-      setSaveState(queuedUpdate ? syncStatusToSaveState(queuedUpdate.status) : "idle");
+      if (queuedUpdate) {
+        const nextState = syncStatusToSaveState(queuedUpdate.status);
+        setSaveState(nextState);
+        setSaveConflictInfo(nextState === "conflict" ? getMemoSaveConflictInfoFromQueueItem(queuedUpdate) : null);
+      } else {
+        setSaveState("idle");
+        setSaveConflictInfo(null);
+      }
       setTitle(nextTitle);
       setTagsText(nextTagsText);
       setMobilePlainText(nextMarkdown);
@@ -2101,11 +2117,30 @@ const RichEditorPane = ({
   useEffect(() => {
     const handleSyncCompleted = (event: Event) => {
       const result = (event as CustomEvent<{ failed?: number; conflicted?: number }>).detail;
-      if ((result?.failed ?? 0) > 0 || (result?.conflicted ?? 0) > 0 || hasUnsavedChangesRef.current) {
+      const memoId = memoRef.current?.id;
+
+      if (memoId && (result?.conflicted ?? 0) > 0) {
+        void localDb.syncQueue.get(getMemoUpdateQueueId(memoId)).then((item) => {
+          if (!item || item.status !== "conflict" || memoRef.current?.id !== memoId) {
+            return;
+          }
+          setSaveState("conflict");
+          setSaveConflictInfo(getMemoSaveConflictInfoFromQueueItem(item));
+        });
         return;
       }
 
-      setSaveState((current) => current === "queued" ? "saved" : current);
+      if ((result?.failed ?? 0) > 0 || hasUnsavedChangesRef.current) {
+        return;
+      }
+
+      setSaveState((current) => {
+        if (current !== "queued") {
+          return current;
+        }
+        setSaveConflictInfo(null);
+        return "saved";
+      });
     };
 
     window.addEventListener("edgeever:sync-completed", handleSyncCompleted);
@@ -2387,6 +2422,7 @@ const RichEditorPane = ({
         hasUnsavedChangesRef.current = false;
         setHasUnsavedChanges(false);
         await localDb.drafts.delete(savedMemo.id);
+        setSaveConflictInfo(null);
         setSaveState(queued ? "queued" : "saved");
         if (!queued) {
           window.setTimeout(() => setSaveState("idle"), 1400);
@@ -2397,16 +2433,15 @@ const RichEditorPane = ({
       persistCurrentDraft();
       hasUnsavedChangesRef.current = true;
       setHasUnsavedChanges(true);
+      setSaveConflictInfo(null);
       setSaveState("idle");
     },
     onError: async (error) => {
       const sourceError = error instanceof MemoSaveRequestError ? error.originalError : error;
-      const code =
-        sourceError && typeof sourceError === "object" && "code" in sourceError
-          ? String(sourceError.code)
-          : null;
+      const conflictInfo = getMemoSaveConflictInfo(sourceError);
 
-      if (code === "revision_conflict") {
+      if (conflictInfo) {
+        setSaveConflictInfo(conflictInfo);
         setSaveState("conflict");
         return;
       }
@@ -2423,10 +2458,12 @@ const RichEditorPane = ({
 
         hasUnsavedChangesRef.current = false;
         setHasUnsavedChanges(false);
+        setSaveConflictInfo(null);
         setSaveState("queued");
         return;
       }
 
+      setSaveConflictInfo(null);
       setSaveState("error");
     },
   });
@@ -2710,6 +2747,12 @@ const RichEditorPane = ({
 
     return () => window.clearTimeout(timer);
   }, [dirtyVersion, editor, hasUnsavedChanges, memo, saveMutation, saveState, useMobilePlainTextEditor]);
+
+  // Must stay above early returns so hook order never changes across loading/empty/editor states.
+  const saveConflictReason = useMemo(
+    () => (saveState === "conflict" ? formatMemoSaveConflictReason(t, saveConflictInfo) : null),
+    [saveConflictInfo, saveState, t],
+  );
 
   if (isSelectionMode) {
     return (
@@ -3120,6 +3163,8 @@ const RichEditorPane = ({
               className={cn("hidden items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium sm:inline-flex", saveStateClassName)}
               role="status"
               aria-live="polite"
+              title={saveConflictReason ?? undefined}
+              aria-label={saveState === "conflict" && saveConflictReason ? `${saveLabel}. ${saveConflictReason}` : undefined}
               {...statusSettleMotion}
             >
               {saveState === "saving" ? (
@@ -3138,6 +3183,8 @@ const RichEditorPane = ({
               className={cn("inline-flex max-w-[5.5rem] truncate rounded-full px-2 py-1 text-[11px] font-medium sm:hidden", mobileStatusClassName)}
               role="status"
               aria-live="polite"
+              title={saveConflictReason ?? undefined}
+              aria-label={saveState === "conflict" && saveConflictReason ? `${saveLabel}. ${saveConflictReason}` : undefined}
               {...statusSettleMotion}
             >
               {mobileStatusLabel}
@@ -3516,6 +3563,15 @@ const RichEditorPane = ({
             onPickNoteLink={() => setNoteLinkPickerOpen(true)}
           />
         )}
+        {saveState === "conflict" && saveConflictReason ? (
+          <div
+            className="flex items-start gap-2 border-t border-rose-100 bg-rose-50 px-3 py-2 text-xs leading-relaxed text-rose-800 sm:px-5"
+            role="alert"
+          >
+            <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{saveConflictReason}</span>
+          </div>
+        ) : null}
       </header>
 
       <div

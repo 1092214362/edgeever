@@ -652,6 +652,14 @@ export const enUS = {
       conflict: "Conflict",
       error: "Save failed",
       unsaved: "Unsaved",
+      conflictReason: {
+        revisionWithVersions: "The cloud note was updated (local base revision {{expected}}, cloud is {{current}}). Common causes: another tab/device, or someone else editing the same note on Demo. Reload before editing again.",
+        revision: "The cloud note was updated elsewhere. Common causes: another tab/device, or concurrent editing. Reload before editing again.",
+        content: "The cloud content changed after this note was opened. Reload before saving.",
+        editSession: "This edit session is stale or expired. Reopen the note before saving.",
+        offlineStale: "While offline or queued, the cloud note was updated, so the local draft cannot overwrite it. Copy local content, then reload—or use the cloud version.",
+        generic: "A version conflict was detected while saving. Reload the note, or use the cloud version before editing again.",
+      },
     },
     uploadState: {
       failed: "Upload failed",
