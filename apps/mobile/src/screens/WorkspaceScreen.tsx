@@ -90,6 +90,7 @@ import {
   queueMobileMemoUpdate,
   type MobileSyncQueueItem,
 } from "../lib/sync-queue";
+import { deleteMobileMemos } from "../lib/mobile-memo-delete";
 import {
   createMobileDataScope,
   getLocalMemo,
@@ -224,6 +225,15 @@ export const WorkspaceScreen = ({
   const incomingShareUrl = useMemo(() => getSharedWebUrl(incomingSharePayloads), [incomingSharePayloads]);
   const handleMemoIdRemapped = useCallback((temporaryId: string, memo: MemoDetail) => {
     setSelectedMemoId((current) => current === temporaryId ? memo.id : current);
+    setSelectedMemoIds((current) => {
+      if (!current.has(temporaryId)) {
+        return current;
+      }
+      const next = new Set(current);
+      next.delete(temporaryId);
+      next.add(memo.id);
+      return next;
+    });
   }, []);
   const {
     refreshSyncQueueItems,
@@ -794,17 +804,23 @@ export const WorkspaceScreen = ({
 
   const deleteMemoMutation = useMutation({
     mutationFn: async ({ memo, permanent }: { memo: MemoDetail; permanent: boolean }) => {
-      if (!client) {
-        throw new Error("Client is not ready");
-      }
-
-      await client.deleteMemo(memo.id, { permanent });
+      await deleteMobileMemos({
+        client,
+        dataScope,
+        syncQueueScope,
+        memoIds: [memo.id],
+        permanent,
+      });
+      await refreshSyncQueueItems();
       return { memo, permanent };
     },
     onSuccess: async () => {
       await invalidateWorkspace();
       setRichEditingSession(null);
       setSelectedMemoId(null);
+    },
+    onError: (error) => {
+      Alert.alert("删除失败", error instanceof Error ? error.message : "请检查网络后重试");
     },
   });
 
@@ -874,15 +890,22 @@ export const WorkspaceScreen = ({
 
   const deleteMemosMutation = useMutation({
     mutationFn: async ({ memoIds, permanent }: { memoIds: string[]; permanent: boolean }) => {
-      if (!client) {
-        throw new Error("Client is not ready");
-      }
-
-      return client.deleteMemos({ memoIds, permanent });
+      const result = await deleteMobileMemos({
+        client,
+        dataScope,
+        syncQueueScope,
+        memoIds,
+        permanent,
+      });
+      await refreshSyncQueueItems();
+      return result;
     },
     onSuccess: async () => {
       await invalidateWorkspace();
       clearSelection();
+    },
+    onError: (error) => {
+      Alert.alert("删除失败", error instanceof Error ? error.message : "请检查网络后重试");
     },
   });
 

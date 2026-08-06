@@ -147,6 +147,12 @@ export const deleteMobileSyncQueueItem = async (scope: string, id: string) => {
   return loadMobileSyncQueueSummary(scope);
 };
 
+/** Drop every create/update queue entry for a memo (used when discarding local-only notes). */
+export const cancelMobileMemoQueueItems = async (scope: string, memoId: string) => {
+  await mutateMobileSyncQueue(scope, (items) => items.filter((item) => item.memoId !== memoId));
+  return loadMobileSyncQueueSummary(scope);
+};
+
 /**
  * Discard a single note's conflicted local queue item and return the
  * authoritative cloud memo so the UI can rehydrate cleanly.
@@ -232,8 +238,19 @@ export const syncMobileQueuedChanges = async (
       if (removed) {
         await options.onSynced?.(memo, item);
       } else if (item.kind === "memo.create") {
-        await promoteQueuedMemoCreate(scope, item.id, itemVersion, memo);
-        await options.onSynced?.(memo, item);
+        const promoted = await promoteQueuedMemoCreate(scope, item.id, itemVersion, memo);
+        if (promoted) {
+          await options.onSynced?.(memo, item);
+        } else {
+          // User cancelled the offline create while it was in flight. The local
+          // row is already gone; soft-delete the remote orphan so it does not
+          // reappear on the next mirror sync.
+          try {
+            await client.deleteMemo(memo.id, { permanent: false });
+          } catch {
+            // Best-effort cleanup; a later full sync can still reconcile.
+          }
+        }
       } else {
         await rebaseQueuedMemoUpdate(scope, item.id, itemVersion, memo);
       }
@@ -385,14 +402,21 @@ const rebaseQueuedMemoUpdate = async (scope: string, id: string, syncedVersion: 
   );
 };
 
-const promoteQueuedMemoCreate = async (scope: string, id: string, syncedVersion: number, memo: MemoDetail) => {
+const promoteQueuedMemoCreate = async (
+  scope: string,
+  id: string,
+  syncedVersion: number,
+  memo: MemoDetail
+): Promise<boolean> => {
+  let promoted = false;
   await mutateMobileSyncQueue(scope, (items) => {
     const current = items.find((item) => item.id === id);
     if (!current || current.kind !== "memo.create" || current.version <= syncedVersion) {
       return items;
     }
+    promoted = true;
     const now = new Date().toISOString();
-    const promoted: MobileMemoUpdateSyncQueueItem = {
+    const promotedItem: MobileMemoUpdateSyncQueueItem = {
       id: getMobileMemoUpdateQueueId(memo.id),
       kind: "memo.update",
       memoId: memo.id,
@@ -413,8 +437,9 @@ const promoteQueuedMemoCreate = async (scope: string, id: string, syncedVersion:
       updatedAt: now,
       version: 1,
     };
-    return [promoted, ...items.filter((item) => item.id !== id && item.id !== promoted.id)];
+    return [promotedItem, ...items.filter((item) => item.id !== id && item.id !== promotedItem.id)];
   });
+  return promoted;
 };
 
 const mutateMobileSyncQueue = async (scope: string, mutate: (items: MobileSyncQueueItem[]) => MobileSyncQueueItem[]) => {

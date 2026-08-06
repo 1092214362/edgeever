@@ -17,6 +17,7 @@ mock.module("@react-native-async-storage/async-storage", () => ({
 }));
 
 const {
+  cancelMobileMemoQueueItems,
   discardMobileMemoConflict,
   getMobileConflictDraftClipboardText,
   listMobileSyncQueueItems,
@@ -214,6 +215,64 @@ test("promotes an edit made while an offline create is syncing", async () => {
   expect(queued?.memoId).toBe("memo-remote");
   expect(queued?.payload.title).toBe("Newest");
   expect(queued?.payload.expectedContentHash).toBe("hash-remote");
+});
+
+test("cancels queue items for a memo", async () => {
+  const scope = "https://one.example";
+  await queueMobileMemoCreate(scope, {
+    memoId: "local:one",
+    title: "Offline",
+    contentMarkdown: "body",
+    notebookId: "notebook-1",
+    tags: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  });
+  await queueMobileMemoUpdate(scope, { ...basePayload, memoId: "memo-2" });
+
+  await cancelMobileMemoQueueItems(scope, "local:one");
+
+  const remaining = await listMobileSyncQueueItems(scope);
+  expect(remaining).toHaveLength(1);
+  expect(remaining[0]?.memoId).toBe("memo-2");
+});
+
+test("soft-deletes the remote orphan when an offline create is cancelled mid-sync", async () => {
+  const scope = "https://one.example";
+  await queueMobileMemoCreate(scope, {
+    memoId: "local:one",
+    title: "Offline",
+    contentMarkdown: "first",
+    notebookId: "notebook-1",
+    tags: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  });
+  let markCreateStarted: (() => void) | undefined;
+  const createStarted = new Promise<void>((resolve) => {
+    markCreateStarted = resolve;
+  });
+  let resolveCreate: ((memo: MemoDetail) => void) | undefined;
+  const createResponse = new Promise<MemoDetail>((resolve) => {
+    resolveCreate = resolve;
+  });
+  const deletedMemoIds: string[] = [];
+  const client = {
+    createMemo: async () => {
+      markCreateStarted?.();
+      return createResponse.then((memo) => ({ memo }));
+    },
+    deleteMemo: async (memoId: string) => {
+      deletedMemoIds.push(memoId);
+      return { ok: true as const };
+    },
+  };
+  const sync = syncMobileQueuedChanges(client as never, scope);
+  await createStarted;
+  await cancelMobileMemoQueueItems(scope, "local:one");
+  resolveCreate?.(createMemo({ id: "memo-remote", revision: 0, contentHash: "hash-remote" }));
+  await sync;
+
+  expect(deletedMemoIds).toEqual(["memo-remote"]);
+  expect(await listMobileSyncQueueItems(scope)).toHaveLength(0);
 });
 
 const createMemo = (overrides: Partial<MemoDetail> = {}): MemoDetail => ({
