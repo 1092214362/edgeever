@@ -68,6 +68,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Alert, Pressable, Text, TextInput } from "../components/LocalizedText";
 import Markdown, { type ASTNode, type RenderRules } from "react-native-markdown-display";
 import { SvgXml } from "react-native-svg";
+import { ApiRequestError } from "@edgeever/client";
 import { buildGitHubFeedbackUrl, createExcerpt, docToMarkdown, docToText, getNotebookDescendantIds, markdownToDoc, resolveMemoContentDoc, type AuthUser, type MemoDetail, type MemoRevision, type MemoSummary, type Notebook, type TiptapDoc } from "@edgeever/shared";
 import { MOBILE_UI_METRICS, getMobileCenteredScrollOffset, getMobileNotebookSearchVisibleIds, toggleMobileMemoFilterMode, toggleMobileMemoSelection } from "@edgeever/shared/mobile-ui";
 import { clearMobileMemoDraft, clearMobileNewMemoDraft, readMobileMemoDraft, readMobileNewMemoDraft, writeMobileMemoDraft, writeMobileNewMemoDraft, type MobileMemoDraft } from "../lib/mobile-drafts";
@@ -82,12 +83,18 @@ import {
 import { useMobileLocale } from "../lib/mobile-locale";
 import { useSession } from "../lib/session";
 import {
+  clearMobileMemoUpdateQueueItem,
   deleteMobileSyncQueueItem,
   discardMobileMemoConflict,
   getMobileConflictDraftClipboardText,
+  getMobileSyncErrorMessage,
+  isMobileSyncConflictError,
   listMobileSyncQueueItems,
+  markMobileMemoUpdateConflict,
+  markMobileMemoUpdateError,
   queueMobileMemoCreate,
   queueMobileMemoUpdate,
+  shouldQueueMobileMemoSaveError,
   type MobileSyncQueueItem,
 } from "../lib/sync-queue";
 import { deleteMobileMemos } from "../lib/mobile-memo-delete";
@@ -237,7 +244,7 @@ export const WorkspaceScreen = ({
   }, []);
   const {
     refreshSyncQueueItems,
-    runAutomaticSync,
+    runForcedSync,
     syncQueueItems,
   } = useMobileAutomaticSync({
     client,
@@ -401,7 +408,10 @@ export const WorkspaceScreen = ({
   }, [memosQuery.data, notebooksQuery.data]);
 
   const refresh = async () => {
+    // Pull-to-refresh must push the outbox first; previously it only pulled
+    // the server mirror, so pending local edits stayed stuck on "待同步".
     if (client) {
+      await runForcedSync();
       await syncMobileLocalMirror(client, dataScope);
     }
     await Promise.all([
@@ -409,6 +419,7 @@ export const WorkspaceScreen = ({
       queryClient.invalidateQueries({ queryKey: ["mobile", "memos"] }),
       queryClient.invalidateQueries({ queryKey: ["mobile", "search"] }),
       queryClient.invalidateQueries({ queryKey: ["mobile", "memo"] }),
+      refreshSyncQueueItems(),
     ]);
   };
 
@@ -540,9 +551,11 @@ export const WorkspaceScreen = ({
   const searchActive = searchText.trim().length > 0;
   const visibleMemos = searchActive ? searchResults : memos;
   const selectedMemo = memoDetailQuery.data?.memo ?? null;
-  const selectedMemoSyncStatus = selectedMemo
-    ? syncQueueItems.find((item) => item.memoId === selectedMemo.id)?.status ?? null
+  const selectedMemoSyncItem = selectedMemo
+    ? syncQueueItems.find((item) => item.memoId === selectedMemo.id) ?? null
     : null;
+  const selectedMemoSyncStatus = selectedMemoSyncItem?.status ?? null;
+  const selectedMemoSyncError = selectedMemoSyncItem?.lastError ?? null;
   const isRefreshing = notebooksQuery.isFetching || memosQuery.isFetching || searchQuery.isFetching || memoDetailQuery.isFetching;
   const selectedMemoIdList = Array.from(selectedMemoIds);
   const selectedMemos = visibleMemos.filter((memo) => selectedMemoIds.has(memo.id));
@@ -781,8 +794,7 @@ export const WorkspaceScreen = ({
     mutationFn: async ({ memo, payload }: { memo: MemoDetail; payload: MobileMemoUpdatePayload }) => {
       const syncBaseMemo = await resolveLocalMemo(dataScope, memo.id) ?? memo;
       const optimisticMemo = createOptimisticMemo(syncBaseMemo, payload);
-
-      await queueMobileMemoUpdate(syncQueueScope, {
+      const queuePayload = {
         memoId: syncBaseMemo.id,
         expectedRevision: syncBaseMemo.revision,
         expectedContentHash: syncBaseMemo.contentHash,
@@ -790,15 +802,69 @@ export const WorkspaceScreen = ({
         contentMarkdown: optimisticMemo.contentMarkdown,
         notebookId: optimisticMemo.notebookId,
         tags: optimisticMemo.tags,
-      });
-      await refreshSyncQueueItems();
+      };
 
+      // Online-first: push immediately when the instance is reachable so common
+      // edits never sit in "待同步". Fall back to the durable outbox only when
+      // the network or server cannot accept the write right now.
+      if (client && !syncBaseMemo.id.startsWith("local:")) {
+        try {
+          const editSessionResponse = payload.contentMarkdown !== undefined
+            ? await client.createMemoEditSession(syncBaseMemo.id)
+            : null;
+
+          if (
+            editSessionResponse
+            && (
+              editSessionResponse.editSession.baseRevision !== syncBaseMemo.revision
+              || editSessionResponse.editSession.baseContentHash !== syncBaseMemo.contentHash
+            )
+          ) {
+            throw new ApiRequestError("Note changed before the offline draft could sync.", 409, "revision_conflict");
+          }
+
+          const response = await client.updateMemo(syncBaseMemo.id, {
+            expectedRevision: syncBaseMemo.revision,
+            ...(editSessionResponse
+              ? {
+                  expectedContentHash: syncBaseMemo.contentHash,
+                  editSessionId: editSessionResponse.editSession.id,
+                }
+              : {}),
+            ...payload,
+          });
+
+          await clearMobileMemoUpdateQueueItem(syncQueueScope, syncBaseMemo.id);
+          await refreshSyncQueueItems();
+          return response.memo;
+        } catch (error) {
+          const message = getMobileSyncErrorMessage(error);
+
+          if (isMobileSyncConflictError(error)) {
+            await queueMobileMemoUpdate(syncQueueScope, queuePayload);
+            await markMobileMemoUpdateConflict(syncQueueScope, syncBaseMemo.id, message);
+            await refreshSyncQueueItems();
+            return optimisticMemo;
+          }
+
+          await queueMobileMemoUpdate(syncQueueScope, queuePayload);
+          if (!shouldQueueMobileMemoSaveError(error)) {
+            await markMobileMemoUpdateError(syncQueueScope, syncBaseMemo.id, message);
+          }
+          await refreshSyncQueueItems();
+          // Durable local save succeeded; outbox will retry. Do not fail the editor.
+          return optimisticMemo;
+        }
+      }
+
+      await queueMobileMemoUpdate(syncQueueScope, queuePayload);
+      await refreshSyncQueueItems();
       return optimisticMemo;
     },
     onSuccess: async (memo, variables) => {
       await upsertLocalMemo(dataScope, memo);
       applyOptimisticMemoToCache(queryClient, variables.memo, memo);
-      void runAutomaticSync();
+      void runForcedSync();
     },
   });
 
@@ -1126,8 +1192,12 @@ export const WorkspaceScreen = ({
         onAdoptCloudVersion={(memo) => void handleAdoptCloudVersion(memo)}
         onCopyLocalDraft={(memo) => void handleCopyConflictDraft(memo)}
         onResolveSyncConflict={handleMemoSyncConflict}
+        onRetrySync={() => {
+          void runForcedSync();
+        }}
         onRestore={(memo) => restoreMemoMutation.mutate(memo)}
         onShare={(memo) => shareMemoMutation.mutate(memo)}
+        syncError={selectedMemoSyncError}
         syncStatus={selectedMemoSyncStatus}
         visible={Boolean(selectedMemoId)}
       />
@@ -1176,7 +1246,7 @@ export const WorkspaceScreen = ({
           setMemoView("notebook");
           setSelectedMemoId(null);
         }}
-        onQueued={runAutomaticSync}
+        onQueued={runForcedSync}
         syncQueueScope={syncQueueScope}
         visible={createOpen}
       />
@@ -2281,6 +2351,7 @@ const RichEditorModal = ({
   const flushResolverRef = useRef<(() => void) | null>(null);
   const savingRef = useRef(false);
   const uploadingRef = useRef(false);
+  const memoBaseRef = useRef(memo);
   const [title, setTitle] = useState(resolveEditableMemoTitle(restoredDraft?.title ?? memo?.title));
   const [tagsText, setTagsText] = useState(restoredDraft?.tagsText ?? memo?.tags.join(", ") ?? "");
   const [notebookId, setNotebookId] = useState(restoredDraft?.notebookId ?? memo?.notebookId ?? "");
@@ -2310,7 +2381,8 @@ const RichEditorModal = ({
   }, []);
 
   const persistDraft = async (contentJson: TiptapDoc) => {
-    if (!memo) {
+    const currentMemo = memoBaseRef.current;
+    if (!currentMemo) {
       return;
     }
     const contentSnapshot = JSON.stringify(contentJson);
@@ -2328,8 +2400,8 @@ const RichEditorModal = ({
     flushResolverRef.current?.();
     flushResolverRef.current = null;
     await writeMobileMemoDraft({
-      memoId: memo.id,
-      expectedRevision: memo.revision,
+      memoId: currentMemo.id,
+      expectedRevision: currentMemo.revision,
       title: titleRef.current.trim(),
       contentMarkdown: contentMarkdownRef.current,
       notebookId: notebookIdRef.current,
@@ -2339,19 +2411,23 @@ const RichEditorModal = ({
   };
 
   const save = async () => {
-    if (!memo || savingRef.current || !notebookIdRef.current) {
+    const currentMemo = memoBaseRef.current;
+    if (!currentMemo || savingRef.current || !notebookIdRef.current) {
       return null;
     }
     if (!dirtyRef.current) {
-      return memo;
+      return currentMemo;
     }
+    // Capture whether the user kept typing while this save is in flight so we
+    // do not clear the dirty flag and drop their next autosave.
+    const dirtyGenerationAtStart = contentSnapshotRef.current;
     savingRef.current = true;
     setSaving(true);
     setError(null);
 
     try {
       const savedMemo = await updateMutation.mutateAsync({
-        memo,
+        memo: currentMemo,
         payload: {
           title: titleRef.current.trim() || DEFAULT_MEMO_TITLE,
           contentJson: contentJsonRef.current,
@@ -2360,9 +2436,16 @@ const RichEditorModal = ({
           tags: parseTags(tagsTextRef.current),
         },
       });
-      await clearMobileMemoDraft(memo.id);
-      dirtyRef.current = false;
-      setDirty(false);
+      memoBaseRef.current = savedMemo;
+      await clearMobileMemoDraft(currentMemo.id);
+      if (contentSnapshotRef.current === dirtyGenerationAtStart) {
+        dirtyRef.current = false;
+        setDirty(false);
+      } else {
+        // Newer local edits arrived during the save; keep dirty so the next pass uploads them.
+        dirtyRef.current = true;
+        setDirty(true);
+      }
       setDraftRestored(false);
       return savedMemo;
     } catch (saveError) {
@@ -2556,13 +2639,14 @@ const RichEditorModal = ({
   );
 
   useEffect(() => {
-    if (!memo || !dirty) {
+    const currentMemo = memoBaseRef.current;
+    if (!currentMemo || !dirty) {
       return;
     }
     const timeout = setTimeout(() => {
       void writeMobileMemoDraft({
-        memoId: memo.id,
-        expectedRevision: memo.revision,
+        memoId: currentMemo.id,
+        expectedRevision: currentMemo.revision,
         title: titleRef.current.trim(),
         contentMarkdown: contentMarkdownRef.current,
         notebookId: notebookIdRef.current,
@@ -2574,7 +2658,7 @@ const RichEditorModal = ({
   }, [dirty, memo, notebookId, tagsText, title]);
 
   useEffect(() => {
-    if (!memo || !dirty || !ready || savingRef.current || uploadingRef.current) {
+    if (!memoBaseRef.current || !dirty || !ready || savingRef.current || uploadingRef.current) {
       return;
     }
     const timeout = setTimeout(() => {

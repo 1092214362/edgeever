@@ -304,8 +304,10 @@ export const MemoDetailModal = ({
   onOpenRevisions,
   onRenameResource,
   onResolveSyncConflict,
+  onRetrySync,
   onRestore,
   onShare,
+  syncError,
   syncStatus,
   visible,
 }: {
@@ -325,8 +327,10 @@ export const MemoDetailModal = ({
   onOpenRevisions: (memo: MemoDetail) => void;
   onRenameResource: (memo: MemoDetail, target: MobileResourceTarget, filename: string) => Promise<void>;
   onResolveSyncConflict: (memo: MemoDetail) => void;
+  onRetrySync: () => void;
   onRestore: (memo: MemoDetail) => void;
   onShare: (memo: MemoDetail) => void;
+  syncError: string | null;
   syncStatus: MobileSyncQueueItem["status"] | null;
   visible: boolean;
 }) => {
@@ -421,6 +425,26 @@ export const MemoDetailModal = ({
         : syncStatus === "pending"
           ? "待同步"
           : "已同步";
+  const syncStatusInteractive = syncStatus === "conflict" || syncStatus === "error" || syncStatus === "pending";
+  const handleSyncStatusPress = () => {
+    if (!memo) {
+      return;
+    }
+    if (syncStatus === "conflict") {
+      onResolveSyncConflict(memo);
+      return;
+    }
+    if (syncStatus === "error" || syncStatus === "pending") {
+      const detail = syncError?.trim()
+        || (syncStatus === "pending"
+          ? "本地改动还在等待上传到云端。可立即重试同步。"
+          : "本地改动未能上传到云端。可立即重试同步。");
+      Alert.alert(syncStatusLabel, detail, [
+        { text: "取消", style: "cancel" },
+        { text: "立即同步", onPress: onRetrySync },
+      ]);
+    }
+  };
   const editFabBottom = Math.max(
     safeAreaInsets.bottom,
     Platform.OS === "android" ? ANDROID_SYSTEM_NAVIGATION_FALLBACK : 0
@@ -465,15 +489,26 @@ export const MemoDetailModal = ({
           </Pressable>
           <View style={styles.detailHeaderActions}>
             <Pressable
-              accessibilityHint={syncStatus === "conflict" ? "查看并处理同步冲突" : undefined}
+              accessibilityHint={
+                syncStatus === "conflict"
+                  ? "查看并处理同步冲突"
+                  : syncStatusInteractive
+                    ? "查看同步状态并立即重试"
+                    : undefined
+              }
               accessibilityLabel={syncStatusLabel}
-              accessibilityRole={syncStatus === "conflict" ? "button" : "text"}
-              disabled={syncStatus !== "conflict" || !memo}
-              onPress={() => memo && onResolveSyncConflict(memo)}
+              accessibilityRole={syncStatusInteractive ? "button" : "text"}
+              disabled={!syncStatusInteractive || !memo}
+              onPress={handleSyncStatusPress}
             >
               <Text
                 numberOfLines={1}
-                style={[styles.detailSyncStatus, syncStatus === "conflict" && styles.detailSyncStatusConflict]}
+                style={[
+                  styles.detailSyncStatus,
+                  syncStatus === "conflict" && styles.detailSyncStatusConflict,
+                  syncStatus === "error" && styles.detailSyncStatusError,
+                  syncStatus === "pending" && styles.detailSyncStatusPending,
+                ]}
               >
                 {syncStatusLabel}
               </Text>
@@ -522,6 +557,7 @@ export const MemoDetailModal = ({
             <Text style={styles.conflictBannerText}>
               云端笔记已在其他标签页、设备，或离线期间被更新。可先复制本地草稿，再采用云端版本后继续编辑。
             </Text>
+            {syncError ? <Text style={styles.conflictBannerText}>{syncError}</Text> : null}
             <View style={styles.conflictBannerActions}>
               <Pressable
                 accessibilityLabel="采用云端并重新加载"
@@ -547,6 +583,36 @@ export const MemoDetailModal = ({
               >
                 <Text style={styles.conflictBannerSecondaryButtonText}>更多</Text>
               </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {(syncStatus === "error" || syncStatus === "pending") && memo ? (
+          <View style={syncStatus === "error" ? styles.syncErrorBanner : styles.syncPendingBanner}>
+            <Text style={syncStatus === "error" ? styles.syncErrorBannerText : styles.syncPendingBannerText}>
+              {syncStatus === "error"
+                ? (syncError?.trim() || "本地改动未能上传到云端。内容仍保存在本机，可立即重试。")
+                : (syncError?.trim() || "本地改动待上传。下拉刷新或点此可立即同步。")}
+            </Text>
+            <View style={styles.conflictBannerActions}>
+              <Pressable
+                accessibilityLabel="立即同步"
+                accessibilityRole="button"
+                onPress={onRetrySync}
+                style={syncStatus === "error" ? styles.syncErrorBannerPrimaryButton : styles.syncPendingBannerPrimaryButton}
+              >
+                <Text style={styles.conflictBannerPrimaryButtonText}>立即同步</Text>
+              </Pressable>
+              {syncStatus === "error" ? (
+                <Pressable
+                  accessibilityLabel="复制本地草稿"
+                  accessibilityRole="button"
+                  onPress={() => onCopyLocalDraft(memo)}
+                  style={styles.syncErrorBannerSecondaryButton}
+                >
+                  <Text style={styles.syncErrorBannerSecondaryButtonText}>复制本地草稿</Text>
+                </Pressable>
+              ) : null}
             </View>
           </View>
         ) : null}
