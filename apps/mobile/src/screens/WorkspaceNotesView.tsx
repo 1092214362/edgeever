@@ -1,9 +1,8 @@
-import { memo, type ReactNode } from "react";
+import { memo, useEffect, useState, type ReactNode } from "react";
 import type { MemoFilterMode } from "@edgeever/client";
 import type { MemoSummary, Notebook } from "@edgeever/shared";
 import { MOBILE_UI_METRICS, toggleMobileMemoFilterMode } from "@edgeever/shared/mobile-ui";
 import { ActivityIndicator, FlatList, Platform, RefreshControl, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { Check, ChevronDown, ChevronLeft, MoreHorizontal, Plus, RotateCcw, Search, Sparkles, Tag, X } from "../components/icons";
 import { Pressable, Text, TextInput } from "../components/LocalizedText";
 import type { MobileBootstrapProgress } from "../lib/local-mirror";
@@ -41,6 +40,8 @@ export const NotesView = ({
   onRetry,
   onSearchTextChange,
   onSetMemoView,
+  /** When false, unmount the real TextInput (detail modal / tab switch). */
+  searchInputEnabled = true,
   searchText,
   totalMemoCount,
   selectedMemoIds,
@@ -70,6 +71,7 @@ export const NotesView = ({
   onRetry: () => void;
   onSearchTextChange: (value: string) => void;
   onSetMemoView: (memoView: MemoView) => void;
+  searchInputEnabled?: boolean;
   searchText: string;
   totalMemoCount: number;
   selectionMode: boolean;
@@ -77,7 +79,18 @@ export const NotesView = ({
 }) => {
   const { resolvedTheme } = useMobileTheme();
   const { preference: localePreference, translate } = useMobileLocale();
+  // Fabric on iPadOS 26.5 SIGTRAPs in BaseTextInputShadowNode::measureContent when a
+  // TextInput stays mounted under a closing memo modal / WebView teardown. Only mount
+  // the real input while the user is actively searching.
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchHostActive = searchInputEnabled && !selectionMode;
+  useEffect(() => {
+    if (!searchHostActive) {
+      setSearchFocused(false);
+    }
+  }, [searchHostActive]);
   const searchActive = searchText.trim().length > 0;
+  const showSearchInput = searchHostActive && (searchFocused || searchActive);
   const filterActive = memoFilterMode !== "all";
   const searchStatusLabel = translate("正在搜索");
   const searchResultLabel = translate(`${totalMemoCount} 条结果`);
@@ -124,19 +137,45 @@ export const NotesView = ({
           <View style={styles.mobileSearchRow}>
               <View style={[styles.mobileSearchButton, searchActive && styles.mobileSearchButtonActive, searchActive && resolvedTheme === "dark" && styles.mobileSearchButtonActiveDark]}>
                 <Search color={searchActive && resolvedTheme === "dark" ? "rgb(5, 150, 105)" : searchActive ? "#059669" : "#64748b"} size={17} />
-                <TextInput
-                  accessibilityLabel="搜索笔记"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onChangeText={onSearchTextChange}
-                  placeholder="搜索笔记"
-                  placeholderTextColor="#94a3b8"
-                  returnKeyType="search"
-                  style={[styles.mobileSearchInput, searchActive && resolvedTheme === "dark" && styles.mobileSearchInputActiveDark]}
-                  value={searchText}
-                />
+                {showSearchInput ? (
+                  <TextInput
+                    accessibilityLabel="搜索笔记"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus={searchFocused && !searchActive}
+                    onBlur={() => {
+                      if (!searchText.trim()) {
+                        setSearchFocused(false);
+                      }
+                    }}
+                    onChangeText={onSearchTextChange}
+                    placeholder="搜索笔记"
+                    placeholderTextColor="#94a3b8"
+                    returnKeyType="search"
+                    style={[styles.mobileSearchInput, searchActive && resolvedTheme === "dark" && styles.mobileSearchInputActiveDark]}
+                    value={searchText}
+                  />
+                ) : (
+                  <Pressable
+                    accessibilityLabel="搜索笔记"
+                    accessibilityRole="search"
+                    disabled={!searchHostActive}
+                    onPress={() => setSearchFocused(true)}
+                    style={[styles.mobileSearchInput, { justifyContent: "center" }]}
+                  >
+                    <Text numberOfLines={1} style={{ color: "#94a3b8" }}>搜索笔记</Text>
+                  </Pressable>
+                )}
                 {searchText ? (
-                  <Pressable accessibilityLabel="清空搜索" accessibilityRole="button" onPress={() => onSearchTextChange("")} style={styles.mobileSearchClearButton}>
+                  <Pressable
+                    accessibilityLabel="清空搜索"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      onSearchTextChange("");
+                      setSearchFocused(false);
+                    }}
+                    style={styles.mobileSearchClearButton}
+                  >
                     <X color={resolvedTheme === "dark" ? "rgb(100, 116, 139)" : "#64748b"} size={14} />
                   </Pressable>
                 ) : null}
@@ -395,21 +434,16 @@ const MemoCard = memo(function MemoCard({
 }) {
   const localePreference = useMobileLocale().preference;
   const memoTitle = memo.title?.trim() || DEFAULT_MEMO_TITLE;
-  const pressScale = useSharedValue(1);
-  const pressAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pressScale.value }],
-  }));
 
-  // Avoid Reanimated layout/entering transitions on list cards: concurrent
-  // Fabric text measurement on iPad (compatibility mode / wide width) crashed
-  // App Review builds with SIGSEGV inside RCTTextLayoutManager.
+  // Keep memo cards free of Reanimated transforms: concurrent Fabric
+  // AttributedString/Paragraph measure + animated scale corrupted heap on
+  // iPadOS 26.5 (SIGTRAP/SIGSEGV in ParagraphShadowNode / RCTTextLayoutManager).
   return (
-    <Animated.View
+    <View
       style={[
         styles.memoCard,
         listDensity === "compact" && styles.memoCardCompact,
         selected && styles.memoCardSelected,
-        pressAnimatedStyle,
       ]}
     >
       {selectionMode ? (
@@ -431,12 +465,6 @@ const MemoCard = memo(function MemoCard({
         delayLongPress={520}
         onLongPress={onLongPress}
         onPress={onPress}
-        onPressIn={() => {
-          pressScale.value = withTiming(0.985, { duration: 100 });
-        }}
-        onPressOut={() => {
-          pressScale.value = withTiming(1, { duration: 160 });
-        }}
         style={[styles.memoCardContent, listDensity === "compact" && styles.memoCardContentCompact, selectionMode && styles.memoCardContentWithSelection]}
       >
         <View style={styles.memoCardTop}>
@@ -461,7 +489,7 @@ const MemoCard = memo(function MemoCard({
           ))}
         </View>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }, (previous, next) =>
   previous.memo === next.memo &&

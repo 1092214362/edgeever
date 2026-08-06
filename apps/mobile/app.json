@@ -18,10 +18,10 @@
     "icon": "./assets/icon.png",
     "orientation": "default",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "bundleIdentifier": "org.edgeever.mobile",
-      "supportsTablet": false,
+      "supportsTablet": true,
       "config": {
         "usesNonExemptEncryption": false
       },

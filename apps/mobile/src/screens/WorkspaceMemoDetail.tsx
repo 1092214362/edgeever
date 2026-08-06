@@ -1,277 +1,29 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { resolveMemoContentDoc, type MemoDetail, type TiptapDoc } from "@edgeever/shared";
-import { ActivityIndicator, Image as RNImage, Platform, StyleSheet, View, type ImageStyle, type StyleProp } from "react-native";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { resolveMemoContentMarkdown, type MemoDetail } from "@edgeever/shared";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { SvgXml } from "react-native-svg";
-import { ChevronDown, ChevronLeft, ChevronRight, History, MoreHorizontal, Pencil, RotateCcw, Search, Share2, Tag, Trash2, X } from "../components/icons";
+import { WebView } from "react-native-webview";
+import { ChevronLeft, ChevronRight, History, MoreHorizontal, Pencil, RotateCcw, Search, Share2, Trash2, X } from "../components/icons";
 import { Alert, Pressable, Text, TextInput } from "../components/LocalizedText";
-import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
 import { MobileResourceActions } from "../components/MobileResourceActions";
-import { SAFE_DOM_WEBVIEW_PROPS } from "../lib/mobile-dom";
 import {
   openMobileResource,
-  parseMobileResourceTargetJson,
   saveMobileResourceAs,
   type MobileResourceTarget,
 } from "../lib/mobile-attachments";
+import { SAFE_DOM_WEBVIEW_PROPS } from "../lib/mobile-dom";
+import { buildMemoDetailHtml } from "../lib/mobile-markdown-html";
 import { useMobileLocale } from "../lib/mobile-locale";
 import { useMobileTheme } from "../lib/mobile-theme";
 import { useSession } from "../lib/session";
 import { beginEditorStartup } from "../lib/startup-performance";
 import type { MobileSyncQueueItem } from "../lib/sync-queue";
+import { getTextSearchMatches } from "./workspace-utils";
 import { styles } from "./workspace-styles";
 
 const ANDROID_SYSTEM_NAVIGATION_FALLBACK = 48;
 const DEFAULT_MEMO_TITLE = "无标题笔记";
-const RESOURCE_DATA_URL_CACHE_LIMIT = 32;
-
-type SessionLike = { baseUrl: string; token: string } | null;
-type AuthenticatedImageSource = {
-  headers?: { Authorization: string };
-  uri: string;
-};
-
-const isProtectedResourceSource = (source: string, session: SessionLike) => {
-  const baseUrl = session?.baseUrl.replace(/\/+$/, "") ?? "";
-  return source.startsWith("/api/v1/resources/")
-    || Boolean(baseUrl && (source.startsWith(`${baseUrl}/api/v1/resources/`) || source.startsWith("/api/v1/resources/")));
-};
-
-/** Ensure protected resource URLs hit the blob route the API serves. */
-const normalizeProtectedResourcePath = (source: string, session: SessionLike) => {
-  const baseUrl = session?.baseUrl.replace(/\/+$/, "") ?? "";
-  let path = source;
-  if (baseUrl && path.startsWith(`${baseUrl}/`)) {
-    path = path.slice(baseUrl.length);
-  }
-  if (!path.startsWith("/api/v1/resources/")) {
-    return path;
-  }
-  if (/\/blob(?:$|[?#])/.test(path)) {
-    return path;
-  }
-  const match = path.match(/^(\/api\/v1\/resources\/[^/?#]+)/);
-  return match ? `${match[1]}/blob` : path;
-};
-
-const getAuthenticatedResourceSource = (
-  source: string,
-  session: SessionLike
-): AuthenticatedImageSource => {
-  const baseUrl = session?.baseUrl.replace(/\/+$/, "") ?? "";
-  const uri = source.startsWith("/") && baseUrl ? `${baseUrl}${source}` : source;
-  const isProtectedResource = isProtectedResourceSource(source, session)
-    || Boolean(baseUrl && uri.startsWith(`${baseUrl}/api/v1/resources/`));
-
-  return {
-    uri,
-    ...(session?.token && isProtectedResource ? { headers: { Authorization: `Bearer ${session.token}` } } : {}),
-  };
-};
-
-const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onerror = () => reject(reader.error ?? new Error("资源读取失败"));
-  reader.onloadend = () => {
-    if (typeof reader.result === "string") {
-      resolve(reader.result);
-      return;
-    }
-    reject(new Error("资源读取失败"));
-  };
-  reader.readAsDataURL(blob);
-});
-
-const resourceDataUrlCache = new Map<string, Promise<string | null>>();
-const loadProtectedResourceDataUrl = (
-  source: string,
-  session: SessionLike,
-  getResourceBlob: ((resourceUrl: string) => Promise<Blob>) | null | undefined
-) => {
-  if (!getResourceBlob || !isProtectedResourceSource(source, session)) {
-    return Promise.resolve(null);
-  }
-  const path = normalizeProtectedResourcePath(source, session);
-  const cacheKey = `${session?.token ?? ""}\n${path}`;
-  const cached = resourceDataUrlCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-  if (resourceDataUrlCache.size >= RESOURCE_DATA_URL_CACHE_LIMIT) {
-    const oldestKey = resourceDataUrlCache.keys().next().value;
-    if (oldestKey) {
-      resourceDataUrlCache.delete(oldestKey);
-    }
-  }
-  const pending = getResourceBlob(path)
-    .then(blobToDataUrl)
-    .catch(() => {
-      resourceDataUrlCache.delete(cacheKey);
-      return null;
-    });
-  resourceDataUrlCache.set(cacheKey, pending);
-  return pending;
-};
-
-type CachedSvgResource = {
-  aspectRatio: number | null;
-  xml: string;
-};
-
-const AUTHENTICATED_SVG_CACHE_LIMIT = 24;
-const authenticatedSvgCache = new Map<string, Promise<CachedSvgResource | null>>();
-const getAuthenticatedSvgCacheKey = (source: AuthenticatedImageSource) =>
-  `${source.uri}\n${source.headers?.Authorization ?? ""}`;
-const loadAuthenticatedSvg = (source: AuthenticatedImageSource) => {
-  const cacheKey = getAuthenticatedSvgCacheKey(source);
-  const cached = authenticatedSvgCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-  if (authenticatedSvgCache.size >= AUTHENTICATED_SVG_CACHE_LIMIT) {
-    const oldestKey = authenticatedSvgCache.keys().next().value;
-    if (oldestKey) {
-      authenticatedSvgCache.delete(oldestKey);
-    }
-  }
-  const pending = fetch(source.uri, { headers: source.headers })
-    .then(async (response) => {
-      if (!response.ok) {
-        throw new Error(`Resource request failed with ${response.status}`);
-      }
-      if (!response.headers.get("Content-Type")?.toLowerCase().includes("svg")) {
-        return null;
-      }
-      const xml = await response.text();
-      const viewBox = xml.match(/viewBox=["']\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)\s*["']/i);
-      const width = Number(viewBox?.[1]);
-      const height = Number(viewBox?.[2]);
-      return {
-        aspectRatio: width > 0 && height > 0 ? width / height : null,
-        xml,
-      };
-    })
-    .catch(() => {
-      authenticatedSvgCache.delete(cacheKey);
-      return null;
-    });
-  authenticatedSvgCache.set(cacheKey, pending);
-  return pending;
-};
-
-const AuthenticatedResourceImage = ({
-  alt,
-  fitAspect = false,
-  href,
-  loadResourceBlob,
-  resizeMode = "cover",
-  session,
-  style,
-}: {
-  alt: string;
-  fitAspect?: boolean;
-  href: string;
-  loadResourceBlob?: ((resourceUrl: string) => Promise<Blob>) | null;
-  resizeMode?: "center" | "contain" | "cover" | "repeat" | "stretch";
-  session: SessionLike;
-  style: StyleProp<ImageStyle>;
-}) => {
-  const headerSource = useMemo(() => getAuthenticatedResourceSource(href, session), [href, session]);
-  const [displaySource, setDisplaySource] = useState<AuthenticatedImageSource>(headerSource);
-  const [aspectRatio, setAspectRatio] = useState(16 / 9);
-  const [svgXml, setSvgXml] = useState<string | null>(null);
-  const svgRequestStartedRef = useRef(false);
-  const svgSourceKeyRef = useRef("");
-  const svgSourceKey = getAuthenticatedSvgCacheKey(displaySource);
-  const imageStyle = fitAspect ? [style, { aspectRatio, height: undefined, width: "100%" as const }] : style;
-
-  useEffect(() => {
-    let cancelled = false;
-    setSvgXml(null);
-    setAspectRatio(16 / 9);
-    svgRequestStartedRef.current = false;
-    setDisplaySource(headerSource);
-
-    void loadProtectedResourceDataUrl(href, session, loadResourceBlob).then((dataUrl) => {
-      if (cancelled || !dataUrl) {
-        return;
-      }
-      setDisplaySource({ uri: dataUrl });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [headerSource, href, loadResourceBlob, session]);
-
-  useEffect(() => {
-    svgSourceKeyRef.current = svgSourceKey;
-    const cached = authenticatedSvgCache.get(svgSourceKey);
-    if (cached) {
-      svgRequestStartedRef.current = true;
-      void cached.then((result) => {
-        if (!result || svgSourceKeyRef.current !== svgSourceKey) {
-          return;
-        }
-        if (result.aspectRatio) {
-          setAspectRatio(result.aspectRatio);
-        }
-        setSvgXml(result.xml);
-      });
-    }
-    return () => {
-      if (svgSourceKeyRef.current === svgSourceKey) {
-        svgSourceKeyRef.current = "";
-      }
-    };
-  }, [svgSourceKey]);
-
-  const loadSvgFallback = () => {
-    if (svgRequestStartedRef.current) {
-      return;
-    }
-    svgRequestStartedRef.current = true;
-    void loadAuthenticatedSvg(displaySource)
-      .then((result) => {
-        if (!result || svgSourceKeyRef.current !== svgSourceKey) {
-          return;
-        }
-        if (result.aspectRatio) {
-          setAspectRatio(result.aspectRatio);
-        }
-        setSvgXml(result.xml);
-      });
-  };
-
-  if (svgXml) {
-    return (
-      <View accessibilityLabel={alt || undefined} accessible={Boolean(alt)} style={imageStyle}>
-        <SvgXml height="100%" width="100%" xml={svgXml} />
-      </View>
-    );
-  }
-
-  return (
-    <RNImage
-      accessibilityLabel={alt || undefined}
-      accessible={Boolean(alt)}
-      fadeDuration={Platform.OS === "android" ? 0 : undefined}
-      onLoad={(event) => {
-        const { height, width } = event.nativeEvent.source;
-        if (height > 0 && width > 0) {
-          setAspectRatio(width / height);
-        }
-      }}
-      onError={loadSvgFallback}
-      resizeMethod={Platform.OS === "android" ? "resize" : "auto"}
-      resizeMode={resizeMode}
-      source={displaySource}
-      style={imageStyle}
-    />
-  );
-};
-
 
 const DetailActionSheetItem = ({ danger = false, disabled = false, icon, label, onPress }: { danger?: boolean; disabled?: boolean; icon: ReactNode; label: string; onPress: () => void }) => (
   <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[styles.actionSheetItem, disabled && styles.buttonDisabled]}>
@@ -330,27 +82,16 @@ export const MemoDetailModal = ({
   syncStatus: MobileSyncQueueItem["status"] | null;
   visible: boolean;
 }) => {
-  const { client, session } = useSession();
+  const { client } = useSession();
   const { resolvedTheme } = useMobileTheme();
   const { resolvedLocale } = useMobileLocale();
   const safeAreaInsets = useSafeAreaInsets();
   const [actionsOpen, setActionsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchMatchCount, setSearchMatchCount] = useState(0);
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
-  const [imagePreview, setImagePreview] = useState<{ alt: string; source: string } | null>(null);
   const [resourceTarget, setResourceTarget] = useState<MobileResourceTarget | null>(null);
-  const [viewerReady, setViewerReady] = useState(false);
-  const viewerRef = useRef<LocalTiptapEditorRef>(null);
-  const resourceDataUrlCacheRef = useRef(new Map<string, Promise<string | null>>());
-
-  const baseUrl = session?.baseUrl.replace(/\/+$/, "") ?? "";
-  const viewerContent = useMemo<TiptapDoc>(
-    () => (memo ? resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown) : { type: "doc", content: [{ type: "paragraph" }] }),
-    [memo]
-  );
-
+  const [bodyReady, setBodyReady] = useState(false);
   const downloadResource = useCallback(async (target: MobileResourceTarget) => {
     if (!client) throw new Error(resolvedLocale === "en-US" ? "The resource client is unavailable." : "当前无法读取资源。");
     try {
@@ -374,44 +115,31 @@ export const MemoDetailModal = ({
     }
   }, [client, resolvedLocale]);
 
-  const loadViewerResource = useCallback((source: string) => {
-    if (!client) {
-      return Promise.resolve(null);
+  // HTML in a JS-disabled WebView: full markdown (tables/bold/etc.) without Fabric
+  // ParagraphShadowNode / AttributedString measure crashes on iPadOS 26.5.
+  // Not Expo Dom TipTap — static HTML only + media capture denied.
+  const detailText = memo
+    ? resolveMemoContentMarkdown(memo.contentJson, memo.contentMarkdown) || memo.contentText || "没有正文内容"
+    : "没有正文内容";
+  const detailHtml = useMemo(
+    () => buildMemoDetailHtml(detailText, resolvedTheme, {
+      notebookName,
+      tags: memo?.tags,
+      title: memo?.title?.trim() || DEFAULT_MEMO_TITLE,
+    }),
+    [detailText, memo?.tags, memo?.title, notebookName, resolvedTheme]
+  );
+  const searchMatches = useMemo(() => getTextSearchMatches(detailText, searchQuery), [detailText, searchQuery]);
+  // Unmount WebView as soon as the modal hides so teardown does not race Me tab layout.
+  const showBodyWebView = Boolean(visible && memo && !isLoading);
+  // Close search host when leaving the memo so no TextInput is measured during dismiss.
+  useEffect(() => {
+    if (!visible) {
+      setSearchOpen(false);
+      setSearchQuery("");
     }
-    const path = normalizeProtectedResourcePath(source, session);
-    const cached = resourceDataUrlCacheRef.current.get(path);
-    if (cached) {
-      return cached;
-    }
-    const pending = client.getResourceBlob(path).then(blobToDataUrl).catch(() => null);
-    resourceDataUrlCacheRef.current.set(path, pending);
-    return pending;
-  }, [client, session]);
-
-  const onResourcePress = useCallback(async (targetJson: string) => {
-    const target = parseMobileResourceTargetJson(targetJson);
-    if (target) {
-      setResourceTarget(target);
-    }
-  }, []);
-
-  const onImagePreview = useCallback(async (payloadJson: string) => {
-    try {
-      const parsed = JSON.parse(payloadJson) as { alt?: unknown; source?: unknown };
-      if (typeof parsed.source === "string" && parsed.source) {
-        setImagePreview({
-          alt: typeof parsed.alt === "string" ? parsed.alt : "",
-          source: parsed.source,
-        });
-      }
-    } catch {
-      // Ignore malformed bridge payloads.
-    }
-  }, []);
-
-  const searchMatchLabel = searchQuery.trim()
-    ? `${searchMatchCount > 0 ? activeMatchIndex + 1 : 0}/${searchMatchCount}`
-    : "0/0";
+  }, [visible]);
+  const searchMatchLabel = searchQuery.trim() ? `${searchMatches.length > 0 ? activeMatchIndex + 1 : 0}/${searchMatches.length}` : "0/0";
   const syncStatusLabel = isSaving || syncStatus === "syncing"
     ? "保存中"
     : syncStatus === "conflict"
@@ -427,28 +155,19 @@ export const MemoDetailModal = ({
   ) + 16;
 
   useEffect(() => {
-    setViewerReady(false);
-    setSearchOpen(false);
-    setSearchQuery("");
-    setSearchMatchCount(0);
     setActiveMatchIndex(0);
-    setImagePreview(null);
-    setResourceTarget(null);
-    resourceDataUrlCacheRef.current.clear();
-  }, [memo?.id]);
+  }, [detailText, searchQuery]);
 
   useEffect(() => {
-    if (!viewerReady || !searchOpen) {
-      return;
-    }
-    viewerRef.current?.search(searchQuery, activeMatchIndex);
-  }, [activeMatchIndex, searchOpen, searchQuery, viewerReady]);
+    setBodyReady(false);
+  }, [memo?.id]);
 
   const moveSearchMatch = (direction: 1 | -1) => {
-    if (searchMatchCount === 0) {
+    if (searchMatches.length === 0) {
       return;
     }
-    setActiveMatchIndex((current) => (current + direction + searchMatchCount) % searchMatchCount);
+
+    setActiveMatchIndex((current) => (current + direction + searchMatches.length) % searchMatches.length);
   };
 
   const closeActionsAndRun = (action: () => void) => {
@@ -556,106 +275,61 @@ export const MemoDetailModal = ({
             <ActivityIndicator color="#0f172a" />
           </View>
         ) : memo ? (
-          <View style={detailLayoutStyles.body}>
-            <View style={detailLayoutStyles.meta}>
-              <Text selectable style={styles.detailTitle}>{memo.title?.trim() || DEFAULT_MEMO_TITLE}</Text>
-              <View style={styles.detailMetaRow}>
-                <View style={styles.detailNotebookButton}>
-                  <Text numberOfLines={1} selectable style={styles.detailNotebookName}>{notebookName}</Text>
-                  <ChevronDown color="#94a3b8" size={14} />
+          <View style={detailBodyStyles.container}>
+            {searchOpen ? (
+              <View style={[styles.noteSearchPanel, detailBodyStyles.searchPanel]}>
+                <View style={styles.searchBox}>
+                  <Search color="#64748b" size={18} />
+                  <TextInput
+                    accessibilityLabel="在当前笔记内搜索"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onChangeText={setSearchQuery}
+                    placeholder="在当前笔记内搜索"
+                    placeholderTextColor="#94a3b8"
+                    style={styles.searchInput}
+                    value={searchQuery}
+                  />
+                  <Text style={[styles.noteSearchCount, searchQuery.trim() && searchMatches.length === 0 && styles.noteSearchCountEmpty]}>{searchMatchLabel}</Text>
                 </View>
-                <View style={styles.detailTagsGroup}>
-                  <Tag color="#64748b" size={16} />
-                  <Text
-                    numberOfLines={1}
-                    selectable
-                    style={[styles.detailTagsInline, memo.tags.length === 0 && styles.detailTagsPlaceholder]}
-                  >
-                    {memo.tags.length ? memo.tags.join(", ") : "添加标签，用逗号分隔"}
-                  </Text>
+                <View style={styles.richEditorSearchActions}>
+                  <DetailActionButton disabled={searchMatches.length === 0} label="上一个搜索结果" onPress={() => moveSearchMatch(-1)}>
+                    <ChevronLeft color={searchMatches.length === 0 ? "#cbd5e1" : "#0f172a"} size={16} />
+                  </DetailActionButton>
+                  <DetailActionButton disabled={searchMatches.length === 0} label="下一个搜索结果" onPress={() => moveSearchMatch(1)}>
+                    <ChevronRight color={searchMatches.length === 0 ? "#cbd5e1" : "#0f172a"} size={16} />
+                  </DetailActionButton>
+                  <DetailActionButton label="关闭搜索" onPress={() => {
+                    setSearchOpen(false);
+                    setSearchQuery("");
+                  }}>
+                    <X color="#0f172a" size={16} />
+                  </DetailActionButton>
                 </View>
-              </View>
-              {searchOpen ? (
-                <View style={styles.noteSearchPanel}>
-                  <View style={styles.searchBox}>
-                    <Search color="#64748b" size={18} />
-                    <TextInput
-                      accessibilityLabel="在当前笔记内搜索"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onChangeText={(value) => {
-                        setSearchQuery(value);
-                        setActiveMatchIndex(0);
-                      }}
-                      placeholder="在当前笔记内搜索"
-                      placeholderTextColor="#94a3b8"
-                      style={styles.searchInput}
-                      value={searchQuery}
-                    />
-                    <Text style={[styles.noteSearchCount, searchQuery.trim() && searchMatchCount === 0 && styles.noteSearchCountEmpty]}>{searchMatchLabel}</Text>
-                  </View>
-                  <View style={styles.richEditorSearchActions}>
-                    <DetailActionButton disabled={searchMatchCount === 0} label="上一个搜索结果" onPress={() => moveSearchMatch(-1)}>
-                      <ChevronLeft color={searchMatchCount === 0 ? "#cbd5e1" : "#0f172a"} size={16} />
-                    </DetailActionButton>
-                    <DetailActionButton disabled={searchMatchCount === 0} label="下一个搜索结果" onPress={() => moveSearchMatch(1)}>
-                      <ChevronRight color={searchMatchCount === 0 ? "#cbd5e1" : "#0f172a"} size={16} />
-                    </DetailActionButton>
-                    <DetailActionButton label="关闭搜索" onPress={() => {
-                      setSearchOpen(false);
-                      setSearchQuery("");
-                      setSearchMatchCount(0);
-                      setActiveMatchIndex(0);
-                      viewerRef.current?.search("", 0);
-                    }}>
-                      <X color="#0f172a" size={16} />
-                    </DetailActionButton>
-                  </View>
-                </View>
-              ) : null}
-              <View style={styles.detailDivider} />
-            </View>
-            {baseUrl ? (
-              <LocalTiptapEditor
-                key={memo.id}
-                baseUrl={baseUrl}
-                content={viewerContent}
-                dom={{
-                  ...SAFE_DOM_WEBVIEW_PROPS,
-                  bounces: true,
-                  contentInsetAdjustmentBehavior: "never",
-                  overScrollMode: "never",
-                  scrollEnabled: false,
-                  style: [
-                    detailLayoutStyles.viewer,
-                    resolvedTheme === "dark" ? detailLayoutStyles.viewerDark : null,
-                  ],
-                }}
-                locale={resolvedLocale}
-                mode="viewer"
-                onImagePreview={onImagePreview}
-                onLoadResource={loadViewerResource}
-                onReady={async () => {
-                  setViewerReady(true);
-                }}
-                onResourcePress={onResourcePress}
-                onSearchResult={async (count, index) => {
-                  setSearchMatchCount(count);
-                  setActiveMatchIndex(count > 0 ? index : 0);
-                }}
-                ref={viewerRef}
-                theme={resolvedTheme}
-              />
-            ) : (
-              <View style={styles.centerState}>
-                <Text style={styles.errorText}>{resolvedLocale === "en-US" ? "Not signed in." : "未登录。"}</Text>
-              </View>
-            )}
-            {!viewerReady ? (
-              <View pointerEvents="none" style={detailLayoutStyles.viewerLoading}>
-                <ActivityIndicator color="#0f172a" />
               </View>
             ) : null}
+            <View style={[detailBodyStyles.webHost, resolvedTheme === "dark" ? detailBodyStyles.webHostDark : null]}>
+              {showBodyWebView ? (
+                <WebView
+                  key={memo.id}
+                  {...SAFE_DOM_WEBVIEW_PROPS}
+                  allowsLinkPreview={false}
+                  // Static HTML only — no JS reduces hang/TCC surface vs Dom TipTap.
+                  domStorageEnabled={false}
+                  javaScriptEnabled={false}
+                  onLoadEnd={() => setBodyReady(true)}
+                  originWhitelist={["*"]}
+                  setSupportMultipleWindows={false}
+                  source={{ html: detailHtml }}
+                  style={[detailBodyStyles.webView, !bodyReady && detailBodyStyles.webViewHidden]}
+                />
+              ) : null}
+              {bodyReady ? null : (
+                <View pointerEvents="none" style={detailBodyStyles.loadingOverlay}>
+                  <ActivityIndicator color="#0f172a" />
+                </View>
+              )}
+            </View>
           </View>
         ) : (
           <View style={styles.centerState}>
@@ -692,28 +366,6 @@ export const MemoDetailModal = ({
             </Pressable>
           </Modal>
         ) : null}
-        <Modal animationType="fade" onRequestClose={() => setImagePreview(null)} transparent visible={Boolean(imagePreview)}>
-          <View style={resourceImageStyles.previewBackdrop}>
-            {imagePreview ? (
-              <AuthenticatedResourceImage
-                alt={imagePreview.alt}
-                href={imagePreview.source}
-                loadResourceBlob={client?.getResourceBlob}
-                resizeMode="contain"
-                session={session}
-                style={resourceImageStyles.previewImage}
-              />
-            ) : null}
-            <Pressable
-              accessibilityLabel={resolvedLocale === "en-US" ? "Close image preview" : "关闭图片预览"}
-              accessibilityRole="button"
-              onPress={() => setImagePreview(null)}
-              style={resourceImageStyles.previewClose}
-            >
-              <X color="#ffffff" size={24} />
-            </Pressable>
-          </View>
-        </Modal>
         <MobileResourceActions
           canMutate={Boolean(memo && !memo.isDeleted && !memo.id.startsWith("local:"))}
           onClose={() => setResourceTarget(null)}
@@ -734,54 +386,35 @@ export const MemoDetailModal = ({
   );
 };
 
-const detailLayoutStyles = StyleSheet.create({
-  body: {
+const detailBodyStyles = StyleSheet.create({
+  container: {
     flex: 1,
     minHeight: 0,
   },
-  meta: {
-    paddingBottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+  loadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.72)",
+    justifyContent: "center",
   },
-  viewer: {
+  searchPanel: {
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+  webHost: {
     backgroundColor: "#ffffff",
     flex: 1,
     minHeight: 0,
   },
-  viewerDark: {
+  webHostDark: {
     backgroundColor: "#0f172a",
   },
-  viewerLoading: {
-    ...StyleSheet.absoluteFill,
-    alignItems: "center",
-    backgroundColor: "rgba(248,250,252,0.72)",
-    justifyContent: "center",
-    top: 120,
+  webView: {
+    backgroundColor: "transparent",
+    flex: 1,
+  },
+  webViewHidden: {
+    opacity: 0,
   },
 });
 
-const resourceImageStyles = StyleSheet.create({
-  previewBackdrop: {
-    alignItems: "center",
-    backgroundColor: "rgba(2,6,23,0.96)",
-    flex: 1,
-    justifyContent: "center",
-    padding: 16,
-  },
-  previewClose: {
-    alignItems: "center",
-    backgroundColor: "rgba(15,23,42,0.78)",
-    borderRadius: 999,
-    height: 46,
-    justifyContent: "center",
-    position: "absolute",
-    right: 18,
-    top: 54,
-    width: 46,
-  },
-  previewImage: {
-    height: "100%",
-    width: "100%",
-  },
-});

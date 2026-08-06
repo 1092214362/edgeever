@@ -390,6 +390,29 @@ export const WorkspaceScreen = ({
     }
   }, [memosQuery.data, notebooksQuery.data]);
 
+  // Keep list TextInput unmounted while a note is open, while Me/settings is
+  // open or opening, while the rich editor is opening/open, and for a short
+  // settle window after close — Fabric TextInput measure races WebView teardown
+  // on iPadOS 26.5.
+  const [searchInputEnabled, setSearchInputEnabled] = useState(true);
+  const [richEditorOpening, setRichEditorOpening] = useState(false);
+  const [settingsOpening, setSettingsOpening] = useState(false);
+  const settingsOpenGenerationRef = useRef(0);
+  useEffect(() => {
+    if (
+      selectedMemoId
+      || richEditingSession
+      || richEditorOpening
+      || settingsOpening
+      || activeView === "settings"
+    ) {
+      setSearchInputEnabled(false);
+      return;
+    }
+    const timer = setTimeout(() => setSearchInputEnabled(true), 500);
+    return () => clearTimeout(timer);
+  }, [activeView, richEditingSession, richEditorOpening, selectedMemoId, settingsOpening]);
+
   const refresh = async () => {
     if (client) {
       await syncMobileLocalMirror(client, dataScope);
@@ -424,6 +447,7 @@ export const WorkspaceScreen = ({
   };
 
   const showAllNotes = () => {
+    setSelectedMemoId(null);
     setActiveView("notes");
     setMemoView("notebook");
     setActiveNotebookId(ALL_NOTES_ID);
@@ -432,24 +456,57 @@ export const WorkspaceScreen = ({
   };
 
   const showTrash = () => {
+    setSelectedMemoId(null);
     setMemoView("trash");
     setActiveNotebookId(ALL_NOTES_ID);
     setSearchText("");
     clearSelection();
   };
 
-  const openSettings = () => {
+  const openSettings = useCallback(async () => {
+    // Me crash (16:40): same-frame unmount of NotesView + detail WebView while
+    // mounting Settings destroyed ShadowNodeFamily under Hermes HadesGC
+    // (SIGSEGV in ~ShadowNodeFamily on concurrent GC). Sequence instead:
+    // 1) tear down detail + search TextInput, 2) settle, 3) present Me as Modal
+    // without unmounting the notes tree.
+    const generation = ++settingsOpenGenerationRef.current;
+    setSettingsOpening(true);
+    setSearchInputEnabled(false);
+    setSelectedMemoId(null);
     setSearchText("");
-    setActiveView("settings");
-  };
+    setNotesActionsOpen(false);
+    setSelectionMode(false);
+    setSelectedMemoIds(new Set());
+    setSelectionMoveOpen(false);
+    setSelectionMoreOpen(false);
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (generation !== settingsOpenGenerationRef.current) {
+        return;
+      }
+      setActiveView("settings");
+    } finally {
+      if (generation === settingsOpenGenerationRef.current) {
+        setSettingsOpening(false);
+      }
+    }
+  }, []);
 
-  const closeSettings = () => {
+  const closeSettings = useCallback(() => {
+    settingsOpenGenerationRef.current += 1;
+    setSettingsOpening(false);
+    setSelectedMemoId(null);
     setActiveView("notes");
     if (memoView === "trash") {
       setMemoView("notebook");
       setActiveNotebookId(ALL_NOTES_ID);
     }
-  };
+  }, [memoView]);
 
   const toggleVisibleSelection = () => {
     const visibleMemoIds = visibleMemos.map((memo) => memo.id);
@@ -485,6 +542,8 @@ export const WorkspaceScreen = ({
 
   const closeRichEditor = () => {
     const memoId = richEditingSession?.memo.id ?? null;
+    // Keep list search TextInput off while the editor tree finishes leaving.
+    setSearchInputEnabled(false);
     setRichEditingSession(null);
     setSelectedMemoId(null);
     if (memoId) {
@@ -505,24 +564,42 @@ export const WorkspaceScreen = ({
 
   const openRichEditor = useCallback(async (memo: MemoDetail) => {
     beginEditorStartup();
-    let editingMemo = memo;
-    const queuedItem = (await listMobileSyncQueueItems(syncQueueScope)).find((item) => item.memoId === memo.id);
+    // Tear down the detail HTML WebView and keep list TextInput unmounted before
+    // mounting the editor chrome / Dom TipTap. Simultaneous Fabric TextInput
+    // measure + WKWebView host creation SIGSEGVs on iPadOS 26.5.
+    setRichEditorOpening(true);
+    setSearchInputEnabled(false);
+    setSelectedMemoId(null);
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
+      // Wait long enough for detail Modal + static WebView to fully leave the tree.
+      await new Promise((resolve) => setTimeout(resolve, 280));
 
-    if (!queuedItem && client && !memo.id.startsWith("local:")) {
-      try {
-        const response = await client.getMemo(memo.id);
-        editingMemo = response.memo;
-        await upsertLocalMemo(dataScope, editingMemo);
-        queryClient.setQueryData(["mobile", "memo", "notebook", editingMemo.id], { memo: editingMemo });
-        queryClient.setQueryData(["mobile", "memo", "trash", editingMemo.id], { memo: editingMemo });
-      } catch {
-        // The local mirror remains editable while offline.
+      let editingMemo = memo;
+      const queuedItem = (await listMobileSyncQueueItems(syncQueueScope)).find((item) => item.memoId === memo.id);
+
+      if (!queuedItem && client && !memo.id.startsWith("local:")) {
+        try {
+          const response = await client.getMemo(memo.id);
+          editingMemo = response.memo;
+          await upsertLocalMemo(dataScope, editingMemo);
+          queryClient.setQueryData(["mobile", "memo", "notebook", editingMemo.id], { memo: editingMemo });
+          queryClient.setQueryData(["mobile", "memo", "trash", editingMemo.id], { memo: editingMemo });
+        } catch {
+          // The local mirror remains editable while offline.
+        }
       }
-    }
 
-    const draft = await loadMemoDraft(editingMemo.id);
-    memoDraftPrefetchRef.current.delete(memo.id);
-    setRichEditingSession({ draft, memo: editingMemo });
+      const draft = await loadMemoDraft(editingMemo.id);
+      memoDraftPrefetchRef.current.delete(memo.id);
+      setRichEditingSession({ draft, memo: editingMemo });
+    } finally {
+      setRichEditorOpening(false);
+    }
   }, [client, dataScope, loadMemoDraft, queryClient, syncQueueScope]);
 
   const memos = useMemo(() => memosQuery.data?.pages.flatMap((page) => page.memos) ?? [], [memosQuery.data]);
@@ -533,7 +610,13 @@ export const WorkspaceScreen = ({
   const selectedMemoSyncStatus = selectedMemo
     ? syncQueueItems.find((item) => item.memoId === selectedMemo.id)?.status ?? null
     : null;
-  const isRefreshing = notebooksQuery.isFetching || memosQuery.isFetching || searchQuery.isFetching || memoDetailQuery.isFetching;
+  // Pull-to-refresh must only track list refetches. Using isFetching (or
+  // memoDetailQuery) starts UIRefreshControl while opening a note or paging,
+  // and ending that animation during navigation crashes on iPadOS 26.5
+  // (SIGSEGV in RCTPullToRefreshViewComponentView / createComponentView).
+  const isRefreshing = searchActive
+    ? searchQuery.isRefetching
+    : notebooksQuery.isRefetching || memosQuery.isRefetching;
   const selectedMemoIdList = Array.from(selectedMemoIds);
   const selectedMemos = visibleMemos.filter((memo) => selectedMemoIds.has(memo.id));
   const canToggleVisibleSelection = visibleMemos.length > 0;
@@ -549,8 +632,15 @@ export const WorkspaceScreen = ({
   const canCreateMemo = memoView !== "trash" && Boolean(createMemoNotebookId);
   const openCreateMemo = () => {
     beginEditorStartup();
+    setSearchInputEnabled(false);
+    setSelectedMemoId(null);
     setIncomingClipDraft(null);
-    setCreateOpen(true);
+    // Defer Modal open so list layout settles before Dom WKWebView mounts.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setTimeout(() => setCreateOpen(true), 120);
+      });
+    });
   };
 
   const openIncomingClipDraft = useCallback((draft: MobileWebClipDraft) => {
@@ -1031,50 +1121,56 @@ export const WorkspaceScreen = ({
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.safeArea}>
 
-      {activeView === "notes" ? (
-        <NotesView
-          activeNotebook={activeNotebook}
-          initialSyncProgress={initialMirrorSyncProgress}
-          isLoading={notebooksQuery.isLoading || (searchActive ? searchQuery.isLoading : memosQuery.isLoading) || (isInitialMirrorStatusPending && visibleMemos.length === 0)}
-          isLoadingMore={searchActive ? searchQuery.isFetchingNextPage : memosQuery.isFetchingNextPage}
-          isRefreshing={isRefreshing}
-          memoFilterMode={memoFilterMode}
-          memoListDensity={memoListDensity}
-          memoView={memoView}
-          memos={visibleMemos}
-          notebooks={notebooks}
-          onCreate={openCreateMemo}
-          onClearSelection={clearSelection}
-          onFilterModeChange={setMemoFilterMode}
-          onOpenActions={() => setNotesActionsOpen(true)}
-          onOpenNotebookPicker={() => setNotebookPickerOpen(true)}
-          onMemoPress={handleMemoPress}
-          onMemoLongPress={(memo) => selectSingleMemo(memo.id)}
-          onLoadMore={() => {
-            const query = searchActive ? searchQuery : memosQuery;
-            if (query.hasNextPage && !query.isFetchingNextPage) {
-              void query.fetchNextPage();
-            }
-          }}
-          onRefresh={refresh}
-          onSearchTextChange={(value) => {
-            setSearchText(value);
-            clearSelection();
-          }}
-          onSetMemoView={(nextMemoView) => nextMemoView === "trash" ? showTrash() : showAllNotes()}
-          searchText={searchText}
-          totalMemoCount={searchActive
-            ? searchQuery.data?.pages[0]?.totalCount ?? searchResults.length
-            : memosQuery.data?.pages[0]?.totalCount ?? memos.length}
-          selectionMode={selectionMode}
-          selectedMemoIds={selectedMemoIds}
-          error={initialMirrorSyncError ?? notebooksQuery.error ?? (searchActive ? searchQuery.error : memosQuery.error)}
-          isError={Boolean(initialMirrorSyncError) || notebooksQuery.isError || (searchActive ? searchQuery.isError : memosQuery.isError)}
-          onRetry={retryInitialSync}
-        />
-      ) : null}
+      {/* Keep NotesView mounted under Me — swapping trees unmounts the whole list
+          ShadowNode graph in one commit and races Hermes HadesGC on iPadOS 26.5. */}
+      <NotesView
+        activeNotebook={activeNotebook}
+        initialSyncProgress={initialMirrorSyncProgress}
+        isLoading={notebooksQuery.isLoading || (searchActive ? searchQuery.isLoading : memosQuery.isLoading) || (isInitialMirrorStatusPending && visibleMemos.length === 0)}
+        isLoadingMore={searchActive ? searchQuery.isFetchingNextPage : memosQuery.isFetchingNextPage}
+        isRefreshing={isRefreshing}
+        memoFilterMode={memoFilterMode}
+        memoListDensity={memoListDensity}
+        memoView={memoView}
+        memos={visibleMemos}
+        notebooks={notebooks}
+        onCreate={openCreateMemo}
+        onClearSelection={clearSelection}
+        onFilterModeChange={setMemoFilterMode}
+        onOpenActions={() => setNotesActionsOpen(true)}
+        onOpenNotebookPicker={() => setNotebookPickerOpen(true)}
+        onMemoPress={handleMemoPress}
+        onMemoLongPress={(memo) => selectSingleMemo(memo.id)}
+        onLoadMore={() => {
+          const query = searchActive ? searchQuery : memosQuery;
+          if (query.hasNextPage && !query.isFetchingNextPage) {
+            void query.fetchNextPage();
+          }
+        }}
+        onRefresh={refresh}
+        onSearchTextChange={(value) => {
+          setSearchText(value);
+          clearSelection();
+        }}
+        onSetMemoView={(nextMemoView) => nextMemoView === "trash" ? showTrash() : showAllNotes()}
+        searchInputEnabled={searchInputEnabled && activeView === "notes" && !settingsOpening}
+        searchText={searchText}
+        totalMemoCount={searchActive
+          ? searchQuery.data?.pages[0]?.totalCount ?? searchResults.length
+          : memosQuery.data?.pages[0]?.totalCount ?? memos.length}
+        selectionMode={selectionMode}
+        selectedMemoIds={selectedMemoIds}
+        error={initialMirrorSyncError ?? notebooksQuery.error ?? (searchActive ? searchQuery.error : memosQuery.error)}
+        isError={Boolean(initialMirrorSyncError) || notebooksQuery.isError || (searchActive ? searchQuery.isError : memosQuery.isError)}
+        onRetry={retryInitialSync}
+      />
 
-      {activeView === "settings" ? (
+      <Modal
+        animationType="slide"
+        onRequestClose={closeSettings}
+        presentationStyle="fullScreen"
+        visible={activeView === "settings"}
+      >
         <SettingsView
           currentUser={session?.user ?? null}
           onClose={closeSettings}
@@ -1084,7 +1180,7 @@ export const WorkspaceScreen = ({
           onImageCompressionChange={handleImageCompressionChange}
           onSignOut={signOut}
         />
-      ) : null}
+      </Modal>
 
       <MemoDetailModal
         isDeleting={deleteMemoMutation.isPending}
@@ -1258,9 +1354,10 @@ export const WorkspaceScreen = ({
         </Pressable>
         <BottomNavItem
           active={false}
-          icon={<UserRound color="#64748b" size={20} />}
+          disabled={settingsOpening}
+          icon={<UserRound color={settingsOpening ? "#cbd5e1" : "#64748b"} size={20} />}
           label="我的"
-          onPress={openSettings}
+          onPress={() => void openSettings()}
         />
         </View>
       ) : null}
@@ -1611,6 +1708,11 @@ const CreateMemoModal = ({
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
+  // Delay Dom TipTap WKWebView host — cold create on iPadOS 26.5 can SIGTRAP in
+  // WebProcessPool init when Dom mounts in the same transaction as the Modal.
+  const [editorHostReady, setEditorHostReady] = useState(false);
+  const [createTitleFocused, setCreateTitleFocused] = useState(false);
+  const [createTagsFocused, setCreateTagsFocused] = useState(false);
   const [imageOperation, setImageOperation] = useState<"idle" | "creating" | "uploading">("idle");
   const [resourceTarget, setResourceTarget] = useState<MobileResourceTarget | null>(null);
   const targetNotebookId = notebookId || fallbackNotebookId;
@@ -1624,11 +1726,20 @@ const CreateMemoModal = ({
 
   useEffect(() => {
     if (!visible) {
+      setEditorHostReady(false);
       return;
     }
     let active = true;
     setDraftLoaded(false);
     setEditorReady(false);
+    setEditorHostReady(false);
+    setCreateTitleFocused(false);
+    setCreateTagsFocused(false);
+    const hostTimer = setTimeout(() => {
+      if (active) {
+        setEditorHostReady(true);
+      }
+    }, 360);
     if (initialDraft) {
       const markdown = initialDraft.contentMarkdown;
       contentMarkdownRef.current = markdown;
@@ -1642,6 +1753,7 @@ const CreateMemoModal = ({
       setDraftLoaded(true);
       return () => {
         active = false;
+        clearTimeout(hostTimer);
       };
     }
     void readMobileNewMemoDraft(dataScope).then((draft) => {
@@ -1664,6 +1776,7 @@ const CreateMemoModal = ({
     });
     return () => {
       active = false;
+      clearTimeout(hostTimer);
     };
   }, [dataScope, fallbackNotebookId, initialDraft, visible]);
 
@@ -1889,6 +2002,17 @@ const CreateMemoModal = ({
       return;
     }
     await flushEditor();
+    // Unmount Dom TipTap before the create Modal tears down (same ShadowNode race as edit).
+    setEditorHostReady(false);
+    setCreateTitleFocused(false);
+    setCreateTagsFocused(false);
+    setEditorReady(false);
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+    await new Promise((resolve) => setTimeout(resolve, 280));
     createMutation.mutate();
   };
 
@@ -1938,9 +2062,9 @@ const CreateMemoModal = ({
     if (target) setResourceTarget(target);
   }, []);
 
-  const editorElement = useMemo(() => draftLoaded && baseUrl ? (
+  const editorElement = useMemo(() => draftLoaded && baseUrl && editorHostReady ? (
     <LocalTiptapEditor
-      autoFocus
+      autoFocus={false}
       baseUrl={baseUrl}
       content={contentJsonRef.current}
       dom={{
@@ -1974,7 +2098,7 @@ const CreateMemoModal = ({
       locale={resolvedLocale}
       theme={resolvedTheme}
     />
-  ) : null, [baseUrl, draftLoaded, loadEditorResource, resolvedLocale, resolvedTheme, selectResource]);
+  ) : null, [baseUrl, draftLoaded, editorHostReady, loadEditorResource, resolvedLocale, resolvedTheme, selectResource]);
 
   return (
     <Modal animationType="slide" onRequestClose={() => void requestClose()} presentationStyle="fullScreen" visible={visible}>
@@ -1999,36 +2123,75 @@ const CreateMemoModal = ({
         </View>
 
         <View style={styles.createMemoMain}>
-          <TextInput
-            autoCorrect
-            accessibilityLabel="笔记标题"
-            onChangeText={(value) => {
-              setTitle(value);
-              markDirty();
-            }}
-            placeholder={DEFAULT_MEMO_TITLE}
-            placeholderTextColor="#94a3b8"
-            style={styles.createMemoTitleInput}
-            value={title}
-          />
+          {/* Lazy title/tags TextInputs — same iPadOS 26.5 Fabric measure crash as edit. */}
+          {createTitleFocused && editorReady ? (
+            <TextInput
+              autoCorrect
+              autoFocus
+              accessibilityLabel="笔记标题"
+              onBlur={() => setCreateTitleFocused(false)}
+              onChangeText={(value) => {
+                setTitle(value);
+                markDirty();
+              }}
+              placeholder={DEFAULT_MEMO_TITLE}
+              placeholderTextColor="#94a3b8"
+              style={styles.createMemoTitleInput}
+              value={title}
+            />
+          ) : (
+            <Pressable
+              accessibilityLabel="笔记标题"
+              accessibilityRole="button"
+              onPress={() => {
+                if (editorReady) {
+                  setCreateTitleFocused(true);
+                }
+              }}
+              style={styles.createMemoTitleInput}
+            >
+              <Text numberOfLines={1} style={{ color: title ? "#0f172a" : "#94a3b8", fontSize: 22, fontWeight: "700" }}>
+                {title || DEFAULT_MEMO_TITLE}
+              </Text>
+            </Pressable>
+          )}
 
           <View style={styles.createMemoMetaRow}>
             <Pressable accessibilityLabel="所在笔记本" accessibilityRole="button" onPress={() => setNotebookPickerOpen(true)} style={styles.createMemoNotebookButton}>
               <Text numberOfLines={1} style={styles.createMemoNotebookText}>{selectedNotebookName}</Text>
               <ChevronDown color="#64748b" size={14} />
             </Pressable>
-            <TextInput
-              accessibilityLabel="笔记标签"
-              autoCorrect
-              onChangeText={(value) => {
-                setTagsText(value);
-                markDirty();
-              }}
-              placeholder="添加标签，用逗号分隔"
-              placeholderTextColor="#94a3b8"
-              style={styles.createMemoTagsInput}
-              value={tagsText}
-            />
+            {createTagsFocused && editorReady ? (
+              <TextInput
+                accessibilityLabel="笔记标签"
+                autoCorrect
+                autoFocus
+                onBlur={() => setCreateTagsFocused(false)}
+                onChangeText={(value) => {
+                  setTagsText(value);
+                  markDirty();
+                }}
+                placeholder="添加标签，用逗号分隔"
+                placeholderTextColor="#94a3b8"
+                style={styles.createMemoTagsInput}
+                value={tagsText}
+              />
+            ) : (
+              <Pressable
+                accessibilityLabel="添加标签，用逗号分隔"
+                accessibilityRole="button"
+                onPress={() => {
+                  if (editorReady) {
+                    setCreateTagsFocused(true);
+                  }
+                }}
+                style={[styles.createMemoTagsInput, { justifyContent: "center" }]}
+              >
+                <Text numberOfLines={1} style={{ color: tagsText ? "#0f172a" : "#94a3b8" }}>
+                  {tagsText || "添加标签，用逗号分隔"}
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           <View style={styles.createMemoEditorFrame}>
@@ -2258,6 +2421,7 @@ const RichEditorModal = ({
   const flushResolverRef = useRef<(() => void) | null>(null);
   const savingRef = useRef(false);
   const uploadingRef = useRef(false);
+  const closingRef = useRef(false);
   const [title, setTitle] = useState(resolveEditableMemoTitle(restoredDraft?.title ?? memo?.title));
   const [tagsText, setTagsText] = useState(restoredDraft?.tagsText ?? memo?.tags.join(", ") ?? "");
   const [notebookId, setNotebookId] = useState(restoredDraft?.notebookId ?? memo?.notebookId ?? "");
@@ -2267,11 +2431,30 @@ const RichEditorModal = ({
   const [dirty, setDirty] = useState(Boolean(restoredDraft));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [startupMs, setStartupMs] = useState<number | null>(null);
   const [resourceTarget, setResourceTarget] = useState<MobileResourceTarget | null>(null);
+  // Stagger TextInput chrome and Dom TipTap so Fabric never measures title/tags
+  // TextInputs in the same commit as WKWebView host creation (iPadOS 26.5 SIGSEGV).
+  const [chromeReady, setChromeReady] = useState(false);
+  const [editorHostReady, setEditorHostReady] = useState(false);
+  const [titleFocused, setTitleFocused] = useState(false);
+  const [tagsFocused, setTagsFocused] = useState(false);
   const notebookLabel = notebooks.find((notebook) => notebook.id === notebookId)?.name ?? "未分类";
-  const saveLabel = error ? "保存失败" : saving ? "保存中" : uploading ? "上传中" : dirty ? (draftRestored ? "本地草稿" : "未保存") : ready ? "已保存" : "加载中";
+  const saveLabel = closing
+    ? "正在退出"
+    : error
+      ? "保存失败"
+      : saving
+        ? "保存中"
+        : uploading
+          ? "上传中"
+          : dirty
+            ? (draftRestored ? "本地草稿" : "未保存")
+            : ready
+              ? "已保存"
+              : "加载中";
   const titleRef = useRef(title);
   const tagsTextRef = useRef(tagsText);
   const notebookIdRef = useRef(notebookId);
@@ -2279,11 +2462,19 @@ const RichEditorModal = ({
   tagsTextRef.current = tagsText;
   notebookIdRef.current = notebookId;
 
-  useEffect(() => () => {
-    if (initialFocusTimerRef.current !== null) {
-      clearTimeout(initialFocusTimerRef.current);
-      initialFocusTimerRef.current = null;
-    }
+  useEffect(() => {
+    // Phase 1: header chrome only (Pressable labels, no TextInput).
+    // Phase 2: Dom TipTap host after layout has settled without native text fields.
+    const chromeTimer = setTimeout(() => setChromeReady(true), 120);
+    const editorTimer = setTimeout(() => setEditorHostReady(true), 360);
+    return () => {
+      clearTimeout(chromeTimer);
+      clearTimeout(editorTimer);
+      if (initialFocusTimerRef.current !== null) {
+        clearTimeout(initialFocusTimerRef.current);
+        initialFocusTimerRef.current = null;
+      }
+    };
   }, []);
 
   const persistDraft = async (contentJson: TiptapDoc) => {
@@ -2372,17 +2563,44 @@ const RichEditorModal = ({
   };
 
   const requestClose = async () => {
-    if (savingRef.current || uploadingRef.current) {
+    if (savingRef.current || uploadingRef.current || closingRef.current) {
       return;
     }
+    closingRef.current = true;
+    setClosing(true);
     if (initialFocusTimerRef.current !== null) {
       clearTimeout(initialFocusTimerRef.current);
       initialFocusTimerRef.current = null;
     }
-    await flushEditor();
-    const savedMemo = await save();
-    if (savedMemo) {
+    try {
+      await flushEditor();
+      const savedMemo = await save();
+      if (!savedMemo && dirtyRef.current) {
+        // Hard save failure: stay so the user can retry (draft is still local).
+        closingRef.current = false;
+        setClosing(false);
+        return;
+      }
+      // 17:06 crash: unmounting Dom TipTap + remounting NotesView in one commit
+      // double-frees ShadowNodeFamily under Fabric (SIGBUS on JS thread).
+      // Drop the editor host first, settle, then leave the screen.
+      setTitleFocused(false);
+      setTagsFocused(false);
+      setEditorHostReady(false);
+      setChromeReady(false);
+      setReady(false);
+      setNotebookPickerOpen(false);
+      setResourceTarget(null);
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
+      await new Promise((resolve) => setTimeout(resolve, 320));
       onClose();
+    } catch {
+      closingRef.current = false;
+      setClosing(false);
     }
   };
 
@@ -2492,9 +2710,9 @@ const RichEditorModal = ({
   }, []);
 
   const editorElement = useMemo(
-    () => memo && baseUrl ? (
+    () => memo && baseUrl && editorHostReady ? (
       <LocalTiptapEditor
-        autoFocus
+        autoFocus={false}
         baseUrl={baseUrl}
         content={contentJsonRef.current}
         dom={{
@@ -2516,27 +2734,31 @@ const RichEditorModal = ({
           if (initialFocusTimerRef.current !== null) {
             clearTimeout(initialFocusTimerRef.current);
           }
+          // Focus body only after TextInputs have settled; never autoFocus Dom on mount.
           initialFocusTimerRef.current = setTimeout(() => {
             initialFocusTimerRef.current = null;
             editorRef.current?.focusEnd();
             if (Platform.OS === "android") {
               showEdgeEverKeyboard();
             }
-          }, 180);
+          }, 280);
         }}
         ref={editorRef}
         locale={resolvedLocale}
         theme={resolvedTheme}
       />
     ) : null,
-    [baseUrl, loadEditorResource, memo?.id, resolvedLocale, resolvedTheme, selectResource]
+    [baseUrl, editorHostReady, loadEditorResource, memo?.id, resolvedLocale, resolvedTheme, selectResource]
   );
 
   useEffect(() => {
-    if (!memo || !dirty) {
+    if (!memo || !dirty || closingRef.current) {
       return;
     }
     const timeout = setTimeout(() => {
+      if (closingRef.current) {
+        return;
+      }
       void writeMobileMemoDraft({
         memoId: memo.id,
         expectedRevision: memo.revision,
@@ -2551,10 +2773,13 @@ const RichEditorModal = ({
   }, [dirty, memo, notebookId, tagsText, title]);
 
   useEffect(() => {
-    if (!memo || !dirty || !ready || savingRef.current || uploadingRef.current) {
+    if (!memo || !dirty || !ready || savingRef.current || uploadingRef.current || closingRef.current) {
       return;
     }
     const timeout = setTimeout(() => {
+      if (closingRef.current) {
+        return;
+      }
       void flushEditor().then(save);
     }, 1200);
     return () => clearTimeout(timeout);
@@ -2563,53 +2788,101 @@ const RichEditorModal = ({
   return (
     <SafeAreaView style={styles.richEditorSafeArea}>
         <View style={styles.createMemoHeader}>
-          <Pressable accessibilityLabel="返回" accessibilityRole="button" disabled={saving || uploading} onPress={() => void requestClose()} style={styles.createMemoBackButton}>
-            <ChevronLeft color={saving || uploading ? "#cbd5e1" : "#0f172a"} size={30} />
+          <Pressable accessibilityLabel="返回" accessibilityRole="button" disabled={saving || uploading || closing} onPress={() => void requestClose()} style={styles.createMemoBackButton}>
+            <ChevronLeft color={saving || uploading || closing ? "#cbd5e1" : "#0f172a"} size={30} />
           </Pressable>
           <View style={styles.createMemoHeaderActions}>
-            <Text numberOfLines={1} style={[styles.createMemoStatus, styles.richEditorHeaderStatus, (saving || uploading || dirty) && styles.createMemoStatusActive, error && styles.richEditorStatusError]}>{saveLabel}</Text>
+            <Text numberOfLines={1} style={[styles.createMemoStatus, styles.richEditorHeaderStatus, (saving || uploading || dirty || closing) && styles.createMemoStatusActive, error && styles.richEditorStatusError]}>{saveLabel}</Text>
             <Pressable
               accessibilityLabel="完成编辑"
               accessibilityRole="button"
-              disabled={saving || uploading || !ready}
+              disabled={saving || uploading || closing || !ready}
               onPress={() => void requestClose()}
-              style={[styles.createMemoDoneButton, (saving || uploading || !ready) && styles.createMemoDoneButtonDisabled]}
+              style={[styles.createMemoDoneButton, (saving || uploading || closing || !ready) && styles.createMemoDoneButtonDisabled]}
             >
-              {saving ? <ActivityIndicator color="#64748b" size="small" /> : <Text style={[styles.createMemoDoneText, (uploading || !ready) && styles.createMemoDoneTextDisabled]}>完成</Text>}
+              {saving || closing ? <ActivityIndicator color="#64748b" size="small" /> : <Text style={[styles.createMemoDoneText, (uploading || !ready) && styles.createMemoDoneTextDisabled]}>完成</Text>}
             </Pressable>
           </View>
         </View>
 
         {memo && baseUrl ? (
           <View style={styles.richEditorContainer}>
-            <TextInput
-              onChangeText={(value) => {
-                setTitle(value);
-                dirtyRef.current = true;
-                setDirty(true);
-              }}
-              placeholder={DEFAULT_MEMO_TITLE}
-              placeholderTextColor="#94a3b8"
-              style={styles.createMemoTitleInput}
-              value={title}
-            />
+            {chromeReady ? (
+              // Only mount title TextInput after editor is ready AND user taps —
+              // cold open of RichEditorModal must stay TextInput-free on iPadOS 26.5.
+              titleFocused && ready ? (
+                <TextInput
+                  autoFocus
+                  onBlur={() => setTitleFocused(false)}
+                  onChangeText={(value) => {
+                    setTitle(value);
+                    dirtyRef.current = true;
+                    setDirty(true);
+                  }}
+                  placeholder={DEFAULT_MEMO_TITLE}
+                  placeholderTextColor="#94a3b8"
+                  style={styles.createMemoTitleInput}
+                  value={title}
+                />
+              ) : (
+                <Pressable
+                  accessibilityLabel="笔记标题"
+                  accessibilityRole="button"
+                  onPress={() => {
+                    if (ready) {
+                      setTitleFocused(true);
+                    }
+                  }}
+                  style={styles.createMemoTitleInput}
+                >
+                  <Text numberOfLines={1} style={{ color: title ? "#0f172a" : "#94a3b8", fontSize: 22, fontWeight: "700" }}>
+                    {title || DEFAULT_MEMO_TITLE}
+                  </Text>
+                </Pressable>
+              )
+            ) : (
+              <View style={styles.createMemoTitleInput} />
+            )}
             <View style={[styles.createMemoMetaRow, styles.richStandaloneMetaRow]}>
               <Pressable accessibilityLabel="所在笔记本" accessibilityRole="button" onPress={() => setNotebookPickerOpen(true)} style={styles.createMemoNotebookButton}>
                 <Text numberOfLines={1} style={styles.createMemoNotebookText}>{notebookLabel}</Text>
                 <ChevronDown color="#64748b" size={14} />
               </Pressable>
-              <TextInput
-                autoCorrect
-                onChangeText={(value) => {
-                  setTagsText(value);
-                  dirtyRef.current = true;
-                  setDirty(true);
-                }}
-                placeholder="添加标签，用逗号分隔"
-                placeholderTextColor="#94a3b8"
-                style={[styles.createMemoTagsInput, styles.richStandaloneTagsInput]}
-                value={tagsText}
-              />
+              {chromeReady ? (
+                tagsFocused && ready ? (
+                  <TextInput
+                    autoCorrect
+                    autoFocus
+                    onBlur={() => setTagsFocused(false)}
+                    onChangeText={(value) => {
+                      setTagsText(value);
+                      dirtyRef.current = true;
+                      setDirty(true);
+                    }}
+                    placeholder="添加标签，用逗号分隔"
+                    placeholderTextColor="#94a3b8"
+                    style={[styles.createMemoTagsInput, styles.richStandaloneTagsInput]}
+                    value={tagsText}
+                  />
+                ) : (
+                  <Pressable
+                    accessibilityLabel="添加标签，用逗号分隔"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      if (ready) {
+                        setTagsFocused(true);
+                      }
+                    }}
+                    style={[styles.createMemoTagsInput, styles.richStandaloneTagsInput, { justifyContent: "center" }]}
+                  >
+                    <Text numberOfLines={1} style={{ color: tagsText ? "#0f172a" : "#94a3b8" }}>
+                      {tagsText || "添加标签，用逗号分隔"}
+                    </Text>
+                  </Pressable>
+                )
+              ) : (
+                <View style={[styles.createMemoTagsInput, styles.richStandaloneTagsInput]} />
+              )}
             </View>
             {draftRestored ? <Text style={styles.richEditorDraftNotice}>已恢复上次未完成的本地草稿</Text> : null}
             <View style={styles.richEditorFrame}>
@@ -3037,8 +3310,26 @@ const ActionButton = ({
   </Pressable>
 );
 
-const BottomNavItem = ({ active = false, icon, label, onPress }: { active?: boolean; icon: ReactNode; label: string; onPress: () => void }) => (
-  <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={styles.bottomNavItem}>
+const BottomNavItem = ({
+  active = false,
+  disabled = false,
+  icon,
+  label,
+  onPress,
+}: {
+  active?: boolean;
+  disabled?: boolean;
+  icon: ReactNode;
+  label: string;
+  onPress: () => void;
+}) => (
+  <Pressable
+    accessibilityRole="button"
+    accessibilityState={{ disabled, selected: active }}
+    disabled={disabled}
+    onPress={onPress}
+    style={[styles.bottomNavItem, disabled && styles.buttonDisabled]}
+  >
     {icon}
     <Text style={[styles.bottomNavText, active && styles.bottomNavTextActive]}>{label}</Text>
   </Pressable>
