@@ -43,6 +43,20 @@ function isProtectedResource(src: string): boolean {
   return src.startsWith("/api/") || src.includes("/api/v1/resources/");
 }
 
+/** file:// editor pages often cannot load remote/protected img srcs; native must rewrite them. */
+function needsNativeHydration(src: string): boolean {
+  if (!src || src.startsWith("data:") || src.startsWith("blob:") || src.startsWith("edgeever-res:")) {
+    return false;
+  }
+  // Protected API paths always need auth + rewrite.
+  if (isProtectedResource(src)) return true;
+  // Absolute remote images also need rewrite under file:// packaging.
+  if (src.startsWith("http://") || src.startsWith("https://")) return true;
+  // Root-relative non-api assets resolved via native base URL.
+  if (src.startsWith("/")) return true;
+  return false;
+}
+
 function requestResource(source: string): Promise<string | null> {
   return new Promise((resolve) => {
     const requestId = `r${++resourceSeq}`;
@@ -51,7 +65,7 @@ function requestResource(source: string): Promise<string | null> {
     // Timeout so broken resources don't hang forever.
     setTimeout(() => {
       if (resourceResolvers.delete(requestId)) resolve(null);
-    }, 15_000);
+    }, 30_000);
   });
 }
 
@@ -60,10 +74,17 @@ async function hydrateProtectedImages(root: HTMLElement) {
   await Promise.all(
     images.map(async (img) => {
       const src = img.getAttribute("src") || "";
-      if (!isProtectedResource(src)) return;
+      if (!needsNativeHydration(src)) return;
       if (!img.dataset.originalSrc) img.dataset.originalSrc = src;
-      const dataUrl = await requestResource(src);
-      if (dataUrl) img.setAttribute("src", dataUrl);
+      // Avoid re-requesting while a previous hydrate is in flight for the same original.
+      if (img.dataset.hydrating === "1") return;
+      img.dataset.hydrating = "1";
+      try {
+        const dataUrl = await requestResource(src);
+        if (dataUrl) img.setAttribute("src", dataUrl);
+      } finally {
+        delete img.dataset.hydrating;
+      }
     })
   );
 }

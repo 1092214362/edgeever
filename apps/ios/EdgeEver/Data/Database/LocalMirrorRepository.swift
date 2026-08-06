@@ -116,11 +116,20 @@ final class LocalMirrorRepository: @unchecked Sendable {
                 sql: "SELECT data_json FROM mobile_memos WHERE \(whereSQL) ORDER BY \(orderBy) LIMIT ? OFFSET ?",
                 arguments: StatementArguments(listArgs)
             )
-            let memos = try rows.map { row -> MemoSummary in
-                let detail = try EdgeEverJSON.decoder.decode(MemoDetail.self, from: Data((row["data_json"] as String).utf8))
-                return detail.asSummary()
+            // Skip corrupt rows instead of failing the entire list (one bad data_json must not blank the feed).
+            var memos: [MemoSummary] = []
+            memos.reserveCapacity(rows.count)
+            for row in rows {
+                let raw = row["data_json"] as String
+                guard let detail = try? EdgeEverJSON.decoder.decode(MemoDetail.self, from: Data(raw.utf8)) else {
+                    #if DEBUG
+                    print("LocalMirrorRepository.listMemos: skipped undecodable memo json length=\(raw.count)")
+                    #endif
+                    continue
+                }
+                memos.append(detail.asSummary())
             }
-            let next = offset + memos.count
+            let next = offset + rows.count
             return LocalMemoListResult(memos: memos, totalCount: count, nextOffset: next < count ? next : nil)
         }
     }

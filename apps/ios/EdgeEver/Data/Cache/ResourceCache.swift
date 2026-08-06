@@ -62,7 +62,9 @@ actor ResourceCache {
     }
 
     static func isProtectedResourceSource(_ source: String, baseURL: URL?) -> Bool {
+        // Match Android / editor JS: any path that points at the protected resources API.
         if source.hasPrefix("/api/v1/resources/") { return true }
+        if source.contains("/api/v1/resources/") { return true }
         if let base = baseURL?.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
            source.hasPrefix(base + "/api/v1/resources/")
         {

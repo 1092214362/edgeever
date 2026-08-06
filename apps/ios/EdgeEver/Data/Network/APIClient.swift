@@ -203,9 +203,11 @@ actor APIClient {
         return try await perform(request).resource
     }
 
-    func getResourceData(path: String) async throws -> Data {
+    /// Fetch a resource path (usually `/api/v1/resources/:id/blob`) with session auth.
+    func getResourceData(path: String) async throws -> (data: Data, mimeType: String) {
         var request = URLRequest(url: makeURL(path: path))
         request.httpMethod = "GET"
+        request.setValue("*/*", forHTTPHeaderField: "Accept")
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -219,7 +221,28 @@ actor APIClient {
         guard (200 ..< 300).contains(http.statusCode) else {
             throw APIError(status: http.statusCode, code: nil, message: HTTPURLResponse.localizedString(forStatusCode: http.statusCode))
         }
-        return data
+        let header = http.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
+        let mimeType = header.split(separator: ";").first.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? "application/octet-stream"
+        return (data, mimeType)
+    }
+
+    /// Fetch an absolute public URL and return bytes + mime (for file:// WebView display).
+    func getPublicURLData(_ absoluteURL: URL) async throws -> (data: Data, mimeType: String) {
+        var request = URLRequest(url: absoluteURL)
+        request.httpMethod = "GET"
+        request.setValue("*/*", forHTTPHeaderField: "Accept")
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError(status: -1, code: nil, message: "Invalid response")
+        }
+        guard (200 ..< 300).contains(http.statusCode) else {
+            throw APIError(status: http.statusCode, code: nil, message: HTTPURLResponse.localizedString(forStatusCode: http.statusCode))
+        }
+        let header = http.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
+        let mimeType = header.split(separator: ";").first.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? "application/octet-stream"
+        return (data, mimeType)
     }
 
     func renameResource(id: String, filename: String) async throws -> Resource {

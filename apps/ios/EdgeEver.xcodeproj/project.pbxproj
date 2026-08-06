@@ -33,6 +33,7 @@
 		506702F1751945424AC4CB98 /* MobileUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A375D81573943A98C5732F81 /* MobileUI.swift */; };
 		50800DF91A760DE7FB68DFB4 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C065FED3C78404D4D8DD19 /* Motion.swift */; };
 		511A8DCB204AFCB2880AE51E /* MemoCreateCommitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E057D0906932A00DF62EBB /* MemoCreateCommitTests.swift */; };
+		541297DC463B8FC593ECB5F6 /* ResourceBlobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */; };
 		5EEFDEEDC372725C7C7F22ED /* EdgeEverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9CEA2902CDE0D7C4137D173 /* EdgeEverApp.swift */; };
 		5F5EC9565A02FAFDD5D7B54C /* SyncProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12236E3A2F318CDEB17B80CB /* SyncProtocol.swift */; };
 		6A671BB702DA77A0548E6E29 /* URL+Normalize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A8662720DE42695E29F5741 /* URL+Normalize.swift */; };
@@ -154,6 +155,7 @@
 		DBC0AD00435CCEFD7934201C /* MemoCreateCommit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoCreateCommit.swift; sourceTree = "<group>"; };
 		E3328D871910187ED827B6CE /* NotebookPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookPickerSheet.swift; sourceTree = "<group>"; };
 		E6159DBF27CC86920005E25D /* SyncProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProtocolTests.swift; sourceTree = "<group>"; };
+		EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceBlobStore.swift; sourceTree = "<group>"; };
 		EFF10CDC8FB8C97DA0103AA0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F080AD98FDF3AADDD90B9931 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		F50D91D8505FE6446ABD647C /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
@@ -405,6 +407,7 @@
 			isa = PBXGroup;
 			children = (
 				F9182F742B06FB1713E27C2A /* ResourceActions.swift */,
+				EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */,
 				12DCA98C14CC6F28C22C41A1 /* TipTapWebView.swift */,
 			);
 			path = Editor;
@@ -612,6 +615,7 @@
 				4A771542C5AD2E6A907187AD /* OutboxFlusher.swift in Sources */,
 				D6FD6B00023FC1A830684385 /* PreferencesStore.swift in Sources */,
 				C8ED8D6620BC657699331527 /* ResourceActions.swift in Sources */,
+				541297DC463B8FC593ECB5F6 /* ResourceBlobStore.swift in Sources */,
 				FDF0A8FA27796FB9500F97D4 /* ResourceCache.swift in Sources */,
 				DE9649944BC9CD8775003203 /* RootView.swift in Sources */,
 				1510CEE8BDDBD1710C0CE88C /* SessionStore.swift in Sources */,

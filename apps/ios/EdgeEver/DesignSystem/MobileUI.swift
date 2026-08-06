@@ -5,7 +5,11 @@ import UIKit
 enum MobileUIMetrics {
     static let bottomNavigationHeight: CGFloat = 52
     static let compactControlHeight: CGFloat = 36
+    /// Legacy Android float size (52). Bottom-tab create uses `bottomCreateButtonSize` instead
+    /// so the circle sits fully under the separator without straddling the top border.
     static let floatingCreateButtonSize: CGFloat = 52
+    /// Slightly smaller create disc for the bottom tab bar (below separator).
+    static let bottomCreateButtonSize: CGFloat = 44
     static let floatingSheetCornerRadius: CGFloat = 10
     static let minimumTouchTarget: CGFloat = 44
 

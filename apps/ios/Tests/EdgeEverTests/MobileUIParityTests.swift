@@ -1,3 +1,4 @@
+import WebKit
 import XCTest
 @testable import EdgeEver
 
@@ -79,7 +80,124 @@ final class MobileUIParityTests: XCTestCase {
             "/api/v1/resources/xyz/blob"
         )
         XCTAssertTrue(ResourceCache.isProtectedResourceSource("/api/v1/resources/x", baseURL: base))
+        XCTAssertTrue(
+            ResourceCache.isProtectedResourceSource("https://demo.edgeever.org/api/v1/resources/x/blob", baseURL: base)
+        )
         XCTAssertFalse(ResourceCache.isProtectedResourceSource("https://cdn.example/img.png", baseURL: base))
+    }
+
+    func testLoadResourceDataURLPassthroughDataURI() async {
+        let cache = ResourceCache()
+        let dataURL = "data:image/png;base64,iVBORw0KGgo="
+        let loaded = await TipTapWebView.Coordinator.loadResourceDataURL(
+            source: dataURL,
+            baseURL: URL(string: "https://demo.edgeever.org"),
+            token: "tok",
+            resourceCache: cache
+        )
+        XCTAssertEqual(loaded, dataURL)
+    }
+
+    func testLoadResourceDataURLBuildsSchemeURLFromProtectedBlob() async throws {
+        // Local static file server is not required — exercise cache write path via dataURL helper.
+        let cache = ResourceCache()
+        let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) // PNG magic
+        let url = try await cache.dataURL(for: "res-test-1", data: png, mimeType: "image/png")
+        XCTAssertTrue(url.hasPrefix("data:image/png;base64,"))
+        let cached = await cache.cachedData(for: "res-test-1")
+        XCTAssertEqual(cached, png)
+        // loadResourceDataURL should hit cache and return edgeever-res:// scheme URL for WKWebView.
+        let loaded = await TipTapWebView.Coordinator.loadResourceDataURL(
+            source: "/api/v1/resources/res-test-1/blob",
+            baseURL: URL(string: "https://demo.edgeever.org"),
+            token: "tok",
+            resourceCache: cache
+        )
+        XCTAssertEqual(loaded, EdgeEverResourceSchemeHandler.localURL(for: "res-test-1"))
+        let blob = await ResourceBlobStore.shared.get(id: "res-test-1")
+        XCTAssertEqual(blob?.data, png)
+        XCTAssertEqual(blob?.mimeType, "image/png")
+    }
+
+    func testIsProtectedResourceSourceMatchesAbsoluteAPIPath() {
+        let base = URL(string: "https://demo.edgeever.org")!
+        XCTAssertTrue(
+            ResourceCache.isProtectedResourceSource(
+                "https://other.example/api/v1/resources/abc/blob",
+                baseURL: base
+            )
+        )
+    }
+
+    func testResourceSchemeLocalURLRoundTrip() {
+        let url = EdgeEverResourceSchemeHandler.localURL(for: "memo_abc-1")
+        XCTAssertEqual(url, "edgeever-res://local/memo_abc-1")
+        XCTAssertEqual(
+            EdgeEverResourceSchemeHandler.resourceId(from: URL(string: url)!),
+            "memo_abc-1"
+        )
+    }
+
+    func testResourceSchemeHandlerServesCachedPNG() async throws {
+        // 1x1 transparent PNG
+        let png = Data(base64Encoded:
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        )!
+        let id = "scheme-handler-test-\(UUID().uuidString)"
+        await ResourceBlobStore.shared.put(id: id, data: png, mimeType: "image/png")
+
+        let handler = EdgeEverResourceSchemeHandler()
+        let config = WKWebViewConfiguration()
+        config.setURLSchemeHandler(handler, forURLScheme: EdgeEverResourceSchemeHandler.scheme)
+        let webView = await MainActor.run {
+            WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 480), configuration: config)
+        }
+        let local = EdgeEverResourceSchemeHandler.localURL(for: id)
+        let html = """
+        <!DOCTYPE html><html><body>
+        <img id="i" src="\(local)" width="1" height="1">
+        <script>
+          const img = document.getElementById('i');
+          img.onload = () => window.webkit?.messageHandlers?.edgeever?.postMessage?.({ok:true,w:img.naturalWidth});
+          img.onerror = () => window.webkit?.messageHandlers?.edgeever?.postMessage?.({ok:false});
+          // Fallback resolve if already complete
+          if (img.complete && img.naturalWidth > 0) {
+            window.webkit?.messageHandlers?.edgeever?.postMessage?.({ok:true,w:img.naturalWidth});
+          }
+        </script>
+        </body></html>
+        """
+        // Use navigation + evaluate after load instead of message handler for simplicity.
+        let exp = expectation(description: "image loads via edgeever-res scheme")
+        final class Nav: NSObject, WKNavigationDelegate {
+            var onFinish: (() -> Void)?
+            func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+                onFinish?()
+            }
+        }
+        let nav = Nav()
+        await MainActor.run {
+            webView.navigationDelegate = nav
+            nav.onFinish = { exp.fulfill() }
+            webView.loadHTMLString(html, baseURL: URL(string: "https://edgeever.local/"))
+        }
+        await fulfillment(of: [exp], timeout: 5)
+        // Poll naturalWidth via JS (give the scheme handler a moment if needed).
+        var width = 0
+        for _ in 0 ..< 20 {
+            let result: Any? = await withCheckedContinuation { cont in
+                DispatchQueue.main.async {
+                    webView.evaluateJavaScript("document.getElementById('i').naturalWidth") { value, _ in
+                        cont.resume(returning: value)
+                    }
+                }
+            }
+            width = (result as? Int) ?? (result as? Double).map { Int($0) } ?? 0
+            if width > 0 { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertEqual(width, 1, "edgeever-res scheme should serve PNG so img.naturalWidth==1")
+        await ResourceBlobStore.shared.remove(id: id)
     }
 
     func testListMemosFilterPinnedUsesShippedRepository() throws {

@@ -160,17 +160,22 @@ final class ChromeParityTests: XCTestCase {
             src.contains("Color.white") && src.contains("bottomInset"),
             "home-indicator slab must be white continuous with nav band"
         )
-        // Create lift is offset only — must NOT add 16pt list padding (that was the gray ghost strip).
-        XCTAssertTrue(src.contains("createLift") || src.contains("offset(y:"), "create elevated via offset")
+        // Create sits in the HStack *below* the top separator (no mid-line overlap).
         XCTAssertTrue(src.contains("bottomCreateButton"), "create a11y id")
+        XCTAssertTrue(src.contains("bottomCreateButtonSize"), "smaller create disc under separator")
         // List pad must use bottomChromeHeight without +16 ghost strip.
         XCTAssertFalse(
             src.contains("bottomChromeHeight + 16"),
             "must not pad list by createLift — causes empty strip above white bar"
         )
+        XCTAssertFalse(
+            src.contains("createLift"),
+            "create must not lift over the top separator"
+        )
 
         // Metrics must expose the Android height formula
         XCTAssertEqual(MobileUIMetrics.bottomNavigationHeight, 52)
+        XCTAssertEqual(MobileUIMetrics.bottomCreateButtonSize, 44)
         XCTAssertEqual(
             MobileUIMetrics.bottomChromeHeight,
             MobileUIMetrics.bottomNavigationHeight + MobileUIMetrics.bottomSafeInset

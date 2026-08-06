@@ -24,16 +24,15 @@ struct WorkspaceView: View {
         store.selectionMode || path.isEmpty
     }
 
-    /// Android: `height: bottomNavigationHeight + safeAreaInsets.bottom` only.
-    /// Create button `marginTop: -16` overlaps list content — do NOT add 16pt list padding
-    /// (that paints a second empty strip above the white bar).
+    /// Solid chrome height = nav band + home-indicator. Create button sits *inside* the band
+    /// (below the top separator), so list padding must not invent a second empty strip.
     private var bottomChromeHeight: CGFloat {
         MobileUIMetrics.bottomChromeHeight
     }
 
     var body: some View {
         NavigationStack(path: $path) {
-            // List pads exactly the solid white chrome height; elevated + draws over list (Android).
+            // List pads the solid white chrome height; create button lives inside the tab bar under the separator.
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
                     syncBanner
@@ -363,71 +362,70 @@ struct WorkspaceView: View {
         .buttonStyle(FilterChipButtonStyle(active: active))
     }
 
-    /// Android `bottomNav`:
-    /// - solid white height = 52 + safeAreaInsets.bottom
-    /// - create `marginTop: -16` overlaps the list (no extra empty strip above the bar)
+    /// Bottom tab chrome:
+    /// 1. top separator
+    /// 2. Home | Create | Me — all *below* the separator (create must not sit on the line)
+    /// 3. home-indicator slab
+    /// Create is slightly smaller than the 52pt Android float so it fits cleanly under the line.
     private var bottomNav: some View {
         let canCreate = !store.notebooks.isEmpty
         let bottomInset = MobileUIMetrics.bottomSafeInset
-        // Android marginTop: -16
-        let createLift: CGFloat = 16
+        let createSize = MobileUIMetrics.bottomCreateButtonSize
 
         return VStack(spacing: 0) {
-            ZStack {
-                HStack {
-                    bottomNavItem(
-                        systemImage: "house.fill",
-                        label: env.preferences.t("首页", en: "Home"),
-                        active: true
-                    ) {
-                        withAnimation(Motion.chip) {
-                            path = NavigationPath()
-                        }
-                    }
+            // Separator first — tab content is strictly below this line.
+            Rectangle()
+                .fill(AppTheme.border)
+                .frame(height: 1)
+                .frame(maxWidth: .infinity)
 
-                    bottomNavItem(
-                        systemImage: "person",
-                        label: env.preferences.t("我的", en: "Me"),
-                        active: false
-                    ) {
-                        showSettings = true
+            HStack(spacing: 0) {
+                bottomNavItem(
+                    systemImage: "house.fill",
+                    label: env.preferences.t("首页", en: "Home"),
+                    active: true
+                ) {
+                    withAnimation(Motion.chip) {
+                        path = NavigationPath()
                     }
                 }
-                .padding(.horizontal, 36)
 
-                // Floats above the white bar into list content (Android). Hit target moves with offset.
                 Button {
                     createTapCount += 1
                     showNewNote = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(canCreate ? .white : Color(hex: 0xE2E8F0))
-                        .frame(
-                            width: MobileUIMetrics.floatingCreateButtonSize,
-                            height: MobileUIMetrics.floatingCreateButtonSize
-                        )
+                        .frame(width: createSize, height: createSize)
                         .background(canCreate ? AppTheme.accentBright : Color(hex: 0xCBD5E1))
                         .clipShape(Circle())
-                        .overlay(Circle().stroke(Color.white, lineWidth: 4))
+                        .overlay(Circle().stroke(Color.white, lineWidth: 3))
                         .shadow(
-                            color: AppTheme.fabShadow.opacity(canCreate ? 0.35 : 0),
-                            radius: 4,
-                            y: 2
+                            color: AppTheme.fabShadow.opacity(canCreate ? 0.28 : 0),
+                            radius: 6,
+                            y: 3
                         )
                         .contentShape(Circle())
                 }
                 .buttonStyle(CreateButtonPressStyle())
                 .edgeEverCreatePing(count: createTapCount)
-                .offset(y: -createLift)
-                .zIndex(1)
                 .disabled(!canCreate)
                 .accessibilityLabel(env.preferences.t("新建笔记", en: "New note"))
                 .accessibilityIdentifier("bottomCreateButton")
+                .frame(maxWidth: .infinity)
+
+                bottomNavItem(
+                    systemImage: "person",
+                    label: env.preferences.t("我的", en: "Me"),
+                    active: false
+                ) {
+                    showSettings = true
+                }
             }
+            .padding(.horizontal, 28)
             .frame(height: MobileUIMetrics.bottomNavigationHeight)
             .frame(maxWidth: .infinity)
-            // Do not clip: elevated + must paint/hit above the bar into the list (Android marginTop -16).
 
             // Home indicator — same white surface, continuous with the 52pt band.
             Color.white
@@ -435,12 +433,6 @@ struct WorkspaceView: View {
                 .frame(maxWidth: .infinity)
         }
         .background(Color.white)
-        .overlay(alignment: .top) {
-            // Border on the top edge of the solid white bar (not above a ghost strip).
-            Rectangle()
-                .fill(AppTheme.border)
-                .frame(height: 1)
-        }
         .accessibilityIdentifier("bottomNav")
     }
 

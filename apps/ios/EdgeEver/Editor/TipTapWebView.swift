@@ -1,3 +1,4 @@
+import CryptoKit
 import SwiftUI
 import WebKit
 
@@ -21,6 +22,8 @@ struct TipTapWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        // Serve authenticated / remote images via short custom-scheme URLs (avoids huge data: injects).
+        config.setURLSchemeHandler(context.coordinator.resourceSchemeHandler, forURLScheme: EdgeEverResourceSchemeHandler.scheme)
         let userContent = config.userContentController
         userContent.add(context.coordinator, name: "edgeever")
         let webView = WKWebView(frame: .zero, configuration: config)
@@ -53,6 +56,7 @@ struct TipTapWebView: UIViewRepresentable {
         private var lastEditorEmittedFingerprint: String?
         private var lastAppliedMode: String?
         private let resourceCache = ResourceCache()
+        let resourceSchemeHandler = EdgeEverResourceSchemeHandler()
 
         init(_ parent: TipTapWebView) {
             self.parent = parent
@@ -220,32 +224,173 @@ struct TipTapWebView: UIViewRepresentable {
 
         private func resolveResource(requestId: String, source: String) async {
             guard let webView else { return }
-            var dataURL: String?
-            if source.hasPrefix("data:") || source.hasPrefix("http://") || source.hasPrefix("https://") {
-                // Remote absolute — try fetch with token if relative API path style
-                dataURL = source
+            let token = parent.token
+            let base = parent.baseURL
+            let displayURL = await Self.loadResourceDataURL(
+                source: source,
+                baseURL: base,
+                token: token,
+                resourceCache: resourceCache
+            )
+            #if DEBUG
+            if displayURL == nil {
+                print("TipTapWebView: failed to load resource source=\(source.prefix(120)) base=\(base?.absoluteString ?? "nil") token=\(token == nil ? "nil" : "set")")
+            } else {
+                print("TipTapWebView: resolved resource source=\(source.prefix(80)) → \(displayURL!.prefix(80))")
             }
-            if ResourceCache.isProtectedResourceSource(source, baseURL: parent.baseURL),
-               let token = parent.token,
-               let base = parent.baseURL
-            {
-                let client = APIClient(baseURL: base, token: token)
-                let path = ResourceCache.normalizeProtectedResourcePath(source, baseURL: base)
-                let id = ResourceCache.resourceId(from: path) ?? path
-                if let cached = await resourceCache.cachedData(for: id) {
-                    dataURL = try? await resourceCache.dataURL(for: id, data: cached, mimeType: "image/jpeg")
-                } else if let data = try? await client.getResourceData(path: path) {
-                    dataURL = try? await resourceCache.dataURL(for: id, data: data, mimeType: "image/jpeg")
-                }
-            }
-            let payload = dataURL ?? ""
-            let escaped = payload
+            #endif
+            // Short edgeever-res:// (or small data:) URLs — safe to interpolate into JS.
+            let reqEscaped = requestId
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "'", with: "\\'")
-            let js = "window.EdgeEverEditor && window.EdgeEverEditor.resolveResource('\(requestId)', '\(escaped)');"
-            await MainActor.run {
-                webView.evaluateJavaScript(js, completionHandler: nil)
+            let urlLiteral: String
+            if let displayURL {
+                let escaped = displayURL
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "'", with: "\\'")
+                urlLiteral = "'\(escaped)'"
+            } else {
+                urlLiteral = "null"
             }
+            let js = """
+            (function(){
+              try {
+                if (window.EdgeEverEditor) {
+                  window.EdgeEverEditor.resolveResource('\(reqEscaped)', \(urlLiteral));
+                }
+              } catch (e) {
+                try { window.webkit.messageHandlers.edgeever.postMessage({type:'error', message: 'resolveResource: '+String(e)}); } catch (_) {}
+              }
+            })();
+            """
+            await MainActor.run {
+                webView.evaluateJavaScript(js, completionHandler: { _, error in
+                    #if DEBUG
+                    if let error { print("TipTapWebView resolveResource JS error: \(error)") }
+                    #endif
+                })
+            }
+        }
+
+        /// Load image/attachment bytes for TipTap: protected paths need auth; public URLs are fetched
+        /// into the local scheme so a file:// editor page can display them.
+        static func loadResourceDataURL(
+            source: String,
+            baseURL: URL?,
+            token: String?,
+            resourceCache: ResourceCache
+        ) async -> String? {
+            let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            if trimmed.hasPrefix("data:") || trimmed.hasPrefix("edgeever-res:") {
+                return trimmed
+            }
+
+            let protected = ResourceCache.isProtectedResourceSource(trimmed, baseURL: baseURL)
+            if protected {
+                // Prefer session base; fall back to host from absolute source so offline-cached notes still load.
+                let base = baseURL ?? Self.baseURLFromAbsoluteSource(trimmed)
+                guard let base else { return nil }
+                let path = ResourceCache.normalizeProtectedResourcePath(trimmed, baseURL: base)
+                let id = ResourceCache.resourceId(from: path) ?? path
+
+                if let cached = await resourceCache.cachedData(for: id) {
+                    let mime = Self.sniffImageMime(cached)
+                    _ = try? await resourceCache.dataURL(for: id, data: cached, mimeType: mime)
+                    await ResourceBlobStore.shared.put(id: id, data: cached, mimeType: mime)
+                    return EdgeEverResourceSchemeHandler.localURL(for: id)
+                }
+
+                let client = APIClient(baseURL: base, token: token)
+                do {
+                    let result = try await client.getResourceData(path: path)
+                    var mime = result.mimeType
+                    if !mime.hasPrefix("image/") && !mime.hasPrefix("application/") {
+                        mime = Self.sniffImageMime(result.data)
+                    } else if mime.hasPrefix("application/octet-stream") {
+                        mime = Self.sniffImageMime(result.data)
+                    }
+                    _ = try? await resourceCache.dataURL(for: id, data: result.data, mimeType: mime)
+                    await ResourceBlobStore.shared.put(id: id, data: result.data, mimeType: mime)
+                    return EdgeEverResourceSchemeHandler.localURL(for: id)
+                } catch {
+                    #if DEBUG
+                    print("TipTapWebView: getResourceData failed path=\(path) error=\(error)")
+                    #endif
+                    return nil
+                }
+            }
+
+            // Absolute public URL: fetch into scheme store (file:// pages cannot reliably load remote imgs).
+            if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://"),
+               let absolute = URL(string: trimmed)
+            {
+                let client = APIClient(baseURL: baseURL ?? absolute, token: nil)
+                do {
+                    let result = try await client.getPublicURLData(absolute)
+                    var mime = result.mimeType.isEmpty ? "application/octet-stream" : result.mimeType
+                    if !mime.hasPrefix("image/") {
+                        mime = Self.sniffImageMime(result.data)
+                    }
+                    let id = Self.publicResourceId(for: trimmed)
+                    await ResourceBlobStore.shared.put(id: id, data: result.data, mimeType: mime)
+                    return EdgeEverResourceSchemeHandler.localURL(for: id)
+                } catch {
+                    #if DEBUG
+                    print("TipTapWebView: public URL fetch failed \(trimmed.prefix(80)) error=\(error)")
+                    #endif
+                    return nil
+                }
+            }
+
+            // Relative non-api path — resolve against base if possible.
+            if trimmed.hasPrefix("/"), let base = baseURL {
+                let absolute = base.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + trimmed
+                if let url = URL(string: absolute) {
+                    let client = APIClient(baseURL: base, token: token)
+                    if let result = try? await client.getPublicURLData(url) {
+                        var mime = result.mimeType.isEmpty ? "application/octet-stream" : result.mimeType
+                        if !mime.hasPrefix("image/") {
+                            mime = Self.sniffImageMime(result.data)
+                        }
+                        let id = Self.publicResourceId(for: absolute)
+                        await ResourceBlobStore.shared.put(id: id, data: result.data, mimeType: mime)
+                        return EdgeEverResourceSchemeHandler.localURL(for: id)
+                    }
+                }
+            }
+            return nil
+        }
+
+        static func baseURLFromAbsoluteSource(_ source: String) -> URL? {
+            guard let url = URL(string: source),
+                  let scheme = url.scheme,
+                  let host = url.host
+            else { return nil }
+            var components = URLComponents()
+            components.scheme = scheme
+            components.host = host
+            components.port = url.port
+            return components.url?.edgeEverNormalizedBase
+        }
+
+        static func publicResourceId(for source: String) -> String {
+            let digest = SHA256.hash(data: Data(source.utf8))
+            return "pub-" + digest.map { String(format: "%02x", $0) }.joined()
+        }
+
+        static func sniffImageMime(_ data: Data) -> String {
+            if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) { return "image/png" }
+            if data.starts(with: [0xFF, 0xD8, 0xFF]) { return "image/jpeg" }
+            if data.count >= 12 {
+                let riff = data.prefix(4)
+                let webp = data.dropFirst(8).prefix(4)
+                if riff.elementsEqual([0x52, 0x49, 0x46, 0x46]), webp.elementsEqual([0x57, 0x45, 0x42, 0x50]) {
+                    return "image/webp"
+                }
+            }
+            if data.starts(with: [0x47, 0x49, 0x46, 0x38]) { return "image/gif" }
+            return "image/jpeg"
         }
 
         /// Minimal contenteditable + markdown-ish bridge when EditorBundle is missing.
