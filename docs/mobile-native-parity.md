@@ -38,7 +38,7 @@ The App follows the mobile PWA for high-frequency layouts and interactions, but 
 | Memo list, filters, sort, pin, and batch operations | Implemented |
 | Local-cache search | Implemented |
 | Local TipTap create/edit and autosave flow | Implemented |
-| Note detail body preview via static HTML WebView markdown (TipTap reserved for edit; avoids iPadOS 26.5 Fabric text crashes) | Implemented |
+| Note detail body preview via read-only TipTap (same schema as edit) | Implemented |
 | Attachments, image compression, and resource library | Implemented |
 | Tag management | Implemented |
 | Revision history and restore | Implemented |

@@ -1,30 +1,15 @@
 import { Children, forwardRef, isValidElement, type ComponentRef, type ReactNode } from "react";
 import {
   Alert as NativeAlert,
-  Platform,
   Pressable as NativePressable,
-  StyleSheet,
   Text as NativeText,
   TextInput as NativeTextInput,
   type PressableProps,
   type TextInputProps,
   type TextProps,
-  type TextStyle,
 } from "react-native";
 import { translateCurrentMobileText, useMobileLocale } from "../lib/mobile-locale";
 import { presentAppDialog } from "./app-dialog-controller";
-
-/**
- * iPadOS 26.5 + Fabric: measuring TextInput with the variable system font
- * (UIFont systemFontOfSize:weight: → CopyVariationAxes) can SIGSEGV. Force a
- * non-variable UIKit face and drop weight so layout never hits that path.
- */
-const IOS_SAFE_TEXT_INPUT_STYLE: TextStyle = Platform.OS === "ios"
-  ? {
-      fontFamily: "Helvetica",
-      fontWeight: "400",
-    }
-  : {};
 
 const translateChildren = (children: ReactNode, translate: (value: string) => string): ReactNode =>
   Children.map(children, (child) => {
@@ -53,22 +38,15 @@ export const Text = forwardRef<ComponentRef<typeof NativeText>, TextProps>(({ ch
 
 Text.displayName = "LocalizedText";
 
-export const TextInput = forwardRef<ComponentRef<typeof NativeTextInput>, TextInputProps>(({ accessibilityHint, accessibilityLabel, placeholder, value, defaultValue, style, ...props }, ref) => {
+export const TextInput = forwardRef<ComponentRef<typeof NativeTextInput>, TextInputProps>(({ accessibilityHint, accessibilityLabel, placeholder, ...props }, ref) => {
   const { translate } = useMobileLocale();
-  // Fabric TextInput measure on iPadOS 26.5 corrupts when value is non-string.
-  const safeValue = value === undefined || value === null ? value : String(value);
-  const safeDefault = defaultValue === undefined || defaultValue === null ? defaultValue : String(defaultValue);
   return (
     <NativeTextInput
       {...props}
       accessibilityHint={typeof accessibilityHint === "string" ? translate(accessibilityHint) : accessibilityHint}
       accessibilityLabel={typeof accessibilityLabel === "string" ? translate(accessibilityLabel) : accessibilityLabel}
-      defaultValue={safeDefault}
       placeholder={placeholder ? translate(placeholder) : placeholder}
       ref={ref}
-      // Safe face last so callers cannot reintroduce variable system-font weights.
-      style={style ? StyleSheet.flatten([style, IOS_SAFE_TEXT_INPUT_STYLE]) : IOS_SAFE_TEXT_INPUT_STYLE}
-      value={safeValue}
     />
   );
 });
