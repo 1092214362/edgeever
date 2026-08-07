@@ -56,12 +56,24 @@ final class EdgeEverResourceSchemeHandler: NSObject, WKURLSchemeHandler, @unchec
                 )
                 return
             }
-            let response = URLResponse(
+            // HTTPURLResponse is more reliable for <img> loads than plain URLResponse
+            // (especially for non-bitmap types served through a custom scheme).
+            let headers: [String: String] = [
+                "Content-Type": entry.mimeType,
+                "Content-Length": String(entry.data.count),
+                "Access-Control-Allow-Origin": "*",
+            ]
+            guard let response = HTTPURLResponse(
                 url: url,
-                mimeType: entry.mimeType,
-                expectedContentLength: entry.data.count,
-                textEncodingName: nil
-            )
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: headers
+            ) else {
+                urlSchemeTask.didFailWithError(
+                    NSError(domain: "EdgeEverResource", code: 500, userInfo: [NSLocalizedDescriptionKey: "Bad response"])
+                )
+                return
+            }
             urlSchemeTask.didReceive(response)
             urlSchemeTask.didReceive(entry.data)
             urlSchemeTask.didFinish()

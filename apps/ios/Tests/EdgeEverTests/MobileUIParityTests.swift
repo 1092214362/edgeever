@@ -119,6 +119,60 @@ final class MobileUIParityTests: XCTestCase {
         XCTAssertEqual(blob?.mimeType, "image/png")
     }
 
+    func testDemoCatSvgIsNotMislabeledAsJpeg() {
+        let svg = Data(#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>"#.utf8)
+        XCTAssertTrue(TipTapWebView.Coordinator.isSvgData(svg))
+        XCTAssertEqual(TipTapWebView.Coordinator.sniffImageMime(svg), "image/svg+xml")
+        // Cache re-hit path must not report jpeg for SVG bytes.
+        XCTAssertEqual(
+            TipTapWebView.Coordinator.resolvedImageMime(header: "application/octet-stream", data: svg),
+            "image/svg+xml"
+        )
+        XCTAssertEqual(
+            TipTapWebView.Coordinator.resolvedImageMime(header: "image/svg+xml", data: svg),
+            "image/svg+xml"
+        )
+    }
+
+    func testLoadResourceDataURLReturnsDataURLForCachedSvg() async throws {
+        // Use a test-only resource id — never write over real demo cache keys on the simulator.
+        let cache = ResourceCache()
+        let testId = "res_unit_test_svg_\(UUID().uuidString.prefix(8))"
+        let svg = Data(#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle r="4"/></svg>"#.utf8)
+        _ = try await cache.dataURL(for: testId, data: svg, mimeType: "image/jpeg") // wrong mime on disk write is OK
+        let loaded = await TipTapWebView.Coordinator.loadResourceDataURL(
+            source: "/api/v1/resources/\(testId)/blob",
+            baseURL: URL(string: "http://127.0.0.1:8787"),
+            token: nil,
+            resourceCache: cache
+        )
+        XCTAssertNotNil(loaded)
+        XCTAssertTrue(loaded!.hasPrefix("data:image/svg+xml"), "SVG demo asset must become data:image/svg+xml, got \(loaded!.prefix(40))")
+        // Cleanup so tests don't leave junk in the shared caches directory.
+        let stale = await cache.fileURL(for: testId)
+        try? FileManager.default.removeItem(at: stale)
+    }
+
+    func testHydrateImageSourcesInJSONRewritesProtectedSrc() async throws {
+        let cache = ResourceCache()
+        let testId = "res_unit_test_json_\(UUID().uuidString.prefix(8))"
+        let svg = Data(#"<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"></svg>"#.utf8)
+        _ = try await cache.dataURL(for: testId, data: svg, mimeType: "image/svg+xml")
+        let input = """
+        {"type":"doc","content":[{"type":"image","attrs":{"src":"/api/v1/resources/\(testId)/blob","alt":"cat","title":null,"width":35}}]}
+        """
+        let out = await TipTapWebView.Coordinator.hydrateImageSourcesInJSON(
+            input,
+            baseURL: URL(string: "http://127.0.0.1:8787"),
+            token: nil,
+            resourceCache: cache
+        )
+        XCTAssertTrue(out.contains("data:image/svg+xml"), out)
+        XCTAssertFalse(out.contains("/api/v1/resources/\(testId)/blob"), "protected path must be rewritten before setContent")
+        let stale = await cache.fileURL(for: testId)
+        try? FileManager.default.removeItem(at: stale)
+    }
+
     func testIsProtectedResourceSourceMatchesAbsoluteAPIPath() {
         let base = URL(string: "https://demo.edgeever.org")!
         XCTAssertTrue(

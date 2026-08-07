@@ -147,19 +147,265 @@ struct TipTapWebView: UIViewRepresentable {
                 applyMode()
             }
 
-            let js: String
-            if useJSON {
-                js = Self.jsCall(fn: "setDocumentFromJSON", arg: parent.documentJSON)
-            } else {
-                js = Self.jsCall(fn: "setMarkdown", arg: parent.markdown)
-            }
-            webView.evaluateJavaScript(js, completionHandler: { _, error in
-                #if DEBUG
-                if let error {
-                    print("TipTapWebView pushContent error: \(error)")
+            let base = parent.baseURL
+            let token = parent.token
+            let mode = parent.mode
+            let rawJSON = parent.documentJSON
+            let rawMarkdown = parent.markdown
+            let cache = resourceCache
+
+            // Viewer: rewrite image srcs to displayable data:/edgeever-res: *before* setContent so
+            // WKWebView never tries file:///api/... (sandbox fails — see simulator logs).
+            // Editor: keep original /api paths in the document model for save; hydrate DOM after paint.
+            Task { [weak self, weak webView] in
+                guard let self, let webView else { return }
+                let payload: String
+                let fn: String
+                if useJSON {
+                    fn = "setDocumentFromJSON"
+                    if mode == .viewer {
+                        payload = await Self.hydrateImageSourcesInJSON(
+                            rawJSON, baseURL: base, token: token, resourceCache: cache
+                        )
+                    } else {
+                        payload = rawJSON
+                    }
+                } else {
+                    fn = "setMarkdown"
+                    if mode == .viewer {
+                        payload = await Self.hydrateImageSourcesInMarkdown(
+                            rawMarkdown, baseURL: base, token: token, resourceCache: cache
+                        )
+                    } else {
+                        payload = rawMarkdown
+                    }
                 }
-                #endif
-            })
+
+                let js = Self.jsCall(fn: fn, arg: payload)
+                await MainActor.run {
+                    webView.evaluateJavaScript(js) { [weak self] _, error in
+                        #if DEBUG
+                        if let error {
+                            NSLog("TipTapWebView pushContent error: \(error)")
+                        }
+                        #endif
+                        // Always run native DOM hydrate as a second pass (covers editor + any missed nodes).
+                        guard let self else { return }
+                        Task { await self.nativeHydrateDOMImages() }
+                    }
+                }
+            }
+        }
+
+        /// Collect img[src] from the live DOM and rewrite any protected/remote sources to display URLs.
+        private func nativeHydrateDOMImages() async {
+            guard let webView else { return }
+            let listJS = """
+            (function(){
+              return Array.from(document.querySelectorAll('img[src]')).map(function(img){
+                return img.dataset.originalSrc || img.getAttribute('src') || '';
+              });
+            })();
+            """
+            let raw: Any? = await withCheckedContinuation { cont in
+                DispatchQueue.main.async {
+                    webView.evaluateJavaScript(listJS) { value, _ in
+                        cont.resume(returning: value)
+                    }
+                }
+            }
+            let srcs = (raw as? [Any])?.compactMap { $0 as? String } ?? []
+            let unique = Array(Set(srcs.filter { !$0.isEmpty }))
+            #if DEBUG
+            NSLog("TipTapWebView nativeHydrateDOMImages count=%d srcs=%@", unique.count, unique.prefix(3).joined(separator: ","))
+            #endif
+            let base = parent.baseURL
+            let token = parent.token
+            for source in unique {
+                // Skip already-displayable sources.
+                if source.hasPrefix("data:") || source.hasPrefix("edgeever-res:") || source.hasPrefix("blob:") {
+                    continue
+                }
+                guard let display = await Self.loadResourceDataURL(
+                    source: source,
+                    baseURL: base,
+                    token: token,
+                    resourceCache: resourceCache
+                ) else {
+                    #if DEBUG
+                    NSLog("TipTapWebView nativeHydrate failed source=%@", String(source.prefix(100)))
+                    #endif
+                    continue
+                }
+                let srcB64 = Data(source.utf8).base64EncodedString()
+                let urlB64 = Data(display.utf8).base64EncodedString()
+                let setJS = """
+                (function(){
+                  function dec(b64){
+                    var bin = atob(b64);
+                    var bytes = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                    return new TextDecoder('utf-8').decode(bytes);
+                  }
+                  var src = dec('\(srcB64)');
+                  var url = dec('\(urlB64)');
+                  var report = [];
+                  document.querySelectorAll('img').forEach(function(img){
+                    var cur = img.getAttribute('src') || '';
+                    var orig = img.dataset.originalSrc || '';
+                    if (cur === src || orig === src || (src.indexOf('data:') === 0 && cur === src) || cur === src) {
+                      if (!img.dataset.originalSrc && src.indexOf('data:') !== 0) img.dataset.originalSrc = src;
+                      img.setAttribute('src', url);
+                      // Demo notes store width=35 meaning 35% (Android). Bare width="35" collapses to 35px.
+                      var wAttr = img.getAttribute('width') || img.getAttribute('data-width');
+                      if (wAttr && String(wAttr).match(/^\\d+(\\.\\d+)?$/)) {
+                        img.removeAttribute('width');
+                        img.style.width = wAttr + '%';
+                      }
+                      img.style.maxWidth = '100%';
+                      img.style.height = 'auto';
+                      img.style.display = 'block';
+                      img.style.margin = '12px 0';
+                    }
+                    report.push({
+                      nw: img.naturalWidth, nh: img.naturalHeight,
+                      cw: img.clientWidth, ch: img.clientHeight,
+                      w: img.getAttribute('width'),
+                      src: (img.getAttribute('src')||'').slice(0, 48)
+                    });
+                  });
+                  return JSON.stringify(report);
+                })();
+                """
+                await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                    DispatchQueue.main.async {
+                        webView.evaluateJavaScript(setJS) { value, error in
+                            #if DEBUG
+                            if let error { NSLog("TipTapWebView set img src error: \(error)") }
+                            if let value { NSLog("TipTapWebView img metrics: \(value)") }
+                            #endif
+                            cont.resume()
+                        }
+                    }
+                }
+            }
+
+            // Second metrics pass after decode/layout.
+            let metricsJS = """
+            (function(){
+              return JSON.stringify(Array.from(document.querySelectorAll('img')).map(function(img){
+                return {nw: img.naturalWidth, nh: img.naturalHeight, cw: img.clientWidth, ch: img.clientHeight,
+                        complete: img.complete, src: (img.getAttribute('src')||'').slice(0,40)};
+              }));
+            })();
+            """
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                DispatchQueue.main.async {
+                    webView.evaluateJavaScript(metricsJS) { value, _ in
+                        #if DEBUG
+                        if let value { NSLog("TipTapWebView img metrics after layout: \(value)") }
+                        #endif
+                        cont.resume()
+                    }
+                }
+            }
+        }
+
+        /// Rewrite `image` node `attrs.src` values that need native loading.
+        static func hydrateImageSourcesInJSON(
+            _ json: String,
+            baseURL: URL?,
+            token: String?,
+            resourceCache: ResourceCache
+        ) async -> String {
+            guard
+                let data = json.data(using: .utf8),
+                var root = try? JSONSerialization.jsonObject(with: data)
+            else { return json }
+            await replaceImageSources(in: &root, baseURL: baseURL, token: token, resourceCache: resourceCache)
+            guard
+                let out = try? JSONSerialization.data(withJSONObject: root, options: []),
+                let text = String(data: out, encoding: .utf8)
+            else { return json }
+            return text
+        }
+
+        static func hydrateImageSourcesInMarkdown(
+            _ markdown: String,
+            baseURL: URL?,
+            token: String?,
+            resourceCache: ResourceCache
+        ) async -> String {
+            // ![alt](src) — replace src when it needs native hydration.
+            let pattern = #"!\[([^\]]*)\]\(([^)]+)\)"#
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { return markdown }
+            let ns = markdown as NSString
+            let matches = regex.matches(in: markdown, range: NSRange(location: 0, length: ns.length))
+            var result = markdown
+            // Replace from the end so ranges stay valid.
+            for match in matches.reversed() {
+                guard match.numberOfRanges >= 3,
+                      let srcRange = Range(match.range(at: 2), in: result)
+                else { continue }
+                let src = String(result[srcRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if src.hasPrefix("data:") || src.hasPrefix("edgeever-res:") { continue }
+                guard let display = await loadResourceDataURL(
+                    source: src, baseURL: baseURL, token: token, resourceCache: resourceCache
+                ) else { continue }
+                result.replaceSubrange(srcRange, with: display)
+            }
+            return result
+        }
+
+        private static func replaceImageSources(
+            in node: inout Any,
+            baseURL: URL?,
+            token: String?,
+            resourceCache: ResourceCache
+        ) async {
+            if var dict = node as? [String: Any] {
+                if dict["type"] as? String == "image",
+                   var attrs = dict["attrs"] as? [String: Any]
+                {
+                    if let src = attrs["src"] as? String,
+                       !src.hasPrefix("data:"),
+                       !src.hasPrefix("edgeever-res:"),
+                       !src.hasPrefix("blob:"),
+                       let display = await loadResourceDataURL(
+                           source: src, baseURL: baseURL, token: token, resourceCache: resourceCache
+                       )
+                    {
+                        attrs["src"] = display
+                    }
+                    // Demo / Android store width as percent (e.g. 35). Drop bare numeric width so
+                    // the browser does not treat it as 35 CSS pixels (nearly invisible).
+                    if let width = attrs["width"] as? Int {
+                        attrs["data-width"] = String(width)
+                        attrs["width"] = NSNull()
+                    } else if let width = attrs["width"] as? Double {
+                        attrs["data-width"] = String(Int(width))
+                        attrs["width"] = NSNull()
+                    } else if let width = attrs["width"] as? String, width.range(of: #"^\d+$"#, options: .regularExpression) != nil {
+                        attrs["data-width"] = width
+                        attrs["width"] = NSNull()
+                    }
+                    dict["attrs"] = attrs
+                }
+                for key in dict.keys {
+                    guard var child = dict[key] else { continue }
+                    await replaceImageSources(in: &child, baseURL: baseURL, token: token, resourceCache: resourceCache)
+                    dict[key] = child
+                }
+                node = dict
+            } else if var arr = node as? [Any] {
+                for i in arr.indices {
+                    var child = arr[i]
+                    await replaceImageSources(in: &child, baseURL: baseURL, token: token, resourceCache: resourceCache)
+                    arr[i] = child
+                }
+                node = arr
+            }
         }
 
         /// Call `window.EdgeEverEditor.fn(string)` with base64 payload (UTF-8 safe).
@@ -295,24 +541,18 @@ struct TipTapWebView: UIViewRepresentable {
                 let id = ResourceCache.resourceId(from: path) ?? path
 
                 if let cached = await resourceCache.cachedData(for: id) {
-                    let mime = Self.sniffImageMime(cached)
+                    // Disk cache stores raw bytes only — re-detect MIME (SVG must not become image/jpeg).
+                    let mime = Self.resolvedImageMime(header: nil, data: cached)
                     _ = try? await resourceCache.dataURL(for: id, data: cached, mimeType: mime)
-                    await ResourceBlobStore.shared.put(id: id, data: cached, mimeType: mime)
-                    return EdgeEverResourceSchemeHandler.localURL(for: id)
+                    return await Self.displayURL(for: id, data: cached, mimeType: mime)
                 }
 
                 let client = APIClient(baseURL: base, token: token)
                 do {
                     let result = try await client.getResourceData(path: path)
-                    var mime = result.mimeType
-                    if !mime.hasPrefix("image/") && !mime.hasPrefix("application/") {
-                        mime = Self.sniffImageMime(result.data)
-                    } else if mime.hasPrefix("application/octet-stream") {
-                        mime = Self.sniffImageMime(result.data)
-                    }
+                    let mime = Self.resolvedImageMime(header: result.mimeType, data: result.data)
                     _ = try? await resourceCache.dataURL(for: id, data: result.data, mimeType: mime)
-                    await ResourceBlobStore.shared.put(id: id, data: result.data, mimeType: mime)
-                    return EdgeEverResourceSchemeHandler.localURL(for: id)
+                    return await Self.displayURL(for: id, data: result.data, mimeType: mime)
                 } catch {
                     #if DEBUG
                     print("TipTapWebView: getResourceData failed path=\(path) error=\(error)")
@@ -328,13 +568,9 @@ struct TipTapWebView: UIViewRepresentable {
                 let client = APIClient(baseURL: baseURL ?? absolute, token: nil)
                 do {
                     let result = try await client.getPublicURLData(absolute)
-                    var mime = result.mimeType.isEmpty ? "application/octet-stream" : result.mimeType
-                    if !mime.hasPrefix("image/") {
-                        mime = Self.sniffImageMime(result.data)
-                    }
+                    let mime = Self.resolvedImageMime(header: result.mimeType, data: result.data)
                     let id = Self.publicResourceId(for: trimmed)
-                    await ResourceBlobStore.shared.put(id: id, data: result.data, mimeType: mime)
-                    return EdgeEverResourceSchemeHandler.localURL(for: id)
+                    return await Self.displayURL(for: id, data: result.data, mimeType: mime)
                 } catch {
                     #if DEBUG
                     print("TipTapWebView: public URL fetch failed \(trimmed.prefix(80)) error=\(error)")
@@ -349,17 +585,52 @@ struct TipTapWebView: UIViewRepresentable {
                 if let url = URL(string: absolute) {
                     let client = APIClient(baseURL: base, token: token)
                     if let result = try? await client.getPublicURLData(url) {
-                        var mime = result.mimeType.isEmpty ? "application/octet-stream" : result.mimeType
-                        if !mime.hasPrefix("image/") {
-                            mime = Self.sniffImageMime(result.data)
-                        }
+                        let mime = Self.resolvedImageMime(header: result.mimeType, data: result.data)
                         let id = Self.publicResourceId(for: absolute)
-                        await ResourceBlobStore.shared.put(id: id, data: result.data, mimeType: mime)
-                        return EdgeEverResourceSchemeHandler.localURL(for: id)
+                        return await Self.displayURL(for: id, data: result.data, mimeType: mime)
                     }
                 }
             }
             return nil
+        }
+
+        /// Prefer data: for SVG (tiny + reliable in WKWebView); use custom scheme for binary images.
+        static func displayURL(for resourceId: String, data: Data, mimeType: String) async -> String {
+            let mime = resolvedImageMime(header: mimeType, data: data)
+            if mime.contains("svg") || isSvgData(data) {
+                // Base64 data URL: avoids custom-scheme SVG quirks and special-char escaping issues.
+                return "data:image/svg+xml;base64,\(data.base64EncodedString())"
+            }
+            await ResourceBlobStore.shared.put(id: resourceId, data: data, mimeType: mime)
+            return EdgeEverResourceSchemeHandler.localURL(for: resourceId)
+        }
+
+        static func resolvedImageMime(header: String?, data: Data) -> String {
+            let headerMime = (header ?? "")
+                .split(separator: ";")
+                .first
+                .map(String.init)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased() ?? ""
+            if headerMime.hasPrefix("image/") || headerMime == "image/svg+xml" {
+                // Trust server for real image/*; still override wrong octet sniff for SVG files.
+                if isSvgData(data) { return "image/svg+xml" }
+                return headerMime
+            }
+            if isSvgData(data) { return "image/svg+xml" }
+            if headerMime.hasPrefix("application/") && !headerMime.contains("octet-stream") {
+                // e.g. application/xml for some SVG hosts
+                if isSvgData(data) { return "image/svg+xml" }
+            }
+            return sniffImageMime(data)
+        }
+
+        static func isSvgData(_ data: Data) -> Bool {
+            guard let head = String(data: data.prefix(256), encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            else { return false }
+            return head.hasPrefix("<svg") || head.hasPrefix("<?xml") && head.contains("<svg")
         }
 
         static func baseURLFromAbsoluteSource(_ source: String) -> URL? {
@@ -380,6 +651,7 @@ struct TipTapWebView: UIViewRepresentable {
         }
 
         static func sniffImageMime(_ data: Data) -> String {
+            if isSvgData(data) { return "image/svg+xml" }
             if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) { return "image/png" }
             if data.starts(with: [0xFF, 0xD8, 0xFF]) { return "image/jpeg" }
             if data.count >= 12 {
