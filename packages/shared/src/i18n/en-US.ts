@@ -175,8 +175,7 @@ export const enUS = {
     imageCompressionDescription: "Compress large images locally before upload to reduce storage use.",
     imageCompressionAria: "Compress note images",
     linkOpenModifierTitle: "Open links with Ctrl/⌘ + click while editing",
-    linkOpenModifierDescription:
-      "When on, a plain click places the caret; hold Ctrl (Windows) or ⌘ (Mac) and click to open a link, which helps avoid accidental navigation. When off (default), a single click opens the link. Desktop only; saved in this browser.",
+    linkOpenModifierDescription: "When on, hold Ctrl/⌘ and click to open; off (default) opens on a single click. Desktop only.",
     linkOpenModifierAria: "Require Ctrl or ⌘ click to open links while editing",
     syncIntervalTitle: "Automatic sync interval",
     syncIntervalDescription: "Sync edits to the server automatically while keeping local drafts available immediately.",

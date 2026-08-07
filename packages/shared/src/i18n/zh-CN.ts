@@ -175,8 +175,7 @@ export const zhCN = {
     imageCompressionDescription: "上传大图时在本地压缩，节省资源占用。",
     imageCompressionAria: "是否压缩笔记内图片",
     linkOpenModifierTitle: "编辑时用 Ctrl/⌘ + 点击打开链接",
-    linkOpenModifierDescription:
-      "开启后，编辑态下普通点击不会跳转，需按住 Ctrl（Windows）或 ⌘（Mac）再点链接，避免误触。关闭（默认）时单击即可打开。仅桌面端生效，偏好保存在当前浏览器。",
+    linkOpenModifierDescription: "开启后需按修饰键再点链接，避免误触；默认单击即可打开（仅桌面）。",
     linkOpenModifierAria: "编辑时是否需要 Ctrl 或 ⌘ 再点击才能打开链接",
     syncIntervalTitle: "自动同步间隔",
     syncIntervalDescription: "定期将编辑内容同步到服务器，本地草稿仍会即时保留。",
