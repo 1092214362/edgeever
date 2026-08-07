@@ -3951,7 +3951,12 @@ const RichEditorPane = ({
         } as CSSProperties}
         className={cn(
           "edgeever-editor relative min-h-0 flex-1 bg-white",
-          useMobilePlainTextEditor ? "overflow-visible" : "overflow-y-auto"
+          useMobilePlainTextEditor
+            ? "overflow-visible"
+            : useMarkdownSourceEditor
+              // Source mode: fill the pane and scroll inside the textarea (not a 300px card).
+              ? "flex flex-col overflow-hidden"
+              : "overflow-y-auto"
         )}
       >
         {editorTheme !== "default" &&
@@ -3968,7 +3973,10 @@ const RichEditorPane = ({
           )}
         <div
           className={cn(
-            "flex min-h-full items-start gap-8 px-6 py-6 sm:px-10 transition-all duration-200",
+            "flex gap-8 transition-all duration-200",
+            useMarkdownSourceEditor
+              ? "h-full min-h-0 flex-1 items-stretch px-0 py-0"
+              : "min-h-full items-start px-6 py-6 sm:px-10",
             desktopFocusMode
               ? "mx-auto w-full max-w-[1400px] justify-center"
               : "w-full justify-start"
@@ -3977,13 +3985,20 @@ const RichEditorPane = ({
           <div
             className={cn(
               "min-w-0 flex-1 transition-[max-width] duration-200",
+              useMarkdownSourceEditor && "flex h-full min-h-0 flex-col",
               desktopFocusMode
                 ? "max-w-[960px]"
                 : "max-w-none"
             )}
-            style={!desktopFocusMode ? {
-              maxWidth: editorOutlineCollapsed ? EDITOR_CONTENT_MAX_WIDTH_COLLAPSED : EDITOR_CONTENT_MAX_WIDTH,
-            } : undefined}
+            style={
+              !desktopFocusMode && !useMarkdownSourceEditor
+                ? {
+                    maxWidth: editorOutlineCollapsed
+                      ? EDITOR_CONTENT_MAX_WIDTH_COLLAPSED
+                      : EDITOR_CONTENT_MAX_WIDTH,
+                  }
+                : undefined
+            }
           >
             {useMobilePlainTextEditor ? (
               <>
@@ -4023,22 +4038,25 @@ const RichEditorPane = ({
                 </div>
               </>
             ) : useMarkdownSourceEditor ? (
-              <textarea
-                ref={markdownTextAreaRef}
-                value={markdownSource}
-                onChange={(event) => handleMarkdownSourceChange(event.target.value)}
-                onKeyDown={(event) => {
-                  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
-                    event.preventDefault();
-                    openExternalLinkDialog();
-                  }
-                }}
-                readOnly={effectiveReadOnly}
-                spellCheck={false}
-                aria-label={t("editor.markdownSourceAria")}
-                className="block min-h-[300px] h-full w-full resize-none border-0 bg-slate-950 px-4 py-3 font-mono text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500 sm:px-7"
-                placeholder={`# ${t("editor.placeholder")}`}
-              />
+              // Absolute fill: native <textarea> often ignores flex-1 height; pin to the pane instead.
+              <div className="relative min-h-0 flex-1">
+                <textarea
+                  ref={markdownTextAreaRef}
+                  value={markdownSource}
+                  onChange={(event) => handleMarkdownSourceChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
+                      event.preventDefault();
+                      openExternalLinkDialog();
+                    }
+                  }}
+                  readOnly={effectiveReadOnly}
+                  spellCheck={false}
+                  aria-label={t("editor.markdownSourceAria")}
+                  className="absolute inset-0 h-full w-full resize-none border-0 bg-slate-950 px-4 py-3 font-mono text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500 sm:px-6"
+                  placeholder={`# ${t("editor.placeholder")}`}
+                />
+              </div>
             ) : (
               <div
                 onMouseOver={handleEditorMouseOver}
