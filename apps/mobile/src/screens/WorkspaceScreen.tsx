@@ -167,6 +167,11 @@ import {
   saveMobileResourceAs,
   type MobileResourceTarget,
 } from "../lib/mobile-attachments";
+import {
+  createOnceProtectedResourceFailureNotifier,
+  loadProtectedResourceDataUrl,
+  type ProtectedResourceLoadFailure,
+} from "../lib/mobile-protected-resources";
 
 const ALL_NOTES_ID = "all";
 const DEFAULT_MEMO_TITLE = "无标题笔记";
@@ -178,6 +183,24 @@ const resolveEditableMemoTitle = (title?: string | null) => {
   const trimmedTitle = title?.trim() ?? "";
   return trimmedTitle === DEFAULT_MEMO_TITLE ? "" : trimmedTitle;
 };
+
+const alertProtectedImageLoadFailure = (
+  locale: "zh-CN" | "en-US",
+  failure: ProtectedResourceLoadFailure
+) => {
+  const statusLabel = failure.status != null
+    ? String(failure.status)
+    : locale === "en-US"
+      ? "network error"
+      : "网络错误";
+  Alert.alert(
+    locale === "en-US" ? "Image failed to load" : "图片加载失败",
+    locale === "en-US"
+      ? `Could not load a note image (${statusLabel}). Check the network and try again.`
+      : `笔记中的图片未能加载（${statusLabel}）。请检查网络后重试。`
+  );
+};
+
 const useMobileLocalePreference = () => useMobileLocale().preference;
 type MobileView = "notes" | "settings";
 type MemoView = "notebook" | "trash";
@@ -1684,13 +1707,20 @@ const CreateMemoModal = ({
   syncQueueScope: string;
   visible: boolean;
 }) => {
-  const { client } = useSession();
+  const { client, session } = useSession();
   const queryClient = useQueryClient();
   const { resolvedLocale } = useMobileLocale();
   const { resolvedTheme } = useMobileTheme();
   const fallbackNotebookId = defaultNotebookId;
   const editorRef = useRef<LocalTiptapEditorRef>(null);
   const resourceDataUrlCacheRef = useRef(new Map<string, Promise<string | null>>());
+  const imageLoadFailureNotifier = useMemo(
+    () =>
+      createOnceProtectedResourceFailureNotifier((failure) => {
+        alertProtectedImageLoadFailure(resolvedLocale, failure);
+      }),
+    [resolvedLocale]
+  );
   const contentJsonRef = useRef<TiptapDoc>(markdownToDoc(""));
   const contentMarkdownRef = useRef("");
   const draftVersionRef = useRef(0);
@@ -1989,14 +2019,14 @@ const CreateMemoModal = ({
     if (!client) {
       return Promise.resolve(null);
     }
-    const cached = resourceDataUrlCacheRef.current.get(source);
-    if (cached) {
-      return cached;
-    }
-    const pending = client.getResourceBlob(source).then(blobToDataUrl).catch(() => null);
-    resourceDataUrlCacheRef.current.set(source, pending);
-    return pending;
-  }, [client]);
+    return loadProtectedResourceDataUrl(source, {
+      baseUrl: session?.baseUrl ?? baseUrl,
+      cache: resourceDataUrlCacheRef.current,
+      getResourceBlob: client.getResourceBlob,
+      onFailure: imageLoadFailureNotifier,
+      token: session?.token,
+    });
+  }, [baseUrl, client, imageLoadFailureNotifier, session?.baseUrl, session?.token]);
 
   const downloadResource = useCallback(async (target: MobileResourceTarget) => {
     if (!client) throw new Error(resolvedLocale === "en-US" ? "The attachment client is unavailable." : "当前无法读取附件。");
@@ -2334,7 +2364,7 @@ const RichEditorModal = ({
   onClose: () => void;
   updateMutation: MobileMemoUpdateMutation;
 }) => {
-  const { client } = useSession();
+  const { client, session } = useSession();
   const { resolvedLocale } = useMobileLocale();
   const { resolvedTheme } = useMobileTheme();
   const restoredDraft = initialDraft?.expectedRevision === memo?.revision ? initialDraft : null;
@@ -2343,6 +2373,13 @@ const RichEditorModal = ({
     : resolveMemoContentDoc(memo?.contentJson, memo?.contentMarkdown);
   const editorRef = useRef<LocalTiptapEditorRef>(null);
   const resourceDataUrlCacheRef = useRef(new Map<string, Promise<string | null>>());
+  const imageLoadFailureNotifier = useMemo(
+    () =>
+      createOnceProtectedResourceFailureNotifier((failure) => {
+        alertProtectedImageLoadFailure(resolvedLocale, failure);
+      }),
+    [memo?.id, resolvedLocale]
+  );
   const initialFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentJsonRef = useRef<TiptapDoc>(initialContentJson);
   const contentMarkdownRef = useRef(restoredDraft?.contentMarkdown ?? memo?.contentMarkdown ?? "");
@@ -2555,14 +2592,14 @@ const RichEditorModal = ({
     if (!client) {
       return Promise.resolve(null);
     }
-    const cached = resourceDataUrlCacheRef.current.get(source);
-    if (cached) {
-      return cached;
-    }
-    const pending = client.getResourceBlob(source).then(blobToDataUrl).catch(() => null);
-    resourceDataUrlCacheRef.current.set(source, pending);
-    return pending;
-  }, [client]);
+    return loadProtectedResourceDataUrl(source, {
+      baseUrl: session?.baseUrl ?? baseUrl,
+      cache: resourceDataUrlCacheRef.current,
+      getResourceBlob: client.getResourceBlob,
+      onFailure: imageLoadFailureNotifier,
+      token: session?.token,
+    });
+  }, [baseUrl, client, imageLoadFailureNotifier, session?.baseUrl, session?.token]);
 
   const downloadResource = useCallback(async (target: MobileResourceTarget) => {
     if (!client) throw new Error(resolvedLocale === "en-US" ? "The attachment client is unavailable." : "当前无法读取附件。");
@@ -3169,19 +3206,6 @@ const CreateMemoToolbarButton = ({
     {icon}
   </Pressable>
 );
-
-const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onerror = () => reject(reader.error ?? new Error("资源读取失败"));
-  reader.onloadend = () => {
-    if (typeof reader.result === "string") {
-      resolve(reader.result);
-      return;
-    }
-    reject(new Error("资源读取失败"));
-  };
-  reader.readAsDataURL(blob);
-});
 
 const createMobileImageUploadId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
