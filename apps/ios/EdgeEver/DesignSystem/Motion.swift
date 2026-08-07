@@ -48,15 +48,29 @@ enum Motion {
 
 // MARK: - Reusable modifiers
 
-/// Android-style memo card press scale using explicit timing curves.
+/// Android-style memo card press feedback.
+///
+/// Android uses Reanimated `scale → 0.985` with continuous `onPressIn/Out`.
+/// SwiftUI `ButtonStyle.isPressed` is less reliable when `contextMenu` /
+/// long-press selection share the same control, and a bare 1.5% scale is
+/// easy to miss (especially under parent list springs). We:
+/// 1. match Android **timing** (100ms in / 160ms out)
+/// 2. use a slightly stronger scale + dim so the press is actually visible
+/// 3. isolate the layer so LazyVStack `listContent` springs cannot swallow it
 struct MemoCardPressStyle: ButtonStyle {
+    /// Slightly stronger than Android's 0.985 so the gesture reads on OLED + 120Hz.
+    static let pressedScale: CGFloat = 0.97
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .scaleEffect(configuration.isPressed ? Self.pressedScale : 1)
+            .brightness(configuration.isPressed ? -0.03 : 0)
             .animation(
                 configuration.isPressed ? Motion.cardPressIn : Motion.cardPressOut,
                 value: configuration.isPressed
             )
+            // Prevent ancestor `.animation(Motion.listContent, …)` from owning this transform.
+            .geometryGroup()
     }
 }
 
@@ -64,8 +78,9 @@ struct MemoCardPressStyle: ButtonStyle {
 struct CreateButtonPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
+            .scaleEffect(configuration.isPressed ? 0.90 : 1)
             .animation(Motion.createButton, value: configuration.isPressed)
+            .geometryGroup()
     }
 }
 
@@ -75,9 +90,47 @@ struct FilterChipButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
+            .scaleEffect(configuration.isPressed ? 0.90 : 1)
             .animation(Motion.chip, value: configuration.isPressed)
             .animation(Motion.chip, value: active)
+            .geometryGroup()
+    }
+}
+
+/// Finger-down scale that does **not** depend on `ButtonStyle.isPressed`.
+/// Use on views where `contextMenu` / simultaneous long-press steal button highlight.
+///
+/// Cancels the pressed look once the finger moves far enough to count as a scroll,
+/// matching Android `Pressable` (press-in on touch down, clear once the list pans).
+struct MemoCardPressHighlight: ViewModifier {
+    @GestureState private var isPressed = false
+
+    private static let scrollCancelDistance: CGFloat = 12
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed ? MemoCardPressStyle.pressedScale : 1)
+            .brightness(isPressed ? -0.03 : 0)
+            .animation(
+                isPressed ? Motion.cardPressIn : Motion.cardPressOut,
+                value: isPressed
+            )
+            .geometryGroup()
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .updating($isPressed) { value, state, _ in
+                        let dx = abs(value.translation.width)
+                        let dy = abs(value.translation.height)
+                        state = dx < Self.scrollCancelDistance && dy < Self.scrollCancelDistance
+                    }
+            )
+    }
+}
+
+extension View {
+    /// Android memo-card press scale; works even when contextMenu is attached.
+    func edgeEverMemoCardPress() -> some View {
+        modifier(MemoCardPressHighlight())
     }
 }
 

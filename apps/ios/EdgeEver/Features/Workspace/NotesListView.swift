@@ -168,9 +168,14 @@ struct NotesListView: View {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(selected ? AppTheme.border : AppTheme.cardBorder, lineWidth: 1)
             )
+            // Selection chrome only — do not put list springs on the whole card
+            // (they swallow Android-style press scale).
             .animation(Motion.chip, value: selected)
+            // Gesture-based press: ButtonStyle.isPressed is unreliable once
+            // contextMenu + long-press selection share this control.
+            .edgeEverMemoCardPress()
         }
-        .buttonStyle(MemoCardPressStyle())
+        .buttonStyle(.plain)
         .edgeEverSelectionFeedback(selected)
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.52).onEnded { _ in
@@ -258,4 +263,5 @@ struct MemoCardContent: View {
     }
 }
 
-// MemoCardPressStyle lives in DesignSystem/Motion.swift (shared with Android timing curves).
+// Memo card press: `edgeEverMemoCardPress()` in DesignSystem/Motion.swift
+// (Android Reanimated timing: 100ms in / 160ms out; gesture-based so contextMenu works).

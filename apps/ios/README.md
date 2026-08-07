@@ -30,7 +30,9 @@ Android remains Expo / React Native in `apps/mobile`. Store builds for iOS use t
   - selection / error haptics + shake
   - pin shine, list card transitions
 
-Shared curves live in `EdgeEver/DesignSystem/Motion.swift` (card press timing matches Android Reanimated: 0.985 @ 100ms / release 160ms).
+Shared curves live in `EdgeEver/DesignSystem/Motion.swift`:
+- Memo card press: Android Reanimated **timing** (100ms in / 160ms out), gesture-driven scale (~0.97) so it still works with `contextMenu` + long-press selection (bare `ButtonStyle.isPressed` + 0.985 was effectively invisible / unreliable).
+- Create / filter chips: spring press scale + Pow ping.
 
 ## Requirements
 

@@ -415,6 +415,8 @@ const api: EdgeEverEditorAPI = {
     editor.setEditable(mode === "editor");
     setToolbarVisible(mode === "editor");
     document.documentElement.dataset.theme = opts.theme || "light";
+    document.body.classList.toggle("viewer-mode", mode === "viewer");
+    document.body.classList.toggle("editor-mode", mode === "editor");
     if (opts.placeholder) {
       // placeholder is extension config; update via meta class
       editorEl.setAttribute("data-placeholder", opts.placeholder);
@@ -490,7 +492,21 @@ const api: EdgeEverEditorAPI = {
   },
 
   focusEnd() {
-    editor.commands.focus("end");
+    try {
+      editor.commands.focus("end");
+    } catch {
+      /* ignore */
+    }
+    // iOS WKWebView: TipTap selection alone may not move DOM focus to the contenteditable.
+    // Explicitly focus ProseMirror so the software keyboard can attach after native first-responder.
+    try {
+      const dom = editor.view?.dom as HTMLElement | undefined;
+      if (dom && typeof dom.focus === "function") {
+        dom.focus({ preventScroll: true });
+      }
+    } catch {
+      /* ignore */
+    }
   },
 
   flush() {

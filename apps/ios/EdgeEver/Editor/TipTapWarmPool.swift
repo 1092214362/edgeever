@@ -63,6 +63,10 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         wv.scrollView.clipsToBounds = true
         wv.scrollView.contentInsetAdjustmentBehavior = .never
         wv.scrollView.delaysContentTouches = false
+        // Editor HTML owns scrolling inside #editor so the format toolbar can stay pinned
+        // at the top of the WebView. Outer bounce would reintroduce sticky/toolbar jumps.
+        wv.scrollView.isScrollEnabled = false
+        wv.scrollView.bounces = false
         self.webView = wv
         super.init()
         wv.navigationDelegate = self
@@ -86,6 +90,7 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
     // MARK: - Attach / bind
 
     func attach(to container: UIView) {
+        let reparented = hostContainer !== container || webView.superview !== container
         if hostContainer === container, webView.superview === container {
             layoutWebView(in: container)
             return
@@ -96,6 +101,13 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
             container.addSubview(webView)
         }
         layoutWebView(in: container)
+        if slot == .editor {
+            WKWebViewProgrammaticKeyboard.allowProgrammaticKeyboard(on: webView)
+            // New host (create/edit sheet): allow focus+keyboard again even if content fingerprint matches.
+            if reparented {
+                focusedGeneration = 0
+            }
+        }
     }
 
     func detach(from container: UIView) {
@@ -103,6 +115,11 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         // Keep the engine alive off-screen; only leave the hierarchy.
         webView.removeFromSuperview()
         hostContainer = nil
+        // Next present of create/edit must re-raise the keyboard.
+        if slot == .editor {
+            focusedGeneration = 0
+            webView.resignFirstResponder()
+        }
         // Drop action callbacks for the dismantled SwiftUI host, but keep session
         // content fingerprints so the next attach can re-push or re-notify ready.
         if var s = session {
@@ -130,33 +147,77 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         applyMode()
         // Mode switch (editor ↔ viewer) must re-push: viewer prefers markdown, editor prefers JSON.
         pushContentIfNeeded(force: modeChanged)
-        // Open-edit only: first time this document is shown in the editor, focus end once.
-        // Never refocus on SwiftUI re-binds caused by typing (same emitted fingerprint).
-        if newSession.mode == .editor, isNewDocument {
+        // Open-edit / re-open create: raise caret + keyboard once.
+        // Also when fingerprint matches (empty create twice) — focusedGeneration was cleared on detach.
+        if newSession.mode == .editor, isNewDocument || focusedGeneration == 0 {
             scheduleFocusEnd(for: contentGeneration)
         }
     }
 
-    /// Focus document end + make WKWebView first responder so the software keyboard appears.
-    /// Safe to call from the host once when the edit sheet opens — not on every keystroke.
+    /// Focus document end + raise the software keyboard.
+    ///
+    /// iOS WKWebView will often draw a caret from JS `focus()` **without** opening the IME
+    /// unless (1) the content view is first responder and (2) programmatic keyboard is allowed.
+    /// Safe to call once when create/edit opens — not on every keystroke.
     func focusEnd() {
         guard session?.mode == .editor else { return }
-        // Keyboard requires first-responder status; JS focus alone is not enough after re-parent.
-        if !webView.isFirstResponder {
-            webView.becomeFirstResponder()
+        focusEnd(attempt: 0)
+    }
+
+    private func focusEnd(attempt: Int) {
+        guard session?.mode == .editor else { return }
+        // fullScreenCover animation / re-parent: wait until we are in a window.
+        if webView.window == nil {
+            guard attempt < 12 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                self?.focusEnd(attempt: attempt + 1)
+            }
+            return
         }
+
+        WKWebViewProgrammaticKeyboard.allowProgrammaticKeyboard(on: webView)
+        _ = WKWebViewProgrammaticKeyboard.becomeFirstResponder(for: webView)
+
         webView.evaluateJavaScript(
             """
             (function(){
               try {
                 if (window.EdgeEverEditor && window.EdgeEverEditor.focusEnd) {
                   window.EdgeEverEditor.focusEnd();
+                } else {
+                  var el = document.querySelector('.ProseMirror');
+                  if (el && el.focus) el.focus({ preventScroll: true });
                 }
-              } catch (e) {}
+                return true;
+              } catch (e) { return false; }
             })();
-            """,
-            completionHandler: nil
-        )
+            """
+        ) { [weak self] _, _ in
+            // Re-assert first responder after WebKit applies the DOM focus (keyboard handshake).
+            DispatchQueue.main.async {
+                guard let self, self.session?.mode == .editor else { return }
+                _ = WKWebViewProgrammaticKeyboard.becomeFirstResponder(for: self.webView)
+                // One more pass after the sheet finishes presenting (common 0.3–0.4s cover).
+                if attempt == 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                        guard let self, self.session?.mode == .editor else { return }
+                        _ = WKWebViewProgrammaticKeyboard.becomeFirstResponder(for: self.webView)
+                        self.webView.evaluateJavaScript(
+                            """
+                            (function(){
+                              try {
+                                if (window.EdgeEverEditor && window.EdgeEverEditor.focusEnd) {
+                                  window.EdgeEverEditor.focusEnd();
+                                }
+                              } catch (e) {}
+                            })();
+                            """,
+                            completionHandler: nil
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /// Seed local blob + disk cache so a newly uploaded image can render without a network round-trip.
@@ -253,9 +314,12 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
     private func scheduleFocusEnd(for generation: UInt64) {
         guard focusedGeneration != generation else { return }
         focusedGeneration = generation
-        // One delayed focus after layout — not a repeating hammer mid-edit.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self, self.contentGeneration == generation else { return }
+        // Delay past SwiftUI fullScreenCover layout; focusEnd itself retries if window is nil.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) { [weak self] in
+            guard let self else { return }
+            // Generation may stay the same for empty create→create; focusedGeneration was reset on detach.
+            guard self.focusedGeneration == generation || self.focusedGeneration == 0 else { return }
+            self.focusedGeneration = generation
             self.focusEnd()
         }
     }

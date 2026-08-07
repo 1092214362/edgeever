@@ -136,8 +136,9 @@ struct MemoEditView: View {
         }
         .onDisappear {
             saveTask?.cancel()
-            // Flush real edits. Create mode also flushes after materialize (image upload
-            // already created a server memo — draft-only would orphan the image).
+            // Create commit is owned by Back / Done (Android `requestClose` = createMutation).
+            // Only flush edit sessions, or create-after-image-materialize if still dirty and
+            // the cover was dismissed without going through handleBack.
             if isDirty, contentHydrated, (!isCreate || hasMaterializedServerMemo) {
                 Task { await flushPending() }
             }
@@ -422,15 +423,13 @@ struct MemoEditView: View {
     }
 
     private func handleBack() async {
-        // After image materialize the server memo already exists — must flush body
-        // before dismiss or the uploaded image is orphaned and disappears on reopen.
+        // Android CreateMemoModal `requestClose`: flush editor then always run createMutation.
+        // Text-only create must mint a local:/server memo + clear the new-note draft so:
+        // 1) the note appears in the list, 2) the next "New note" opens empty.
         if isCreate {
-            if hasMaterializedServerMemo {
-                await pullEditorSnapshotIfPossible()
-                await persistDraftOrQueue()
-                await env.runSyncCycle()
-            }
-            dismiss()
+            if busyChrome { return }
+            await pullEditorSnapshotIfPossible()
+            await commitCreate()
         } else {
             await flushPending()
             leaveEditor()
@@ -752,11 +751,12 @@ struct MemoEditView: View {
             error = env.preferences.t("请选择笔记本", en: "Choose a notebook")
             return
         }
+        if isCreating { return }
         isCreating = true
         defer { isCreating = false }
         do {
             // Android createMutation: if image materialize already created a server memo,
-            // Done updates that memo — never mint a second local: create.
+            // Done/Back updates that memo — never mint a second local: create.
             let outcome = try MemoCreateCommit.commit(
                 scope: scope,
                 memoId: memoId,
@@ -771,15 +771,19 @@ struct MemoEditView: View {
                 outbox: env.outbox,
                 drafts: env.drafts
             )
-            if case .updatedMaterialized(let id) = outcome {
+            switch outcome {
+            case .createdLocal(let id), .updatedMaterialized(let id):
                 memoId = id
             }
+            // Prevent onDisappear from re-persisting / double-committing.
+            isDirty = false
+            saveTask?.cancel()
             await env.runSyncCycle()
             if let id = memoId, let refreshed = try? env.mirror.resolveMemo(scope: scope, id: id) {
                 expectedRevision = refreshed.revision
                 expectedContentHash = refreshed.contentHash
             }
-            // Create modal sits on the list already.
+            // Create modal sits on the list already; WorkspaceView reloads on cover dismiss.
             dismiss()
         } catch {
             self.error = error.localizedDescription
