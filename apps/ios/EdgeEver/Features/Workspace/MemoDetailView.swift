@@ -22,6 +22,8 @@ struct MemoDetailView: View {
     @State private var searchQuery = ""
     @State private var showDeleteConfirm = false
     @State private var showMoreMenu = false
+    @State private var resourceTarget: ResourceTarget?
+    @State private var imagePreview: (source: String, alt: String)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -74,6 +76,30 @@ struct MemoDetailView: View {
                 conflictItem = nil
                 load()
                 refreshSyncStatus()
+            }
+        }
+        .sheet(item: $resourceTarget) { target in
+            ResourceActionSheet(
+                target: target,
+                canMutate: memo.map { !$0.isDeleted && !$0.id.hasPrefix("local:") } ?? false,
+                onContentChanged: { load() }
+            )
+            .presentationDetents([.height(360), .medium])
+            .presentationDragIndicator(.hidden)
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { imagePreview != nil },
+            set: { if !$0 { imagePreview = nil } }
+        )) {
+            if let imagePreview {
+                ResourceImagePreviewHost(
+                    source: imagePreview.source,
+                    alt: imagePreview.alt,
+                    baseURL: env.session.session.flatMap { URL(string: $0.baseUrl) },
+                    token: env.session.session?.token
+                ) {
+                    self.imagePreview = nil
+                }
             }
         }
         .confirmationDialog(
@@ -455,7 +481,13 @@ struct MemoDetailView: View {
                 markdown: memo.contentMarkdown,
                 baseURL: env.session.session.flatMap { URL(string: $0.baseUrl) },
                 token: env.session.session?.token,
-                onChange: nil
+                onChange: nil,
+                onResourcePress: { target in
+                    resourceTarget = target
+                },
+                onImagePreview: { source, alt in
+                    imagePreview = (source, alt)
+                }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityIdentifier(DetailMemoChrome.body)

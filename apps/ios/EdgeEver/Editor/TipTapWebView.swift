@@ -14,6 +14,10 @@ struct TipTapWebView: UIViewRepresentable {
     let baseURL: URL?
     let token: String?
     let onChange: ((String, String) -> Void)?
+    /// Android `onResourcePress` — open Share/Download/Rename/Delete sheet.
+    var onResourcePress: ((ResourceTarget) -> Void)? = nil
+    /// Android viewer image tap — fullscreen preview. Payload: original protected src + alt.
+    var onImagePreview: ((_ source: String, _ alt: String) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -147,53 +151,20 @@ struct TipTapWebView: UIViewRepresentable {
                 applyMode()
             }
 
-            let base = parent.baseURL
-            let token = parent.token
-            let mode = parent.mode
-            let rawJSON = parent.documentJSON
-            let rawMarkdown = parent.markdown
-            let cache = resourceCache
-
-            // Viewer: rewrite image srcs to displayable data:/edgeever-res: *before* setContent so
-            // WKWebView never tries file:///api/... (sandbox fails — see simulator logs).
-            // Editor: keep original /api paths in the document model for save; hydrate DOM after paint.
-            Task { [weak self, weak webView] in
-                guard let self, let webView else { return }
-                let payload: String
-                let fn: String
-                if useJSON {
-                    fn = "setDocumentFromJSON"
-                    if mode == .viewer {
-                        payload = await Self.hydrateImageSourcesInJSON(
-                            rawJSON, baseURL: base, token: token, resourceCache: cache
-                        )
-                    } else {
-                        payload = rawJSON
-                    }
-                } else {
-                    fn = "setMarkdown"
-                    if mode == .viewer {
-                        payload = await Self.hydrateImageSourcesInMarkdown(
-                            rawMarkdown, baseURL: base, token: token, resourceCache: cache
-                        )
-                    } else {
-                        payload = rawMarkdown
-                    }
+            // Keep original /api paths in the ProseMirror document (needed for save + resource menus).
+            // After paint, rewrite only the live <img src> to data:/edgeever-res: and set
+            // data-original-src so long-press menus still know the protected path.
+            let fn = useJSON ? "setDocumentFromJSON" : "setMarkdown"
+            let payload = useJSON ? parent.documentJSON : parent.markdown
+            let js = Self.jsCall(fn: fn, arg: payload)
+            webView.evaluateJavaScript(js) { [weak self] _, error in
+                #if DEBUG
+                if let error {
+                    NSLog("TipTapWebView pushContent error: \(error)")
                 }
-
-                let js = Self.jsCall(fn: fn, arg: payload)
-                await MainActor.run {
-                    webView.evaluateJavaScript(js) { [weak self] _, error in
-                        #if DEBUG
-                        if let error {
-                            NSLog("TipTapWebView pushContent error: \(error)")
-                        }
-                        #endif
-                        // Always run native DOM hydrate as a second pass (covers editor + any missed nodes).
-                        guard let self else { return }
-                        Task { await self.nativeHydrateDOMImages() }
-                    }
-                }
+                #endif
+                guard let self else { return }
+                Task { await self.nativeHydrateDOMImages() }
             }
         }
 
@@ -453,13 +424,19 @@ struct TipTapWebView: UIViewRepresentable {
                 let source = body["source"] as? String ?? ""
                 Task { await resolveResource(requestId: requestId, source: source) }
             case "resourcePress":
-                // Surface to native via notification; detail/edit can observe later.
-                if let targetJson = body["targetJson"] as? String {
-                    NotificationCenter.default.post(
-                        name: .edgeEverResourcePress,
-                        object: nil,
-                        userInfo: ["targetJson": targetJson]
-                    )
+                if let targetJson = body["targetJson"] as? String,
+                   let target = ResourceTarget.parse(targetJson)
+                {
+                    DispatchQueue.main.async { [parent] in
+                        parent.onResourcePress?(target)
+                    }
+                }
+            case "imagePreview":
+                let source = body["source"] as? String ?? ""
+                let alt = body["alt"] as? String ?? ""
+                guard !source.isEmpty else { break }
+                DispatchQueue.main.async { [parent] in
+                    parent.onImagePreview?(source, alt)
                 }
             case "error":
                 break

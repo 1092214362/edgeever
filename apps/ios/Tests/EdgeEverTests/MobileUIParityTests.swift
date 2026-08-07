@@ -153,6 +153,26 @@ final class MobileUIParityTests: XCTestCase {
         try? FileManager.default.removeItem(at: stale)
     }
 
+    func testResourceTargetParseExtractsIdFromBlobPath() {
+        let json = """
+        {"kind":"image","href":"/api/v1/resources/res_demo_cat_image/blob","filename":"猫","resourceId":"blob"}
+        """
+        let target = ResourceTarget.parse(json)
+        XCTAssertEqual(target?.resourceId, "res_demo_cat_image")
+        XCTAssertEqual(target?.kind, .image)
+        XCTAssertTrue(target?.href.hasSuffix("/blob") == true)
+    }
+
+    func testResourceTargetParseAttachment() {
+        let json = """
+        {"kind":"attachment","href":"/api/v1/resources/res_file_1/blob","filename":"附件：brief.pdf","resourceId":"res_file_1"}
+        """
+        let target = ResourceTarget.parse(json)
+        XCTAssertEqual(target?.resourceId, "res_file_1")
+        XCTAssertEqual(target?.filename, "brief.pdf")
+        XCTAssertEqual(target?.kind, .attachment)
+    }
+
     func testHydrateImageSourcesInJSONRewritesProtectedSrc() async throws {
         let cache = ResourceCache()
         let testId = "res_unit_test_json_\(UUID().uuidString.prefix(8))"

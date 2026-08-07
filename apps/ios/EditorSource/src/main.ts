@@ -13,9 +13,56 @@ type BridgeMessage =
   | { type: "change"; contentMarkdown: string; contentJson: string }
   | { type: "loadResource"; requestId: string; source: string }
   | { type: "resourcePress"; targetJson: string }
+  | { type: "imagePreview"; source: string; alt: string }
   | { type: "activeFlags"; flags: number }
   | { type: "log"; message: string }
   | { type: "error"; message: string };
+
+/** Match shared `getResourceIdFromUrl` — never return bare `blob`. */
+function getResourceIdFromHref(href: string): string | null {
+  try {
+    const parsed = new URL(href, "http://edgeever.local");
+    const match = parsed.pathname.match(/^\/api\/v1\/resources\/([^/]+)(?:\/blob)?\/?$/);
+    if (match?.[1]) return decodeURIComponent(match[1]);
+  } catch {
+    /* ignore */
+  }
+  const loose = href.match(/\/api\/v1\/resources\/([^/?#]+)/);
+  if (loose?.[1] && loose[1] !== "blob") return decodeURIComponent(loose[1]);
+  return null;
+}
+
+function normalizeResourceHref(href: string, resourceId: string): string {
+  if (/\/blob(?:$|[?#])/.test(href) || href.includes(`/resources/${resourceId}/blob`)) return href;
+  if (href.startsWith("/api/v1/resources/") || href.includes("/api/v1/resources/")) {
+    return `/api/v1/resources/${encodeURIComponent(resourceId)}/blob`;
+  }
+  return href;
+}
+
+function buildImageTargetJson(src: string, filename: string): string | null {
+  const resourceId = getResourceIdFromHref(src);
+  if (!resourceId) return null;
+  return JSON.stringify({
+    kind: "image",
+    href: normalizeResourceHref(src, resourceId),
+    filename: filename.trim() || `image-${resourceId}`,
+    resourceId,
+  });
+}
+
+function buildAttachmentTargetJson(href: string, label: string): string | null {
+  const resourceId = getResourceIdFromHref(href);
+  if (!resourceId) return null;
+  const filename =
+    label.replace(/^\s*(?:附件[：:]|Attachment:)\s*/i, "").trim() || resourceId;
+  return JSON.stringify({
+    kind: "attachment",
+    href: normalizeResourceHref(href, resourceId),
+    filename,
+    resourceId,
+  });
+}
 
 type ConfigureOptions = {
   mode?: "viewer" | "editor";
@@ -163,43 +210,120 @@ const editor = new Editor({
       spellcheck: "true",
     },
     handleClick(_view, _pos, event) {
-      const target = event.target as HTMLElement | null;
-      const img = target?.closest("img");
-      if (img instanceof HTMLImageElement) {
-        const src = img.dataset.originalSrc || img.getAttribute("src") || "";
-        if (src && isProtectedResource(src)) {
-          post({
-            type: "resourcePress",
-            targetJson: JSON.stringify({
-              kind: "image",
-              href: src,
-              filename: img.getAttribute("alt") || "image",
-              resourceId: src.split("/").filter(Boolean).pop() || "",
-            }),
-          });
-          return true;
-        }
-      }
-      const link = target?.closest("a");
-      if (link instanceof HTMLAnchorElement) {
-        const href = link.getAttribute("href") || "";
-        if (isProtectedResource(href)) {
-          post({
-            type: "resourcePress",
-            targetJson: JSON.stringify({
-              kind: "attachment",
-              href,
-              filename: link.textContent || "file",
-              resourceId: href.split("/").filter(Boolean).pop() || "",
-            }),
-          });
-          return true;
-        }
-      }
-      return false;
+      return handleResourcePointer(event as MouseEvent, "click");
+    },
+    handleDOMEvents: {
+      contextmenu(_view, event) {
+        return handleResourcePointer(event, "contextmenu");
+      },
     },
   },
 });
+
+/**
+ * Android parity:
+ * - attachment link → always resource action sheet
+ * - viewer image click → fullscreen preview
+ * - viewer image long-press / contextmenu → resource action sheet
+ * - editor image click → resource action sheet
+ */
+function handleResourcePointer(event: Event, kind: "click" | "contextmenu"): boolean {
+  const target = event.target as HTMLElement | null;
+  if (!target) return false;
+
+  const link = target.closest("a");
+  if (link instanceof HTMLAnchorElement) {
+    const href = link.getAttribute("href") || "";
+    if (isProtectedResource(href) || getResourceIdFromHref(href)) {
+      const json = buildAttachmentTargetJson(href, link.textContent || "");
+      if (json) {
+        event.preventDefault();
+        event.stopPropagation();
+        post({ type: "resourcePress", targetJson: json });
+        return true;
+      }
+    }
+  }
+
+  const img = target.closest("img");
+  if (img instanceof HTMLImageElement) {
+    const src = img.dataset.originalSrc || img.getAttribute("src") || "";
+    const protectedSrc =
+      img.dataset.originalSrc ||
+      (isProtectedResource(src) || getResourceIdFromHref(src) ? src : "");
+    if (!protectedSrc && !getResourceIdFromHref(src)) {
+      // Non-protected image — still allow preview of data: display src in viewer.
+      if (mode === "viewer" && kind === "click" && src) {
+        event.preventDefault();
+        post({
+          type: "imagePreview",
+          source: src,
+          alt: img.getAttribute("alt") || "",
+        });
+        return true;
+      }
+      return false;
+    }
+    const hrefForMenu = protectedSrc || src;
+    const filename = img.getAttribute("alt") || "image";
+
+    if (kind === "contextmenu" || mode === "editor") {
+      const json = buildImageTargetJson(hrefForMenu, filename);
+      if (json) {
+        event.preventDefault();
+        event.stopPropagation();
+        post({ type: "resourcePress", targetJson: json });
+        return true;
+      }
+    }
+
+    // Viewer plain tap → fullscreen preview (use original protected path when possible).
+    if (mode === "viewer" && kind === "click") {
+      event.preventDefault();
+      event.stopPropagation();
+      post({
+        type: "imagePreview",
+        source: hrefForMenu,
+        alt: filename,
+      });
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Long-press on images (mobile WebView often does not fire contextmenu reliably).
+(() => {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let startImg: HTMLImageElement | null = null;
+  const clear = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    startImg = null;
+  };
+  editorEl.addEventListener(
+    "touchstart",
+    (event) => {
+      const img = (event.target as HTMLElement | null)?.closest("img");
+      if (!(img instanceof HTMLImageElement)) return;
+      startImg = img;
+      timer = setTimeout(() => {
+        if (!startImg) return;
+        const src = startImg.dataset.originalSrc || startImg.getAttribute("src") || "";
+        const json = buildImageTargetJson(src, startImg.getAttribute("alt") || "image");
+        if (json) {
+          post({ type: "resourcePress", targetJson: json });
+        }
+        clear();
+      }, 480);
+    },
+    { passive: true }
+  );
+  editorEl.addEventListener("touchend", clear, { passive: true });
+  editorEl.addEventListener("touchmove", clear, { passive: true });
+  editorEl.addEventListener("touchcancel", clear, { passive: true });
+})();
 
 function emitChange(ed: Editor) {
   try {

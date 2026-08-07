@@ -31,6 +31,7 @@ struct MemoEditView: View {
     @State private var isUploading = false
     @State private var editorReady = false
     @State private var showNotebookPicker = false
+    @State private var resourceTarget: ResourceTarget?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -49,6 +50,20 @@ struct MemoEditView: View {
                 showNotebookPicker = false
             }
             .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $resourceTarget) { target in
+            ResourceActionSheet(
+                target: target,
+                canMutate: {
+                    if case .edit(let id) = mode { return !id.hasPrefix("local:") }
+                    return false
+                }(),
+                onContentChanged: {
+                    Task { await reloadAfterResourceChange() }
+                }
+            )
+            .presentationDetents([.height(360), .medium])
+            .presentationDragIndicator(.hidden)
         }
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
@@ -212,7 +227,11 @@ struct MemoEditView: View {
                         contentMarkdown = md
                         contentJSON = json
                         markDirtyAndScheduleSave()
-                    }
+                    },
+                    onResourcePress: { target in
+                        resourceTarget = target
+                    },
+                    onImagePreview: nil
                 )
                 .opacity(editorReady ? 1 : 0.01)
 
@@ -359,6 +378,30 @@ struct MemoEditView: View {
                 expectedContentHash = memo.contentHash
                 memoId = memo.id
             }
+        }
+    }
+
+    /// After server-side rename/delete, pull the latest memo body into the editor.
+    private func reloadAfterResourceChange() async {
+        guard case .edit(let id) = mode, let scope = env.session.dataScope else { return }
+        // Prefer live server copy when online.
+        if let remote = try? await env.session.client.getMemo(id: id) {
+            try? env.mirror.upsertMemo(scope: scope, memo: remote)
+            title = remote.title ?? ""
+            tagsText = remote.tags.joined(separator: ", ")
+            contentMarkdown = remote.contentMarkdown
+            contentJSON = (try? remote.contentJson.jsonString()) ?? contentJSON
+            expectedRevision = remote.revision
+            expectedContentHash = remote.contentHash
+            return
+        }
+        if let memo = try? env.mirror.resolveMemo(scope: scope, id: id) {
+            title = memo.title ?? ""
+            tagsText = memo.tags.joined(separator: ", ")
+            contentMarkdown = memo.contentMarkdown
+            contentJSON = (try? memo.contentJson.jsonString()) ?? contentJSON
+            expectedRevision = memo.revision
+            expectedContentHash = memo.contentHash
         }
     }
 
