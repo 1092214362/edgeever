@@ -80,6 +80,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useTheme } from "./ThemeProvider";
 import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
+import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { memoShareQueryKey, ShareMemoDialog } from "./dialogs/ShareMemoDialog";
 import { api } from "@/lib/api";
 import { isDesktopResourceRuntime, stageDesktopResource, toDesktopResourceUrl } from "@/lib/desktop-resources";
@@ -136,6 +137,11 @@ import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
 import { isBrowserOffline } from "@/lib/network-status";
 import { shouldOpenEditorLink } from "@/lib/editor-link-click";
+import {
+  formatMarkdownLink,
+  insertMarkdownSnippet,
+  isAttachmentLinkHref,
+} from "@/lib/editor-external-link";
 import { processFilesSequentially } from "@/lib/file-batch";
 import { MEMO_ID_REMAPPED_EVENT } from "@/lib/sync-events";
 import { useStandaloneMobileEditor } from "@/hooks/useStandaloneMobileEditor";
@@ -871,7 +877,7 @@ const RichEditorPane = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hydratedEditorMemoId, setHydratedEditorMemoId] = useState<string | null>(null);
   const [dirtyVersion, setDirtyVersion] = useState(0);
-  const [, setEditorStateVersion] = useState(0);
+  const [editorStateVersion, setEditorStateVersion] = useState(0);
   const [editorContentVersion, setEditorContentVersion] = useState(0);
   const [imageUploadState, setImageUploadState] = useState<"idle" | "compressing" | "uploading" | "error">("idle");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -888,6 +894,13 @@ const RichEditorPane = ({
   const [noteLinkPickerOpen, setNoteLinkPickerOpen] = useState(false);
   const [noteLinkQuery, setNoteLinkQuery] = useState("");
   const [noteLinkHintPosition, setNoteLinkHintPosition] = useState<NoteLinkHintPosition | null>(null);
+  const [externalLinkDialogOpen, setExternalLinkDialogOpen] = useState(false);
+  const [externalLinkDraft, setExternalLinkDraft] = useState<{ href: string; text: string; showTextField: boolean; canRemove: boolean }>({
+    href: "",
+    text: "",
+    showTextField: true,
+    canRemove: false,
+  });
   const [resourceMenuTarget, setResourceMenuTarget] = useState<ResourceMenuTarget | null>(null);
   const [resourceDialog, setResourceDialog] = useState<ResourceDialogState | null>(null);
   const [resourceFilename, setResourceFilename] = useState("");
@@ -966,6 +979,8 @@ const RichEditorPane = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const noteSearchInputRef = useRef<HTMLInputElement | null>(null);
   const noteReplaceInputRef = useRef<HTMLInputElement | null>(null);
+  const markdownTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const openExternalLinkDialogRef = useRef<() => void>(() => undefined);
   const hydratingRef = useRef(false);
   const hydratedMemoIdRef = useRef<string | null>(null);
   /** Last content source applied to the editor — used to skip redundant setContent. */
@@ -1212,6 +1227,12 @@ const RichEditorPane = ({
       },
       handleKeyDown: (view, event) => {
         const shortcutKey = event.key.toLowerCase();
+        if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && shortcutKey === "k") {
+          event.preventDefault();
+          openExternalLinkDialogRef.current();
+          return true;
+        }
+
         if (
           (shortcutKey !== "f" && shortcutKey !== "h") ||
           (!event.ctrlKey && !event.metaKey) ||
@@ -1301,6 +1322,154 @@ const RichEditorPane = ({
     setNoteLinkPickerOpen(false);
     setNoteLinkQuery("");
   }, [editor, effectiveReadOnly, memo?.id, t]);
+
+  const openExternalLinkDialog = useCallback(() => {
+    if (effectiveReadOnly || !memo) {
+      return;
+    }
+
+    if (useMarkdownSourceEditor) {
+      const textarea = markdownTextAreaRef.current;
+      const start = textarea?.selectionStart ?? markdownSource.length;
+      const end = textarea?.selectionEnd ?? start;
+      const selected = markdownSource.slice(start, end);
+      const looksLikeUrl = /^(https?:\/\/\S+|www\.\S+)$/i.test(selected.trim());
+      setExternalLinkDraft({
+        href: looksLikeUrl ? selected.trim() : "",
+        text: looksLikeUrl ? "" : selected,
+        showTextField: !selected.trim() || looksLikeUrl,
+        canRemove: false,
+      });
+      setExternalLinkDialogOpen(true);
+      return;
+    }
+
+    if (!isEditorReady(editor) || useMobilePlainTextEditor) {
+      return;
+    }
+
+    if (editor.isActive("link")) {
+      const href = String(editor.getAttributes("link").href ?? "");
+      if (isAttachmentLinkHref(href)) {
+        return;
+      }
+      editor.chain().focus().extendMarkRange("link").run();
+    }
+
+    const { from, to, empty } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to, " ");
+    const activeHref = editor.isActive("link") ? String(editor.getAttributes("link").href ?? "") : "";
+    const looksLikeUrl = empty
+      ? false
+      : /^(https?:\/\/\S+|www\.\S+)$/i.test(selectedText.trim());
+
+    setExternalLinkDraft({
+      href: activeHref || (looksLikeUrl ? selectedText.trim() : ""),
+      text: selectedText,
+      showTextField: empty && !activeHref,
+      canRemove: Boolean(activeHref) && !isAttachmentLinkHref(activeHref),
+    });
+    setExternalLinkDialogOpen(true);
+  }, [
+    editor,
+    effectiveReadOnly,
+    markdownSource,
+    memo,
+    useMarkdownSourceEditor,
+    useMobilePlainTextEditor,
+  ]);
+
+  openExternalLinkDialogRef.current = openExternalLinkDialog;
+
+  const applyExternalLink = useCallback(
+    ({ href, text }: { href: string; text: string }) => {
+      if (effectiveReadOnly) {
+        return;
+      }
+
+      if (useMarkdownSourceEditor) {
+        const textarea = markdownTextAreaRef.current;
+        const start = textarea?.selectionStart ?? markdownSource.length;
+        const end = textarea?.selectionEnd ?? start;
+        const selected = markdownSource.slice(start, end);
+        const label = selected.trim() ? selected : text;
+        const snippet = formatMarkdownLink(label, href);
+        const { next, caret } = insertMarkdownSnippet(markdownSource, snippet, start, end);
+        setMarkdownSource(next);
+        setHasUnsavedChanges(true);
+        setDirtyVersion((version) => version + 1);
+        window.requestAnimationFrame(() => {
+          const node = markdownTextAreaRef.current;
+          if (!node) return;
+          node.focus();
+          node.setSelectionRange(caret, caret);
+        });
+        return;
+      }
+
+      if (!isEditorReady(editor)) {
+        return;
+      }
+
+      const inLink = editor.isActive("link");
+      if (inLink) {
+        editor.chain().focus().extendMarkRange("link").run();
+      }
+
+      const { from, to, empty } = editor.state.selection;
+      const selectedText = editor.state.doc.textBetween(from, to, "\n");
+
+      if (!empty || inLink) {
+        const label = selectedText || text || href;
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(
+            { from, to },
+            {
+              type: "text",
+              text: label,
+              marks: [{ type: "link", attrs: { href, target: "_blank" } }],
+            }
+          )
+          .run();
+        return;
+      }
+
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "text",
+          text: text || href,
+          marks: [{ type: "link", attrs: { href, target: "_blank" } }],
+        })
+        .run();
+    },
+    [editor, effectiveReadOnly, markdownSource, useMarkdownSourceEditor]
+  );
+
+  const removeExternalLink = useCallback(() => {
+    if (!isEditorReady(editor) || effectiveReadOnly) {
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+  }, [editor, effectiveReadOnly]);
+
+  const externalLinkActive = useMemo(() => {
+    if (!isEditorReady(editor) || useMarkdownSourceEditor || useMobilePlainTextEditor) {
+      return false;
+    }
+    try {
+      if (!editor.isActive("link")) {
+        return false;
+      }
+      const href = String(editor.getAttributes("link").href ?? "");
+      return Boolean(href) && !isAttachmentLinkHref(href);
+    } catch {
+      return false;
+    }
+  }, [editor, editorStateVersion, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   const cancelResourceMenuHide = useCallback(() => {
     if (resourceMenuHideTimerRef.current !== null) {
@@ -3138,6 +3307,16 @@ const RichEditorPane = ({
   return (
     <div className="relative flex h-full min-w-0 flex-col bg-white">
       {selectionActionBar}
+      <ExternalLinkDialog
+        open={externalLinkDialogOpen}
+        onOpenChange={setExternalLinkDialogOpen}
+        initialHref={externalLinkDraft.href}
+        initialText={externalLinkDraft.text}
+        showTextField={externalLinkDraft.showTextField}
+        canRemove={externalLinkDraft.canRemove}
+        onApply={applyExternalLink}
+        onRemove={removeExternalLink}
+      />
       {noteLinkPickerOpen && (
         <div className="absolute left-3 right-3 top-14 z-30 h-[min(22rem,calc(100%-4rem))] max-w-xl rounded-lg border border-slate-200 bg-white shadow-xl sm:left-5 sm:right-auto sm:w-[28rem]" role="dialog" aria-label={t("noteLinkPicker.title")}>
           <Command shouldFilter={false}>
@@ -3693,6 +3872,8 @@ const RichEditorPane = ({
             markdownMode={useMarkdownSourceEditor}
             onMarkdownModeChange={handleMarkdownModeChange}
             onPickAttachment={() => fileInputRef.current?.click()}
+            onPickExternalLink={openExternalLinkDialog}
+            externalLinkActive={externalLinkActive}
             onPickNoteLink={() => setNoteLinkPickerOpen(true)}
           />
         )}
@@ -3843,8 +4024,15 @@ const RichEditorPane = ({
               </>
             ) : useMarkdownSourceEditor ? (
               <textarea
+                ref={markdownTextAreaRef}
                 value={markdownSource}
                 onChange={(event) => handleMarkdownSourceChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
+                    event.preventDefault();
+                    openExternalLinkDialog();
+                  }
+                }}
                 readOnly={effectiveReadOnly}
                 spellCheck={false}
                 aria-label={t("editor.markdownSourceAria")}
