@@ -60,6 +60,8 @@ final class AppEnvironment {
     func bootstrap() async {
         await session.bootstrap()
         if session.isSignedIn {
+            // Warm TipTap process + EditorBundle off the critical path of the first note open.
+            await MainActor.run { TipTapWarmPool.warmIfNeeded() }
             await runSyncCycle()
         }
     }

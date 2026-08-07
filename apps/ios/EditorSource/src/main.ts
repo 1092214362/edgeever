@@ -419,12 +419,12 @@ const api: EdgeEverEditorAPI = {
       // placeholder is extension config; update via meta class
       editorEl.setAttribute("data-placeholder", opts.placeholder);
     }
-    // Only when switching into editor: make the surface focusable.
-    // Do NOT force caret to document end — that makes mid-doc editing unusable.
+    // Match Evernote-style edit entry: focus the surface when entering editor mode.
+    // Combined with setContent's default end selection, caret lands at document end.
     if (mode === "editor" && modeChanged) {
       requestAnimationFrame(() => {
         try {
-          editor.commands.focus();
+          editor.commands.focus("end");
         } catch {
           /* ignore */
         }
@@ -452,9 +452,19 @@ const api: EdgeEverEditorAPI = {
         });
       }
     }
-    // Keep editability; do not steal selection / force caret to end.
+    // Keep editability. After setContent, selection is typically at end — focus there
+    // when already in editor mode so open-for-edit lands at the bottom (Evernote-like).
     editor.setEditable(mode === "editor");
     suppressChange = false;
+    if (mode === "editor") {
+      requestAnimationFrame(() => {
+        try {
+          editor.commands.focus("end");
+        } catch {
+          /* ignore */
+        }
+      });
+    }
     void afterContentSet((document.documentElement.dataset.theme as "light" | "dark") || "light");
   },
 
@@ -468,6 +478,15 @@ const api: EdgeEverEditorAPI = {
     }
     editor.setEditable(mode === "editor");
     suppressChange = false;
+    if (mode === "editor") {
+      requestAnimationFrame(() => {
+        try {
+          editor.commands.focus("end");
+        } catch {
+          /* ignore */
+        }
+      });
+    }
     void afterContentSet((document.documentElement.dataset.theme as "light" | "dark") || "light");
   },
 

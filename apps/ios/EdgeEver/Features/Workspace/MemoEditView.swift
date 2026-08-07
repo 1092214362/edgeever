@@ -30,6 +30,11 @@ struct MemoEditView: View {
     @State private var isCreating = false
     @State private var isUploading = false
     @State private var editorReady = false
+    /// False until `loadInitial` has filled title/body from mirror — prevents TipTap boot
+    /// with empty defaults from overwriting a non-empty note via autosave / flush.
+    @State private var contentHydrated = false
+    /// Snapshot of body when edit opened (or last intentional load). Used to reject empty clobbers.
+    @State private var baselineMarkdown = ""
     @State private var showNotebookPicker = false
     @State private var resourceTarget: ResourceTarget?
 
@@ -71,13 +76,23 @@ struct MemoEditView: View {
         }
         .task {
             await loadInitial()
-            // TipTap loads async; mark ready after first paint window
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            if !Task.isCancelled { editorReady = true }
+            contentHydrated = true
+            // editorReady flips true from TipTap onBodyReady (or fallback below).
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            if !Task.isCancelled, !editorReady {
+                editorReady = true
+                SharedTipTapRuntime.editor.focusEnd()
+            }
+        }
+        .onChange(of: editorReady) { _, ready in
+            if ready {
+                SharedTipTapRuntime.editor.focusEnd()
+            }
         }
         .onDisappear {
             saveTask?.cancel()
-            if !isCreate {
+            // Only flush real user edits — never push the empty pre-hydrate state.
+            if !isCreate, isDirty, contentHydrated {
                 Task { await flushPending() }
             }
         }
@@ -217,25 +232,36 @@ struct MemoEditView: View {
             .accessibilityIdentifier(CreateMemoChrome.metaRow)
 
             ZStack {
-                TipTapWebView(
-                    mode: .editor,
-                    documentJSON: contentJSON,
-                    markdown: contentMarkdown,
-                    baseURL: env.session.session.map { URL(string: $0.baseUrl) } ?? nil,
-                    token: env.session.session?.token,
-                    onChange: { md, json in
-                        contentMarkdown = md
-                        contentJSON = json
-                        markDirtyAndScheduleSave()
-                    },
-                    onResourcePress: { target in
-                        resourceTarget = target
-                    },
-                    onImagePreview: nil
-                )
-                .opacity(editorReady ? 1 : 0.01)
+                // Mount TipTap only after local body is loaded — shared WebView must not
+                // receive empty defaults first (that used to autosave-wipe demo notes).
+                if contentHydrated {
+                    TipTapWebView(
+                        mode: .editor,
+                        documentJSON: contentJSON,
+                        markdown: contentMarkdown,
+                        baseURL: env.session.session.map { URL(string: $0.baseUrl) } ?? nil,
+                        token: env.session.session?.token,
+                        onChange: { md, json in
+                            guard contentHydrated else { return }
+                            contentMarkdown = md
+                            contentJSON = json
+                            markDirtyAndScheduleSave()
+                        },
+                        onResourcePress: { target in
+                            resourceTarget = target
+                        },
+                        onImagePreview: nil,
+                        onBodyReady: {
+                            editorReady = true
+                            // opacity 0.01 blocks the keyboard — only focus once fully visible.
+                            SharedTipTapRuntime.editor.focusEnd()
+                        }
+                    )
+                    // Keep opacity at 1 so WKWebView can become first responder / show keyboard.
+                    .opacity(1)
+                }
 
-                if !editorReady {
+                if !editorReady || !contentHydrated {
                     VStack(spacing: 10) {
                         ProgressView()
                             .tint(AppTheme.title)
@@ -245,6 +271,7 @@ struct MemoEditView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.white)
+                    .allowsHitTesting(false)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -359,16 +386,11 @@ struct MemoEditView: View {
                 contentJSON = draft.contentJson ?? contentJSON
                 if !draft.notebookId.isEmpty { notebookId = draft.notebookId }
             }
+            baselineMarkdown = contentMarkdown
         case .edit(let id):
             memoId = id
-            if let draft = try? env.drafts.read(scope: scope, key: DraftRepository.memoKey(id)) {
-                title = draft.title
-                tagsText = draft.tagsText
-                contentMarkdown = draft.contentMarkdown
-                contentJSON = draft.contentJson ?? contentJSON
-                notebookId = draft.notebookId
-                expectedRevision = draft.expectedRevision
-            } else if let memo = try? env.mirror.resolveMemo(scope: scope, id: id) {
+            // Prefer mirror body over a stale empty draft that could wipe the note.
+            if let memo = try? env.mirror.resolveMemo(scope: scope, id: id) {
                 title = memo.title ?? ""
                 tagsText = memo.tags.joined(separator: ", ")
                 contentMarkdown = memo.contentMarkdown
@@ -377,7 +399,28 @@ struct MemoEditView: View {
                 expectedRevision = memo.revision
                 expectedContentHash = memo.contentHash
                 memoId = memo.id
+                // Overlay draft only when it still has body (or memo was already empty).
+                if let draft = try? env.drafts.read(scope: scope, key: DraftRepository.memoKey(id)) {
+                    let draftBody = draft.contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let memoBody = memo.contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !draftBody.isEmpty || memoBody.isEmpty {
+                        title = draft.title
+                        tagsText = draft.tagsText
+                        contentMarkdown = draft.contentMarkdown
+                        contentJSON = draft.contentJson ?? contentJSON
+                        if !draft.notebookId.isEmpty { notebookId = draft.notebookId }
+                        expectedRevision = draft.expectedRevision ?? expectedRevision
+                    }
+                }
+            } else if let draft = try? env.drafts.read(scope: scope, key: DraftRepository.memoKey(id)) {
+                title = draft.title
+                tagsText = draft.tagsText
+                contentMarkdown = draft.contentMarkdown
+                contentJSON = draft.contentJson ?? contentJSON
+                notebookId = draft.notebookId
+                expectedRevision = draft.expectedRevision
             }
+            baselineMarkdown = contentMarkdown
         }
     }
 
@@ -393,6 +436,7 @@ struct MemoEditView: View {
             contentJSON = (try? remote.contentJson.jsonString()) ?? contentJSON
             expectedRevision = remote.revision
             expectedContentHash = remote.contentHash
+            baselineMarkdown = contentMarkdown
             return
         }
         if let memo = try? env.mirror.resolveMemo(scope: scope, id: id) {
@@ -402,6 +446,7 @@ struct MemoEditView: View {
             contentJSON = (try? memo.contentJson.jsonString()) ?? contentJSON
             expectedRevision = memo.revision
             expectedContentHash = memo.contentHash
+            baselineMarkdown = contentMarkdown
         }
     }
 
@@ -414,8 +459,24 @@ struct MemoEditView: View {
         }
     }
 
+    /// Reject autosave that would wipe a non-empty note with an empty editor boot payload.
+    private var wouldClobberNonEmptyBody: Bool {
+        guard !isCreate else { return false }
+        let next = contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = baselineMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        return next.isEmpty && !base.isEmpty
+    }
+
     private func persistDraftOrQueue() async {
         guard let scope = env.session.dataScope else { return }
+        guard contentHydrated else { return }
+        if wouldClobberNonEmptyBody {
+            #if DEBUG
+            NSLog("MemoEditView: skip persist — refusing empty clobber of non-empty baseline")
+            #endif
+            isDirty = false
+            return
+        }
         isSaving = true
         defer {
             isSaving = false

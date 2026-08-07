@@ -24,6 +24,8 @@ struct MemoDetailView: View {
     @State private var showMoreMenu = false
     @State private var resourceTarget: ResourceTarget?
     @State private var imagePreview: (source: String, alt: String)?
+    /// TipTap EditorBundle is ~4MB; keep native text visible until first setContent finishes.
+    @State private var bodyReady = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,6 +44,7 @@ struct MemoDetailView: View {
                     description: Text(error)
                 )
             } else {
+                // Should almost never flash: load() runs onAppear before next frame when mirror is warm.
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -146,11 +149,27 @@ struct MemoDetailView: View {
         } message: {
             Text(shareURL ?? "")
         }
-        .task {
-            load()
+        // Local SQLite mirror is sync and cheap — load before the first blank ProgressView frame.
+        .onAppear {
+            if memo == nil {
+                load()
+            }
+            refreshSyncStatus()
+            TipTapWarmPool.warmIfNeeded()
+        }
+        .task(id: memoId) {
+            // Re-load if mirror was empty on first paint (rare race during bootstrap).
+            if memo == nil {
+                load()
+            }
             refreshSyncStatus()
         }
         .onChange(of: env.isSyncing) { _, _ in
+            refreshSyncStatus()
+        }
+        .onChange(of: memoId) { _, _ in
+            bodyReady = false
+            load()
             refreshSyncStatus()
         }
         .preferredColorScheme(env.preferences.colorScheme)
@@ -474,23 +493,45 @@ struct MemoDetailView: View {
             }
             .padding(.horizontal, 16)
 
-            TipTapWebView(
-                mode: .viewer,
-                documentJSON: (try? memo.contentJson.jsonString())
-                    ?? "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}",
-                markdown: memo.contentMarkdown,
-                baseURL: env.session.session.flatMap { URL(string: $0.baseUrl) },
-                token: env.session.session?.token,
-                onChange: nil,
-                onResourcePress: { target in
-                    resourceTarget = target
-                },
-                onImagePreview: { source, alt in
-                    imagePreview = (source, alt)
+            // Always show TipTap at full opacity. A plain contentText overlay looked like a
+            // "broken layout" (one wall of text) when bodyReady failed to flip.
+            ZStack {
+                TipTapWebView(
+                    mode: .viewer,
+                    documentJSON: (try? memo.contentJson.jsonString())
+                        ?? "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}",
+                    markdown: memo.contentMarkdown,
+                    baseURL: env.session.session.flatMap { URL(string: $0.baseUrl) },
+                    token: env.session.session?.token,
+                    onChange: nil,
+                    onResourcePress: { target in
+                        resourceTarget = target
+                    },
+                    onImagePreview: { source, alt in
+                        imagePreview = (source, alt)
+                    },
+                    onBodyReady: {
+                        bodyReady = true
+                    }
+                )
+
+                if !bodyReady {
+                    ProgressView()
+                        .tint(AppTheme.title)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.white.opacity(0.92))
+                        .allowsHitTesting(false)
                 }
-            )
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityIdentifier(DetailMemoChrome.body)
+            .task(id: memo.id) {
+                // Safety net: never leave the spinner forever if a ready callback is missed.
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                if !bodyReady {
+                    bodyReady = true
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }

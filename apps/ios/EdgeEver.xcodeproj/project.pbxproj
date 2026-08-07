@@ -14,6 +14,7 @@
 		08D0159B8F194E04C02B69BF /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = AB02424D0412FE36C4BCD116 /* index.html */; };
 		0D67F968CAFCC17F28A5555C /* URLNormalizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41B15501968A29C372E7B3BB /* URLNormalizeTests.swift */; };
 		100A3242D8AA714261236773 /* ChromeParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213837D2B2F025307A5EBB69 /* ChromeParityTests.swift */; };
+		1186BE3109942FCBAB59E6B4 /* TipTapWarmPool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36831A94478123A1EE9BB538 /* TipTapWarmPool.swift */; };
 		132BA05FF9673B95D3E3959A /* JSONCoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD904708FC1AD8971439BD90 /* JSONCoding.swift */; };
 		1510CEE8BDDBD1710C0CE88C /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 574912976CB43DD9821678EE /* SessionStore.swift */; };
 		1F8E6268C9DA330CA236B36F /* SyncProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6159DBF27CC86920005E25D /* SyncProtocolTests.swift */; };
@@ -113,6 +114,7 @@
 		2A8662720DE42695E29F5741 /* URL+Normalize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URL+Normalize.swift"; sourceTree = "<group>"; };
 		34A3C0399C910B150A02D06E /* ResourceCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceCache.swift; sourceTree = "<group>"; };
 		3674473015F8EB6863B69B0F /* MemoEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoEditView.swift; sourceTree = "<group>"; };
+		36831A94478123A1EE9BB538 /* TipTapWarmPool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipTapWarmPool.swift; sourceTree = "<group>"; };
 		387980E9CCA7C1C52EAAB6A0 /* MemoDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoDetailView.swift; sourceTree = "<group>"; };
 		38B2C459C9903FC6EBA4E478 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		40C1F4BC7DB150AE8F85AA13 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
@@ -408,6 +410,7 @@
 			children = (
 				F9182F742B06FB1713E27C2A /* ResourceActions.swift */,
 				EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */,
+				36831A94478123A1EE9BB538 /* TipTapWarmPool.swift */,
 				12DCA98C14CC6F28C22C41A1 /* TipTapWebView.swift */,
 			);
 			path = Editor;
@@ -625,6 +628,7 @@
 				2E185C3C27DA3A729F2734B4 /* SyncOutboxRepository.swift in Sources */,
 				5F5EC9565A02FAFDD5D7B54C /* SyncProtocol.swift in Sources */,
 				4A2DD0673B81D32FA9E5F9DB /* Theme.swift in Sources */,
+				1186BE3109942FCBAB59E6B4 /* TipTapWarmPool.swift in Sources */,
 				4BA97CD264D0929B20ED19DB /* TipTapWebView.swift in Sources */,
 				2A07555B54946A177E1ECFF2 /* Typography.swift in Sources */,
 				6A671BB702DA77A0548E6E29 /* URL+Normalize.swift in Sources */,
