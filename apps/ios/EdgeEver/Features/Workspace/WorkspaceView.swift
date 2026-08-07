@@ -148,6 +148,14 @@ struct WorkspaceView: View {
                     syncPulse += 1
                 }
             }
+            // Android invalidates the memo list on each bootstrap batch so the UI
+            // can show progressive counts / partial notes during first login.
+            .onChange(of: env.bootstrapProgress?.loadedCount) { _, _ in
+                store.reload(env: env)
+            }
+            .onChange(of: env.bootstrapProgress?.totalCount) { _, _ in
+                store.reload(env: env)
+            }
             .refreshable {
                 await env.runSyncCycle(force: true)
                 store.reload(env: env)
@@ -536,43 +544,28 @@ struct WorkspaceView: View {
         .accessibilityIdentifier("selectionBar")
     }
 
+    /// Quiet indicator for incremental sync only.
+    /// First-login progress + sync-error banners live in `NotesListView` (Android MemoList parity).
     private var syncBanner: some View {
         Group {
-            if env.isSyncing {
-                VStack(alignment: .leading, spacing: 4) {
-                    ProgressView(value: progressValue)
+            if env.isSyncing && env.bootstrapProgress == nil {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
                         .tint(AppTheme.accent)
-                    if let p = env.bootstrapProgress, p.totalCount > 0 {
-                        Text(env.preferences.t("已加载 \(p.loadedCount) / \(p.totalCount) 条笔记", en: "Loaded \(p.loadedCount) / \(p.totalCount) notes"))
-                            .font(.caption2)
-                            .foregroundStyle(AppTheme.secondary)
-                    } else {
-                        Text(env.preferences.t("正在同步笔记", en: "Syncing notes"))
-                            .font(.caption2)
-                            .foregroundStyle(AppTheme.secondary)
-                    }
+                    Text(env.preferences.t("正在同步笔记", en: "Syncing notes"))
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.secondary)
+                    Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Color.white)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
-            if let err = env.lastSyncError {
-                Text(err)
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.danger)
-                    .padding(.horizontal, 12)
-                    .edgeEverErrorShake(on: err)
-                    .transition(Motion.softFade)
-            }
         }
         .animation(Motion.search, value: env.isSyncing)
-        .animation(Motion.search, value: env.lastSyncError)
-    }
-
-    private var progressValue: Double {
-        guard let p = env.bootstrapProgress, p.totalCount > 0 else { return 0 }
-        return Double(p.loadedCount) / Double(p.totalCount)
+        .animation(Motion.search, value: env.bootstrapProgress != nil)
     }
 
     private func consumeShare() {
