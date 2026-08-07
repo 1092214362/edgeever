@@ -83,7 +83,9 @@ xcrun simctl launch booted org.edgeever.mobile \
 | Field | File | Notes |
 | --- | --- | --- |
 | `MARKETING_VERSION` | `Config/Version.xcconfig` | Align with monorepo release `X.Y.Z` on store submissions |
-| `CURRENT_PROJECT_VERSION` | `Config/Version.xcconfig` | Monotonic build number for every TestFlight / App Store upload |
+| `CURRENT_PROJECT_VERSION` | `Config/Version.xcconfig` | Local floor for build numbers |
+
+**Xcode Cloud** stamps `CFBundleVersion` from App Store Connect → Xcode Cloud → **Build Number** (not only this file). Before a Cloud store run, set that counter **above** the latest ASC build (`Scripts/ensure-xcode-cloud-build-number.sh` prints the recommended value).
 
 ## App Store archive
 
@@ -92,8 +94,18 @@ xcrun simctl launch booted org.edgeever.mobile \
 If the Mac runs **macOS beta**, local archives are rejected by App Store Connect (**ITMS-90111**) even with release Xcode. Day-to-day development stays local; **only store / TestFlight binaries** should use **Xcode Cloud** (25 compute hours/month with Apple Developer Program).
 
 - Setup and workflow: **[`docs/ios-xcode-cloud.md`](../../docs/ios-xcode-cloud.md)**
-- Cloud prepare script: `ci_scripts/ci_post_clone.sh` (EditorBundle + `xcodegen`)
+- Cloud hooks: `ci_scripts/ci_post_clone.sh` → `ci_pre_xcodebuild.sh` → `ci_post_xcodebuild.sh`
 - Workflow start condition must stay **Manual** so hours are not burned on every push
+- Put ASC API secrets in Xcode Cloud **shared environment variables** so `ci_post_xcodebuild.sh` auto-uploads the App Store IPA
+
+```sh
+# Before Start Build (optional but recommended)
+cd apps/ios
+bash Scripts/ensure-xcode-cloud-build-number.sh
+
+# If Cloud produced ARCHIVE_EXPORT but ASC has no build:
+bash Scripts/upload-app-store-ipa.sh /path/to/EdgeEver-*-app-store.zip
+```
 
 ### Local archive (release macOS only)
 
@@ -102,11 +114,12 @@ Use the stable Xcode app (not beta) on a **non-beta** host OS:
 ```sh
 cd apps/ios
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash Scripts/archive-app-store.sh
+bash Scripts/upload-app-store-ipa.sh build/export/EdgeEver.ipa
 ```
 
 On a beta host the script **exits** unless you set `EDGE_EVER_IOS_ALLOW_BETA_HOST=1` (upload will still likely fail ASC).
 
-The script builds the TipTap EditorBundle, regenerates the Xcode project, archives with the App Store distribution profiles, and exports `build/export/EdgeEver.ipa`. Upload with `xcrun altool` / Transporter (or use Cloud upload), then submit the exact build with:
+Signing in the Xcode project is **Automatic** (Cloud-friendly). Local export still uses `ExportOptions.plist` with App Store profiles. Then submit the exact build with:
 
 ```sh
 cd apps/ios

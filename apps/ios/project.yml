@@ -20,10 +20,11 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-    CURRENT_PROJECT_VERSION: 31
+    CURRENT_PROJECT_VERSION: 33
     MARKETING_VERSION: 1.12.6
-    # Team enables Automatic signing for local Debug/simulator; App Store
-    # archives override to Manual + distribution profiles in archive-app-store.sh.
+    # Automatic signing: required for Xcode Cloud (managed certs/profiles for
+    # App Store + Development exports). Local ExportOptions.plist still pins
+    # App Store profiles for Scripts/archive-app-store.sh export.
     DEVELOPMENT_TEAM: 9KA3NM38B6
     CODE_SIGN_STYLE: Automatic
 configs:
@@ -66,12 +67,11 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_STRICT_CONCURRENCY: complete
         ENABLE_TESTABILITY: true
+        # Always Automatic: Xcode Cloud needs managed Development + Distribution
+        # profiles. Local App Store export still uses ExportOptions.plist (manual
+        # profiles) in Scripts/archive-app-store.sh.
         DEVELOPMENT_TEAM: 9KA3NM38B6
-      configs:
-        Release:
-          CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: "Apple Distribution"
-          PROVISIONING_PROFILE_SPECIFIER: "*[expo] org.edgeever.mobile AppStore 2026-08-01T04:08:38.265Z"
+        CODE_SIGN_STYLE: Automatic
     info:
       path: EdgeEver/Resources/Info.plist
       properties:
@@ -121,11 +121,7 @@ targets:
         SKIP_INSTALL: true
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
         DEVELOPMENT_TEAM: 9KA3NM38B6
-      configs:
-        Release:
-          CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: "Apple Distribution"
-          PROVISIONING_PROFILE_SPECIFIER: "*[expo] org.edgeever.mobile.expo-sharing-extension AppStore 2026-08-01T04:09:04.014Z"
+        CODE_SIGN_STYLE: Automatic
     entitlements:
       path: ShareExtension/ShareExtension.entitlements
       properties:

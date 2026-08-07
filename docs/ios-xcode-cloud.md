@@ -15,9 +15,9 @@ Xcode Cloud is billed as **25 compute hours per month** with the Apple Developer
 
 Native store target: **`apps/ios`** (SwiftUI). Expo `apps/mobile` is not the iOS store path.
 
-## One-time setup (Xcode UI)
+## One-time setup
 
-Do this once on any Mac that can open the project (beta Mac is fine for *configuring* Cloud; Cloud still builds on Apple’s release OS images).
+### Xcode / App Store Connect
 
 1. Open the project:
    ```sh
@@ -27,39 +27,75 @@ Do this once on any Mac that can open the project (beta Mac is fine for *configu
    ```
 2. **Xcode → Product → Xcode Cloud → Create Workflow…** (or Report navigator → Cloud).
 3. Product: **EdgeEver** (`org.edgeever.mobile`), repository `tianma-if/edgeever`.
-4. When asked for the project path in a monorepo, select **`apps/ios/EdgeEver.xcodeproj`** (or the `apps/ios` workspace root Xcode shows).
+4. When asked for the project path in a monorepo, select **`apps/ios/EdgeEver.xcodeproj`**.
 5. **Workflow settings (important):**
    - **Start condition:** **Manual** only — do **not** start on every git push / PR (saves the 25h quota).
-   - **Actions:** **Archive** (App Store / TestFlight distribution).
-   - **Deployment:** App Store Connect (upload the archive).
-   - **Xcode version:** latest **release** (or RC when Apple requires it) — not a beta toolchain.
-6. Signing: prefer **Xcode Cloud managed signing** for Distribution, or ensure the App Store profiles already used by `ExportOptions.plist` / `project.yml` are available to the team. First Cloud run may ask the Account Holder to confirm certificates in App Store Connect.
-7. Grant GitHub access if Xcode prompts (read the monorepo so `ci_post_clone` can see `apps/ios` + `EditorSource`).
+   - **Actions:** **Archive** (scheme `EdgeEver`, platform iOS).
+   - **Deployment preparation:** App Store Connect / App Store eligible (or TestFlight Internal Only).
+   - **Xcode / macOS:** latest **release** — not a beta toolchain.
+6. Signing: project uses **Automatic** signing so Xcode Cloud can mint Development + Distribution profiles. First run may ask the Account Holder to confirm certificates in App Store Connect.
+7. Grant GitHub access for the primary repo only. Public SPM deps (`GRDB`, `Pow`) do **not** need Connect.
 
-### What the repo already provides
+### Shared secrets (auto-upload)
 
-After clone, Xcode Cloud runs:
+In **App Store Connect → EdgeEver → Xcode Cloud → Settings → Shared Environment Variables**, add (secret):
 
-`apps/ios/ci_scripts/ci_post_clone.sh`
+| Variable | Value |
+| --- | --- |
+| `APP_STORE_CONNECT_API_KEY_ID` | Key ID (e.g. from Users and Access → Integrations → App Store Connect API) |
+| `APP_STORE_CONNECT_API_ISSUER_ID` | Issuer ID |
+| `APP_STORE_CONNECT_API_KEY_P8_BASE64` | Entire `.p8` file contents, base64-encoded |
 
-That script:
+`ci_post_xcodebuild.sh` uses these to run `altool` after the archive so the IPA reaches ASC even if secondary Development/Ad Hoc exports fail.
 
-1. Installs **bun** (if missing) and **XcodeGen** (via Homebrew if needed)
-2. Builds the TipTap **EditorBundle** (`Scripts/build-editor-bundle.sh`)
-3. Runs **`xcodegen generate`**
+Encode the key:
 
-You should not need to commit a machine-local `DerivedData` tree. SPM packages (GRDB, Pow) resolve during the Cloud build.
+```sh
+base64 -i AuthKey_XXXX.p8 | tr -d '\n'
+```
 
-## Routine: submit a build (uses Cloud hours)
+### Build number (source of truth)
 
-1. Land the code you want on the branch Xcode Cloud tracks (usually `main`).
-2. Bump versions if this is a store upload:
-   - `apps/ios/Config/Version.xcconfig` → `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`
-   - Keep monorepo release rules in `AGENTS.md` when cutting a formal GitHub Release.
-3. In Xcode (or App Store Connect → Xcode Cloud): **Start Build** on the **manual** Archive workflow only.
-4. Wait for Archive + upload to succeed.
-5. In App Store Connect → TestFlight / version page: select the new build, complete compliance, **Submit for Review**.
-6. Optional: submit metadata-only steps with Fastlane from any machine (does not re-archive):
+Xcode Cloud **overwrites** `CFBundleVersion` with its managed counter:
+
+**App Store Connect → EdgeEver → Xcode Cloud → Settings → Build Number → Next build number**
+
+Rules:
+
+1. Next Cloud number must be **greater than** every build already on ASC for this app.
+2. Keep `apps/ios/Config/Version.xcconfig` → `CURRENT_PROJECT_VERSION` in the same ballpark (the repo stamps Cloud’s `CI_BUILD_NUMBER` into the archive via `ci_pre_xcodebuild.sh`).
+3. Before a store run, from a machine with API credentials:
+
+   ```sh
+   cd apps/ios
+   export APP_STORE_CONNECT_API_KEY_ID=...
+   export APP_STORE_CONNECT_API_ISSUER_ID=...
+   export APP_STORE_CONNECT_API_KEY_P8_BASE64=...   # or install AuthKey_*.p8 under ~/.appstoreconnect/private_keys/
+   bash Scripts/ensure-xcode-cloud-build-number.sh
+   ```
+
+   Then set the ASC “next build number” UI to the printed `recommended_next_cloud_build` (or higher) if the UI is not already there.
+
+## What the repo provides
+
+| Path | Role |
+| --- | --- |
+| `apps/ios/ci_scripts/ci_post_clone.sh` | bun + XcodeGen + EditorBundle + `xcodegen generate` |
+| `apps/ios/ci_scripts/ci_pre_xcodebuild.sh` | Stamp `CI_BUILD_NUMBER`; force Automatic signing |
+| `apps/ios/ci_scripts/ci_post_xcodebuild.sh` | Upload App Store IPA via `altool` when secrets are set |
+| `apps/ios/Scripts/upload-app-store-ipa.sh` | Manual upload of `.ipa` or Cloud `app-store.zip` |
+| `apps/ios/Scripts/ensure-xcode-cloud-build-number.sh` | Recommend / sync next build number from ASC history |
+| `apps/ios/EdgeEver.xcodeproj/xcshareddata/xcodecloud/manifest.json` | Cloud product linkage (commit this file) |
+
+## Routine: ship a store binary
+
+1. Land the code on the branch Cloud tracks (usually `main`).
+2. Bump `MARKETING_VERSION` when the user-facing version changes; ensure Cloud **next build number** &gt; latest ASC build (`ensure-xcode-cloud-build-number.sh`).
+3. Start the **manual** Archive workflow (Xcode or ASC → Xcode Cloud → Start Build).
+4. Wait for Archive. Prefer a green run; if the run is red only because Development/Ad Hoc export failed, check that `ci_post_xcodebuild` still uploaded the App Store IPA (or download `ARCHIVE_EXPORT` and run `upload-app-store-ipa.sh`).
+5. In ASC: wait until the build is **Valid**, attach it to the version, **Submit for Review**.
+
+   Optional (metadata already on ASC, binary already uploaded):
 
    ```sh
    cd apps/ios
@@ -70,31 +106,30 @@ You should not need to commit a machine-local `DerivedData` tree. SPM packages (
    fastlane ios submit_review
    ```
 
-   (`skip_binary_upload: true` in the lane — binary must already be on ASC from Cloud.)
-
 ## Local archive (release macOS only)
-
-`Scripts/archive-app-store.sh` remains for machines on a **non-beta** macOS:
 
 ```sh
 cd apps/ios
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash Scripts/archive-app-store.sh
+bash Scripts/upload-app-store-ipa.sh build/export/EdgeEver.ipa
 ```
 
-On **macOS beta**, do **not** upload that IPA; use Xcode Cloud instead. The script prints a warning when it detects a beta host OS build.
+On **macOS beta**, do **not** upload that IPA; use Xcode Cloud instead. `archive-app-store.sh` refuses beta hosts unless `EDGE_EVER_IOS_ALLOW_BETA_HOST=1`.
 
 ## Troubleshooting
 
-| Symptom | Likely cause |
-| --- | --- |
-| ITMS-90111 after **local** upload | Host macOS is beta (`BuildMachineOSBuild`) |
-| Cloud fails in post-clone on bun/xcodegen | Network / Homebrew on Cloud; re-run; check script logs |
-| Editor blank in app | EditorBundle not built — confirm `ci_post_clone` log shows bundle build |
-| Signing errors on Cloud | Confirm Distribution cert/profile for `org.edgeever.mobile` + share extension; or enable Cloud-managed signing |
-| Hours running out | Workflow not Manual — disable push/PR start conditions |
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| ITMS-90111 after **local** upload | Host macOS is beta (`BuildMachineOSBuild`) | Use Xcode Cloud only for store binaries |
+| Cloud run **FAILED** but `ARCHIVE_EXPORT` / App Store IPA exists | Development/Ad Hoc export lacks profiles | Automatic signing + Cloud managed certs; `ci_post_xcodebuild` still uploads App Store IPA |
+| IPA `CFBundleVersion` is `1` or too low | Cloud “next build number” not advanced | ASC → Xcode Cloud → Build Number; run `ensure-xcode-cloud-build-number.sh` |
+| Build never appears on ASC | Auto-upload secrets missing; or only Dev/Ad Hoc failed without App Store IPA | Set shared env secrets; or manual `upload-app-store-ipa.sh` |
+| Cloud fails in post-clone on bun/xcodegen | Network / Homebrew on Cloud | Re-run; inspect `ci_post_clone` log |
+| Editor blank in app | EditorBundle not built | Confirm `ci_post_clone` log shows bundle build |
+| Hours running out | Workflow not Manual | Disable push/PR start conditions |
 
 ## Related
 
 - `apps/ios/README.md` — generate / test / Fastlane submit
 - `apps/ios/Scripts/archive-app-store.sh` — local archive
-- `apps/ios/ci_scripts/ci_post_clone.sh` — Cloud prepare step
+- `apps/ios/ci_scripts/*` — Cloud lifecycle hooks

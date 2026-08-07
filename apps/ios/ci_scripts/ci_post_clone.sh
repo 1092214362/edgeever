@@ -3,6 +3,7 @@
 # Keep this lightweight: local day-to-day builds stay on the developer Mac;
 # Cloud is only for App Store / TestFlight archives (manual workflow).
 #
+# Lifecycle: ci_post_clone → ci_pre_xcodebuild → xcodebuild → ci_post_xcodebuild
 # Docs: docs/ios-xcode-cloud.md
 set -euo pipefail
 
