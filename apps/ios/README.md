@@ -4,6 +4,8 @@ Native SwiftUI client for EdgeEver. This replaces the React Native / Expo iOS ta
 
 **Design document:** [`docs/ios-swift-rewrite.md`](../../docs/ios-swift-rewrite.md)
 
+**App Store binaries on macOS beta:** use **Xcode Cloud (manual)** — [`docs/ios-xcode-cloud.md`](../../docs/ios-xcode-cloud.md).
+
 ## Status
 
 UI/interaction is aligned with the Android RN app (`apps/mobile`):
@@ -85,14 +87,26 @@ xcrun simctl launch booted org.edgeever.mobile \
 
 ## App Store archive
 
-Use the stable Xcode app (not beta) so App Store Connect accepts the SDK:
+### Preferred: Xcode Cloud (manual only)
+
+If the Mac runs **macOS beta**, local archives are rejected by App Store Connect (**ITMS-90111**) even with release Xcode. Day-to-day development stays local; **only store / TestFlight binaries** should use **Xcode Cloud** (25 compute hours/month with Apple Developer Program).
+
+- Setup and workflow: **[`docs/ios-xcode-cloud.md`](../../docs/ios-xcode-cloud.md)**
+- Cloud prepare script: `ci_scripts/ci_post_clone.sh` (EditorBundle + `xcodegen`)
+- Workflow start condition must stay **Manual** so hours are not burned on every push
+
+### Local archive (release macOS only)
+
+Use the stable Xcode app (not beta) on a **non-beta** host OS:
 
 ```sh
 cd apps/ios
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash Scripts/archive-app-store.sh
 ```
 
-The script builds the TipTap EditorBundle, regenerates the Xcode project, archives with the App Store distribution profiles, and exports `build/export/EdgeEver.ipa`. Upload with `xcrun altool` / Transporter, then submit the exact build with:
+On a beta host the script **exits** unless you set `EDGE_EVER_IOS_ALLOW_BETA_HOST=1` (upload will still likely fail ASC).
+
+The script builds the TipTap EditorBundle, regenerates the Xcode project, archives with the App Store distribution profiles, and exports `build/export/EdgeEver.ipa`. Upload with `xcrun altool` / Transporter (or use Cloud upload), then submit the exact build with:
 
 ```sh
 cd apps/ios

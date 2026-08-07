@@ -16,6 +16,22 @@ if [[ -z "${DEVELOPER_DIR:-}" ]]; then
 fi
 echo "Using $(xcodebuild -version | tr '\n' ' ')"
 
+# Beta host macOS stamps BuildMachineOSBuild; ASC often rejects as ITMS-90111.
+# Prefer Xcode Cloud for store binaries (docs/ios-xcode-cloud.md).
+# Heuristic: Apple seed builds usually end with a lowercase letter (e.g. 26A5368g);
+# GM/release builds typically end with digits (e.g. 24G90).
+HOST_OS_BUILD="$(sw_vers -buildVersion 2>/dev/null || true)"
+HOST_OS_VER="$(sw_vers -productVersion 2>/dev/null || true)"
+if [[ "$HOST_OS_BUILD" =~ [a-z]$ ]]; then
+  echo "WARNING: Host macOS ${HOST_OS_VER} (${HOST_OS_BUILD}) looks like a seed/beta build." >&2
+  echo "WARNING: App Store Connect may reject this IPA with ITMS-90111 even if Xcode is a release build." >&2
+  echo "WARNING: Use Xcode Cloud (manual Archive workflow) for store uploads — see docs/ios-xcode-cloud.md" >&2
+  if [[ "${EDGE_EVER_IOS_ALLOW_BETA_HOST:-0}" != "1" ]]; then
+    echo "Refusing local App Store archive on beta host. Set EDGE_EVER_IOS_ALLOW_BETA_HOST=1 to override." >&2
+    exit 1
+  fi
+fi
+
 cd "$ROOT"
 
 if [[ "${EDGE_EVER_IOS_SKIP_EDITOR_BUILD:-0}" != "1" ]]; then
