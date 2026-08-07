@@ -34,18 +34,27 @@ final class EditorBundleTests: XCTestCase {
             .deletingLastPathComponent() // EdgeEverTests
             .deletingLastPathComponent() // Tests
             .deletingLastPathComponent() // ios
-        let tipTap = try String(
+        let webView = try String(
             contentsOf: iosRoot.appendingPathComponent("EdgeEver/Editor/TipTapWebView.swift"),
             encoding: .utf8
         )
-        // Must not invoke focusEnd after setMarkdown / setDocumentFromJSON.
+        let runtime = try String(
+            contentsOf: iosRoot.appendingPathComponent("EdgeEver/Editor/TipTapWarmPool.swift"),
+            encoding: .utf8
+        )
+        // SwiftUI surface must not force caret; runtime owns open-edit focus once.
         XCTAssertFalse(
-            tipTap.contains("focusEnd()"),
+            webView.contains("focusEnd()"),
             "TipTapWebView must not call focusEnd() — jumps caret to bottom while editing"
         )
         XCTAssertTrue(
-            tipTap.contains("lastEditorEmittedFingerprint"),
+            runtime.contains("lastEditorEmittedFingerprint"),
             "must ignore editor-originated updates so typing does not re-setContent"
+        )
+        // Viewer detail must prefer Markdown (setMarkdown), not flattened contentJson.
+        XCTAssertTrue(
+            runtime.contains("TipTapContentSource.resolve") || runtime.contains("contentDecision"),
+            "runtime must route content through TipTapContentSource policy"
         )
     }
 }

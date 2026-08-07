@@ -123,12 +123,14 @@ final class SyncOutboxRepository: @unchecked Sendable {
     func flushableItems(scope: String, now: Date = Date()) throws -> [OutboxItem] {
         let nowString = ISO8601DateFormatter.edgeEver.string(from: now)
         return try dbQueue.read { db in
+            // Include `conflict` so a rebase retry can clear stale-base conflicts
+            // (expectedRevision lag after a successful prior sync).
             let rows = try Row.fetchAll(
                 db,
                 sql: """
                 SELECT * FROM mobile_sync_outbox
                 WHERE scope = ?
-                  AND status IN ('pending', 'error', 'syncing')
+                  AND status IN ('pending', 'error', 'syncing', 'conflict')
                   AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
                 ORDER BY created_at ASC
                 """,

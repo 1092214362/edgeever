@@ -53,7 +53,17 @@ struct WorkspaceView: View {
             .navigationBarHidden(true)
             .navigationDestination(for: String.self) { memoId in
                 MemoDetailView(memoId: memoId) { editId in
+                    // 1) Show edit cover over detail.
                     editingMemo = EditingMemoRoute(id: editId)
+                    // 2) After the cover is up, silently drop detail so the underlay is the list.
+                    //    Dismissing edit then reveals list only — no detail flash.
+                    DispatchQueue.main.async {
+                        var t = Transaction()
+                        t.disablesAnimations = true
+                        withTransaction(t) {
+                            path = NavigationPath()
+                        }
+                    }
                 }
             }
             // Android Me is full-screen (activeView === "settings"), not a half-sheet Form.
@@ -65,12 +75,22 @@ struct WorkspaceView: View {
                 MemoEditView(mode: .create(notebookId: store.selectedNotebookId ?? store.notebooks.first?.id ?? ""))
                     .onDisappear { store.reload(env: env) }
             }
-            // Edit from detail FAB — present at root so NavigationStack destination covers always work.
+            // Edit cover on workspace root; underlay is list (detail popped once cover is presented).
             .fullScreenCover(item: $editingMemo) { route in
-                MemoEditView(mode: .edit(memoId: route.id))
-                    .onDisappear {
+                MemoEditView(
+                    mode: .edit(memoId: route.id),
+                    onLeaveToList: {
+                        // Pop detail first (no animation) while cover still covers the stack,
+                        // then dismiss the cover so the user only ever sees the list.
+                        var t = Transaction()
+                        t.disablesAnimations = true
+                        withTransaction(t) {
+                            path = NavigationPath()
+                        }
+                        editingMemo = nil
                         store.reload(env: env)
                     }
+                )
             }
             .sheet(isPresented: $store.showNotebookPicker) {
                 NotebookPickerSheet(store: store)

@@ -19,6 +19,7 @@
 		1510CEE8BDDBD1710C0CE88C /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 574912976CB43DD9821678EE /* SessionStore.swift */; };
 		1F8E6268C9DA330CA236B36F /* SyncProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6159DBF27CC86920005E25D /* SyncProtocolTests.swift */; };
 		2581F6050C02A4A36340CC0D /* ShareHandoffStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D045B340A984E17B3B0047BF /* ShareHandoffStore.swift */; };
+		265DB48114144779A7C807F7 /* TipTapContentSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1D4EB4B51C66E9CD72FF7F /* TipTapContentSource.swift */; };
 		2A07555B54946A177E1ECFF2 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CB54673617E14F28B7608BD /* Typography.swift */; };
 		2E185C3C27DA3A729F2734B4 /* SyncOutboxRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62B460B6BFE4CFB23073C7E1 /* SyncOutboxRepository.swift */; };
 		33330C89D977D3903F091165 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B812AD3502D649CE7B84DEBE /* LoginView.swift */; };
@@ -31,6 +32,7 @@
 		4A2DD0673B81D32FA9E5F9DB /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F590FE9371571DC7456154 /* Theme.swift */; };
 		4A771542C5AD2E6A907187AD /* OutboxFlusher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8720E0D6F00D1509B76A374B /* OutboxFlusher.swift */; };
 		4BA97CD264D0929B20ED19DB /* TipTapWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DCA98C14CC6F28C22C41A1 /* TipTapWebView.swift */; };
+		4EC901852EDA4BC001717747 /* TipTapContentSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A536119D29812EF11DAEAA8 /* TipTapContentSourceTests.swift */; };
 		506702F1751945424AC4CB98 /* MobileUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A375D81573943A98C5732F81 /* MobileUI.swift */; };
 		50800DF91A760DE7FB68DFB4 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C065FED3C78404D4D8DD19 /* Motion.swift */; };
 		511A8DCB204AFCB2880AE51E /* MemoCreateCommitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E057D0906932A00DF62EBB /* MemoCreateCommitTests.swift */; };
@@ -133,6 +135,7 @@
 		8691859094F8C08AE49FE27D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		86F590FE9371571DC7456154 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		8720E0D6F00D1509B76A374B /* OutboxFlusher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutboxFlusher.swift; sourceTree = "<group>"; };
+		8A536119D29812EF11DAEAA8 /* TipTapContentSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipTapContentSourceTests.swift; sourceTree = "<group>"; };
 		94DF0091B1FC2783AEC2D9F6 /* EdgeEverTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EdgeEverTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9799115E572F9AF0B59A5AD4 /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
 		9B02E8D28111E1E732F3BF36 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -140,6 +143,7 @@
 		A375D81573943A98C5732F81 /* MobileUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileUI.swift; sourceTree = "<group>"; };
 		AB02424D0412FE36C4BCD116 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		AD904708FC1AD8971439BD90 /* JSONCoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONCoding.swift; sourceTree = "<group>"; };
+		AE1D4EB4B51C66E9CD72FF7F /* TipTapContentSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipTapContentSource.swift; sourceTree = "<group>"; };
 		B1D94BB61519CA2A345D99C1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B30C95F4EABCD08555D97C6B /* NotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesListView.swift; sourceTree = "<group>"; };
 		B812AD3502D649CE7B84DEBE /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -410,6 +414,7 @@
 			children = (
 				F9182F742B06FB1713E27C2A /* ResourceActions.swift */,
 				EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */,
+				AE1D4EB4B51C66E9CD72FF7F /* TipTapContentSource.swift */,
 				36831A94478123A1EE9BB538 /* TipTapWarmPool.swift */,
 				12DCA98C14CC6F28C22C41A1 /* TipTapWebView.swift */,
 			);
@@ -434,6 +439,7 @@
 				82E057D0906932A00DF62EBB /* MemoCreateCommitTests.swift */,
 				1606EF8ADEA4921421EB0690 /* MobileUIParityTests.swift */,
 				E6159DBF27CC86920005E25D /* SyncProtocolTests.swift */,
+				8A536119D29812EF11DAEAA8 /* TipTapContentSourceTests.swift */,
 				41B15501968A29C372E7B3BB /* URLNormalizeTests.swift */,
 			);
 			path = EdgeEverTests;
@@ -583,6 +589,7 @@
 				511A8DCB204AFCB2880AE51E /* MemoCreateCommitTests.swift in Sources */,
 				A63E64622A06DF3842908A66 /* MobileUIParityTests.swift in Sources */,
 				1F8E6268C9DA330CA236B36F /* SyncProtocolTests.swift in Sources */,
+				4EC901852EDA4BC001717747 /* TipTapContentSourceTests.swift in Sources */,
 				0D67F968CAFCC17F28A5555C /* URLNormalizeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -628,6 +635,7 @@
 				2E185C3C27DA3A729F2734B4 /* SyncOutboxRepository.swift in Sources */,
 				5F5EC9565A02FAFDD5D7B54C /* SyncProtocol.swift in Sources */,
 				4A2DD0673B81D32FA9E5F9DB /* Theme.swift in Sources */,
+				265DB48114144779A7C807F7 /* TipTapContentSource.swift in Sources */,
 				1186BE3109942FCBAB59E6B4 /* TipTapWarmPool.swift in Sources */,
 				4BA97CD264D0929B20ED19DB /* TipTapWebView.swift in Sources */,
 				2A07555B54946A177E1ECFF2 /* Typography.swift in Sources */,

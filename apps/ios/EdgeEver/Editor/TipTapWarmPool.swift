@@ -115,9 +115,10 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
     }
 
     func bind(_ newSession: TipTapSession) {
+        let previousMode = session?.mode
         let previousFingerprint = lastPushedJSON
         session = newSession
-        let fp = contentFingerprint(newSession).fingerprint
+        let fp = contentDecision(newSession).fingerprint
         let isNewDocument = fp != previousFingerprint
             && fp != lastEditorEmittedFingerprint
         if fp != previousFingerprint {
@@ -125,8 +126,10 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
             hydrateGeneration &+= 1
             // Do not zero bodyReadyGeneration here — pushContent / skip path will notify.
         }
+        let modeChanged = previousMode != nil && previousMode != newSession.mode
         applyMode()
-        pushContentIfNeeded(force: false)
+        // Mode switch (editor ↔ viewer) must re-push: viewer prefers markdown, editor prefers JSON.
+        pushContentIfNeeded(force: modeChanged)
         // Open-edit only: first time this document is shown in the editor, focus end once.
         // Never refocus on SwiftUI re-binds caused by typing (same emitted fingerprint).
         if newSession.mode == .editor, isNewDocument {
@@ -308,19 +311,19 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
-    private func contentFingerprint(_ session: TipTapSession) -> (fingerprint: String, useJSON: Bool) {
-        let emptyStub = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"
-        let json = session.documentJSON.trimmingCharacters(in: .whitespacesAndNewlines)
-        let useJSON = !json.isEmpty && json != emptyStub
-        if useJSON {
-            return ("json:\(json)", true)
-        }
-        return ("md:\(session.markdown)", false)
+    private func contentDecision(_ session: TipTapSession) -> TipTapContentSource.Decision {
+        TipTapContentSource.resolve(
+            mode: session.mode,
+            documentJSON: session.documentJSON,
+            markdown: session.markdown
+        )
     }
 
     func pushContentIfNeeded(force: Bool = false) {
         guard ready, let session else { return }
-        let (fingerprint, useJSON) = contentFingerprint(session)
+        let decision = contentDecision(session)
+        let fingerprint = decision.fingerprint
+        let useJSON = decision.useJSON
         let gen = contentGeneration
 
         // Already showing this document (including editor-originated typing updates).
@@ -340,7 +343,7 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         }
 
         let fn = useJSON ? "setDocumentFromJSON" : "setMarkdown"
-        let payload = useJSON ? session.documentJSON : session.markdown
+        let payload = decision.payload
         let js = TipTapResourceLoader.jsCall(fn: fn, arg: payload)
         // Capture callback now — detach may nil session callbacks before the JS completion runs.
         let bodyReadyCb = session.onBodyReady

@@ -14,6 +14,9 @@ struct MemoEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     let mode: MemoEditMode
+    /// When set (edit-from-detail), close by popping to the list under the cover first —
+    /// never `dismiss()` onto a still-pushed detail page.
+    var onLeaveToList: (() -> Void)? = nil
 
     @State private var title = ""
     @State private var tagsText = ""
@@ -296,22 +299,15 @@ struct MemoEditView: View {
                         baseURL: env.session.session.map { URL(string: $0.baseUrl) } ?? nil,
                         token: env.session.session?.token,
                         onChange: { md, json in
-                            guard contentHydrated, !isUploading else { return }
-                            // @tiptap/markdown sometimes omits image nodes; never let a bridge
-                            // payload erase protected image refs we already inserted.
-                            var nextMd = md
-                            let resourceRefs = Self.protectedResourceRefs(in: contentMarkdown)
-                            for ref in resourceRefs where !nextMd.contains(ref) {
-                                nextMd += "\n\n![](\(ref))\n"
+                            guard contentHydrated else { return }
+                            // Always accept editor truth, even mid-upload (save stays gated).
+                            // @tiptap/markdown can drop text or images — reconcile carefully.
+                            applyEditorPayload(markdown: md, json: json)
+                            if !isUploading {
+                                markDirtyAndScheduleSave()
+                            } else {
+                                isDirty = true
                             }
-                            contentMarkdown = nextMd
-                            if !json.isEmpty {
-                                contentJSON = json
-                            }
-                            for ref in resourceRefs where !contentJSON.contains(ref) {
-                                ensureImageInContent(imageSrc: ref, alt: "image")
-                            }
-                            markDirtyAndScheduleSave()
                         },
                         onResourcePress: { target in
                             resourceTarget = target
@@ -437,7 +433,7 @@ struct MemoEditView: View {
             dismiss()
         } else {
             await flushPending()
-            dismiss()
+            leaveEditor()
         }
     }
 
@@ -447,6 +443,16 @@ struct MemoEditView: View {
             await commitCreate()
         } else {
             await flushPending()
+            leaveEditor()
+        }
+    }
+
+    /// Edit-from-detail: parent pops path then clears the cover so list is revealed.
+    /// Create / other hosts: standard environment dismiss.
+    private func leaveEditor() {
+        if let onLeaveToList {
+            onLeaveToList()
+        } else {
             dismiss()
         }
     }
@@ -460,13 +466,51 @@ struct MemoEditView: View {
     /// Pull markdown/JSON from TipTap so saves don't race the async change bridge.
     private func pullEditorSnapshotIfPossible() async {
         guard let snap = await SharedTipTapRuntime.editor.snapshotContent() else { return }
-        if !snap.json.isEmpty {
-            contentJSON = snap.json
+        applyEditorPayload(markdown: snap.markdown, json: snap.json)
+    }
+
+    /// Merge TipTap bridge payloads.
+    /// **TipTap JSON is the only structural source of truth** (node order = image above/below text).
+    /// Markdown is always derived from JSON so we never "append missing images at the end"
+    /// and flip 图文顺序 when the serializer drops an image mid-document.
+    private func applyEditorPayload(markdown: String, json: String) {
+        let prevText = EditorContentCodec.plainText(markdown: contentMarkdown, json: contentJSON)
+
+        let trimmedJSON = json.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextJSON: String = {
+            if !trimmedJSON.isEmpty, EditorContentCodec.looksLikeTipTapDoc(trimmedJSON) {
+                return trimmedJSON
+            }
+            return contentJSON
+        }()
+
+        // Derive markdown from JSON whenever possible — preserves block order exactly.
+        let nextMD: String = {
+            if let derived = EditorContentCodec.markdownFromTipTapJSON(nextJSON) {
+                return derived
+            }
+            if !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return markdown
+            }
+            return contentMarkdown
+        }()
+
+        let nextText = EditorContentCodec.plainText(markdown: nextMD, json: nextJSON)
+        let nextHasImage = EditorContentCodec.containsImageNode(nextJSON)
+            || nextMD.contains("![")
+
+        // Hard guard: never accept a payload that strips substantial text while leaving media.
+        if prevText.count >= 8, nextText.count < max(4, prevText.count / 2), nextHasImage {
+            NSLog(
+                "MemoEditView: reject text-stripping payload prevText=%d nextText=%d",
+                prevText.count, nextText.count
+            )
+            // Do NOT append images at the end — that reorders 图文. Keep prior body.
+            return
         }
-        // Prefer snapshot markdown, but keep any image refs we already patched in.
-        if !snap.markdown.isEmpty {
-            contentMarkdown = snap.markdown
-        }
+
+        contentJSON = nextJSON
+        contentMarkdown = nextMD
     }
 
     private func loadInitial() async {
@@ -554,21 +598,36 @@ struct MemoEditView: View {
         }
     }
 
-    /// Reject autosave that would wipe a non-empty note with an empty editor boot payload.
+    /// Reject autosave that would wipe a non-empty note with an empty / image-only boot payload.
     private var wouldClobberNonEmptyBody: Bool {
         guard !isCreate else { return false }
         let next = contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
         let base = baselineMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
-        return next.isEmpty && !base.isEmpty
+        if next.isEmpty && !base.isEmpty { return true }
+
+        let baseText = EditorContentCodec.plainTextFromMarkdown(baselineMarkdown)
+        let nextText = EditorContentCodec.plainText(markdown: contentMarkdown, json: contentJSON)
+        let nextHasImage = contentMarkdown.contains("/api/v1/resources/")
+            || contentJSON.contains("/api/v1/resources/")
+            || contentJSON.contains("\"type\":\"image\"")
+        // Image-only body while baseline had real text → refuse (this produced empty notes).
+        if baseText.count >= 8, nextText.count < max(4, baseText.count / 2), nextHasImage {
+            return true
+        }
+        return false
     }
 
     private func persistDraftOrQueue() async {
         guard let scope = env.session.dataScope else { return }
         guard contentHydrated else { return }
+        // Last chance: re-sync markdown from JSON so outbox markdown cannot drop text.
+        reconcileMarkdownWithJSON()
         if wouldClobberNonEmptyBody {
-            #if DEBUG
-            NSLog("MemoEditView: skip persist — refusing empty clobber of non-empty baseline")
-            #endif
+            NSLog(
+                "MemoEditView: skip persist — refusing body clobber baseText=%d nextText=%d",
+                EditorContentCodec.plainTextFromMarkdown(baselineMarkdown).count,
+                EditorContentCodec.plainText(markdown: contentMarkdown, json: contentJSON).count
+            )
             isDirty = false
             return
         }
@@ -637,10 +696,13 @@ struct MemoEditView: View {
         if let json = try? JSONValue.parse(contentJSON) {
             memo.contentJson = json
         }
+        // Capture server base BEFORE writing local content. Never prefer a stale
+        // in-memory expectedRevision that lagged behind a completed sync — that was
+        // causing endless "Note changed before the offline draft could sync" conflicts.
+        let rev = memo.revision
+        let hash = memo.contentHash
         try? env.mirror.upsertMemo(scope: scope, memo: memo)
 
-        let rev = expectedRevision ?? memo.revision
-        let hash = expectedContentHash ?? memo.contentHash
         try? env.outbox.enqueueUpdate(
             scope: scope,
             payload: MemoUpdatePayload(
@@ -653,6 +715,8 @@ struct MemoEditView: View {
                 tags: tags
             )
         )
+        expectedRevision = rev
+        expectedContentHash = hash
         try? env.drafts.write(
             scope: scope,
             draft: MemoDraft(
@@ -667,13 +731,19 @@ struct MemoEditView: View {
             )
         )
         NSLog(
-            "MemoEditView persist update memo=%@ mdLen=%d hasImg=%d jsonHasImg=%d",
+            "MemoEditView persist update memo=%@ baseRev=%d mdLen=%d hasImg=%d jsonHasImg=%d",
             memo.id,
+            rev,
             contentMarkdown.count,
             contentMarkdown.contains("/api/v1/resources/") ? 1 : 0,
             contentJSON.contains("/api/v1/resources/") ? 1 : 0
         )
-        Task { await env.runSyncCycle() }
+        await env.runSyncCycle()
+        // Refresh base from mirror after flush so the next keystroke doesn't reuse a dead revision.
+        if let refreshed = try? env.mirror.resolveMemo(scope: scope, id: memoId) {
+            expectedRevision = refreshed.revision
+            expectedContentHash = refreshed.contentHash
+        }
     }
 
     private func commitCreate() async {
@@ -705,6 +775,11 @@ struct MemoEditView: View {
                 memoId = id
             }
             await env.runSyncCycle()
+            if let id = memoId, let refreshed = try? env.mirror.resolveMemo(scope: scope, id: id) {
+                expectedRevision = refreshed.revision
+                expectedContentHash = refreshed.contentHash
+            }
+            // Create modal sits on the list already.
             dismiss()
         } catch {
             self.error = error.localizedDescription
@@ -747,6 +822,9 @@ struct MemoEditView: View {
             try env.mirror.deleteMemo(scope: scope, id: localId)
         }
 
+        // Capture latest editor body before minting the server memo (avoid stale empty markdown).
+        await pullEditorSnapshotIfPossible()
+        reconcileMarkdownWithJSON()
         let memo = try await env.session.client.createMemo(
             notebookId: notebookId.isEmpty ? (availableNotebooks.first?.id ?? "") : notebookId,
             title: title.isEmpty ? "无标题笔记" : title,
@@ -816,20 +894,24 @@ struct MemoEditView: View {
                     )
                 )
             }
-            // Snapshot TipTap state immediately — do not rely on async bridge onChange
-            // (it can arrive after our save, or markdown serializers may drop images).
+            // Snapshot TipTap JSON (order is authoritative). Only inject if the resource
+            // is truly missing — never append a second image node at document end.
             await pullEditorSnapshotIfPossible()
-            ensureImageInContent(imageSrc: imageSrc, alt: prepared.filename)
+            if !EditorContentCodec.jsonContainsResource(contentJSON, src: imageSrc) {
+                ensureImageInContent(imageSrc: imageSrc, alt: prepared.filename)
+            } else {
+                reconcileMarkdownWithJSON()
+            }
             isDirty = true
             // Persist immediately so leaving the editor cannot orphan the resource.
             saveTask?.cancel()
             await persistDraftOrQueue()
-            await env.runSyncCycle()
             NSLog(
-                "MemoEditView insertImageData: done src=%@ mdHas=%d jsonHas=%d",
+                "MemoEditView insertImageData: done src=%@ mdHas=%d jsonHas=%d textLen=%d",
                 imageSrc,
                 contentMarkdown.contains(imageSrc) ? 1 : 0,
-                contentJSON.contains(imageSrc) ? 1 : 0
+                EditorContentCodec.jsonContainsResource(contentJSON, src: imageSrc) ? 1 : 0,
+                EditorContentCodec.plainText(markdown: contentMarkdown, json: contentJSON).count
             )
         } catch {
             self.error = error.localizedDescription
@@ -838,58 +920,25 @@ struct MemoEditView: View {
         }
     }
 
-    private static func protectedResourceRefs(in markdown: String) -> [String] {
-        guard let regex = try? NSRegularExpression(
-            pattern: #"/api/v1/resources/[A-Za-z0-9_-]+(?:/blob)?"#,
-            options: []
-        ) else { return [] }
-        let ns = markdown as NSString
-        let matches = regex.matches(in: markdown, options: [], range: NSRange(location: 0, length: ns.length))
-        var seen = Set<String>()
-        var refs: [String] = []
-        for match in matches {
-            let ref = ns.substring(with: match.range)
-            if seen.insert(ref).inserted {
-                refs.append(ref)
-            }
-        }
-        return refs
+    private static func protectedResourceRefs(in text: String) -> [String] {
+        EditorContentCodec.protectedResourceRefs(in: text)
     }
 
-    /// Guarantee markdown + TipTap JSON both reference the uploaded resource path.
-    private func ensureImageInContent(imageSrc: String, alt: String) {
-        if !contentMarkdown.contains(imageSrc) {
-            let block = contentMarkdown.hasSuffix("\n") || contentMarkdown.isEmpty
-                ? "![\(alt)](\(imageSrc))\n"
-                : "\n\n![\(alt)](\(imageSrc))\n"
-            contentMarkdown += block
+    /// Rebuild markdown from TipTap JSON so block order matches the editor (and detail view).
+    private func reconcileMarkdownWithJSON() {
+        if let derived = EditorContentCodec.markdownFromTipTapJSON(contentJSON) {
+            contentMarkdown = derived
         }
-        if contentJSON.contains(imageSrc) { return }
-        // Inject an image node into the JSON doc when serializers/snapshot omitted it.
-        guard let data = contentJSON.data(using: .utf8),
-              var doc = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            contentJSON = """
-            {"type":"doc","content":[{"type":"paragraph"},{"type":"image","attrs":{"src":"\(imageSrc)","alt":"\(alt.replacingOccurrences(of: "\"", with: ""))"}},{"type":"paragraph"}]}
-            """
+    }
+
+    /// Last-resort: image missing from JSON after insert. Append only then, and rebuild md from JSON.
+    private func ensureImageInContent(imageSrc: String, alt: String) {
+        if EditorContentCodec.jsonContainsResource(contentJSON, src: imageSrc) {
+            reconcileMarkdownWithJSON()
             return
         }
-        var content = doc["content"] as? [[String: Any]] ?? []
-        content.append([
-            "type": "image",
-            "attrs": [
-                "src": imageSrc,
-                "alt": alt,
-            ] as [String: Any],
-        ])
-        content.append(["type": "paragraph"] as [String: Any])
-        doc["type"] = doc["type"] ?? "doc"
-        doc["content"] = content
-        if let out = try? JSONSerialization.data(withJSONObject: doc),
-           let s = String(data: out, encoding: .utf8)
-        {
-            contentJSON = s
-        }
+        contentJSON = EditorContentCodec.appendingImage(toJSON: contentJSON, src: imageSrc, alt: alt)
+        reconcileMarkdownWithJSON()
     }
 
     /// When compression is off, still normalize HEIC → JPEG for reliable upload mime.
@@ -910,6 +959,211 @@ struct MemoEditView: View {
         let base = (preferredName as NSString).deletingPathExtension
         let name = base.isEmpty ? "image.\(ext)" : "\(base).\(ext)"
         return (normalized, resolvedMime, name)
+    }
+}
+
+// MARK: - TipTap content helpers (markdown serializer is lossy around images)
+
+enum EditorContentCodec {
+    static func protectedResourceRefs(in text: String) -> [String] {
+        guard let regex = try? NSRegularExpression(
+            pattern: #"/api/v1/resources/[A-Za-z0-9_-]+(?:/blob)?"#,
+            options: []
+        ) else { return [] }
+        let ns = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: ns.length))
+        var seen = Set<String>()
+        var refs: [String] = []
+        for match in matches {
+            let ref = ns.substring(with: match.range)
+            if seen.insert(ref).inserted { refs.append(ref) }
+        }
+        return refs
+    }
+
+    static func looksLikeTipTapDoc(_ json: String) -> Bool {
+        guard let data = json.data(using: .utf8),
+              let doc = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = doc["type"] as? String
+        else { return false }
+        return type == "doc"
+    }
+
+    static func containsImageNode(_ json: String) -> Bool {
+        json.contains("\"type\":\"image\"") || json.contains("\"type\": \"image\"")
+    }
+
+    /// Match resource by id so `/blob` vs bare path doesn't look like a missing image.
+    static func jsonContainsResource(_ json: String, src: String) -> Bool {
+        if json.contains(src) { return true }
+        if let id = ResourceCache.resourceId(from: src), json.contains(id) {
+            return true
+        }
+        return false
+    }
+
+    static func plainText(markdown: String, json: String) -> String {
+        let a = plainTextFromMarkdown(markdown)
+        let b = plainTextFromJSON(json)
+        return a.count >= b.count ? a : b
+    }
+
+    static func plainTextFromMarkdown(_ markdown: String) -> String {
+        var s = markdown
+        // Strip image / link targets; keep link labels lightly.
+        s = s.replacingOccurrences(of: #"!\[[^\]]*\]\([^)]*\)"#, with: " ", options: .regularExpression)
+        s = s.replacingOccurrences(of: #"\[[^\]]*\]\([^)]*\)"#, with: " ", options: .regularExpression)
+        s = s.replacingOccurrences(of: #"[#>*`_~\-]+"#, with: " ", options: .regularExpression)
+        return s
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    static func plainTextFromJSON(_ json: String) -> String {
+        guard let data = json.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data)
+        else { return "" }
+        var parts: [String] = []
+        collectText(obj, into: &parts)
+        return parts.joined(separator: " ")
+    }
+
+    private static func collectText(_ any: Any, into parts: inout [String]) {
+        if let dict = any as? [String: Any] {
+            if let type = dict["type"] as? String, type == "text", let text = dict["text"] as? String, !text.isEmpty {
+                parts.append(text)
+            }
+            if let content = dict["content"] as? [Any] {
+                for child in content { collectText(child, into: &parts) }
+            }
+            return
+        }
+        if let arr = any as? [Any] {
+            for child in arr { collectText(child, into: &parts) }
+        }
+    }
+
+    /// Best-effort TipTap JSON → markdown so sync wire format keeps body text + images.
+    static func markdownFromTipTapJSON(_ json: String) -> String? {
+        guard let data = json.data(using: .utf8),
+              let doc = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = doc["content"] as? [Any]
+        else { return nil }
+        var lines: [String] = []
+        for node in content {
+            guard let dict = node as? [String: Any], let type = dict["type"] as? String else { continue }
+            switch type {
+            case "paragraph":
+                lines.append(inlineMarkdown(dict["content"] as? [Any] ?? []))
+            case "heading":
+                let level = (dict["attrs"] as? [String: Any])?["level"] as? Int ?? 2
+                let prefix = String(repeating: "#", count: min(max(level, 1), 6))
+                lines.append("\(prefix) \(inlineMarkdown(dict["content"] as? [Any] ?? []))")
+            case "image":
+                let attrs = dict["attrs"] as? [String: Any] ?? [:]
+                let src = attrs["src"] as? String ?? ""
+                let alt = attrs["alt"] as? String ?? ""
+                if !src.isEmpty { lines.append("![\(alt)](\(src))") }
+            case "bulletList", "orderedList":
+                if let items = dict["content"] as? [Any] {
+                    for item in items {
+                        guard let itemDict = item as? [String: Any] else { continue }
+                        let text = blockText(itemDict)
+                        if !text.isEmpty { lines.append("- \(text)") }
+                    }
+                }
+            case "blockquote":
+                let text = blockText(dict)
+                if !text.isEmpty { lines.append("> \(text)") }
+            case "codeBlock":
+                let text = blockText(dict)
+                lines.append("```\n\(text)\n```")
+            case "horizontalRule":
+                lines.append("---")
+            default:
+                let text = blockText(dict)
+                if !text.isEmpty { lines.append(text) }
+            }
+        }
+        let joined = lines.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return joined.isEmpty ? nil : joined + "\n"
+    }
+
+    private static func blockText(_ node: [String: Any]) -> String {
+        if let type = node["type"] as? String, type == "text" {
+            return node["text"] as? String ?? ""
+        }
+        guard let content = node["content"] as? [Any] else { return "" }
+        return content.compactMap { child -> String? in
+            guard let dict = child as? [String: Any] else { return nil }
+            if dict["type"] as? String == "image" {
+                let attrs = dict["attrs"] as? [String: Any] ?? [:]
+                let src = attrs["src"] as? String ?? ""
+                let alt = attrs["alt"] as? String ?? ""
+                return src.isEmpty ? nil : "![\(alt)](\(src))"
+            }
+            let t = blockText(dict)
+            return t.isEmpty ? nil : t
+        }.joined()
+    }
+
+    private static func inlineMarkdown(_ content: [Any]) -> String {
+        content.compactMap { child -> String? in
+            guard let dict = child as? [String: Any] else { return nil }
+            if dict["type"] as? String == "hardBreak" { return "\n" }
+            if dict["type"] as? String == "text" {
+                var t = dict["text"] as? String ?? ""
+                let marks = dict["marks"] as? [[String: Any]] ?? []
+                // Apply outer marks last so **`code`** style nesting is reasonable.
+                for mark in marks.reversed() {
+                    switch mark["type"] as? String {
+                    case "code":
+                        t = "`\(t)`"
+                    case "bold", "strong":
+                        t = "**\(t)**"
+                    case "italic", "em":
+                        t = "*\(t)*"
+                    case "strike":
+                        t = "~~\(t)~~"
+                    case "link":
+                        let href = (mark["attrs"] as? [String: Any])?["href"] as? String ?? ""
+                        t = "[\(t)](\(href))"
+                    default:
+                        break
+                    }
+                }
+                return t
+            }
+            return blockText(dict)
+        }.joined()
+    }
+
+    /// Append image node without wiping existing document content.
+    static func appendingImage(toJSON json: String, src: String, alt: String) -> String {
+        if json.contains(src) { return json }
+        guard let data = json.data(using: .utf8),
+              var doc = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            // Only invent a stub when we truly have no document yet.
+            let safeAlt = alt.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+            return """
+            {"type":"doc","content":[{"type":"paragraph"},{"type":"image","attrs":{"src":"\(src)","alt":"\(safeAlt)"}},{"type":"paragraph"}]}
+            """
+        }
+        var content = doc["content"] as? [[String: Any]] ?? []
+        // Avoid blanking a doc that already has text — only append.
+        content.append([
+            "type": "image",
+            "attrs": ["src": src, "alt": alt] as [String: Any],
+        ])
+        content.append(["type": "paragraph"] as [String: Any])
+        doc["type"] = doc["type"] ?? "doc"
+        doc["content"] = content
+        guard let out = try? JSONSerialization.data(withJSONObject: doc),
+              let s = String(data: out, encoding: .utf8)
+        else { return json }
+        return s
     }
 }
 

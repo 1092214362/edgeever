@@ -84,23 +84,62 @@ actor OutboxFlusher {
             )
         case .memoUpdate:
             let payload = try item.updatePayload()
-            let editSession = try await client.createMemoEditSession(memoId: item.memoId)
-            if editSession.baseRevision != payload.expectedRevision
-                || editSession.baseContentHash != payload.expectedContentHash
-            {
-                throw APIError(status: 409, code: "revision_conflict", message: "Note changed before the offline draft could sync.")
+            return try await applyMemoUpdate(memoId: item.memoId, payload: payload, allowRebase: true)
+        }
+    }
+
+    /// Push a memo update. If the local expected base is stale (common after a prior
+    /// successful sync that didn't refresh the edit session), rebase once onto the
+    /// current server base and retry — local draft content wins.
+    private func applyMemoUpdate(
+        memoId: String,
+        payload: MemoUpdatePayload,
+        allowRebase: Bool
+    ) async throws -> MemoDetail {
+        let editSession = try await client.createMemoEditSession(memoId: memoId)
+        let baseMatches = editSession.baseRevision == payload.expectedRevision
+            && editSession.baseContentHash == payload.expectedContentHash
+
+        if !baseMatches {
+            if allowRebase {
+                #if DEBUG
+                NSLog(
+                    "OutboxFlusher: rebasing update memo=%@ localRev=%d serverRev=%d",
+                    memoId,
+                    payload.expectedRevision,
+                    editSession.baseRevision
+                )
+                #endif
+                // Use the live edit session base (already the server tip).
+                return try await client.updateMemo(
+                    id: memoId,
+                    expectedRevision: editSession.baseRevision,
+                    expectedContentHash: editSession.baseContentHash,
+                    editSessionId: editSession.id,
+                    notebookId: payload.notebookId,
+                    title: payload.title,
+                    isPinned: nil,
+                    contentMarkdown: payload.contentMarkdown,
+                    tags: payload.tags
+                )
             }
-            return try await client.updateMemo(
-                id: item.memoId,
-                expectedRevision: payload.expectedRevision,
-                expectedContentHash: payload.expectedContentHash,
-                editSessionId: editSession.id,
-                notebookId: payload.notebookId,
-                title: payload.title,
-                isPinned: nil,
-                contentMarkdown: payload.contentMarkdown,
-                tags: payload.tags
+            throw APIError(
+                status: 409,
+                code: "revision_conflict",
+                message: "Note changed before the offline draft could sync."
             )
         }
+
+        return try await client.updateMemo(
+            id: memoId,
+            expectedRevision: payload.expectedRevision,
+            expectedContentHash: payload.expectedContentHash,
+            editSessionId: editSession.id,
+            notebookId: payload.notebookId,
+            title: payload.title,
+            isPinned: nil,
+            contentMarkdown: payload.contentMarkdown,
+            tags: payload.tags
+        )
     }
 }

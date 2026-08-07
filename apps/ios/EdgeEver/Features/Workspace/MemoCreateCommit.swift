@@ -76,6 +76,9 @@ enum MemoCreateCommit {
                 return .updatedMaterialized(memoId: serverId)
             }
 
+            // Use mirror base (server tip). Stale caller expectedRevision causes 409 conflicts.
+            let rev = memo.revision
+            let hash = memo.contentHash
             memo.title = displayTitle
             memo.contentMarkdown = contentMarkdown
             memo.contentText = contentMarkdown
@@ -88,8 +91,6 @@ enum MemoCreateCommit {
             }
             try mirror.upsertMemo(scope: scope, memo: memo)
 
-            let rev = expectedRevision ?? memo.revision
-            let hash = expectedContentHash ?? memo.contentHash
             try outbox.enqueueUpdate(
                 scope: scope,
                 payload: MemoUpdatePayload(
