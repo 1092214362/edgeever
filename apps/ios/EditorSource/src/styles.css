@@ -369,6 +369,42 @@ html[data-theme="dark"] .edgeever-image-size-button.is-active {
   font-size: 0.9em;
 }
 
+/* External hyperlinks — match Web/Android default styling. */
+.edgeever-prose a,
+.ProseMirror a {
+  color: #00751f;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 117, 31, 0.45);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.edgeever-prose a:active,
+.ProseMirror a:active {
+  color: #00a82d;
+  text-decoration-color: #00a82d;
+}
+
+html[data-theme="dark"] .edgeever-prose a,
+html[data-theme="dark"] .ProseMirror a {
+  color: #86efac;
+  text-decoration-color: rgba(134, 239, 172, 0.45);
+}
+
+html[data-theme="dark"] .edgeever-prose a:active,
+html[data-theme="dark"] .ProseMirror a:active {
+  color: #4ade80;
+  text-decoration-color: #4ade80;
+}
+
+.edgeever-prose a.edgeever-attachment-link,
+.ProseMirror a.edgeever-attachment-link,
+.edgeever-prose a[href*="/api/v1/resources/"],
+.ProseMirror a[href*="/api/v1/resources/"] {
+  text-decoration: none;
+}
+
 .edgeever-prose blockquote,
 .ProseMirror blockquote {
   margin: 0.5em 0;
