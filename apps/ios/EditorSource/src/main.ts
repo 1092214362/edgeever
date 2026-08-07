@@ -524,14 +524,18 @@ const api: EdgeEverEditorAPI = {
   },
 
   completeImageUpload(uploadId, imageUrl, alt) {
-    const img = editorEl.querySelector(`img[data-upload-id="${uploadId}"]`) as HTMLImageElement | null;
-    if (img) {
-      img.setAttribute("src", imageUrl);
-      img.dataset.originalSrc = imageUrl;
-      if (alt) img.setAttribute("alt", alt);
-      delete img.dataset.uploadId;
-    } else {
-      editor.chain().focus().setImage({ src: imageUrl, alt }).run();
+    // Always mutate ProseMirror via setImage — DOM-only attr writes do not persist.
+    // Native hydrate rewrites display src under file:// after emitChange.
+    editor
+      .chain()
+      .focus()
+      .setImage({ src: imageUrl, alt: alt || uploadId || "" })
+      .run();
+    const imgs = editorEl.querySelectorAll("img");
+    const last = imgs[imgs.length - 1] as HTMLImageElement | undefined;
+    if (last) {
+      last.dataset.originalSrc = imageUrl;
+      delete last.dataset.uploadId;
     }
     emitChange(editor);
   },

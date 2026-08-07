@@ -1,5 +1,7 @@
 import PhotosUI
 import SwiftUI
+import UIKit
+import UniformTypeIdentifiers
 
 enum MemoEditMode: Equatable {
     case create(notebookId: String)
@@ -23,7 +25,6 @@ struct MemoEditView: View {
     @State private var memoId: String?
     @State private var error: String?
     @State private var saveTask: Task<Void, Never>?
-    @State private var photoItem: PhotosPickerItem?
     @State private var isMaterializing = false
     @State private var isDirty = false
     @State private var isSaving = false
@@ -36,12 +37,36 @@ struct MemoEditView: View {
     /// Snapshot of body when edit opened (or last intentional load). Used to reject empty clobbers.
     @State private var baselineMarkdown = ""
     @State private var showNotebookPicker = false
+    @State private var showImagePicker = false
+    @State private var showUploadError = false
     @State private var resourceTarget: ResourceTarget?
 
     var body: some View {
-        VStack(spacing: 0) {
-            createHeader
-            createMain
+        ZStack {
+            VStack(spacing: 0) {
+                createHeader
+                createMain
+            }
+
+            // Impossible-to-miss upload feedback (status chip alone was too easy to miss).
+            if isUploading {
+                Color.black.opacity(0.28)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(true)
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(.white)
+                    Text(env.preferences.t("正在上传图片…", en: "Uploading image…"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .padding(24)
+                .background(.ultraThinMaterial.opacity(0.9))
+                .background(Color.black.opacity(0.55))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .accessibilityIdentifier("createMemoUploadOverlay")
+            }
         }
         .background(Color.white.ignoresSafeArea())
         .accessibilityIdentifier(CreateMemoChrome.root)
@@ -70,9 +95,30 @@ struct MemoEditView: View {
             .presentationDetents([.height(360), .medium])
             .presentationDragIndicator(.hidden)
         }
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            Task { await insertImage(item) }
+        // fullScreenCover avoids nested-sheet bugs when MemoEditView itself is already a fullScreenCover.
+        // PHPicker + NSItemProvider (not SwiftUI PhotosPicker/Transferable) is the reliable path.
+        .fullScreenCover(isPresented: $showImagePicker) {
+            SystemImagePicker { result in
+                showImagePicker = false
+                switch result {
+                case .cancelled:
+                    break
+                case .failed(let message):
+                    error = message
+                    showUploadError = true
+                case .picked(let data, let filename):
+                    Task { await insertImageData(data, filename: filename) }
+                }
+            }
+            .ignoresSafeArea()
+        }
+        .alert(
+            env.preferences.t("图片上传失败", en: "Image upload failed"),
+            isPresented: $showUploadError
+        ) {
+            Button(env.preferences.t("好的", en: "OK"), role: .cancel) {}
+        } message: {
+            Text(error ?? env.preferences.t("请重试", en: "Please try again"))
         }
         .task {
             await loadInitial()
@@ -87,8 +133,9 @@ struct MemoEditView: View {
         }
         .onDisappear {
             saveTask?.cancel()
-            // Only flush real user edits — never push the empty pre-hydrate state.
-            if !isCreate, isDirty, contentHydrated {
+            // Flush real edits. Create mode also flushes after materialize (image upload
+            // already created a server memo — draft-only would orphan the image).
+            if isDirty, contentHydrated, (!isCreate || hasMaterializedServerMemo) {
                 Task { await flushPending() }
             }
         }
@@ -213,14 +260,25 @@ struct MemoEditView: View {
                 .accessibilityLabel(env.preferences.t("笔记标签", en: "Tags"))
                 .accessibilityIdentifier(CreateMemoChrome.tags)
 
-                PhotosPicker(selection: $photoItem, matching: .images) {
+                Button {
+                    // Resign WebView first responder so the picker sheet is not blocked.
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil,
+                        from: nil,
+                        for: nil
+                    )
+                    error = nil
+                    showImagePicker = true
+                } label: {
                     Image(systemName: "photo")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AppTheme.slate)
+                        .foregroundStyle(isUploading ? AppTheme.muted : AppTheme.slate)
                         .frame(width: 36, height: 32)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .disabled(isUploading)
                 .accessibilityLabel(env.preferences.t("插入图片", en: "Insert image"))
                 .accessibilityIdentifier(CreateMemoChrome.imageTool)
             }
@@ -238,9 +296,21 @@ struct MemoEditView: View {
                         baseURL: env.session.session.map { URL(string: $0.baseUrl) } ?? nil,
                         token: env.session.session?.token,
                         onChange: { md, json in
-                            guard contentHydrated else { return }
-                            contentMarkdown = md
-                            contentJSON = json
+                            guard contentHydrated, !isUploading else { return }
+                            // @tiptap/markdown sometimes omits image nodes; never let a bridge
+                            // payload erase protected image refs we already inserted.
+                            var nextMd = md
+                            let resourceRefs = Self.protectedResourceRefs(in: contentMarkdown)
+                            for ref in resourceRefs where !nextMd.contains(ref) {
+                                nextMd += "\n\n![](\(ref))\n"
+                            }
+                            contentMarkdown = nextMd
+                            if !json.isEmpty {
+                                contentJSON = json
+                            }
+                            for ref in resourceRefs where !contentJSON.contains(ref) {
+                                ensureImageInContent(imageSrc: ref, alt: "image")
+                            }
                             markDirtyAndScheduleSave()
                         },
                         onResourcePress: { target in
@@ -346,13 +416,24 @@ struct MemoEditView: View {
     // MARK: - Actions
 
     private func markDirtyAndScheduleSave() {
+        // Avoid autosaving mid-upload (placeholder / incomplete body).
+        guard !isUploading else {
+            isDirty = true
+            return
+        }
         isDirty = true
         scheduleSave()
     }
 
     private func handleBack() async {
+        // After image materialize the server memo already exists — must flush body
+        // before dismiss or the uploaded image is orphaned and disappears on reopen.
         if isCreate {
-            // Draft retained; close without materialize (Android requestClose)
+            if hasMaterializedServerMemo {
+                await pullEditorSnapshotIfPossible()
+                await persistDraftOrQueue()
+                await env.runSyncCycle()
+            }
             dismiss()
         } else {
             await flushPending()
@@ -361,11 +442,30 @@ struct MemoEditView: View {
     }
 
     private func handleDone() async {
+        await pullEditorSnapshotIfPossible()
         if isCreate {
             await commitCreate()
         } else {
             await flushPending()
             dismiss()
+        }
+    }
+
+    /// True once `materializeForImage` (or edit open) holds a real server memo id.
+    private var hasMaterializedServerMemo: Bool {
+        guard let memoId else { return false }
+        return !memoId.hasPrefix("local:")
+    }
+
+    /// Pull markdown/JSON from TipTap so saves don't race the async change bridge.
+    private func pullEditorSnapshotIfPossible() async {
+        guard let snap = await SharedTipTapRuntime.editor.snapshotContent() else { return }
+        if !snap.json.isEmpty {
+            contentJSON = snap.json
+        }
+        // Prefer snapshot markdown, but keep any image refs we already patched in.
+        if !snap.markdown.isEmpty {
+            contentMarkdown = snap.markdown
         }
     }
 
@@ -478,8 +578,10 @@ struct MemoEditView: View {
             isDirty = false
         }
         let now = EdgeEverDate.nowString()
-        switch mode {
-        case .create:
+
+        // Create mode before materialize: draft only.
+        // Create mode after materialize (image upload) OR edit: mirror + outbox update.
+        if isCreate, !hasMaterializedServerMemo {
             try? env.drafts.write(
                 scope: scope,
                 draft: MemoDraft(
@@ -493,50 +595,85 @@ struct MemoEditView: View {
                     updatedAt: now
                 )
             )
-        case .edit:
-            guard let memoId else { return }
-            guard var memo = try? env.mirror.resolveMemo(scope: scope, id: memoId) else { return }
-            memo.title = title
-            memo.contentMarkdown = contentMarkdown
-            memo.contentText = contentMarkdown
-            memo.tags = tags
-            memo.notebookId = notebookId
-            memo.updatedAt = now
-            memo.excerpt = String(contentMarkdown.prefix(160))
-            if let json = try? JSONValue.parse(contentJSON) {
-                memo.contentJson = json
-            }
-            try? env.mirror.upsertMemo(scope: scope, memo: memo)
-
-            let rev = expectedRevision ?? memo.revision
-            let hash = expectedContentHash ?? memo.contentHash
-            try? env.outbox.enqueueUpdate(
-                scope: scope,
-                payload: MemoUpdatePayload(
-                    memoId: memo.id,
-                    expectedRevision: rev,
-                    expectedContentHash: hash,
-                    title: title,
-                    contentMarkdown: contentMarkdown,
-                    notebookId: notebookId,
-                    tags: tags
-                )
+            NSLog(
+                "MemoEditView persist draft-only mdLen=%d hasImg=%d",
+                contentMarkdown.count,
+                contentMarkdown.contains("/api/v1/resources/") ? 1 : 0
             )
-            try? env.drafts.write(
-                scope: scope,
-                draft: MemoDraft(
-                    draftKey: DraftRepository.memoKey(memo.id),
-                    title: title,
-                    contentMarkdown: contentMarkdown,
-                    contentJson: contentJSON,
-                    notebookId: notebookId,
-                    tagsText: tagsText,
-                    expectedRevision: rev,
-                    updatedAt: now
-                )
-            )
-            Task { await env.runSyncCycle() }
+            return
         }
+
+        guard let memoId, !memoId.hasPrefix("local:") else {
+            // Offline local: create still in flight — keep draft.
+            if isCreate {
+                try? env.drafts.write(
+                    scope: scope,
+                    draft: MemoDraft(
+                        draftKey: DraftRepository.newKey,
+                        title: title,
+                        contentMarkdown: contentMarkdown,
+                        contentJson: contentJSON,
+                        notebookId: notebookId,
+                        tagsText: tagsText,
+                        expectedRevision: nil,
+                        updatedAt: now
+                    )
+                )
+            }
+            return
+        }
+
+        guard var memo = try? env.mirror.resolveMemo(scope: scope, id: memoId) else {
+            NSLog("MemoEditView persist: mirror miss for \(memoId)")
+            return
+        }
+        memo.title = title.isEmpty ? "无标题笔记" : title
+        memo.contentMarkdown = contentMarkdown
+        memo.contentText = contentMarkdown
+        memo.tags = tags
+        memo.notebookId = notebookId
+        memo.updatedAt = now
+        memo.excerpt = String(contentMarkdown.prefix(160))
+        if let json = try? JSONValue.parse(contentJSON) {
+            memo.contentJson = json
+        }
+        try? env.mirror.upsertMemo(scope: scope, memo: memo)
+
+        let rev = expectedRevision ?? memo.revision
+        let hash = expectedContentHash ?? memo.contentHash
+        try? env.outbox.enqueueUpdate(
+            scope: scope,
+            payload: MemoUpdatePayload(
+                memoId: memo.id,
+                expectedRevision: rev,
+                expectedContentHash: hash,
+                title: memo.title ?? title,
+                contentMarkdown: contentMarkdown,
+                notebookId: notebookId,
+                tags: tags
+            )
+        )
+        try? env.drafts.write(
+            scope: scope,
+            draft: MemoDraft(
+                draftKey: isCreate ? DraftRepository.newKey : DraftRepository.memoKey(memo.id),
+                title: title,
+                contentMarkdown: contentMarkdown,
+                contentJson: contentJSON,
+                notebookId: notebookId,
+                tagsText: tagsText,
+                expectedRevision: rev,
+                updatedAt: now
+            )
+        )
+        NSLog(
+            "MemoEditView persist update memo=%@ mdLen=%d hasImg=%d jsonHasImg=%d",
+            memo.id,
+            contentMarkdown.count,
+            contentMarkdown.contains("/api/v1/resources/") ? 1 : 0,
+            contentJSON.contains("/api/v1/resources/") ? 1 : 0
+        )
+        Task { await env.runSyncCycle() }
     }
 
     private func commitCreate() async {
@@ -625,28 +762,291 @@ struct MemoEditView: View {
         return memo.id
     }
 
-    private func insertImage(_ item: PhotosPickerItem) async {
+    /// Upload bytes from the system PHPicker and insert into TipTap.
+    private func insertImageData(_ data: Data, filename: String) async {
         isUploading = true
+        error = nil
         defer { isUploading = false }
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else { return }
+            NSLog("MemoEditView insertImageData: start bytes=%d name=%@", data.count, filename)
             let compress = env.preferences.useCompression
             let prepared = compress
                 ? ImageCompressor.compressIfNeeded(data)
-                : (data: data, mimeType: "image/jpeg", filename: "image.jpg")
+                : Self.preparedUpload(from: data, preferredName: filename)
+            NSLog(
+                "MemoEditView insertImageData: prepared bytes=%d mime=%@ file=%@",
+                prepared.data.count,
+                prepared.mimeType,
+                prepared.filename
+            )
             let serverId = try await materializeForImage()
+            NSLog("MemoEditView insertImageData: memoId=%@", serverId)
             let resource = try await env.session.client.uploadMemoResource(
                 memoId: serverId,
                 filename: prepared.filename,
                 mimeType: prepared.mimeType,
                 data: prepared.data
             )
-            contentMarkdown += "\n\n![](\(resource.url))\n"
-            markDirtyAndScheduleSave()
-            photoItem = nil
+            NSLog("MemoEditView insertImageData: uploaded resourceId=%@ url=%@", resource.id, resource.url)
+            // Prefer protected relative path so hydrate + menus work offline/online.
+            let imageSrc: String = {
+                if resource.url.contains("/api/v1/resources/") {
+                    return ResourceCache.normalizeProtectedResourcePath(
+                        resource.url,
+                        baseURL: env.session.session.flatMap { URL(string: $0.baseUrl) }
+                    )
+                }
+                return "/api/v1/resources/\(resource.id)/blob"
+            }()
+            // TipTap is JSON-driven: must insert via JS (markdown-only never re-renders).
+            // Seed blob cache + hydrate so file:// WebView can paint the protected src.
+            let inserted = await SharedTipTapRuntime.editor.insertImage(
+                src: imageSrc,
+                alt: prepared.filename,
+                displayData: prepared.data,
+                mimeType: prepared.mimeType
+            )
+            if !inserted {
+                throw APIError(
+                    status: 0,
+                    code: nil,
+                    message: env.preferences.t(
+                        "图片已上传，但插入编辑器失败，请重试。",
+                        en: "Upload succeeded but insert into editor failed. Please try again."
+                    )
+                )
+            }
+            // Snapshot TipTap state immediately — do not rely on async bridge onChange
+            // (it can arrive after our save, or markdown serializers may drop images).
+            await pullEditorSnapshotIfPossible()
+            ensureImageInContent(imageSrc: imageSrc, alt: prepared.filename)
+            isDirty = true
+            // Persist immediately so leaving the editor cannot orphan the resource.
+            saveTask?.cancel()
+            await persistDraftOrQueue()
+            await env.runSyncCycle()
+            NSLog(
+                "MemoEditView insertImageData: done src=%@ mdHas=%d jsonHas=%d",
+                imageSrc,
+                contentMarkdown.contains(imageSrc) ? 1 : 0,
+                contentJSON.contains(imageSrc) ? 1 : 0
+            )
         } catch {
             self.error = error.localizedDescription
+            showUploadError = true
+            NSLog("MemoEditView insertImageData failed: \(error)")
         }
+    }
+
+    private static func protectedResourceRefs(in markdown: String) -> [String] {
+        guard let regex = try? NSRegularExpression(
+            pattern: #"/api/v1/resources/[A-Za-z0-9_-]+(?:/blob)?"#,
+            options: []
+        ) else { return [] }
+        let ns = markdown as NSString
+        let matches = regex.matches(in: markdown, options: [], range: NSRange(location: 0, length: ns.length))
+        var seen = Set<String>()
+        var refs: [String] = []
+        for match in matches {
+            let ref = ns.substring(with: match.range)
+            if seen.insert(ref).inserted {
+                refs.append(ref)
+            }
+        }
+        return refs
+    }
+
+    /// Guarantee markdown + TipTap JSON both reference the uploaded resource path.
+    private func ensureImageInContent(imageSrc: String, alt: String) {
+        if !contentMarkdown.contains(imageSrc) {
+            let block = contentMarkdown.hasSuffix("\n") || contentMarkdown.isEmpty
+                ? "![\(alt)](\(imageSrc))\n"
+                : "\n\n![\(alt)](\(imageSrc))\n"
+            contentMarkdown += block
+        }
+        if contentJSON.contains(imageSrc) { return }
+        // Inject an image node into the JSON doc when serializers/snapshot omitted it.
+        guard let data = contentJSON.data(using: .utf8),
+              var doc = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            contentJSON = """
+            {"type":"doc","content":[{"type":"paragraph"},{"type":"image","attrs":{"src":"\(imageSrc)","alt":"\(alt.replacingOccurrences(of: "\"", with: ""))"}},{"type":"paragraph"}]}
+            """
+            return
+        }
+        var content = doc["content"] as? [[String: Any]] ?? []
+        content.append([
+            "type": "image",
+            "attrs": [
+                "src": imageSrc,
+                "alt": alt,
+            ] as [String: Any],
+        ])
+        content.append(["type": "paragraph"] as [String: Any])
+        doc["type"] = doc["type"] ?? "doc"
+        doc["content"] = content
+        if let out = try? JSONSerialization.data(withJSONObject: doc),
+           let s = String(data: out, encoding: .utf8)
+        {
+            contentJSON = s
+        }
+    }
+
+    /// When compression is off, still normalize HEIC → JPEG for reliable upload mime.
+    private static func preparedUpload(
+        from data: Data,
+        preferredName: String
+    ) -> (data: Data, mimeType: String, filename: String) {
+        let normalized = ImagePickerData.normalize(data)
+        let mime = TipTapResourceLoader.sniffImageMime(normalized)
+        let resolvedMime = mime == "application/octet-stream" ? "image/jpeg" : mime
+        let ext: String
+        switch resolvedMime {
+        case "image/png": ext = "png"
+        case "image/gif": ext = "gif"
+        case "image/webp": ext = "webp"
+        default: ext = "jpg"
+        }
+        let base = (preferredName as NSString).deletingPathExtension
+        let name = base.isEmpty ? "image.\(ext)" : "\(base).\(ext)"
+        return (normalized, resolvedMime, name)
+    }
+}
+
+// MARK: - System PHPicker (reliable; PhotosPicker+Transferable was a silent no-op)
+
+private enum ImagePickerResult {
+    case cancelled
+    case failed(String)
+    case picked(Data, filename: String)
+}
+
+/// UIKit PHPicker wrapper — loads UIImage/data via NSItemProvider (not Transferable).
+private struct SystemImagePicker: UIViewControllerRepresentable {
+    var onFinish: (ImagePickerResult) -> Void
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration(photoLibrary: .shared())
+        config.filter = .images
+        config.selectionLimit = 1
+        config.preferredAssetRepresentationMode = .current
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onFinish: onFinish)
+    }
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let onFinish: (ImagePickerResult) -> Void
+        private var settled = false
+
+        init(onFinish: @escaping (ImagePickerResult) -> Void) {
+            self.onFinish = onFinish
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            guard !settled else { return }
+            guard let provider = results.first?.itemProvider else {
+                settled = true
+                DispatchQueue.main.async { self.onFinish(.cancelled) }
+                return
+            }
+            Task {
+                do {
+                    let (data, name) = try await Self.loadImage(from: provider)
+                    await MainActor.run {
+                        guard !self.settled else { return }
+                        self.settled = true
+                        self.onFinish(.picked(data, filename: name))
+                    }
+                } catch {
+                    await MainActor.run {
+                        guard !self.settled else { return }
+                        self.settled = true
+                        self.onFinish(.failed(error.localizedDescription))
+                    }
+                }
+            }
+        }
+
+        private static func loadImage(from provider: NSItemProvider) async throws -> (Data, String) {
+            // 1) UIImage path — most reliable for Photos library assets.
+            if provider.canLoadObject(ofClass: UIImage.self) {
+                let image = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<UIImage, Error>) in
+                    provider.loadObject(ofClass: UIImage.self) { object, error in
+                        if let image = object as? UIImage {
+                            cont.resume(returning: image)
+                        } else {
+                            cont.resume(
+                                throwing: error
+                                    ?? APIError(status: 0, code: nil, message: "无法解码图片")
+                            )
+                        }
+                    }
+                }
+                if let data = image.jpegData(compressionQuality: 0.92), !data.isEmpty {
+                    return (data, "image.jpg")
+                }
+            }
+
+            // 2) Typed data representations.
+            let typeIds = [
+                UTType.jpeg.identifier,
+                UTType.png.identifier,
+                UTType.heic.identifier,
+                UTType.image.identifier,
+            ]
+            for typeId in typeIds where provider.hasItemConformingToTypeIdentifier(typeId) {
+                if let data = try? await loadData(provider, typeIdentifier: typeId), !data.isEmpty {
+                    let normalized = ImagePickerData.normalize(data)
+                    let mime = TipTapResourceLoader.sniffImageMime(normalized)
+                    let ext = mime == "image/png" ? "png" : "jpg"
+                    return (normalized, "image.\(ext)")
+                }
+            }
+
+            throw APIError(status: 0, code: nil, message: "无法读取所选图片，请换一张重试。")
+        }
+
+        private static func loadData(_ provider: NSItemProvider, typeIdentifier: String) async throws -> Data {
+            try await withCheckedThrowingContinuation { cont in
+                provider.loadDataRepresentation(forTypeIdentifier: typeIdentifier) { data, error in
+                    if let data {
+                        cont.resume(returning: data)
+                    } else {
+                        cont.resume(
+                            throwing: error
+                                ?? APIError(status: 0, code: nil, message: "读取图片数据失败")
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum ImagePickerData {
+    /// HEIC / unknown → JPEG so upload mime is valid and ImageCompressor can decode.
+    static func normalize(_ data: Data) -> Data {
+        if data.starts(with: [0xFF, 0xD8, 0xFF]) { return data } // JPEG
+        if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) { return data } // PNG
+        if data.starts(with: [0x47, 0x49, 0x46, 0x38]) { return data } // GIF
+        if data.count >= 12 {
+            let riff = data.prefix(4)
+            let webp = data.dropFirst(8).prefix(4)
+            if riff.elementsEqual([0x52, 0x49, 0x46, 0x46]), webp.elementsEqual([0x57, 0x45, 0x42, 0x50]) {
+                return data
+            }
+        }
+        if let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.92) {
+            return jpeg
+        }
+        return data
     }
 }
 

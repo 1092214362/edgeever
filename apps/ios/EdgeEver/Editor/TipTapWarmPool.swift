@@ -156,6 +156,97 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         )
     }
 
+    /// Seed local blob + disk cache so a newly uploaded image can render without a network round-trip.
+    func seedResource(id: String, data: Data, mimeType: String) async {
+        await ResourceBlobStore.shared.put(id: id, data: data, mimeType: mimeType)
+        _ = try? await resourceCache.dataURL(for: id, data: data, mimeType: mimeType)
+    }
+
+    /// Insert an image at the caret (protected API `src` for persistence), then hydrate display.
+    /// Returns `false` if the editor session is not ready or JS insert failed.
+    @discardableResult
+    func insertImage(src: String, alt: String, displayData: Data? = nil, mimeType: String? = nil) async -> Bool {
+        guard session?.mode == .editor else {
+            NSLog("SharedTipTapRuntime insertImage skipped: mode=\(String(describing: session?.mode)) ready=\(ready)")
+            return false
+        }
+        guard ready else {
+            NSLog("SharedTipTapRuntime insertImage skipped: editor bundle not ready")
+            return false
+        }
+
+        if let displayData, let mimeType, let resourceId = ResourceCache.resourceId(from: src) {
+            await seedResource(id: resourceId, data: displayData, mimeType: mimeType)
+        }
+
+        let srcB64 = Data(src.utf8).base64EncodedString()
+        let altB64 = Data(alt.utf8).base64EncodedString()
+        let uploadId = "up-\(UUID().uuidString)"
+        let idB64 = Data(uploadId.utf8).base64EncodedString()
+        let js = """
+        (function(){
+          function dec(b64){
+            var bin = atob(b64);
+            var bytes = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new TextDecoder('utf-8').decode(bytes);
+          }
+          try {
+            if (!window.EdgeEverEditor || !window.EdgeEverEditor.completeImageUpload) return false;
+            var id = dec('\(idB64)');
+            var src = dec('\(srcB64)');
+            var alt = dec('\(altB64)');
+            // Stores protected path in TipTap JSON; native hydrate paints it under file://.
+            window.EdgeEverEditor.completeImageUpload(id, src, alt);
+            return true;
+          } catch (e) {
+            try { window.webkit.messageHandlers.edgeever.postMessage({type:'error', message: String(e)}); } catch (_) {}
+            return false;
+          }
+        })();
+        """
+        let ok: Bool = await withCheckedContinuation { cont in
+            webView.evaluateJavaScript(js) { result, error in
+                if let error { NSLog("SharedTipTapRuntime insertImage error: \(error)") }
+                else { NSLog("SharedTipTapRuntime insertImage ok result=\(String(describing: result))") }
+                cont.resume(returning: (result as? Bool) ?? (error == nil))
+            }
+        }
+        guard ok else { return false }
+        await nativeHydrateDOMImages(generation: contentGeneration)
+        return true
+    }
+
+    /// Read current editor markdown + JSON after a mutation (avoids racing the async bridge onChange).
+    func snapshotContent() async -> (markdown: String, json: String)? {
+        guard ready else { return nil }
+        let js = """
+        (function(){
+          try {
+            if (!window.EdgeEverEditor) return null;
+            var md = '';
+            var json = '';
+            try { md = window.EdgeEverEditor.getMarkdown() || ''; } catch (e) {}
+            try { json = window.EdgeEverEditor.getDocument() || ''; } catch (e) {}
+            return JSON.stringify({ md: md, json: json });
+          } catch (e) { return null; }
+        })();
+        """
+        let raw: Any? = await withCheckedContinuation { cont in
+            webView.evaluateJavaScript(js) { value, _ in
+                cont.resume(returning: value)
+            }
+        }
+        guard let text = raw as? String,
+              let data = text.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        let md = obj["md"] as? String ?? ""
+        let json = obj["json"] as? String ?? ""
+        guard !json.isEmpty || !md.isEmpty else { return nil }
+        return (md, json)
+    }
+
     private func scheduleFocusEnd(for generation: UInt64) {
         guard focusedGeneration != generation else { return }
         focusedGeneration = generation
