@@ -840,7 +840,7 @@ export const enUS = {
     empty: "No notes found",
     loading: "Searching notes...",
     close: "Close note picker",
-    openHint: "Hold {{modifier}} and click to open this note",
+    openHint: "Hold {{modifier}} and click to open the link",
   },
   mobileNotebookPicker: {
     title: "Switch notebook",

@@ -225,6 +225,20 @@ const getNoteLinkFromEventTarget = (target: EventTarget | null) =>
     ? target.closest<HTMLAnchorElement>('a.edgeever-note-link, a[href^="#memo="]')
     : null;
 
+/** Any navigable editor link (external or note). Attachment chips have their own menu. */
+const getEditorNavigableLinkFromEventTarget = (target: EventTarget | null) => {
+  if (!(target instanceof Element)) {
+    return null;
+  }
+
+  const link = target.closest<HTMLAnchorElement>("a[href]");
+  if (!link || getAttachmentLinkFromEventTarget(link)) {
+    return null;
+  }
+
+  return link;
+};
+
 const getNoteLinkHintPosition = (link: HTMLAnchorElement): NoteLinkHintPosition => {
   const rect = link.getBoundingClientRect();
   const placement = rect.top < 48 ? "below" : "above";
@@ -1530,12 +1544,13 @@ const RichEditorPane = ({
     return true;
   }, [cancelResourceMenuHide, isMobileViewport]);
 
-  const showNoteLinkHint = useCallback((target: EventTarget | null) => {
+  const showEditorLinkOpenHint = useCallback((target: EventTarget | null) => {
+    // Editable mode: plain click places the caret; open requires Ctrl/⌘. Surface a tip for all links.
     if (!editor?.isEditable || isMobileViewport) {
       return;
     }
 
-    const link = getNoteLinkFromEventTarget(target);
+    const link = getEditorNavigableLinkFromEventTarget(target);
     if (link) {
       setNoteLinkHintPosition(getNoteLinkHintPosition(link));
     }
@@ -1543,8 +1558,8 @@ const RichEditorPane = ({
 
   const handleEditorMouseOver = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (showAttachmentMenu(event.target)) return;
-    showNoteLinkHint(event.target);
-  }, [showAttachmentMenu, showNoteLinkHint]);
+    showEditorLinkOpenHint(event.target);
+  }, [showAttachmentMenu, showEditorLinkOpenHint]);
 
   const handleEditorMouseOut = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     const attachmentLink = getAttachmentLinkFromEventTarget(event.target);
@@ -1561,7 +1576,7 @@ const RichEditorPane = ({
       return;
     }
 
-    const link = getNoteLinkFromEventTarget(event.target);
+    const link = getEditorNavigableLinkFromEventTarget(event.target);
     if (!link || (event.relatedTarget instanceof Node && link.contains(event.relatedTarget))) {
       return;
     }
@@ -1570,17 +1585,17 @@ const RichEditorPane = ({
 
   const handleEditorClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button === 0 && !event.ctrlKey && !event.metaKey) {
-      showNoteLinkHint(event.target);
+      showEditorLinkOpenHint(event.target);
     }
-  }, [showNoteLinkHint]);
+  }, [showEditorLinkOpenHint]);
 
   const handleEditorFocusCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
     if (showAttachmentMenu(event.target)) return;
-    showNoteLinkHint(event.target);
-  }, [showAttachmentMenu, showNoteLinkHint]);
+    showEditorLinkOpenHint(event.target);
+  }, [showAttachmentMenu, showEditorLinkOpenHint]);
 
   const handleEditorBlurCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
-    if (!getNoteLinkFromEventTarget(event.relatedTarget)) {
+    if (!getEditorNavigableLinkFromEventTarget(event.relatedTarget)) {
       setNoteLinkHintPosition(null);
     }
   }, []);
