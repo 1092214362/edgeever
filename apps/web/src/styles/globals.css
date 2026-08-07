@@ -637,6 +637,16 @@ textarea {
   border-top: 1px solid var(--memo-content-divider-color);
 }
 
+/* Semantic merge boundaries — stronger than decorative theme hairlines. */
+.ProseMirror hr.edgeever-merge-divider,
+.ProseMirror hr[data-edgeever-merge-divider] {
+  margin: var(--memo-content-divider-spacing) 0;
+  height: 0;
+  border: 0;
+  border-top: 2px solid var(--memo-content-divider-color);
+  background: transparent;
+}
+
 .ProseMirror img {
   display: block;
   max-width: 100%;

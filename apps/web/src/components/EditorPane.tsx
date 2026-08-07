@@ -91,6 +91,7 @@ import {
   docToMarkdown,
   MEMO_CONTENT_STYLE,
   markdownToDoc,
+  MergeDivider,
   resolveMemoContentDoc,
   type Notebook,
   type MemoDetail,
@@ -1246,6 +1247,7 @@ const RichEditorPane = ({
         link: { openOnClick: false },
       }),
       EdgeEverCodeBlock.configure({ lowlight: codeBlockLowlight, defaultLanguage: "plaintext" }),
+      MergeDivider,
       ThemeBlock,
       ResizableImage.configure({
         allowBase64: false,

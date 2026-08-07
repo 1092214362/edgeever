@@ -1,5 +1,5 @@
 import "./styles.css";
-import { Editor } from "@tiptap/core";
+import { Editor, mergeAttributes, Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -8,6 +8,27 @@ import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import { NodeSelection } from "@tiptap/pm/state";
 import mermaid from "mermaid";
+
+/** Keep in sync with packages/shared MergeDivider (iOS bundle cannot import monorepo shared). */
+const MergeDivider = Node.create({
+  name: "edgeeverMergeDivider",
+  group: "block",
+  atom: true,
+  selectable: true,
+  draggable: true,
+  parseHTML() {
+    return [{ tag: "hr[data-edgeever-merge-divider]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "hr",
+      mergeAttributes(HTMLAttributes, {
+        "data-edgeever-merge-divider": "true",
+        class: "edgeever-merge-divider",
+      }),
+    ];
+  },
+});
 
 type BridgeMessage =
   | { type: "ready"; startupMs: number }
@@ -555,6 +576,7 @@ function buildExtensions(placeholder: string) {
     StarterKit.configure({
       codeBlock: false,
     }),
+    MergeDivider,
     CodeBlock.configure({
       languageClassPrefix: "language-",
     }),

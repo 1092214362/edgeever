@@ -9,7 +9,7 @@ import { TableKit } from "@tiptap/extension-table";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import * as Clipboard from "expo-clipboard";
-import { MEMO_CONTENT_STYLE, getImageReferrerPolicy, getResourceIdFromUrl, type TiptapDoc } from "@edgeever/shared";
+import { MEMO_CONTENT_STYLE, MergeDivider, getImageReferrerPolicy, getResourceIdFromUrl, type TiptapDoc } from "@edgeever/shared";
 import {
   DEFAULT_IMAGE_WIDTH_PERCENT,
   IMAGE_WIDTH_PRESETS,
@@ -401,6 +401,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     autofocus: autoFocus ? "end" : false,
     extensions: [
       StarterKit.configure({ codeBlock: false, link: { openOnClick: false } }),
+      MergeDivider,
       mermaidCodeBlockExtension,
       protectedImageExtension,
       TableKit.configure({
