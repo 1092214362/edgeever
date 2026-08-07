@@ -136,7 +136,13 @@ import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
 import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
 import { isBrowserOffline } from "@/lib/network-status";
-import { shouldOpenEditorLink } from "@/lib/editor-link-click";
+import {
+  EDITOR_LINK_OPEN_MODE_CHANGED_EVENT,
+  getStoredEditorLinkOpenMode,
+  resolveEditorLinkRequireModifier,
+  shouldOpenEditorLink,
+  type EditorLinkOpenMode,
+} from "@/lib/editor-link-click";
 import {
   formatMarkdownLink,
   insertMarkdownSnippet,
@@ -937,6 +943,27 @@ const RichEditorPane = ({
     () => typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.platform) ? "⌘" : "Ctrl",
     []
   );
+  const [editorLinkOpenMode, setEditorLinkOpenMode] = useState<EditorLinkOpenMode>(() =>
+    getStoredEditorLinkOpenMode()
+  );
+
+  useEffect(() => {
+    const syncMode = () => setEditorLinkOpenMode(getStoredEditorLinkOpenMode());
+    const onPreferenceChanged = (event: Event) => {
+      const detail = (event as CustomEvent<EditorLinkOpenMode>).detail;
+      if (detail === "click" || detail === "modifier") {
+        setEditorLinkOpenMode(detail);
+        return;
+      }
+      syncMode();
+    };
+    window.addEventListener(EDITOR_LINK_OPEN_MODE_CHANGED_EVENT, onPreferenceChanged);
+    window.addEventListener("storage", syncMode);
+    return () => {
+      window.removeEventListener(EDITOR_LINK_OPEN_MODE_CHANGED_EVENT, onPreferenceChanged);
+      window.removeEventListener("storage", syncMode);
+    };
+  }, []);
   const noteLinkResultsQuery = useQuery({
     queryKey: ["memo-link-search", noteLinkQuery],
     queryFn: () => repository.listMemos({ q: noteLinkQuery, limit: 20 }),
@@ -1278,7 +1305,20 @@ const RichEditorPane = ({
       },
       handleClick: (_view, _pos, event) => {
         const target = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
-        if (!target || !shouldOpenEditorLink(event, _view.editable)) {
+        if (!target) {
+          return false;
+        }
+
+        // Attachment chips use the resource action menu — never treat as a plain hyperlink open.
+        if (getAttachmentLinkFromEventTarget(target)) {
+          return false;
+        }
+
+        // Read preference/viewport at click time so settings changes apply without remounting the editor.
+        const isMobile =
+          typeof window !== "undefined" && window.matchMedia(MOBILE_EDITOR_QUERY).matches;
+        const requireModifier = resolveEditorLinkRequireModifier(isMobile);
+        if (!shouldOpenEditorLink(event, _view.editable, { requireModifier })) {
           return false;
         }
 
@@ -1545,16 +1585,18 @@ const RichEditorPane = ({
   }, [cancelResourceMenuHide, isMobileViewport]);
 
   const showEditorLinkOpenHint = useCallback((target: EventTarget | null) => {
-    // Editable mode: plain click places the caret; open requires Ctrl/⌘. Surface a tip for all links.
-    if (!editor?.isEditable || isMobileViewport) {
+    // Tip only when desktop + "require modifier" preference is on (default click-to-open needs no tip).
+    if (!editor?.isEditable || isMobileViewport || editorLinkOpenMode !== "modifier") {
       return;
     }
 
     const link = getEditorNavigableLinkFromEventTarget(target);
     if (link) {
       setNoteLinkHintPosition(getNoteLinkHintPosition(link));
+    } else {
+      setNoteLinkHintPosition(null);
     }
-  }, [editor?.isEditable, isMobileViewport]);
+  }, [editor?.isEditable, editorLinkOpenMode, isMobileViewport]);
 
   const handleEditorMouseOver = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (showAttachmentMenu(event.target)) return;
@@ -1599,6 +1641,12 @@ const RichEditorPane = ({
       setNoteLinkHintPosition(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (editorLinkOpenMode !== "modifier") {
+      setNoteLinkHintPosition(null);
+    }
+  }, [editorLinkOpenMode]);
 
   useEffect(() => {
     if (!noteLinkHintPosition) {
