@@ -44,6 +44,9 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
     private var contentGeneration: UInt64 = 0
     /// Only auto-focus caret once per content generation (open edit), never while typing.
     private var focusedGeneration: UInt64 = 0
+    /// Set on detach so the next attach always re-pushes host content (create must not
+    /// keep the previous note body when the fingerprint skip would otherwise fire).
+    private var needsForcePushOnBind = false
 
     private(set) var session: TipTapSession?
     private weak var hostContainer: UIView?
@@ -115,13 +118,16 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         // Keep the engine alive off-screen; only leave the hierarchy.
         webView.removeFromSuperview()
         hostContainer = nil
-        // Next present of create/edit must re-raise the keyboard.
+        // Next present of create/edit must re-raise the keyboard and re-push body.
         if slot == .editor {
             focusedGeneration = 0
+            needsForcePushOnBind = true
             webView.resignFirstResponder()
+        } else {
+            needsForcePushOnBind = true
         }
-        // Drop action callbacks for the dismantled SwiftUI host, but keep session
-        // content fingerprints so the next attach can re-push or re-notify ready.
+        // Drop action callbacks for the dismantled SwiftUI host so late JS `change`
+        // events cannot rewrite the next create draft with this session's body.
         if var s = session {
             s.onChange = nil
             s.onResourcePress = nil
@@ -136,17 +142,22 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         let previousFingerprint = lastPushedJSON
         session = newSession
         let fp = contentDecision(newSession).fingerprint
+        // Any fingerprint change OR a fresh host after detach is a new document open.
         let isNewDocument = fp != previousFingerprint
-            && fp != lastEditorEmittedFingerprint
-        if fp != previousFingerprint {
+            || needsForcePushOnBind
+            || (fp != lastEditorEmittedFingerprint && previousFingerprint == nil)
+        if fp != previousFingerprint || needsForcePushOnBind {
             contentGeneration &+= 1
             hydrateGeneration &+= 1
             // Do not zero bodyReadyGeneration here — pushContent / skip path will notify.
         }
         let modeChanged = previousMode != nil && previousMode != newSession.mode
+        let forcePush = modeChanged || needsForcePushOnBind
+        needsForcePushOnBind = false
         applyMode()
-        // Mode switch (editor ↔ viewer) must re-push: viewer prefers markdown, editor prefers JSON.
-        pushContentIfNeeded(force: modeChanged)
+        // Mode switch / re-open after detach must re-push even when fingerprints match
+        // (empty create twice, or lastPushedJSON was stamped before a cancelled push).
+        pushContentIfNeeded(force: forcePush)
         // Open-edit / re-open create: raise caret + keyboard once.
         // Also when fingerprint matches (empty create twice) — focusedGeneration was cleared on detach.
         if newSession.mode == .editor, isNewDocument || focusedGeneration == 0 {
@@ -399,7 +410,6 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
             }
         }
 
-        lastPushedJSON = fingerprint
         let shouldFocusAfterPush = session.mode == .editor && focusedGeneration != gen
 
         if lastAppliedMode != session.mode.rawValue {
@@ -417,7 +427,12 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
             #endif
             guard let self else { return }
             Task { @MainActor in
+                // Only stamp fingerprints after a successful push for this generation.
+                // Stamping before JS completed caused empty-create to skip a later force
+                // while the WebView still held the previous note body.
                 guard self.contentGeneration == gen else { return }
+                self.lastPushedJSON = fingerprint
+                self.lastEditorEmittedFingerprint = fingerprint
                 self.notifyBodyReady(generation: gen, callback: bodyReadyCb)
                 if shouldFocusAfterPush {
                     self.scheduleFocusEnd(for: gen)
@@ -519,7 +534,9 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
             lastAppliedMode = nil
             pushContentIfNeeded(force: true)
         case "change":
-            guard let session else { return }
+            // Host dismantled (create/edit dismissed) — drop late events so they cannot
+            // resurrect the previous body into a new-note draft via onChange autosave.
+            guard let session, session.onChange != nil else { return }
             let md = body["contentMarkdown"] as? String ?? ""
             let json = body["contentJson"] as? String ?? session.documentJSON
             let emptyStub = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"

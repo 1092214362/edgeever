@@ -18,6 +18,8 @@ struct WorkspaceView: View {
     @State private var syncPulse = 0
     /// Edit is presented from the workspace root — more reliable than cover on a pushed detail page.
     @State private var editingMemo: EditingMemoRoute?
+    /// Create finished id, applied as list bounce after cover dismiss + reload.
+    @State private var pendingCreateBounceId: String?
 
     /// Android SafeAreaView edges=[top,left,right] — bottom chrome owns home indicator.
     private var showsBottomChrome: Bool {
@@ -72,8 +74,20 @@ struct WorkspaceView: View {
             }
             // Android CreateMemoModal is fullScreen — not a half sheet / Form.
             .fullScreenCover(isPresented: $showNewNote) {
-                MemoEditView(mode: .create(notebookId: store.selectedNotebookId ?? store.notebooks.first?.id ?? ""))
-                    .onDisappear { store.reload(env: env) }
+                MemoEditView(
+                    mode: .create(notebookId: store.selectedNotebookId ?? store.notebooks.first?.id ?? ""),
+                    onCreateFinished: { memoId in
+                        // Prime list + bounce **before** dismiss so settle runs under/with the cover,
+                        // not half a second after the list is already static.
+                        store.reload(env: env)
+                        store.requestMemoBounce(memoId: memoId)
+                        pendingCreateBounceId = nil
+                    }
+                )
+                .onDisappear {
+                    // Safety refresh if create finished without callback (e.g. swipe-dismiss empty).
+                    store.reload(env: env)
+                }
             }
             // Edit cover on workspace root; underlay is list (detail popped once cover is presented).
             .fullScreenCover(item: $editingMemo) { route in
@@ -82,13 +96,17 @@ struct WorkspaceView: View {
                     onLeaveToList: {
                         // Pop detail first (no animation) while cover still covers the stack,
                         // then dismiss the cover so the user only ever sees the list.
+                        let bounceId = route.id
+                        // Reload + start settle **before** clearing the cover so the spring
+                        // is already in motion when the list is revealed (no post-dismiss pause).
+                        store.reload(env: env)
+                        store.requestMemoBounce(memoId: bounceId)
                         var t = Transaction()
                         t.disablesAnimations = true
                         withTransaction(t) {
                             path = NavigationPath()
                         }
                         editingMemo = nil
-                        store.reload(env: env)
                     }
                 )
             }
@@ -131,7 +149,7 @@ struct WorkspaceView: View {
                 }
             }
             .refreshable {
-                await env.runSyncCycle()
+                await env.runSyncCycle(force: true)
                 store.reload(env: env)
                 detectConflicts()
             }
@@ -372,9 +390,9 @@ struct WorkspaceView: View {
                 .clipShape(Circle())
                 .overlay(Circle().stroke(active ? AppTheme.filterActive : AppTheme.border, lineWidth: 1))
                 .accessibilityLabel(label)
-                // Pow ping when filter becomes active
+                // Quiet ring when filter turns on (lower opacity than before — less "showy" than Android)
                 .changeEffect(
-                    .ping(shape: Circle(), style: AppTheme.filterActive.opacity(0.35), count: 1),
+                    .ping(shape: Circle(), style: AppTheme.filterActive.opacity(0.22), count: 1),
                     value: active,
                     isEnabled: active
                 )

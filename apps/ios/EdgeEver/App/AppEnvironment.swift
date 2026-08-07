@@ -66,19 +66,21 @@ final class AppEnvironment {
         }
     }
 
-    func runSyncCycle() async {
+    /// - Parameter force: when true, clear outbox backoff and retry error/conflict items immediately
+    ///   (Android pull-to-refresh / "Sync now" parity).
+    func runSyncCycle(force: Bool = false) async {
         guard let scope = session.dataScope else { return }
         isSyncing = true
         lastSyncError = nil
         defer { isSyncing = false }
         do {
-            _ = try await outboxFlusher.flush(scope: scope)
+            _ = try await outboxFlusher.flush(scope: scope, force: force)
             _ = try await syncEngine.sync(scope: scope) { [weak self] progress in
                 Task { @MainActor in
                     self?.bootstrapProgress = progress
                 }
             }
-            lastOutboxResult = try await outboxFlusher.flush(scope: scope)
+            lastOutboxResult = try await outboxFlusher.flush(scope: scope, force: force)
             bootstrapProgress = nil
         } catch {
             lastSyncError = error.localizedDescription

@@ -17,6 +17,8 @@ struct MemoEditView: View {
     /// When set (edit-from-detail), close by popping to the list under the cover first —
     /// never `dismiss()` onto a still-pushed detail page.
     var onLeaveToList: (() -> Void)? = nil
+    /// Create path: called with the committed memo id so the list can bounce that card.
+    var onCreateFinished: ((String) -> Void)? = nil
 
     @State private var title = ""
     @State private var tagsText = ""
@@ -34,6 +36,9 @@ struct MemoEditView: View {
     @State private var isCreating = false
     @State private var isUploading = false
     @State private var editorReady = false
+    /// True after Back/Done commit starts — blocks late TipTap `change` from rewriting the
+    /// `new` draft so the next create opens empty instead of the previous note body.
+    @State private var suppressPersistence = false
     /// False until `loadInitial` has filled title/body from mirror — prevents TipTap boot
     /// with empty defaults from overwriting a non-empty note via autosave / flush.
     @State private var contentHydrated = false
@@ -139,6 +144,7 @@ struct MemoEditView: View {
             // Create commit is owned by Back / Done (Android `requestClose` = createMutation).
             // Only flush edit sessions, or create-after-image-materialize if still dirty and
             // the cover was dismissed without going through handleBack.
+            if suppressPersistence { return }
             if isDirty, contentHydrated, (!isCreate || hasMaterializedServerMemo) {
                 Task { await flushPending() }
             }
@@ -300,7 +306,7 @@ struct MemoEditView: View {
                         baseURL: env.session.session.map { URL(string: $0.baseUrl) } ?? nil,
                         token: env.session.session?.token,
                         onChange: { md, json in
-                            guard contentHydrated else { return }
+                            guard contentHydrated, !suppressPersistence else { return }
                             // Always accept editor truth, even mid-upload (save stays gated).
                             // @tiptap/markdown can drop text or images — reconcile carefully.
                             applyEditorPayload(markdown: md, json: json)
@@ -413,6 +419,7 @@ struct MemoEditView: View {
     // MARK: - Actions
 
     private func markDirtyAndScheduleSave() {
+        guard !suppressPersistence else { return }
         // Avoid autosaving mid-upload (placeholder / incomplete body).
         guard !isUploading else {
             isDirty = true
@@ -589,10 +596,11 @@ struct MemoEditView: View {
     }
 
     private func scheduleSave() {
+        guard !suppressPersistence else { return }
         saveTask?.cancel()
         saveTask = Task {
             try? await Task.sleep(nanoseconds: 500_000_000)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, !suppressPersistence else { return }
             await persistDraftOrQueue()
         }
     }
@@ -618,7 +626,7 @@ struct MemoEditView: View {
 
     private func persistDraftOrQueue() async {
         guard let scope = env.session.dataScope else { return }
-        guard contentHydrated else { return }
+        guard contentHydrated, !suppressPersistence else { return }
         // Last chance: re-sync markdown from JSON so outbox markdown cannot drop text.
         reconcileMarkdownWithJSON()
         if wouldClobberNonEmptyBody {
@@ -710,6 +718,7 @@ struct MemoEditView: View {
                 expectedContentHash: hash,
                 title: memo.title ?? title,
                 contentMarkdown: contentMarkdown,
+                contentJson: contentJSON,
                 notebookId: notebookId,
                 tags: tags
             )
@@ -753,6 +762,11 @@ struct MemoEditView: View {
         }
         if isCreating { return }
         isCreating = true
+        // Block autosave / late TipTap change before any await so the `new` draft cannot
+        // be rewritten after we clear it (next FAB create must open empty).
+        suppressPersistence = true
+        isDirty = false
+        saveTask?.cancel()
         defer { isCreating = false }
         do {
             // Android createMutation: if image materialize already created a server memo,
@@ -775,17 +789,27 @@ struct MemoEditView: View {
             case .createdLocal(let id), .updatedMaterialized(let id):
                 memoId = id
             }
-            // Prevent onDisappear from re-persisting / double-committing.
-            isDirty = false
-            saveTask?.cancel()
+            // Prefer mirror id after sync (create may remap local: → server id).
+            var finishedId = memoId
+            // Belt-and-suspenders: clear create draft again after commit (race with in-flight write).
+            try? env.drafts.clear(scope: scope, key: DraftRepository.newKey)
             await env.runSyncCycle()
             if let id = memoId, let refreshed = try? env.mirror.resolveMemo(scope: scope, id: id) {
                 expectedRevision = refreshed.revision
                 expectedContentHash = refreshed.contentHash
+                memoId = refreshed.id
+                finishedId = refreshed.id
+            }
+            // Clear again after sync — materialize/persist paths may have re-touched `new`.
+            try? env.drafts.clear(scope: scope, key: DraftRepository.newKey)
+            if let finishedId {
+                onCreateFinished?(finishedId)
             }
             // Create modal sits on the list already; WorkspaceView reloads on cover dismiss.
             dismiss()
         } catch {
+            // Allow retry / further edits after a failed commit.
+            suppressPersistence = false
             self.error = error.localizedDescription
         }
     }
@@ -853,13 +877,15 @@ struct MemoEditView: View {
             NSLog("MemoEditView insertImageData: start bytes=%d name=%@", data.count, filename)
             let compress = env.preferences.useCompression
             let prepared = compress
-                ? ImageCompressor.compressIfNeeded(data)
+                ? ImageCompressor.compressIfNeeded(data) // Android parity: WebP @ 0.82, max edge 2560
                 : Self.preparedUpload(from: data, preferredName: filename)
             NSLog(
-                "MemoEditView insertImageData: prepared bytes=%d mime=%@ file=%@",
+                "MemoEditView insertImageData: start=%d → prepared=%d mime=%@ file=%@ compress=%d",
+                data.count,
                 prepared.data.count,
                 prepared.mimeType,
-                prepared.filename
+                prepared.filename,
+                compress ? 1 : 0
             )
             let serverId = try await materializeForImage()
             NSLog("MemoEditView insertImageData: memoId=%@", serverId)

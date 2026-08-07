@@ -6,6 +6,13 @@ struct NotesListView: View {
     @Bindable var store: WorkspaceStore
     @Binding var path: NavigationPath
 
+    /// Whole-list settle + Pow jump once when data first becomes available this session.
+    @State private var listEntranceSettled = false
+    @State private var listEntrancePulse = 0
+    @State private var didScheduleListEntrance = false
+    /// First-paint cascade: cards insert with Pow boing (cleared after entrance finishes).
+    @State private var listEntranceCascade = false
+
     var body: some View {
         Group {
             if store.notebooks.isEmpty && store.memos.isEmpty && !store.isLoadingList {
@@ -22,40 +29,73 @@ struct NotesListView: View {
                 emptyCard(title: emptyTitle, description: emptyDescription, showCreate: store.searchText.isEmpty && store.filter == .all)
                     .transition(Motion.softFade)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(store.memos) { memo in
-                            memoCard(for: memo)
-                                .padding(.horizontal, 12)
-                                .padding(.bottom, env.preferences.listDensity.cardBottomMargin)
-                                // Identity-based transition when filter/search reshuffles the set.
-                                .transition(Motion.cardAppear)
-                                .onAppear {
-                                    if memo.id == store.memos.last?.id {
-                                        store.loadMore(env: env)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(store.memos.enumerated()), id: \.element.id) { index, memo in
+                                memoCard(for: memo)
+                                    .padding(.horizontal, 12)
+                                    .padding(.bottom, env.preferences.listDensity.cardBottomMargin)
+                                    .id(memo.id)
+                                    // First open: elastic boing cascade. Later reshuffles: quiet opacity.
+                                    .transition(listEntranceCascade ? Motion.listCardEntrance : Motion.cardAppear)
+                                    .animation(
+                                        listEntranceCascade
+                                            ? Motion.listEntrance.delay(Double(min(index, 12)) * Motion.listEntranceStagger)
+                                            : Motion.listContent,
+                                        value: listEntranceCascade
+                                    )
+                                    .onAppear {
+                                        if memo.id == store.memos.last?.id {
+                                            store.loadMore(env: env)
+                                        }
                                     }
-                                }
+                            }
+                            if store.isLoadingMore {
+                                ProgressView()
+                                    .tint(AppTheme.title)
+                                    .padding(.vertical, 18)
+                            }
                         }
-                        if store.isLoadingMore {
-                            ProgressView()
-                                .tint(AppTheme.title)
-                                .padding(.vertical, 18)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                        .animation(Motion.listContent, value: store.memos.map(\.id))
+                        .animation(Motion.listContent, value: store.filter)
+                        .animation(Motion.listContent, value: store.searchText)
+                    }
+                    .contentMargins(.bottom, 0, for: .scrollContent)
+                    .background(AppTheme.background)
+                    .edgeEverNotesListEntrance(settled: listEntranceSettled, entrancePulse: listEntrancePulse)
+                    .onChange(of: store.bounceMemoId) { _, memoId in
+                        guard let memoId else { return }
+                        // Scroll immediately (no delayed animation beat) so the settling card is on-screen.
+                        if store.memos.contains(where: { $0.id == memoId }) {
+                            proxy.scrollTo(memoId, anchor: .top)
+                        }
+                        // Clear bounce marker after settle completes (~0.42s spring).
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            if store.bounceMemoId == memoId {
+                                store.clearMemoBounce()
+                            }
                         }
                     }
-                    .padding(.top, 12)
-                    // Only a little air above the solid bar; elevated + overlaps content (Android).
-                    // Large padding here paints an empty #f8fafc strip above the white chrome.
-                    .padding(.bottom, 8)
-                    .animation(Motion.listContent, value: store.memos.map(\.id))
-                    .animation(Motion.listContent, value: store.filter)
-                    .animation(Motion.listContent, value: store.searchText)
+                    .onChange(of: store.bouncePulse) { _, _ in
+                        // If id remapped after create sync, ensure the new row is visible.
+                        if let memoId = store.bounceMemoId,
+                           store.memos.contains(where: { $0.id == memoId }) {
+                            proxy.scrollTo(memoId, anchor: .top)
+                        }
+                    }
                 }
-                // Parent owns bottom safe area via bottom chrome — do not leave a second gap strip.
-                .contentMargins(.bottom, 0, for: .scrollContent)
-                .background(AppTheme.background)
             }
         }
         .animation(Motion.listContent, value: store.memos.isEmpty)
+        .onChange(of: store.memos.count) { _, count in
+            scheduleListEntranceIfNeeded(hasMemos: count > 0)
+        }
+        .onAppear {
+            scheduleListEntranceIfNeeded(hasMemos: !store.memos.isEmpty)
+        }
         .overlay(alignment: .bottom) {
             if let err = store.listError {
                 Text(err)
@@ -69,6 +109,23 @@ struct NotesListView: View {
             }
         }
         .animation(Motion.search, value: store.listError)
+    }
+
+    private func scheduleListEntranceIfNeeded(hasMemos: Bool) {
+        guard hasMemos, !didScheduleListEntrance else { return }
+        didScheduleListEntrance = true
+        listEntranceSettled = false
+        listEntranceCascade = true
+        // Next frame: settle in (stagger lives on per-card delay, not a late global jump).
+        DispatchQueue.main.async {
+            withAnimation(Motion.listEntrance) {
+                listEntranceSettled = true
+            }
+            listEntrancePulse &+= 1
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
+            listEntranceCascade = false
+        }
     }
 
     private var emptyTitle: String {
@@ -126,6 +183,7 @@ struct NotesListView: View {
     private func memoCard(for memo: MemoSummary) -> some View {
         let selected = store.selectedMemoIds.contains(memo.id)
         let density = env.preferences.listDensity
+        let bouncePulse = store.bounceMemoId == memo.id ? store.bouncePulse : 0
 
         Button {
             if store.selectionMode {
@@ -134,48 +192,28 @@ struct NotesListView: View {
                 path.append(memo.id)
             }
         } label: {
-            HStack(alignment: .center, spacing: 0) {
-                if store.selectionMode {
-                    ZStack {
-                        Circle()
-                            .stroke(selected ? AppTheme.title : Color(hex: 0xCBD5E1), lineWidth: 1)
-                            .background(Circle().fill(selected ? AppTheme.title : Color.clear))
-                            .frame(width: 24, height: 24)
-                        if selected {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
+            memoCardChrome(memo: memo, selected: selected, density: density)
+                .contextMenu {
+                    Button {
+                        Task { await store.togglePin(env: env, memo: memo) }
+                    } label: {
+                        Label(
+                            memo.isPinned
+                                ? env.preferences.t("取消置顶", en: "Unpin")
+                                : env.preferences.t("置顶", en: "Pin"),
+                            systemImage: memo.isPinned ? "pin.slash" : "pin"
+                        )
                     }
-                    .frame(width: 44)
-                    .padding(.leading, 8)
-                    .animation(Motion.chip, value: selected)
+                    Button(role: .destructive) {
+                        Task { await store.softDelete(env: env, memoId: memo.id) }
+                    } label: {
+                        Label(env.preferences.t("删除", en: "Delete"), systemImage: "trash")
+                    }
                 }
-
-                MemoCardContent(
-                    memo: memo,
-                    density: density,
-                    locale: env.preferences.resolvedLocale,
-                    isEnglish: env.preferences.isEnglish
-                )
-                .padding(density.cardPadding)
-                .padding(.leading, store.selectionMode ? 12 : density.cardPadding)
-            }
-            .frame(maxWidth: .infinity, minHeight: density.cardMinHeight, alignment: .leading)
-            .background(selected ? AppTheme.background : Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(selected ? AppTheme.border : AppTheme.cardBorder, lineWidth: 1)
-            )
-            // Selection chrome only — do not put list springs on the whole card
-            // (they swallow Android-style press scale).
-            .animation(Motion.chip, value: selected)
-            // Gesture-based press: ButtonStyle.isPressed is unreliable once
-            // contextMenu + long-press selection share this control.
-            .edgeEverMemoCardPress()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MemoCardPressStyle())
+        // Return-from-create/edit rebound on this card only.
+        .edgeEverMemoReturnBounce(pulse: bouncePulse)
         .edgeEverSelectionFeedback(selected)
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.52).onEnded { _ in
@@ -185,23 +223,47 @@ struct NotesListView: View {
                 }
             }
         )
-        .contextMenu {
-            Button {
-                Task { await store.togglePin(env: env, memo: memo) }
-            } label: {
-                Label(
-                    memo.isPinned
-                        ? env.preferences.t("取消置顶", en: "Unpin")
-                        : env.preferences.t("置顶", en: "Pin"),
-                    systemImage: memo.isPinned ? "pin.slash" : "pin"
-                )
+    }
+
+    /// Visual chrome for a list card.
+    @ViewBuilder
+    private func memoCardChrome(memo: MemoSummary, selected: Bool, density: ListDensity) -> some View {
+        HStack(alignment: .center, spacing: 0) {
+            if store.selectionMode {
+                ZStack {
+                    Circle()
+                        .stroke(selected ? AppTheme.title : Color(hex: 0xCBD5E1), lineWidth: 1)
+                        .background(Circle().fill(selected ? AppTheme.title : Color.clear))
+                        .frame(width: 24, height: 24)
+                    if selected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: 44)
+                .padding(.leading, 8)
+                .animation(Motion.chip, value: selected)
             }
-            Button(role: .destructive) {
-                Task { await store.softDelete(env: env, memoId: memo.id) }
-            } label: {
-                Label(env.preferences.t("删除", en: "Delete"), systemImage: "trash")
-            }
+
+            MemoCardContent(
+                memo: memo,
+                density: density,
+                locale: env.preferences.resolvedLocale,
+                isEnglish: env.preferences.isEnglish
+            )
+            .padding(density.cardPadding)
+            .padding(.leading, store.selectionMode ? 12 : density.cardPadding)
         }
+        .frame(maxWidth: .infinity, minHeight: density.cardMinHeight, alignment: .leading)
+        .background(selected ? AppTheme.background : Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(selected ? AppTheme.border : AppTheme.cardBorder, lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .animation(Motion.chip, value: selected)
     }
 }
 
@@ -262,6 +324,3 @@ struct MemoCardContent: View {
         return t.isEmpty ? "无标题笔记" : t
     }
 }
-
-// Memo card press: `edgeEverMemoCardPress()` in DesignSystem/Motion.swift
-// (Android Reanimated timing: 100ms in / 160ms out; gesture-based so contextMenu works).

@@ -23,16 +23,17 @@ Android remains Expo / React Native in `apps/mobile`. Store builds for iOS use t
 
 ## Motion / animations
 
-- **Native SwiftUI** springs for layout, search bar, filter chips, list content changes
-- **[Pow](https://github.com/EmergeTools/Pow)** (Emerge Tools) for polished micro-interactions:
-  - create button ping / jump on sync
-  - filter chip ping when activated
-  - selection / error haptics + shake
-  - pin shine, list card transitions
+Motion stack: **SwiftUI Animation** (timing / springs) + **[Pow](https://github.com/EmergeTools/Pow)** (Emerge).
 
-Shared curves live in `EdgeEver/DesignSystem/Motion.swift`:
-- Memo card press: Android Reanimated **timing** (100ms in / 160ms out), gesture-driven scale (~0.97) so it still works with `contextMenu` + long-press selection (bare `ButtonStyle.isPressed` + 0.985 was effectively invisible / unreliable).
-- Create / filter chips: spring press scale + Pow ping.
+| Effect | Where |
+|--------|--------|
+| **Jump** (physics hop + squash) | First list open (whole list); create/edit return on that memo |
+| **Boing** (elastic drop-in) | Staggered first-paint cards |
+| **Ping** | Create button / returned memo highlight |
+| **Shine / Shake / Haptic** | Pin success, errors, selection |
+| SwiftUI scale press | Card / create / filter finger-down |
+
+Curves & wrappers: `EdgeEver/DesignSystem/Motion.swift`.
 
 ## Requirements
 
