@@ -8,6 +8,14 @@ ARCHIVE_PATH="${EDGE_EVER_IOS_ARCHIVE:-$DERIVED/EdgeEver.xcarchive}"
 EXPORT_PATH="${EDGE_EVER_IOS_EXPORT:-$DERIVED/export}"
 EXPORT_OPTIONS="${EDGE_EVER_IOS_EXPORT_OPTIONS:-$ROOT/ExportOptions.plist}"
 
+# Prefer stable Xcode for App Store (beta SDKs are rejected by App Store Connect).
+if [[ -z "${DEVELOPER_DIR:-}" ]]; then
+  if [[ -d /Applications/Xcode.app/Contents/Developer ]]; then
+    export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+  fi
+fi
+echo "Using $(xcodebuild -version | tr '\n' ' ')"
+
 cd "$ROOT"
 
 if [[ "${EDGE_EVER_IOS_SKIP_EDITOR_BUILD:-0}" != "1" ]]; then

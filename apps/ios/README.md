@@ -19,7 +19,7 @@ UI/interaction is aligned with the Android RN app (`apps/mobile`):
 - Share Extension (text/URL → App Group → new draft)
 - Locale (system/zh/en) + theme + list density
 
-Android remains Expo / React Native in `apps/mobile`. Do not retire EAS iOS builds until a shippable TestFlight build exists.
+Android remains Expo / React Native in `apps/mobile`. Store builds for iOS use this native tree (`Scripts/archive-app-store.sh`), not EAS.
 
 ## Motion / animations
 
@@ -79,6 +79,26 @@ xcrun simctl launch booted org.edgeever.mobile \
 | --- | --- | --- |
 | `MARKETING_VERSION` | `Config/Version.xcconfig` | Align with monorepo release `X.Y.Z` on store submissions |
 | `CURRENT_PROJECT_VERSION` | `Config/Version.xcconfig` | Monotonic build number for every TestFlight / App Store upload |
+
+## App Store archive
+
+Use the stable Xcode app (not beta) so App Store Connect accepts the SDK:
+
+```sh
+cd apps/ios
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer bash Scripts/archive-app-store.sh
+```
+
+The script builds the TipTap EditorBundle, regenerates the Xcode project, archives with the App Store distribution profiles, and exports `build/export/EdgeEver.ipa`. Upload with `xcrun altool` / Transporter, then submit the exact build with:
+
+```sh
+cd apps/ios
+APP_STORE_VERSION=X.Y.Z APP_STORE_BUILD_NUMBER=N \
+APP_STORE_CONNECT_API_KEY_ID=... \
+APP_STORE_CONNECT_API_ISSUER_ID=... \
+APP_STORE_CONNECT_API_KEY_P8_BASE64=... \
+fastlane ios submit_review
+```
 
 ## Regenerating the Xcode project
 

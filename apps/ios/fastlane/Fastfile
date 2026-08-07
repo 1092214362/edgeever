@@ -27,7 +27,9 @@ platform :ios do
       force: true,
       skip_binary_upload: true,
       skip_metadata: true,
-      skip_screenshots: true
+      skip_screenshots: true,
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false
     )
   end
 end

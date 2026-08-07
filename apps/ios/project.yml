@@ -20,7 +20,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-    CURRENT_PROJECT_VERSION: 30
+    CURRENT_PROJECT_VERSION: 31
     MARKETING_VERSION: 1.12.6
     # Team enables Automatic signing for local Debug/simulator; App Store
     # archives override to Manual + distribution profiles in archive-app-store.sh.
