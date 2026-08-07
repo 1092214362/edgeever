@@ -42,6 +42,8 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
     private var hydrateGeneration: UInt64 = 0
     private var bodyReadyGeneration: UInt64 = 0
     private var contentGeneration: UInt64 = 0
+    /// Only auto-focus caret once per content generation (open edit), never while typing.
+    private var focusedGeneration: UInt64 = 0
 
     private(set) var session: TipTapSession?
     private weak var hostContainer: UIView?
@@ -116,6 +118,8 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         let previousFingerprint = lastPushedJSON
         session = newSession
         let fp = contentFingerprint(newSession).fingerprint
+        let isNewDocument = fp != previousFingerprint
+            && fp != lastEditorEmittedFingerprint
         if fp != previousFingerprint {
             contentGeneration &+= 1
             hydrateGeneration &+= 1
@@ -123,13 +127,15 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         }
         applyMode()
         pushContentIfNeeded(force: false)
-        // Evernote-style: always try to open keyboard at end when the editor surface is shown.
-        if newSession.mode == .editor {
-            scheduleFocusEnd()
+        // Open-edit only: first time this document is shown in the editor, focus end once.
+        // Never refocus on SwiftUI re-binds caused by typing (same emitted fingerprint).
+        if newSession.mode == .editor, isNewDocument {
+            scheduleFocusEnd(for: contentGeneration)
         }
     }
 
     /// Focus document end + make WKWebView first responder so the software keyboard appears.
+    /// Safe to call from the host once when the edit sheet opens — not on every keystroke.
     func focusEnd() {
         guard session?.mode == .editor else { return }
         // Keyboard requires first-responder status; JS focus alone is not enough after re-parent.
@@ -150,15 +156,12 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         )
     }
 
-    private func scheduleFocusEnd() {
-        // Wait until the host has laid out and (on edit page) opacity is full.
-        let gen = contentGeneration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
-            guard let self, self.contentGeneration == gen else { return }
-            self.focusEnd()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
-            guard let self, self.contentGeneration == gen else { return }
+    private func scheduleFocusEnd(for generation: UInt64) {
+        guard focusedGeneration != generation else { return }
+        focusedGeneration = generation
+        // One delayed focus after layout — not a repeating hammer mid-edit.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self, self.contentGeneration == generation else { return }
             self.focusEnd()
         }
     }
@@ -229,18 +232,17 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         let (fingerprint, useJSON) = contentFingerprint(session)
         let gen = contentGeneration
 
-        // Already showing this document — still tell the host (SwiftUI often re-binds).
+        // Already showing this document (including editor-originated typing updates).
+        // Notify ready only — never refocus caret (that jumps to end while typing).
         if !force {
             if fingerprint == lastPushedJSON || fingerprint == lastEditorEmittedFingerprint {
                 notifyBodyReady(generation: gen)
-                if session.mode == .editor {
-                    scheduleFocusEnd()
-                }
                 return
             }
         }
 
         lastPushedJSON = fingerprint
+        let shouldFocusAfterPush = session.mode == .editor && focusedGeneration != gen
 
         if lastAppliedMode != session.mode.rawValue {
             applyMode()
@@ -251,7 +253,6 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
         let js = TipTapResourceLoader.jsCall(fn: fn, arg: payload)
         // Capture callback now — detach may nil session callbacks before the JS completion runs.
         let bodyReadyCb = session.onBodyReady
-        let isEditor = session.mode == .editor
         webView.evaluateJavaScript(js) { [weak self] _, error in
             #if DEBUG
             if let error { NSLog("SharedTipTapRuntime pushContent error: \(error)") }
@@ -260,8 +261,8 @@ final class SharedTipTapRuntime: NSObject, WKScriptMessageHandler, WKNavigationD
             Task { @MainActor in
                 guard self.contentGeneration == gen else { return }
                 self.notifyBodyReady(generation: gen, callback: bodyReadyCb)
-                if isEditor {
-                    self.scheduleFocusEnd()
+                if shouldFocusAfterPush {
+                    self.scheduleFocusEnd(for: gen)
                 }
                 await self.nativeHydrateDOMImages(generation: gen)
             }

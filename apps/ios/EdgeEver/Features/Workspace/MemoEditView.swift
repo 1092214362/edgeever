@@ -81,11 +81,7 @@ struct MemoEditView: View {
             try? await Task.sleep(nanoseconds: 800_000_000)
             if !Task.isCancelled, !editorReady {
                 editorReady = true
-                SharedTipTapRuntime.editor.focusEnd()
-            }
-        }
-        .onChange(of: editorReady) { _, ready in
-            if ready {
+                // One open-edit focus only (SharedTipTapRuntime also focuses once per document).
                 SharedTipTapRuntime.editor.focusEnd()
             }
         }
@@ -252,12 +248,11 @@ struct MemoEditView: View {
                         },
                         onImagePreview: nil,
                         onBodyReady: {
+                            // Do not focusEnd here — bodyReady also fires on typing re-binds.
+                            // Open-edit focus is owned by SharedTipTapRuntime (once per document).
                             editorReady = true
-                            // opacity 0.01 blocks the keyboard — only focus once fully visible.
-                            SharedTipTapRuntime.editor.focusEnd()
                         }
                     )
-                    // Keep opacity at 1 so WKWebView can become first responder / show keyboard.
                     .opacity(1)
                 }
 

@@ -452,19 +452,10 @@ const api: EdgeEverEditorAPI = {
         });
       }
     }
-    // Keep editability. After setContent, selection is typically at end — focus there
-    // when already in editor mode so open-for-edit lands at the bottom (Evernote-like).
+    // Keep editability. Do NOT focus("end") here — native re-pushes content on SwiftUI
+    // updates while typing; focusing would yank the caret to the document bottom mid-edit.
     editor.setEditable(mode === "editor");
     suppressChange = false;
-    if (mode === "editor") {
-      requestAnimationFrame(() => {
-        try {
-          editor.commands.focus("end");
-        } catch {
-          /* ignore */
-        }
-      });
-    }
     void afterContentSet((document.documentElement.dataset.theme as "light" | "dark") || "light");
   },
 
@@ -478,15 +469,6 @@ const api: EdgeEverEditorAPI = {
     }
     editor.setEditable(mode === "editor");
     suppressChange = false;
-    if (mode === "editor") {
-      requestAnimationFrame(() => {
-        try {
-          editor.commands.focus("end");
-        } catch {
-          /* ignore */
-        }
-      });
-    }
     void afterContentSet((document.documentElement.dataset.theme as "light" | "dark") || "light");
   },
 
