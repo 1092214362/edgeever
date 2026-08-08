@@ -18,31 +18,12 @@ struct MemoEditView: View {
     /// Create path: called with the committed memo id so the list can bounce that card.
     var onCreateFinished: ((String) -> Void)? = nil
 
-    @State private var title = ""
-    @State private var tagsText = ""
-    @State private var notebookId = ""
-    @State private var contentMarkdown = ""
-    @State private var contentJSON = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"
-    @State private var expectedRevision: Int?
-    @State private var expectedContentHash: String?
-    @State private var memoId: String?
-    @State private var error: String?
-    @State private var saveTask: Task<Void, Never>?
-    @State private var editGeneration: UInt64 = 0
-    @State private var isMaterializing = false
-    @State private var isDirty = false
-    @State private var isSaving = false
-    @State private var isCreating = false
-    @State private var isUploading = false
-    @State private var editorReady = false
+    @State private var viewModel = MemoEditViewModel()
     /// True after Back/Done commit starts — blocks late TipTap `change` from rewriting the
     /// `new` draft so the next create opens empty instead of the previous note body.
-    @State private var suppressPersistence = false
     /// False until `loadInitial` has filled title/body from mirror — prevents TipTap boot
     /// with empty defaults from overwriting a non-empty note via autosave / flush.
-    @State private var contentHydrated = false
     /// Snapshot of body when edit opened (or last intentional load). Used to reject empty clobbers.
-    @State private var baselineMarkdown = ""
     @State private var showNotebookPicker = false
     @State private var showImagePicker = false
     @State private var showUploadError = false
@@ -50,7 +31,26 @@ struct MemoEditView: View {
     @State private var showApplyTemplateConfirm = false
     @State private var pendingTemplateSeed: CreateMemoSeed?
     @State private var resourceTarget: ResourceTarget?
-    private let emptyDocJSON = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"
+
+    private var title: String { get { viewModel.title } nonmutating set { viewModel.title = newValue } }
+    private var tagsText: String { get { viewModel.tagsText } nonmutating set { viewModel.tagsText = newValue } }
+    private var notebookId: String { get { viewModel.notebookId } nonmutating set { viewModel.notebookId = newValue } }
+    private var contentMarkdown: String { get { viewModel.contentMarkdown } nonmutating set { viewModel.contentMarkdown = newValue } }
+    private var contentJSON: String { get { viewModel.contentJSON } nonmutating set { viewModel.contentJSON = newValue } }
+    private var expectedRevision: Int? { get { viewModel.expectedRevision } nonmutating set { viewModel.expectedRevision = newValue } }
+    private var expectedContentHash: String? { get { viewModel.expectedContentHash } nonmutating set { viewModel.expectedContentHash = newValue } }
+    private var memoId: String? { get { viewModel.memoId } nonmutating set { viewModel.memoId = newValue } }
+    private var error: String? { get { viewModel.error } nonmutating set { viewModel.error = newValue } }
+    private var editGeneration: UInt64 { get { viewModel.editGeneration } nonmutating set { viewModel.editGeneration = newValue } }
+    private var isMaterializing: Bool { get { viewModel.isMaterializing } nonmutating set { viewModel.isMaterializing = newValue } }
+    private var isDirty: Bool { get { viewModel.isDirty } nonmutating set { viewModel.isDirty = newValue } }
+    private var isSaving: Bool { get { viewModel.isSaving } nonmutating set { viewModel.isSaving = newValue } }
+    private var isCreating: Bool { get { viewModel.isCreating } nonmutating set { viewModel.isCreating = newValue } }
+    private var isUploading: Bool { get { viewModel.isUploading } nonmutating set { viewModel.isUploading = newValue } }
+    private var editorReady: Bool { get { viewModel.editorReady } nonmutating set { viewModel.editorReady = newValue } }
+    private var suppressPersistence: Bool { get { viewModel.suppressPersistence } nonmutating set { viewModel.suppressPersistence = newValue } }
+    private var contentHydrated: Bool { get { viewModel.contentHydrated } nonmutating set { viewModel.contentHydrated = newValue } }
+    private var baselineMarkdown: String { get { viewModel.baselineMarkdown } nonmutating set { viewModel.baselineMarkdown = newValue } }
 
     var body: some View {
         ZStack {
@@ -164,7 +164,7 @@ struct MemoEditView: View {
             }
         }
         .onDisappear {
-            saveTask?.cancel()
+            viewModel.cancelScheduledSave()
             // Create commit is owned by Back / Done (Android `requestClose` = createMutation).
             // Only flush edit sessions, or create-after-image-materialize if still dirty and
             // the cover was dismissed without going through handleBack.
@@ -268,7 +268,10 @@ struct MemoEditView: View {
         VStack(alignment: .leading, spacing: 0) {
             TextField(
                 env.preferences.t("无标题笔记", en: "Untitled note"),
-                text: $title
+                text: Binding(
+                    get: { viewModel.title },
+                    set: { viewModel.title = $0 }
+                )
             )
             .font(.system(size: 28, weight: .heavy))
             .foregroundStyle(AppTheme.title)
@@ -303,7 +306,10 @@ struct MemoEditView: View {
 
                 TextField(
                     env.preferences.t("添加标签，用逗号分隔", en: "Add tags, comma separated"),
-                    text: $tagsText
+                    text: Binding(
+                        get: { viewModel.tagsText },
+                        set: { viewModel.tagsText = $0 }
+                    )
                 )
                 .font(.system(size: 15))
                 .foregroundStyle(AppTheme.secondary)
@@ -353,7 +359,7 @@ struct MemoEditView: View {
                             // Accept the JSON and Markdown emitted by the same TipTap transaction.
                             // Native code only falls back to its compatibility serializer when the
                             // editor cannot provide Markdown at all.
-                            applyEditorPayload(markdown: md, json: json)
+                            viewModel.applyEditorPayload(markdown: md, json: json)
                             if !isUploading {
                                 markDirtyAndScheduleSave()
                             } else {
@@ -458,23 +464,14 @@ struct MemoEditView: View {
     }
 
     private var tags: [String] {
-        tagsText
-            .split(whereSeparator: { ",， ".contains($0) })
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        viewModel.tags
     }
 
     // MARK: - Actions
 
     private func markDirtyAndScheduleSave() {
-        guard !suppressPersistence else { return }
-        editGeneration &+= 1
-        // Avoid autosaving mid-upload (placeholder / incomplete body).
-        guard !isUploading else {
-            isDirty = true
-            return
-        }
-        isDirty = true
+        viewModel.markDirty()
+        guard !suppressPersistence, !isUploading else { return }
         scheduleSave()
     }
 
@@ -493,7 +490,7 @@ struct MemoEditView: View {
         tagsText = seed.tagsText
         contentMarkdown = seed.contentMarkdown
         // Empty stub JSON forces TipTapContentSource to open from markdown structure.
-        contentJSON = emptyDocJSON
+        contentJSON = MemoEditViewModel.emptyDocJSON
         baselineMarkdown = seed.contentMarkdown
         editorReady = false
         markDirtyAndScheduleSave()
@@ -548,46 +545,7 @@ struct MemoEditView: View {
     /// Pull markdown/JSON from TipTap so saves don't race the async change bridge.
     private func pullEditorSnapshotIfPossible() async {
         guard let snap = await SharedTipTapRuntime.editor.snapshotContent() else { return }
-        applyEditorPayload(markdown: snap.markdown, json: snap.json)
-    }
-
-    /// Merge TipTap bridge payloads.
-    /// **TipTap JSON is the only structural source of truth** (node order = image above/below text).
-    /// Markdown is always derived from JSON so we never "append missing images at the end"
-    /// and flip 图文顺序 when the serializer drops an image mid-document.
-    private func applyEditorPayload(markdown: String, json: String) {
-        let prevText = EditorContentCodec.plainText(markdown: contentMarkdown, json: contentJSON)
-
-        let trimmedJSON = json.trimmingCharacters(in: .whitespacesAndNewlines)
-        let nextJSON: String = {
-            if !trimmedJSON.isEmpty, EditorContentCodec.looksLikeTipTapDoc(trimmedJSON) {
-                return trimmedJSON
-            }
-            return contentJSON
-        }()
-
-        let nextMD = EditorContentCodec.preferredMarkdown(
-            editorMarkdown: markdown,
-            documentJSON: nextJSON,
-            fallback: contentMarkdown
-        )
-
-        let nextText = EditorContentCodec.plainText(markdown: nextMD, json: nextJSON)
-        let nextHasImage = EditorContentCodec.containsImageNode(nextJSON)
-            || nextMD.contains("![")
-
-        // Hard guard: never accept a payload that strips substantial text while leaving media.
-        if prevText.count >= 8, nextText.count < max(4, prevText.count / 2), nextHasImage {
-            NSLog(
-                "MemoEditView: reject text-stripping payload prevText=%d nextText=%d",
-                prevText.count, nextText.count
-            )
-            // Do NOT append images at the end — that reorders 图文. Keep prior body.
-            return
-        }
-
-        contentJSON = nextJSON
-        contentMarkdown = nextMD
+        viewModel.applyEditorPayload(markdown: snap.markdown, json: snap.json)
     }
 
     private func loadInitial() async {
@@ -600,7 +558,7 @@ struct MemoEditView: View {
                 title = seed.title
                 tagsText = seed.tagsText
                 contentMarkdown = seed.contentMarkdown
-                contentJSON = emptyDocJSON
+                contentJSON = MemoEditViewModel.emptyDocJSON
             } else if let draft = try? env.drafts.read(scope: scope, key: DraftRepository.newKey) {
                 title = draft.title
                 tagsText = draft.tagsText
@@ -673,32 +631,9 @@ struct MemoEditView: View {
     }
 
     private func scheduleSave() {
-        guard !suppressPersistence else { return }
-        saveTask?.cancel()
-        saveTask = Task {
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            guard !Task.isCancelled, !suppressPersistence else { return }
+        viewModel.scheduleSave {
             await persistDraftOrQueue()
         }
-    }
-
-    /// Reject autosave that would wipe a non-empty note with an empty / image-only boot payload.
-    private var wouldClobberNonEmptyBody: Bool {
-        guard !isCreate else { return false }
-        let next = contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
-        let base = baselineMarkdown.trimmingCharacters(in: .whitespacesAndNewlines)
-        if next.isEmpty && !base.isEmpty { return true }
-
-        let baseText = EditorContentCodec.plainTextFromMarkdown(baselineMarkdown)
-        let nextText = EditorContentCodec.plainText(markdown: contentMarkdown, json: contentJSON)
-        let nextHasImage = contentMarkdown.contains("/api/v1/resources/")
-            || contentJSON.contains("/api/v1/resources/")
-            || contentJSON.contains("\"type\":\"image\"")
-        // Image-only body while baseline had real text → refuse (this produced empty notes).
-        if baseText.count >= 8, nextText.count < max(4, baseText.count / 2), nextHasImage {
-            return true
-        }
-        return false
     }
 
     private func persistDraftOrQueue() async {
@@ -708,8 +643,8 @@ struct MemoEditView: View {
         let generationAtStart = editGeneration
         // Last chance: only backfill Markdown when the editor supplied none. Never replace
         // valid TipTap Markdown with the intentionally limited native compatibility serializer.
-        reconcileMarkdownWithJSON()
-        if wouldClobberNonEmptyBody {
+        viewModel.reconcileMarkdownWithJSON()
+        if viewModel.wouldClobberNonEmptyBody(isCreate: isCreate) {
             NSLog(
                 "MemoEditView: skip persist — refusing body clobber baseText=%d nextText=%d",
                 EditorContentCodec.plainTextFromMarkdown(baselineMarkdown).count,
@@ -734,16 +669,7 @@ struct MemoEditView: View {
         if isCreate, !hasMaterializedServerMemo {
             try? env.drafts.write(
                 scope: scope,
-                draft: MemoDraft(
-                    draftKey: DraftRepository.newKey,
-                    title: title,
-                    contentMarkdown: contentMarkdown,
-                    contentJson: contentJSON,
-                    notebookId: notebookId,
-                    tagsText: tagsText,
-                    expectedRevision: nil,
-                    updatedAt: now
-                )
+                draft: viewModel.makeDraft(key: DraftRepository.newKey, expectedRevision: nil, updatedAt: now)
             )
             NSLog(
                 "MemoEditView persist draft-only mdLen=%d hasImg=%d",
@@ -758,16 +684,7 @@ struct MemoEditView: View {
             if isCreate {
                 try? env.drafts.write(
                     scope: scope,
-                    draft: MemoDraft(
-                        draftKey: DraftRepository.newKey,
-                        title: title,
-                        contentMarkdown: contentMarkdown,
-                        contentJson: contentJSON,
-                        notebookId: notebookId,
-                        tagsText: tagsText,
-                        expectedRevision: nil,
-                        updatedAt: now
-                    )
+                    draft: viewModel.makeDraft(key: DraftRepository.newKey, expectedRevision: nil, updatedAt: now)
                 )
             }
             return
@@ -811,13 +728,8 @@ struct MemoEditView: View {
         expectedContentHash = hash
         try? env.drafts.write(
             scope: scope,
-            draft: MemoDraft(
-                draftKey: isCreate ? DraftRepository.newKey : DraftRepository.memoKey(memo.id),
-                title: title,
-                contentMarkdown: contentMarkdown,
-                contentJson: contentJSON,
-                notebookId: notebookId,
-                tagsText: tagsText,
+            draft: viewModel.makeDraft(
+                key: isCreate ? DraftRepository.newKey : DraftRepository.memoKey(memo.id),
                 expectedRevision: rev,
                 updatedAt: now
             )
@@ -844,15 +756,7 @@ struct MemoEditView: View {
             error = env.preferences.t("请选择笔记本", en: "Choose a notebook")
             return
         }
-        if isCreating { return }
-        isCreating = true
-        // Block autosave / late TipTap change before any await so the `new` draft cannot
-        // be rewritten after we clear it (next FAB create must open empty).
-        suppressPersistence = true
-        isDirty = false
-        saveTask?.cancel()
-        defer { isCreating = false }
-        do {
+        guard let finishedId = await viewModel.performCreateCommit(operation: {
             // Android createMutation: if image materialize already created a server memo,
             // Done/Back updates that memo — never mint a second local: create.
             let outcome = try MemoCreateCommit.commit(
@@ -874,7 +778,7 @@ struct MemoEditView: View {
                 memoId = id
             }
             // Prefer mirror id after sync (create may remap local: → server id).
-            var finishedId = memoId
+            var resolvedFinishedId = memoId!
             // Belt-and-suspenders: clear create draft again after commit (race with in-flight write).
             try? env.drafts.clear(scope: scope, key: DraftRepository.newKey)
             await env.runSyncCycle()
@@ -882,20 +786,15 @@ struct MemoEditView: View {
                 expectedRevision = refreshed.revision
                 expectedContentHash = refreshed.contentHash
                 memoId = refreshed.id
-                finishedId = refreshed.id
+                resolvedFinishedId = refreshed.id
             }
             // Clear again after sync — materialize/persist paths may have re-touched `new`.
             try? env.drafts.clear(scope: scope, key: DraftRepository.newKey)
-            if let finishedId {
-                onCreateFinished?(finishedId)
-            }
-            // Create modal sits on the list already; WorkspaceView reloads on cover dismiss.
-            dismiss()
-        } catch {
-            // Allow retry / further edits after a failed commit.
-            suppressPersistence = false
-            self.error = error.localizedDescription
-        }
+            return resolvedFinishedId
+        }) else { return }
+        onCreateFinished?(finishedId)
+        // Create modal sits on the list already; WorkspaceView reloads on cover dismiss.
+        dismiss()
     }
 
     private func flushPending() async {
@@ -905,15 +804,7 @@ struct MemoEditView: View {
 
     /// Wait for an in-flight autosave before forcing the latest editor generation to disk.
     private func drainPendingSave() async {
-        let pendingSave = saveTask
-        saveTask = nil
-        pendingSave?.cancel()
-        await pendingSave?.value
-        // An older save may have noticed a newer generation and scheduled another debounce.
-        // Cancel that debounce because this path persists the latest state immediately.
-        saveTask?.cancel()
-        saveTask = nil
-        if isDirty {
+        await viewModel.drainScheduledSave {
             await persistDraftOrQueue()
         }
     }
@@ -951,7 +842,7 @@ struct MemoEditView: View {
 
         // Capture latest editor body before minting the server memo (avoid stale empty markdown).
         await pullEditorSnapshotIfPossible()
-        reconcileMarkdownWithJSON()
+        viewModel.reconcileMarkdownWithJSON()
         let memo = try await env.session.client.createMemo(
             notebookId: notebookId.isEmpty ? (availableNotebooks.first?.id ?? "") : notebookId,
             title: title.isEmpty ? "无标题笔记" : title,
@@ -969,10 +860,7 @@ struct MemoEditView: View {
 
     /// Upload bytes from the system PHPicker and insert into TipTap.
     private func insertImageData(_ data: Data, filename: String) async {
-        isUploading = true
-        error = nil
-        defer { isUploading = false }
-        do {
+        let succeeded = await viewModel.performUpload {
             NSLog("MemoEditView insertImageData: start bytes=%d name=%@", data.count, filename)
             let compress = env.preferences.useCompression
             let prepared = compress
@@ -1027,9 +915,9 @@ struct MemoEditView: View {
             // is truly missing — never append a second image node at document end.
             await pullEditorSnapshotIfPossible()
             if !EditorContentCodec.jsonContainsResource(contentJSON, src: imageSrc) {
-                ensureImageInContent(imageSrc: imageSrc, alt: prepared.filename)
+                viewModel.ensureImageInContent(imageSrc: imageSrc, alt: prepared.filename)
             } else {
-                reconcileMarkdownWithJSON()
+                viewModel.reconcileMarkdownWithJSON()
             }
             editGeneration &+= 1
             isDirty = true
@@ -1042,35 +930,10 @@ struct MemoEditView: View {
                 EditorContentCodec.jsonContainsResource(contentJSON, src: imageSrc) ? 1 : 0,
                 EditorContentCodec.plainText(markdown: contentMarkdown, json: contentJSON).count
             )
-        } catch {
-            self.error = error.localizedDescription
+        }
+        if !succeeded {
             showUploadError = true
-            NSLog("MemoEditView insertImageData failed: \(error)")
-        }
-    }
-
-    private static func protectedResourceRefs(in text: String) -> [String] {
-        EditorContentCodec.protectedResourceRefs(in: text)
-    }
-
-    /// Compatibility fallback for legacy/editor failures that provide JSON without Markdown.
-    private func reconcileMarkdownWithJSON() {
-        guard contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let recovered = EditorContentCodec.markdownFromTipTapJSON(contentJSON)
-        else { return }
-        contentMarkdown = recovered
-    }
-
-    /// Last-resort: image missing from JSON after insert. Append it to both representations.
-    private func ensureImageInContent(imageSrc: String, alt: String) {
-        if EditorContentCodec.jsonContainsResource(contentJSON, src: imageSrc) {
-            reconcileMarkdownWithJSON()
-            return
-        }
-        contentJSON = EditorContentCodec.appendingImage(toJSON: contentJSON, src: imageSrc, alt: alt)
-        if !contentMarkdown.contains(imageSrc) {
-            let separator = contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : "\n\n"
-            contentMarkdown += "\(separator)![\(alt)](\(imageSrc))\n"
+            NSLog("MemoEditView insertImageData failed: %@", error ?? "unknown")
         }
     }
 

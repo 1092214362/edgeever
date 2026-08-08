@@ -77,7 +77,9 @@
 		E7B888711C3A5403083864B3 /* UsersManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CEB614A969DF595620789B7 /* UsersManagementView.swift */; };
 		EA96E17E7B784BA456329AFC /* TagsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501296D671EE3A384E13BE62 /* TagsManagementView.swift */; };
 		EAD067F29A94BB2BA633EC90 /* ConflictResolutionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776B0012B526A65B99921B4B /* ConflictResolutionView.swift */; };
+		F1C912D8726DCB215E709E30 /* MemoEditViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2080FD276D6ED7161B7DB973 /* MemoEditViewModelTests.swift */; };
 		F51F6C5ED7C2B0E68DF5A55D /* LiveLocalAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57312B99FFBD9A2186A8C0D0 /* LiveLocalAPITests.swift */; };
+		FBB21A0292D846789C0F6E42 /* MemoEditViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59C38DBB41BA706C678AB9BD /* MemoEditViewModel.swift */; };
 		FC6501567FDC2F9900E973A4 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06F83AE844C342D3F6EAD7F /* AppEnvironment.swift */; };
 		FDF0A8FA27796FB9500F97D4 /* ResourceCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A3C0399C910B150A02D06E /* ResourceCache.swift */; };
 /* End PBXBuildFile section */
@@ -122,6 +124,7 @@
 		17A2092411EFC3765B97DF88 /* SystemImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemImagePicker.swift; sourceTree = "<group>"; };
 		1CD75D20D94A27E982103AB3 /* EdgeEver.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EdgeEver.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2035E878FD92B74D889D6047 /* LocalMirrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalMirrorTests.swift; sourceTree = "<group>"; };
+		2080FD276D6ED7161B7DB973 /* MemoEditViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoEditViewModelTests.swift; sourceTree = "<group>"; };
 		213837D2B2F025307A5EBB69 /* ChromeParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeParityTests.swift; sourceTree = "<group>"; };
 		22941D02A07C4B75AE89B053 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		243811C4B4CBF13982976A56 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -143,6 +146,7 @@
 		57312B99FFBD9A2186A8C0D0 /* LiveLocalAPITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveLocalAPITests.swift; sourceTree = "<group>"; };
 		574912976CB43DD9821678EE /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		58C065FED3C78404D4D8DD19 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
+		59C38DBB41BA706C678AB9BD /* MemoEditViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoEditViewModel.swift; sourceTree = "<group>"; };
 		5CB54673617E14F28B7608BD /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		62B460B6BFE4CFB23073C7E1 /* SyncOutboxRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncOutboxRepository.swift; sourceTree = "<group>"; };
 		6CB16CA1499554463E1927E7 /* PreferencesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesStore.swift; sourceTree = "<group>"; };
@@ -401,6 +405,7 @@
 				DBC0AD00435CCEFD7934201C /* MemoCreateCommit.swift */,
 				387980E9CCA7C1C52EAAB6A0 /* MemoDetailView.swift */,
 				3674473015F8EB6863B69B0F /* MemoEditView.swift */,
+				59C38DBB41BA706C678AB9BD /* MemoEditViewModel.swift */,
 				E3328D871910187ED827B6CE /* NotebookPickerSheet.swift */,
 				B30C95F4EABCD08555D97C6B /* NotesListView.swift */,
 				328A2DAC7E7DC89F4782B5FB /* RevisionsView.swift */,
@@ -472,6 +477,7 @@
 				57312B99FFBD9A2186A8C0D0 /* LiveLocalAPITests.swift */,
 				2035E878FD92B74D889D6047 /* LocalMirrorTests.swift */,
 				82E057D0906932A00DF62EBB /* MemoCreateCommitTests.swift */,
+				2080FD276D6ED7161B7DB973 /* MemoEditViewModelTests.swift */,
 				C8D1DC59EC9FA65240DCBC19 /* MemoTemplatesTests.swift */,
 				1606EF8ADEA4921421EB0690 /* MobileUIParityTests.swift */,
 				E6159DBF27CC86920005E25D /* SyncProtocolTests.swift */,
@@ -623,6 +629,7 @@
 				F51F6C5ED7C2B0E68DF5A55D /* LiveLocalAPITests.swift in Sources */,
 				8785D0133655387F399C3C58 /* LocalMirrorTests.swift in Sources */,
 				511A8DCB204AFCB2880AE51E /* MemoCreateCommitTests.swift in Sources */,
+				F1C912D8726DCB215E709E30 /* MemoEditViewModelTests.swift in Sources */,
 				588019CB46131EDF8DCB2F53 /* MemoTemplatesTests.swift in Sources */,
 				A63E64622A06DF3842908A66 /* MobileUIParityTests.swift in Sources */,
 				1F8E6268C9DA330CA236B36F /* SyncProtocolTests.swift in Sources */,
@@ -658,6 +665,7 @@
 				08A3D4F0E80ACE44E36AD87D /* MemoCreateCommit.swift in Sources */,
 				CA033464E43E9CF7C86585E6 /* MemoDetailView.swift in Sources */,
 				7BDAD91E69B7B62D7D390CB5 /* MemoEditView.swift in Sources */,
+				FBB21A0292D846789C0F6E42 /* MemoEditViewModel.swift in Sources */,
 				4F3977342A76C352E95E14E7 /* MemoTemplates.swift in Sources */,
 				506702F1751945424AC4CB98 /* MobileUI.swift in Sources */,
 				90FFFFD00B2D19F96EA299C8 /* Models.swift in Sources */,

@@ -2,8 +2,6 @@ import { useRef, useState, useEffect, useCallback, useMemo, type CSSProperties, 
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { Mark } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -109,7 +107,6 @@ import {
   formatMemoSaveConflictReason,
   getMemoSaveConflictInfo,
   getMemoSaveConflictInfoFromQueueItem,
-  type MemoSaveConflictInfo,
 } from "@/lib/memo-save-conflict";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { isLocalMemoId } from "@/lib/local-mirror";
@@ -152,11 +149,26 @@ import {
   ResizableImage,
   type ImageMenuRequestDetail,
 } from "./editor/ResizableImage";
+import {
+  createNoteSearchHighlightPlugin,
+  formatNoteSearchMatchLabel,
+  getNextSearchMatchIndex,
+  getSearchMatchesFromDocument,
+  NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY,
+  type NoteSearchMatch,
+} from "./editor/note-search";
+import { useEditorSaveStatus } from "./editor/useEditorSaveStatus";
+import { resolveEditorDraftState } from "./editor/editor-draft-state";
+import {
+  useEditorResourceActions,
+  type AttachmentMenuTarget,
+  type ResourceDialogState,
+  type ResourceMenuTarget,
+} from "./editor/useEditorResourceActions";
 
 const SUPPORTED_PASTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 const MOBILE_EDITOR_QUERY = "(max-width: 639px)";
 const MOBILE_DRAFT_PERSIST_DELAY_MS = 800;
-const NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY = new PluginKey("edgeever-note-search-highlight");
 
 const createLocalEditSession = (memo: MemoDetail): MemoEditSession => ({
   id: `local-edit:${memo.id}`,
@@ -184,31 +196,6 @@ type NoteLinkHintPosition = {
   left: number;
   top: number;
   placement: "above" | "below" | "inside-bottom-right";
-};
-
-type AttachmentMenuTarget = {
-  kind: "attachment";
-  url: string;
-  filename: string;
-  resourceId: string | null;
-  position: NoteLinkHintPosition;
-};
-
-type ImageMenuTarget = {
-  kind: "image";
-  url: string;
-  filename: string;
-  resourceId: string | null;
-  position: NoteLinkHintPosition;
-  updateAttributes: (attributes: Record<string, unknown>) => void;
-  deleteNode: () => void;
-};
-
-type ResourceMenuTarget = AttachmentMenuTarget | ImageMenuTarget;
-
-type ResourceDialogState = {
-  action: "rename" | "delete";
-  target: ResourceMenuTarget;
 };
 
 const getAttachmentLinkFromEventTarget = (target: EventTarget | null) =>
@@ -365,11 +352,6 @@ const findAttachmentLinkRange = (
   return { from: from as number, to: to as number, marks };
 };
 
-type NoteSearchMatch = {
-  from: number;
-  to: number;
-};
-
 type MobileImeDebugEntry = {
   id: number;
   event: string;
@@ -452,50 +434,6 @@ const focusMobilePlainTextElement = (element: MobilePlainTextElement | null) => 
   const selection = window.getSelection();
   selection?.removeAllRanges();
   selection?.addRange(range);
-};
-
-const getSearchMatchesFromDocument = (doc: Editor["state"]["doc"], query: string): NoteSearchMatch[] => {
-  const needle = query.trim().toLocaleLowerCase();
-
-  if (needle.length === 0) {
-    return [];
-  }
-
-  const characters: Array<{ char: string; pos: number }> = [];
-  let previousTextEnd: number | null = null;
-
-  doc.descendants((node, pos) => {
-    if (!node.isText || !node.text) {
-      return;
-    }
-
-    if (previousTextEnd !== null && pos > previousTextEnd) {
-      characters.push({ char: "\u0000", pos: -1 });
-    }
-
-    for (let index = 0; index < node.text.length; index += 1) {
-      characters.push({ char: node.text[index] ?? "", pos: pos + index });
-    }
-
-    previousTextEnd = pos + node.text.length;
-  });
-
-  const haystack = characters.map((item) => item.char).join("").toLocaleLowerCase();
-  const matches: NoteSearchMatch[] = [];
-  let index = haystack.indexOf(needle);
-
-  while (index !== -1) {
-    const start = characters[index];
-    const end = characters[index + needle.length - 1];
-
-    if (start && end && start.pos >= 0 && end.pos >= 0) {
-      matches.push({ from: start.pos, to: end.pos + 1 });
-    }
-
-    index = haystack.indexOf(needle, index + needle.length);
-  }
-
-  return matches;
 };
 
 const getEditorSearchMatches = (editor: Editor | null, query: string): NoteSearchMatch[] => {
@@ -716,13 +654,20 @@ const RichEditorPane = ({
   const isSelectionMode = Boolean(selectionActionBar);
   const [title, setTitle] = useState("");
   const [tagsText, setTagsText] = useState("");
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "queued" | "error" | "conflict">("idle");
-  const [saveConflictInfo, setSaveConflictInfo] = useState<MemoSaveConflictInfo | null>(null);
+  const {
+    dirtyVersion,
+    hasUnsavedChanges,
+    hasUnsavedChangesRef,
+    markDirtyStatus,
+    saveConflictInfo,
+    saveState,
+    setHasUnsavedChanges,
+    setSaveConflictInfo,
+    setSaveState,
+  } = useEditorSaveStatus();
   const [conflictActionPending, setConflictActionPending] = useState<"adopt" | "copy" | null>(null);
   const [conflictActionMessage, setConflictActionMessage] = useState<string | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hydratedEditorMemoId, setHydratedEditorMemoId] = useState<string | null>(null);
-  const [dirtyVersion, setDirtyVersion] = useState(0);
   const [editorStateVersion, setEditorStateVersion] = useState(0);
   const [editorContentVersion, setEditorContentVersion] = useState(0);
   const [imageUploadState, setImageUploadState] = useState<"idle" | "compressing" | "uploading" | "error">("idle");
@@ -747,11 +692,23 @@ const RichEditorPane = ({
     showTextField: true,
     canRemove: false,
   });
-  const [resourceMenuTarget, setResourceMenuTarget] = useState<ResourceMenuTarget | null>(null);
-  const [resourceDialog, setResourceDialog] = useState<ResourceDialogState | null>(null);
-  const [resourceFilename, setResourceFilename] = useState("");
-  const [resourceActionPending, setResourceActionPending] = useState(false);
-  const [resourceActionError, setResourceActionError] = useState<string | null>(null);
+  const {
+    menuTarget: resourceMenuTarget,
+    dialog: resourceDialog,
+    filename: resourceFilename,
+    pending: resourceActionPending,
+    error: resourceActionError,
+    clearError: clearResourceActionError,
+    closeDialog: closeResourceDialog,
+    completeAction: completeResourceAction,
+    failAction: failResourceAction,
+    hideMenu: hideResourceMenu,
+    openDialog: openResourceActionDialog,
+    reset: resetResourceActions,
+    setFilename: setResourceFilename,
+    showMenu: showResourceMenu,
+    startAction: startResourceAction,
+  } = useEditorResourceActions();
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia(MOBILE_EDITOR_QUERY).matches
   );
@@ -852,7 +809,6 @@ const RichEditorPane = ({
   const hydratedMemoIdRef = useRef<string | null>(null);
   /** Last content source applied to the editor — used to skip redundant setContent. */
   const appliedEditorSourceKeyRef = useRef<string | null>(null);
-  const hasUnsavedChangesRef = useRef(false);
   const editingMemoIdRef = useRef<string | null>(memo?.id ?? null);
   const imageCompressionEnabledRef = useRef(imageCompressionEnabled);
   const resourceMenuHideTimerRef = useRef<number | null>(null);
@@ -1277,8 +1233,7 @@ const RichEditorPane = ({
         const snippet = formatMarkdownLink(label, href);
         const { next, caret } = insertMarkdownSnippet(markdownSource, snippet, start, end);
         setMarkdownSource(next);
-        setHasUnsavedChanges(true);
-        setDirtyVersion((version) => version + 1);
+        markDirtyStatus();
         window.requestAnimationFrame(() => {
           const node = markdownTextAreaRef.current;
           if (!node) return;
@@ -1363,9 +1318,9 @@ const RichEditorPane = ({
     cancelResourceMenuHide();
     resourceMenuHideTimerRef.current = window.setTimeout(() => {
       resourceMenuHideTimerRef.current = null;
-      setResourceMenuTarget(null);
+      hideResourceMenu();
     }, 160);
-  }, [cancelResourceMenuHide]);
+  }, [cancelResourceMenuHide, hideResourceMenu]);
 
   useEffect(() => {
     const showImageMenu = (event: Event) => {
@@ -1374,7 +1329,7 @@ const RichEditorPane = ({
       if (!detail?.element) return;
       cancelResourceMenuHide();
       const rect = detail.element.getBoundingClientRect();
-      setResourceMenuTarget({
+      showResourceMenu({
         ...detail,
         kind: "image",
         position: {
@@ -1391,7 +1346,7 @@ const RichEditorPane = ({
       window.removeEventListener(IMAGE_MENU_SHOW_EVENT, showImageMenu);
       window.removeEventListener(IMAGE_MENU_HIDE_EVENT, hideImageMenu);
     };
-  }, [cancelResourceMenuHide, isMobileViewport, scheduleResourceMenuHide]);
+  }, [cancelResourceMenuHide, isMobileViewport, scheduleResourceMenuHide, showResourceMenu]);
 
   const showAttachmentMenu = useCallback((target: EventTarget | null) => {
     if (isMobileViewport) return false;
@@ -1401,7 +1356,7 @@ const RichEditorPane = ({
     const href = link.getAttribute("href") || "";
     cancelResourceMenuHide();
     setNoteLinkHintPosition(null);
-    setResourceMenuTarget({
+    showResourceMenu({
       kind: "attachment",
       url: href,
       filename: getAttachmentFilenameFromLabel(link.textContent || "") || getAttachmentResourceId(href) || "attachment",
@@ -1409,7 +1364,7 @@ const RichEditorPane = ({
       position: getNoteLinkHintPosition(link),
     });
     return true;
-  }, [cancelResourceMenuHide, isMobileViewport]);
+  }, [cancelResourceMenuHide, isMobileViewport, showResourceMenu]);
 
   const showEditorLinkOpenHint = useCallback((target: EventTarget | null) => {
     // Tip only when desktop + "require modifier" preference is on (default click-to-open needs no tip).
@@ -1491,20 +1446,19 @@ const RichEditorPane = ({
 
   useEffect(() => {
     if (!resourceMenuTarget) return;
-    const hideMenu = () => setResourceMenuTarget(null);
+    const hideMenu = () => hideResourceMenu();
     window.addEventListener("resize", hideMenu);
     window.addEventListener("scroll", hideMenu, true);
     return () => {
       window.removeEventListener("resize", hideMenu);
       window.removeEventListener("scroll", hideMenu, true);
     };
-  }, [resourceMenuTarget]);
+  }, [hideResourceMenu, resourceMenuTarget]);
 
   useEffect(() => {
     setNoteLinkHintPosition(null);
-    setResourceMenuTarget(null);
-    setResourceDialog(null);
-  }, [memo?.id, isMarkdownMode]);
+    resetResourceActions();
+  }, [memo?.id, isMarkdownMode, resetResourceActions]);
 
   useEffect(() => () => {
     if (resourceMenuHideTimerRef.current !== null) {
@@ -1595,29 +1549,9 @@ const RichEditorPane = ({
       return;
     }
 
-    const searchHighlightPlugin = new Plugin({
-      key: NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY,
-      props: {
-        decorations: (state) => {
-          const currentQuery = noteSearchOpen ? noteSearchQuery : contentSearchQuery;
-          const currentMatches = getSearchMatchesFromDocument(state.doc, currentQuery);
-
-          if (currentMatches.length === 0) {
-            return DecorationSet.empty;
-          }
-
-          return DecorationSet.create(
-            state.doc,
-            currentMatches.map((match, index) =>
-              Decoration.inline(match.from, match.to, {
-                class: index === (noteSearchOpen ? noteSearchIndex : 0)
-                  ? "edgeever-search-match edgeever-search-match-active"
-                  : "edgeever-search-match",
-              })
-            )
-          );
-        },
-      },
+    const searchHighlightPlugin = createNoteSearchHighlightPlugin({
+      getQuery: () => noteSearchOpen ? noteSearchQuery : contentSearchQuery,
+      getActiveIndex: () => noteSearchOpen ? noteSearchIndex : 0,
     });
 
     editor.registerPlugin(searchHighlightPlugin);
@@ -1683,7 +1617,7 @@ const RichEditorPane = ({
       }
 
       setNoteSearchIndex((current) => {
-        const next = (current + direction + noteSearchMatches.length) % noteSearchMatches.length;
+        const next = getNextSearchMatchIndex(current, direction, noteSearchMatches.length);
         selectNoteSearchMatch(next);
         return next;
       });
@@ -1843,11 +1777,8 @@ const RichEditorPane = ({
       return;
     }
 
-    hasUnsavedChangesRef.current = true;
-    setHasUnsavedChanges(true);
-    setDirtyVersion((version) => version + 1);
-    setSaveState((current) => (current === "conflict" ? current : "idle"));
-  }, []);
+    markDirtyStatus();
+  }, [markDirtyStatus]);
 
   const getCurrentContentJson = useCallback((): TiptapDoc | null => {
     if (useMobilePlainTextEditor) {
@@ -1897,7 +1828,6 @@ const RichEditorPane = ({
       appliedEditorSourceKeyRef.current = null;
       setHydratedEditorMemoId(null);
       editingMemoIdRef.current = null;
-      hasUnsavedChangesRef.current = false;
       setHasUnsavedChanges(false);
       setTitle("");
       setTagsText("");
@@ -1993,39 +1923,15 @@ const RichEditorPane = ({
         queuedUpdate = undefined;
       }
 
-      const draftUpdatedAt = draft ? Date.parse(draft.updatedAt) : 0;
-      const remoteUpdatedAt = Date.parse(memo.updatedAt);
-      const useDraft = Boolean(draft && (queuedUpdate || draftUpdatedAt >= remoteUpdatedAt));
-      const queuedPayload =
-        queuedUpdate && queuedUpdate.kind === "memo.update"
-          ? (queuedUpdate.payload as MemoUpdateSyncPayload)
-          : null;
-      // Prefer an unpushed local queue payload over a stale memo prop when the
-      // draft was already cleared by a successful local save.
-      const useQueuedPayload = Boolean(queuedPayload && !useDraft && !isMemoUpdateAlreadyApplied(memo, queuedUpdate!));
-
-      const nextTitle = useDraft && draft
-        ? draft.title
-        : useQueuedPayload && queuedPayload
-          ? getEditableMemoTitle(queuedPayload.title)
-          : getEditableMemoTitle(memo.title);
-      const nextTagsText = useDraft && draft
-        ? draft.tagsText
-        : useQueuedPayload && queuedPayload
-          ? queuedPayload.tags.join(", ")
-          : memo.tags.join(", ");
-      const nextContent = useDraft && draft
-        ? draft.contentJson
-        : useQueuedPayload && queuedPayload
-          ? queuedPayload.contentJson
-          : resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown);
-      const nextMarkdown = docToMarkdown(nextContent);
-      const nextHasUnsavedChanges = Boolean(useDraft && !queuedUpdate);
-      const sourceKey = useDraft && draft
-        ? `draft:${memo.id}:${draft.updatedAt}:${nextTitle}:${nextTagsText}:${nextMarkdown}`
-        : useQueuedPayload && queuedUpdate
-          ? `queue:${memo.id}:${queuedUpdate.updatedAt}:${nextTitle}:${nextTagsText}:${nextMarkdown}`
-          : `memo:${memo.id}:${memo.revision}:${memo.updatedAt}:${memo.contentHash}:${nextTitle}:${nextTagsText}:${nextMarkdown}`;
+      const resolvedDraft = resolveEditorDraftState({ memo, draft, queuedUpdate });
+      const {
+        title: nextTitle,
+        tagsText: nextTagsText,
+        contentJson: nextContent,
+        contentMarkdown: nextMarkdown,
+        hasUnsavedChanges: nextHasUnsavedChanges,
+        sourceKey,
+      } = resolvedDraft;
 
       const alreadyHydratedSameMemo = sameMemo && hydratedMemoIdRef.current === memo.id;
       const editorMarkdownMatches = Boolean(
@@ -2069,7 +1975,6 @@ const RichEditorPane = ({
 
       hydratingRef.current = true;
       editingMemoIdRef.current = memo.id;
-      hasUnsavedChangesRef.current = nextHasUnsavedChanges;
       setHasUnsavedChanges(nextHasUnsavedChanges);
       if (queuedUpdate) {
         const nextState = syncStatusToSaveState(queuedUpdate.status);
@@ -2298,7 +2203,8 @@ const RichEditorPane = ({
     getMobilePlainTextValue,
     i18n.language,
     i18n.resolvedLanguage,
-    markdownSource,
+      markdownSource,
+      markDirtyStatus,
     memo,
     notebookOptions,
     t,
@@ -2482,7 +2388,6 @@ const RichEditorPane = ({
 
       if (currentSnapshot() === snapshot) {
         setMobilePlainText(docToMarkdown(savedMemo.contentJson));
-        hasUnsavedChangesRef.current = false;
         setHasUnsavedChanges(false);
         await localDb.drafts.delete(savedMemo.id);
         setSaveConflictInfo(null);
@@ -2494,7 +2399,6 @@ const RichEditorPane = ({
       }
 
       persistCurrentDraft();
-      hasUnsavedChangesRef.current = true;
       setHasUnsavedChanges(true);
       setSaveConflictInfo(null);
       setSaveState("idle");
@@ -2519,7 +2423,6 @@ const RichEditorPane = ({
           updatedAt: new Date().toISOString(),
         });
 
-        hasUnsavedChangesRef.current = false;
         setHasUnsavedChanges(false);
         setSaveConflictInfo(null);
         setSaveState("queued");
@@ -2592,18 +2495,18 @@ const RichEditorPane = ({
   }, []);
 
   const handleResourceDownload = useCallback(async (target: ResourceMenuTarget) => {
-    setResourceMenuTarget(null);
-    setResourceActionError(null);
+    hideResourceMenu();
+    clearResourceActionError();
     try {
       downloadBlob(await fetchResourceBlob(target), target.filename);
     } catch (error) {
-      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
+      failResourceAction(error instanceof Error ? error.message : getResourceActionFailure(target));
     }
-  }, [downloadBlob, fetchResourceBlob, getResourceActionFailure]);
+  }, [clearResourceActionError, downloadBlob, failResourceAction, fetchResourceBlob, getResourceActionFailure, hideResourceMenu]);
 
   const handleResourceSaveAs = useCallback(async (target: ResourceMenuTarget) => {
-    setResourceMenuTarget(null);
-    setResourceActionError(null);
+    hideResourceMenu();
+    clearResourceActionError();
     try {
       const savePicker = (window as Window & {
         showSaveFilePicker?: (options: { suggestedName: string }) => Promise<{
@@ -2623,24 +2526,20 @@ const RichEditorPane = ({
       await writable.close();
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
+      failResourceAction(error instanceof Error ? error.message : getResourceActionFailure(target));
     }
-  }, [downloadBlob, fetchResourceBlob, getResourceActionFailure]);
+  }, [clearResourceActionError, downloadBlob, failResourceAction, fetchResourceBlob, getResourceActionFailure, hideResourceMenu]);
 
   const openResourceDialog = useCallback((action: ResourceDialogState["action"], target: ResourceMenuTarget) => {
-    setResourceMenuTarget(null);
-    setResourceActionError(null);
-    setResourceFilename(target.filename);
-    setResourceDialog({ action, target });
-  }, []);
+    openResourceActionDialog(action, target);
+  }, [openResourceActionDialog]);
 
   const handleResourceRename = useCallback(async () => {
     const target = resourceDialog?.action === "rename" ? resourceDialog.target : null;
     const filename = resourceFilename.trim();
     if (!target?.resourceId || !filename || resourceActionPending) return;
 
-    setResourceActionPending(true);
-    setResourceActionError(null);
+    startResourceAction();
     try {
       const result = await repository.renameResource(target.resourceId, filename);
       const nextFilename = result.resource.filename || filename;
@@ -2650,20 +2549,17 @@ const RichEditorPane = ({
         replaceAttachmentLabel(target, nextFilename);
       }
       await queryClient.invalidateQueries({ queryKey: ["resources"] });
-      setResourceDialog(null);
+      completeResourceAction();
     } catch (error) {
-      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
-    } finally {
-      setResourceActionPending(false);
+      failResourceAction(error instanceof Error ? error.message : getResourceActionFailure(target));
     }
-  }, [getResourceActionFailure, queryClient, replaceAttachmentLabel, repository, resourceActionPending, resourceDialog, resourceFilename]);
+  }, [completeResourceAction, failResourceAction, getResourceActionFailure, queryClient, replaceAttachmentLabel, repository, resourceActionPending, resourceDialog, resourceFilename, startResourceAction]);
 
   const handleResourceDelete = useCallback(async () => {
     const target = resourceDialog?.action === "delete" ? resourceDialog.target : null;
     if (!target || resourceActionPending) return;
 
-    setResourceActionPending(true);
-    setResourceActionError(null);
+    startResourceAction();
     try {
       if (target.kind === "image" && target.url.startsWith("edgeever-staged://") && window.edgeeverDesktop) {
         const stagedUrl = new URL(target.url);
@@ -2678,13 +2574,11 @@ const RichEditorPane = ({
       } else {
         removeAttachmentLink(target);
       }
-      setResourceDialog(null);
+      completeResourceAction();
     } catch (error) {
-      setResourceActionError(error instanceof Error ? error.message : getResourceActionFailure(target));
-    } finally {
-      setResourceActionPending(false);
+      failResourceAction(error instanceof Error ? error.message : getResourceActionFailure(target));
     }
-  }, [getResourceActionFailure, queryClient, removeAttachmentLink, repository, resourceActionPending, resourceDialog]);
+  }, [completeResourceAction, failResourceAction, getResourceActionFailure, queryClient, removeAttachmentLink, repository, resourceActionPending, resourceDialog, startResourceAction]);
 
   const clearMobileEditorTimers = useCallback(() => {
     if (mobileDraftTimerRef.current !== null) {
@@ -2705,7 +2599,6 @@ const RichEditorPane = ({
     }
 
     if (!hasUnsavedChangesRef.current) {
-      hasUnsavedChangesRef.current = true;
       setHasUnsavedChanges(true);
       setSaveState((current) => (current === "conflict" ? current : "idle"));
     } else if (saveState === "saved") {
@@ -2888,7 +2781,6 @@ const RichEditorPane = ({
       const { memo: remoteMemo } = await repository.adoptCloudMemo(currentMemo.id);
       await onSaved(remoteMemo);
 
-      hasUnsavedChangesRef.current = false;
       setHasUnsavedChanges(false);
       setSaveConflictInfo(null);
       setSaveState("idle");
@@ -3026,9 +2918,11 @@ const RichEditorPane = ({
     notebookUpdatePending ||
     imageUploadState === "compressing" ||
     imageUploadState === "uploading";
-  const noteSearchMatchLabel = noteSearchQuery.trim()
-    ? `${noteSearchMatches.length > 0 ? noteSearchIndex + 1 : 0}/${noteSearchMatches.length}`
-    : "0/0";
+  const noteSearchMatchLabel = formatNoteSearchMatchLabel(
+    noteSearchQuery,
+    noteSearchIndex,
+    noteSearchMatches.length,
+  );
   const mobileImeDebugEditorFocused =
     typeof document !== "undefined" && mobileTextAreaRef.current === document.activeElement;
   const mobileImeDebugLogText = [
@@ -4006,7 +3900,7 @@ const RichEditorPane = ({
       <Dialog
         open={resourceDialog?.action === "rename"}
         onOpenChange={(open) => {
-          if (!open && !resourceActionPending) setResourceDialog(null);
+          if (!open) closeResourceDialog();
         }}
       >
         <DialogContent>
@@ -4035,7 +3929,7 @@ const RichEditorPane = ({
               <p className="text-sm text-rose-600" role="alert">{resourceActionError}</p>
             )}
             <DialogFooter>
-              <Button type="button" variant="ghost" disabled={resourceActionPending} onClick={() => setResourceDialog(null)}>
+              <Button type="button" variant="ghost" disabled={resourceActionPending} onClick={closeResourceDialog}>
                 {t("common.cancel")}
               </Button>
               <Button type="submit" variant="solid" disabled={resourceActionPending || !resourceFilename.trim()}>
@@ -4049,7 +3943,7 @@ const RichEditorPane = ({
       <Dialog
         open={resourceDialog?.action === "delete"}
         onOpenChange={(open) => {
-          if (!open && !resourceActionPending) setResourceDialog(null);
+          if (!open) closeResourceDialog();
         }}
       >
         <DialogContent>
@@ -4064,7 +3958,7 @@ const RichEditorPane = ({
             <p className="text-sm text-rose-600" role="alert">{resourceActionError}</p>
           )}
           <DialogFooter>
-            <Button type="button" variant="ghost" disabled={resourceActionPending} onClick={() => setResourceDialog(null)}>
+            <Button type="button" variant="ghost" disabled={resourceActionPending} onClick={closeResourceDialog}>
               {t("common.cancel")}
             </Button>
             <Button type="button" variant="danger" disabled={resourceActionPending} onClick={() => void handleResourceDelete()}>
@@ -4183,7 +4077,6 @@ const RichEditorPane = ({
           onClose={() => setHistoryOpen(false)}
           onRestored={async (restoredMemo) => {
             await localDb.drafts.delete(restoredMemo.id);
-            hasUnsavedChangesRef.current = false;
             setHasUnsavedChanges(false);
             await onSaved(restoredMemo);
             setHistoryOpen(false);

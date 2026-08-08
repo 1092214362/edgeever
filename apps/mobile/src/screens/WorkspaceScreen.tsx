@@ -115,6 +115,7 @@ import MobileWebClipCapture from "../components/MobileWebClipCapture";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
 import { SAFE_DOM_WEBVIEW_PROPS } from "../lib/mobile-dom";
 import { safeDomCall } from "../lib/safe-dom-call";
+import { applyMobileEditorUpload, cancelMobileEditorUpload, flushMobileEditor } from "../lib/mobile-editor-controller";
 import { showEdgeEverKeyboard } from "../../modules/edgeever-keyboard";
 import { MobileResourceActions } from "../components/MobileResourceActions";
 import { MobileCreateChoiceModal, MobileTemplatePickerModal } from "../components/MobileTemplatePicker";
@@ -135,6 +136,7 @@ import {
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useMobileAutomaticSync } from "../hooks/useMobileAutomaticSync";
 import { useMobileLocalMirrorSync } from "../hooks/useMobileLocalMirrorSync";
+import { useMobileEditorResourceActions } from "../hooks/useMobileEditorResourceActions";
 import {
   filterCollapsedNotebookOptions,
   filterNotebookOptions,
@@ -169,15 +171,11 @@ import {
 import {
   deleteMobileResourceFromDoc,
   getMobileResourceUpdatePayload,
-  openMobileResource,
-  parseMobileResourceTargetJson,
   renameMobileResourceInDoc,
-  saveMobileResourceAs,
   type MobileResourceTarget,
 } from "../lib/mobile-attachments";
 import {
   createOnceProtectedResourceFailureNotifier,
-  loadProtectedResourceDataUrl,
   type ProtectedResourceLoadFailure,
 } from "../lib/mobile-protected-resources";
 
@@ -2067,19 +2065,9 @@ const CreateMemoModal = ({
       const form = new FormData();
       form.append("file", new ExpoFile(uploadAsset.uri));
       const { resource } = await client!.uploadMemoResource(memo.id, form);
-      if (resource.kind === "image" && uploadId) {
-        safeDomCall(() => editorRef.current?.completeImageUpload(
-          uploadId,
-          resource.url,
-          resource.filename || uploadAsset.name || "图片"
-        ));
-      } else {
-        safeDomCall(() => editorRef.current?.appendAttachment(resource.url, resource.filename || uploadAsset.name || "附件"));
-      }
+      applyMobileEditorUpload(editorRef, resource, uploadId, uploadAsset.name || (resource.kind === "image" ? "图片" : "附件"));
     } catch (error) {
-      if (uploadId) {
-        safeDomCall(() => editorRef.current?.cancelImageUpload(uploadId));
-      }
+      cancelMobileEditorUpload(editorRef, uploadId);
       Alert.alert("附件上传失败", error instanceof Error ? error.message : "请检查网络连接后重试");
     } finally {
       setImageOperation("idle");
@@ -2092,25 +2080,7 @@ const CreateMemoModal = ({
     setDirty(true);
   };
 
-  const flushEditor = async () => {
-    if (!editorRef.current) {
-      return;
-    }
-    await new Promise<void>((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        flushResolverRef.current = null;
-        resolve();
-      };
-      flushResolverRef.current = finish;
-      safeDomCall(() => editorRef.current?.flush());
-      setTimeout(finish, 1000);
-    });
-  };
+  const flushEditor = () => flushMobileEditor(editorRef, flushResolverRef);
 
   const requestClose = async () => {
     if (createPendingRef.current || imageOperationRef.current !== "idle") {
@@ -2132,51 +2102,26 @@ const CreateMemoModal = ({
     };
   }, [clearFocusTimers]);
 
-  const loadEditorResource = useCallback((source: string) => {
-    if (!client) {
-      return Promise.resolve(null);
-    }
-    return loadProtectedResourceDataUrl(source, {
-      baseUrl: session?.baseUrl ?? baseUrl,
-      cache: resourceDataUrlCacheRef.current,
-      getResourceBlob: client.getResourceBlob,
-      onFailure: imageLoadFailureNotifier,
-      token: session?.token,
-    });
-  }, [baseUrl, client, imageLoadFailureNotifier, session?.baseUrl, session?.token]);
-
-  const downloadResource = useCallback(async (target: MobileResourceTarget) => {
-    if (!client) throw new Error(resolvedLocale === "en-US" ? "The attachment client is unavailable." : "当前无法读取附件。");
-    await openMobileResource(client, target);
-  }, [client, resolvedLocale]);
-
-  const saveResourceAs = useCallback(async (target: MobileResourceTarget) => {
-    if (!client) throw new Error(resolvedLocale === "en-US" ? "The resource client is unavailable." : "当前无法读取资源。");
-    const result = await saveMobileResourceAs(client, target);
-    if (result.kind === "saf") {
-      Alert.alert(
-        resolvedLocale === "en-US" ? "Downloaded" : "下载成功",
-        resolvedLocale === "en-US" ? `Saved ${result.filename}` : `已保存：${result.filename}`
-      );
-    }
-  }, [client, resolvedLocale]);
-
-  const renameResource = useCallback(async (target: MobileResourceTarget, filename: string) => {
-    if (!client || !materializedMemoRef.current) throw new Error(resolvedLocale === "en-US" ? "Wait for this note to sync first." : "请等待笔记同步完成。");
-    const { resource } = await client.renameResource(target.resourceId, filename);
-    safeDomCall(() => editorRef.current?.renameResource(JSON.stringify(target), resource.filename || filename));
-  }, [client, resolvedLocale]);
-
-  const deleteResource = useCallback(async (target: MobileResourceTarget) => {
-    if (!client || !materializedMemoRef.current) throw new Error(resolvedLocale === "en-US" ? "Wait for this note to sync first." : "请等待笔记同步完成。");
-    await client.deleteResource(target.resourceId);
-    safeDomCall(() => editorRef.current?.removeResource(JSON.stringify(target)));
-  }, [client, resolvedLocale]);
-
-  const selectResource = useCallback(async (targetJson: string) => {
-    const target = parseMobileResourceTargetJson(targetJson);
-    if (target) setResourceTarget(target);
-  }, []);
+  const canMutateEditorResource = useCallback(() => Boolean(materializedMemoRef.current), []);
+  const {
+    deleteResource,
+    downloadResource,
+    loadEditorResource,
+    renameResource,
+    saveResourceAs,
+    selectResource,
+  } = useMobileEditorResourceActions({
+    baseUrl,
+    canMutate: canMutateEditorResource,
+    client,
+    editorRef,
+    onLoadFailure: imageLoadFailureNotifier,
+    onSelect: setResourceTarget,
+    resolvedLocale,
+    resourceCacheRef: resourceDataUrlCacheRef,
+    sessionBaseUrl: session?.baseUrl,
+    token: session?.token,
+  });
 
   const editorElement = useMemo(() => draftLoaded && baseUrl ? (
     <LocalTiptapEditor
@@ -2632,25 +2577,7 @@ const RichEditorModal = ({
     }
   };
 
-  const flushEditor = async () => {
-    if (!editorRef.current) {
-      return;
-    }
-    await new Promise<void>((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        flushResolverRef.current = null;
-        resolve();
-      };
-      flushResolverRef.current = finish;
-      safeDomCall(() => editorRef.current?.flush());
-      setTimeout(finish, 1000);
-    });
-  };
+  const flushEditor = () => flushMobileEditor(editorRef, flushResolverRef);
 
   const requestClose = async () => {
     if (savingRef.current || uploadingRef.current) {
@@ -2708,17 +2635,9 @@ const RichEditorModal = ({
       const form = new FormData();
       form.append("file", new ExpoFile(uploadAsset.uri));
       const { resource } = await client.uploadMemoResource(memo.id, form);
-      if (resource.kind === "image" && uploadId) {
-        safeDomCall(() => editorRef.current?.completeImageUpload(
-          uploadId,
-          resource.url,
-          resource.filename || uploadAsset.name || "图片"
-        ));
-      } else {
-        safeDomCall(() => editorRef.current?.appendAttachment(resource.url, resource.filename || uploadAsset.name || "附件"));
-      }
+      applyMobileEditorUpload(editorRef, resource, uploadId, uploadAsset.name || (resource.kind === "image" ? "图片" : "附件"));
     } catch (uploadError) {
-      safeDomCall(() => editorRef.current?.cancelImageUpload(uploadId));
+      cancelMobileEditorUpload(editorRef, uploadId);
       setError(uploadError instanceof Error ? uploadError.message : "附件上传失败");
     } finally {
       uploadingRef.current = false;
@@ -2726,51 +2645,26 @@ const RichEditorModal = ({
     }
   };
 
-  const loadEditorResource = useCallback((source: string) => {
-    if (!client) {
-      return Promise.resolve(null);
-    }
-    return loadProtectedResourceDataUrl(source, {
-      baseUrl: session?.baseUrl ?? baseUrl,
-      cache: resourceDataUrlCacheRef.current,
-      getResourceBlob: client.getResourceBlob,
-      onFailure: imageLoadFailureNotifier,
-      token: session?.token,
-    });
-  }, [baseUrl, client, imageLoadFailureNotifier, session?.baseUrl, session?.token]);
-
-  const downloadResource = useCallback(async (target: MobileResourceTarget) => {
-    if (!client) throw new Error(resolvedLocale === "en-US" ? "The attachment client is unavailable." : "当前无法读取附件。");
-    await openMobileResource(client, target);
-  }, [client, resolvedLocale]);
-
-  const saveResourceAs = useCallback(async (target: MobileResourceTarget) => {
-    if (!client) throw new Error(resolvedLocale === "en-US" ? "The resource client is unavailable." : "当前无法读取资源。");
-    const result = await saveMobileResourceAs(client, target);
-    if (result.kind === "saf") {
-      Alert.alert(
-        resolvedLocale === "en-US" ? "Downloaded" : "下载成功",
-        resolvedLocale === "en-US" ? `Saved ${result.filename}` : `已保存：${result.filename}`
-      );
-    }
-  }, [client, resolvedLocale]);
-
-  const renameResource = useCallback(async (target: MobileResourceTarget, filename: string) => {
-    if (!client || !memo || memo.id.startsWith("local:")) throw new Error(resolvedLocale === "en-US" ? "Wait for this note to sync first." : "请等待笔记同步完成。");
-    const { resource } = await client.renameResource(target.resourceId, filename);
-    safeDomCall(() => editorRef.current?.renameResource(JSON.stringify(target), resource.filename || filename));
-  }, [client, memo, resolvedLocale]);
-
-  const deleteResource = useCallback(async (target: MobileResourceTarget) => {
-    if (!client || !memo || memo.id.startsWith("local:")) throw new Error(resolvedLocale === "en-US" ? "Wait for this note to sync first." : "请等待笔记同步完成。");
-    await client.deleteResource(target.resourceId);
-    safeDomCall(() => editorRef.current?.removeResource(JSON.stringify(target)));
-  }, [client, memo, resolvedLocale]);
-
-  const selectResource = useCallback(async (targetJson: string) => {
-    const target = parseMobileResourceTargetJson(targetJson);
-    if (target) setResourceTarget(target);
-  }, []);
+  const canMutateEditorResource = useCallback(() => Boolean(memo && !memo.id.startsWith("local:")), [memo]);
+  const {
+    deleteResource,
+    downloadResource,
+    loadEditorResource,
+    renameResource,
+    saveResourceAs,
+    selectResource,
+  } = useMobileEditorResourceActions({
+    baseUrl,
+    canMutate: canMutateEditorResource,
+    client,
+    editorRef,
+    onLoadFailure: imageLoadFailureNotifier,
+    onSelect: setResourceTarget,
+    resolvedLocale,
+    resourceCacheRef: resourceDataUrlCacheRef,
+    sessionBaseUrl: session?.baseUrl,
+    token: session?.token,
+  });
 
   const editorElement = useMemo(
     () => memo && baseUrl ? (
