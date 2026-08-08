@@ -4,7 +4,6 @@ import {
   docToMarkdown,
   docToText,
   emptyDoc,
-  ApiTokenCreateSchema,
   DeleteMemosSchema,
   markdownToDoc,
   mergeMemoDocs,
@@ -20,10 +19,6 @@ import {
   normalizeTags,
   RestoreJsonMemosSchema,
   RestoreJsonNotebooksSchema,
-  ObjectStorageConnectionTestSchema,
-  ObjectStorageSettingsUpdateSchema,
-  type ApiToken,
-  type CreatedApiToken,
   type MemoDetail,
   type MemoEditSession,
   type MemoRevision,
@@ -125,13 +120,11 @@ import {
   updateTagsForMemos,
 } from "./tag-service";
 import {
-  ALL_TOKEN_SCOPES,
   assertScope,
   getActorLabel,
   getAuditActor,
   getWorkspaceId,
   hasScopes,
-  normalizeTokenScopes,
   requireOwner,
   requireScopes,
   requireUser,
@@ -140,25 +133,20 @@ import {
 import { registerTagRoutes } from "./tag-routes";
 import { registerTemplateRoutes } from "./template-routes";
 import { registerAuthRoutes, type UserRow } from "./auth-routes";
+import { registerApiTokenRoutes, type ApiTokenRow } from "./api-token-routes";
+import { registerObjectStorageRoutes } from "./object-storage-routes";
 import { registerResourceRoutes } from "./resource-routes";
+import { registerSyncRoutes } from "./sync-routes";
 import {
   registerUserRoutes,
   type InstanceUserRow,
 } from "./user-routes";
 import { registerNotebookRoutes } from "./notebook-routes";
 import { registerMemoShareRoutes, registerPublicShareRoutes } from "./share-routes";
-import { decryptSecret, encryptSecret } from "./secret-encryption";
 import {
-  BUILTIN_STORAGE_CONFIG_ID,
-  S3_STORAGE_CONFIG_ID,
   deleteStoredObjects,
-  getActiveObjectStorageConfig,
-  getObjectStorageConfig,
-  mapObjectStorageSettings,
-  resolveObjectStorageEncryptionKey,
   resolveObjectStorage,
 } from "./object-storage";
-import { testWorkerS3Connection } from "./worker-s3-blob-store";
 import {
   MAX_ATTACHMENT_UPLOAD_BYTES,
   MAX_IMAGE_UPLOAD_BYTES,
@@ -200,13 +188,6 @@ type MemoSummaryRow = {
 
 type MemoListSortMode = "updated-desc" | "created-desc" | "title-asc";
 type MemoListFilterMode = "all" | "tagged" | "untagged" | "pinned";
-
-type MobileSyncChangeRow = {
-  id: number;
-  entity_type: "notebook" | "memo";
-  entity_id: string;
-  operation: "upsert" | "delete";
-};
 
 type MemoListCursor = {
   sort: MemoListSortMode;
@@ -262,18 +243,6 @@ type SessionRow = {
   expires_at: string;
 };
 
-type ApiTokenRow = {
-  id: string;
-  name: string;
-  token_value: string | null;
-  scopes_json: string;
-  last_used_at: string | null;
-  expires_at: string | null;
-  is_revoked: number;
-  created_at: string;
-  workspace_id: string;
-};
-
 type WorkspaceIdentityRow = {
   workspace_id: string;
   workspace_name: string;
@@ -298,8 +267,6 @@ const DEFAULT_SESSION_TTL_DAYS = 400;
 const MAX_SESSION_TTL_DAYS = 400;
 const DEFAULT_R2_BUCKET_NAME = "edgeever-resources";
 const REVISION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000;
-const API_TOKEN_BYTES = 32;
-const API_TOKEN_PREFIX = "eev";
 const app = new Hono<AppEnv>();
 
 app.use(
@@ -399,330 +366,21 @@ app.use("/api/v1/*", async (c, next) => {
   await next();
 });
 
-const getSubmittedObjectStorageSecret = async (
-  c: AppContext,
-  submittedSecret: string | undefined,
-) => {
-  if (submittedSecret) return submittedSecret;
-  const existing = await getObjectStorageConfig(c.env.storage.db, S3_STORAGE_CONFIG_ID);
-  const encryptionKey = resolveObjectStorageEncryptionKey(c.env.EDGE_EVER_STORAGE_ENCRYPTION_KEY);
-  if (!existing?.secret_access_key_encrypted || !encryptionKey) {
-    throw new AppError("object_storage_secret_required", "Secret Access Key is required.", 400);
-  }
-  return decryptSecret(existing.secret_access_key_encrypted, encryptionKey);
-};
-
-app.get("/api/v1/instance/object-storage", async (c) => {
-  const denied = requireOwner(c);
-  if (denied) return denied;
-
-  const active = await getActiveObjectStorageConfig(c.env.storage.db);
-  if (!active) return notFound(c, "Object storage configuration not found.");
-  const external = await getObjectStorageConfig(c.env.storage.db, S3_STORAGE_CONFIG_ID);
-  return c.json({
-    settings: mapObjectStorageSettings(active, Boolean(resolveObjectStorageEncryptionKey(c.env.EDGE_EVER_STORAGE_ENCRYPTION_KEY))),
-    externalSettings: external
-      ? mapObjectStorageSettings(external, Boolean(resolveObjectStorageEncryptionKey(c.env.EDGE_EVER_STORAGE_ENCRYPTION_KEY)))
-      : null,
-  });
+registerObjectStorageRoutes(app, {
+  isDemoMode: (...args) => isDemoMode(...args),
 });
 
-app.post("/api/v1/instance/object-storage/test", zValidator("json", ObjectStorageConnectionTestSchema), async (c) => {
-  const denied = requireOwner(c);
-  if (denied) return denied;
-  const input = c.req.valid("json");
-
-  try {
-    await testWorkerS3Connection({
-      endpoint: input.endpoint.replace(/\/+$/, ""),
-      region: input.region,
-      bucket: input.bucket,
-      accessKeyId: input.accessKeyId,
-      secretAccessKey: await getSubmittedObjectStorageSecret(c, input.secretAccessKey),
-      forcePathStyle: input.forcePathStyle,
-      objectPrefix: input.objectPrefix,
-    });
-    return c.json({ ok: true });
-  } catch (error) {
-    if (error instanceof AppError) return apiError(c, error.code, error.message, error.status);
-    return apiError(c, "object_storage_connection_failed", error instanceof Error ? error.message : "Object storage connection failed.", 400);
-  }
+registerApiTokenRoutes(app, {
+  sha256: (...args) => sha256(...args),
 });
-
-app.put("/api/v1/instance/object-storage", zValidator("json", ObjectStorageSettingsUpdateSchema), async (c) => {
-  const denied = requireOwner(c);
-  if (denied) return denied;
-  if (isDemoMode(c.env)) return forbidden(c, "Object storage cannot be changed in demo mode.");
-  const input = c.req.valid("json");
-  const now = isoNow();
-
-  if (input.provider === "builtin") {
-    await c.env.storage.db.batch([
-      c.env.storage.db.prepare(`UPDATE object_storage_configs SET is_active = 0, updated_at = ? WHERE is_active = 1`).bind(now),
-      c.env.storage.db.prepare(`UPDATE object_storage_configs SET is_active = 1, updated_at = ? WHERE id = ?`).bind(now, BUILTIN_STORAGE_CONFIG_ID),
-      auditStatement(c.env.storage.db, "user", c.get("auth").actorId, "instance.object_storage.update", "object_storage", BUILTIN_STORAGE_CONFIG_ID, { provider: "builtin" }),
-    ]);
-  } else {
-    const encryptionKey = resolveObjectStorageEncryptionKey(c.env.EDGE_EVER_STORAGE_ENCRYPTION_KEY);
-    if (!encryptionKey) {
-      return apiError(c, "object_storage_encryption_key_missing", "Configure EDGE_EVER_STORAGE_ENCRYPTION_KEY before saving external credentials.", 400);
-    }
-
-    try {
-      const secretAccessKey = await getSubmittedObjectStorageSecret(c, input.secretAccessKey);
-      const endpoint = input.endpoint.replace(/\/+$/, "");
-      await testWorkerS3Connection({ ...input, endpoint, secretAccessKey });
-      const encryptedSecret = await encryptSecret(secretAccessKey, encryptionKey);
-      await c.env.storage.db.batch([
-        c.env.storage.db.prepare(`UPDATE object_storage_configs SET is_active = 0, updated_at = ? WHERE is_active = 1`).bind(now),
-        c.env.storage.db.prepare(
-          `INSERT INTO object_storage_configs (
-             id, provider, display_name, endpoint, region, bucket, access_key_id,
-             secret_access_key_encrypted, force_path_style, object_prefix, is_active, created_at, updated_at
-           ) VALUES (?, 's3', ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET
-             display_name = excluded.display_name, endpoint = excluded.endpoint, region = excluded.region,
-             bucket = excluded.bucket, access_key_id = excluded.access_key_id,
-             secret_access_key_encrypted = excluded.secret_access_key_encrypted,
-             force_path_style = excluded.force_path_style, object_prefix = excluded.object_prefix,
-             is_active = 1, updated_at = excluded.updated_at`
-        ).bind(
-          S3_STORAGE_CONFIG_ID,
-          input.displayName,
-          endpoint,
-          input.region,
-          input.bucket,
-          input.accessKeyId,
-          encryptedSecret,
-          input.forcePathStyle ? 1 : 0,
-          input.objectPrefix.replace(/^\/+|\/+$/g, ""),
-          now,
-          now,
-        ),
-        auditStatement(c.env.storage.db, "user", c.get("auth").actorId, "instance.object_storage.update", "object_storage", S3_STORAGE_CONFIG_ID, { provider: "s3", endpoint, bucket: input.bucket }),
-      ]);
-    } catch (error) {
-      if (error instanceof AppError) return apiError(c, error.code, error.message, error.status);
-      return apiError(c, "object_storage_connection_failed", error instanceof Error ? error.message : "Object storage connection failed.", 400);
-    }
-  }
-
-  const active = await getActiveObjectStorageConfig(c.env.storage.db);
-  return c.json({ settings: mapObjectStorageSettings(active!, Boolean(resolveObjectStorageEncryptionKey(c.env.EDGE_EVER_STORAGE_ENCRYPTION_KEY))) });
-});
-
-app.get("/api/v1/api-tokens", async (c) => {
-  const userOnly = requireUser(c);
-
-  if (userOnly) {
-    return userOnly;
-  }
-
-  const rows = await c.env.storage.db.prepare(
-    `SELECT id, name, token_value, scopes_json, last_used_at, expires_at, is_revoked, created_at, workspace_id
-     FROM api_tokens
-     WHERE workspace_id = ?
-     ORDER BY is_revoked ASC, created_at DESC
-     LIMIT 200`
-  ).bind(getWorkspaceId(c)).all<ApiTokenRow>();
-
-  return c.json({
-    apiTokens: rows.results.map(mapApiToken),
-    availableScopes: ALL_TOKEN_SCOPES,
-  });
-});
-
-app.post("/api/v1/api-tokens", zValidator("json", ApiTokenCreateSchema), async (c) => {
-  const userOnly = requireUser(c);
-
-  if (userOnly) {
-    return userOnly;
-  }
-
-  const input = c.req.valid("json");
-  const scopes = normalizeTokenScopes(input.scopes);
-
-  if (!scopes) {
-    return badRequest(c, "Token scope is not supported.");
-  }
-
-  const id = createId("tok");
-  const token = `${API_TOKEN_PREFIX}_${randomToken(API_TOKEN_BYTES)}`;
-  const now = isoNow();
-  const actor = getAuditActor(c);
-
-  await c.env.storage.db.batch([
-    c.env.storage.db.prepare(
-      `INSERT INTO api_tokens (id, workspace_id, name, token_hash, token_value, scopes_json, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, getWorkspaceId(c), input.name, await sha256(token), token, JSON.stringify(scopes), input.expiresAt ?? null, now),
-    auditStatement(c.env.storage.db, actor.actorType, actor.actorId, "api_token.create", "api_token", id, {
-      name: input.name,
-      scopes,
-      expiresAt: input.expiresAt ?? null,
-    }),
-  ]);
-
-  const row = await getApiTokenRow(c.env.storage.db, id, getWorkspaceId(c));
-
-  if (!row) {
-    return notFound(c, "API token not found");
-  }
-
-  return c.json({ token, apiToken: mapApiToken(row) } satisfies CreatedApiToken, 201);
-});
-
-app.delete("/api/v1/api-tokens/:id", async (c) => {
-  const userOnly = requireUser(c);
-
-  if (userOnly) {
-    return userOnly;
-  }
-
-  const id = c.req.param("id");
-  const actor = getAuditActor(c);
-
-  await c.env.storage.db.batch([
-    c.env.storage.db.prepare(`DELETE FROM api_tokens WHERE id = ? AND workspace_id = ?`).bind(id, getWorkspaceId(c)),
-    auditStatement(c.env.storage.db, actor.actorType, actor.actorId, "api_token.delete", "api_token", id, {}),
-  ]);
-
-  return c.json({ ok: true });
-});
-
 registerNotebookRoutes(app, async (env) => {
   if (isDemoMode(env)) await ensureDemoSeed(env);
 });
 
-app.get("/api/v1/sync/bootstrap", async (c) => {
-  const denied = requireScopes(c, "read:notebooks", "read:memos");
-
-  if (denied) {
-    return denied;
-  }
-
-  const workspaceId = getWorkspaceId(c);
-  const limit = clampNumber(Number(c.req.query("limit") ?? 100), 1, 200);
-  const afterId = c.req.query("afterId")?.trim() ?? "";
-  const [notebookRows, memoRows, totalRow, cursorRow] = await Promise.all([
-    c.env.storage.db.prepare(
-      `SELECT n.id, n.parent_id, n.name, n.slug, n.icon, n.color, n.sort_order,
-              n.created_at, n.updated_at, COUNT(m.id) AS memo_count, MAX(m.updated_at) AS last_memo_updated_at
-       FROM notebooks n
-       LEFT JOIN memos m ON m.notebook_id = n.id AND m.workspace_id = n.workspace_id AND m.is_deleted = 0
-       WHERE n.workspace_id = ? AND n.is_deleted = 0
-       GROUP BY n.id, n.parent_id, n.name, n.slug, n.icon, n.color, n.sort_order, n.created_at, n.updated_at
-       ORDER BY n.sort_order ASC, n.name ASC`
-    ).bind(workspaceId).all<NotebookRow>(),
-    c.env.storage.db.prepare(
-      `SELECT m.id, m.notebook_id, m.title, m.excerpt, m.tags_json, m.is_pinned,
-              m.is_archived, m.is_deleted, m.created_at, m.updated_at, m.deleted_at, mc.revision,
-              mc.content_json, mc.content_markdown, mc.content_text, mc.content_hash,
-              m.source_memo_ids, m.merge_source_count, m.merged_into_memo_id
-       FROM memos m
-       INNER JOIN memo_contents mc ON mc.memo_id = m.id
-       WHERE m.workspace_id = ? AND m.id > ?
-       ORDER BY m.id ASC
-       LIMIT ?`
-    ).bind(workspaceId, afterId, limit + 1).all<MemoDetailRow>(),
-    c.env.storage.db.prepare(`SELECT COUNT(*) AS count FROM memos WHERE workspace_id = ?`).bind(workspaceId).first<{ count: number }>(),
-    c.env.storage.db.prepare(
-      `SELECT w.created_at AS sync_identity, COALESCE(MAX(c.id), 0) AS cursor
-       FROM workspaces w
-       LEFT JOIN mobile_sync_changes c ON c.workspace_id = w.id
-       WHERE w.id = ?
-       GROUP BY w.created_at`
-    ).bind(workspaceId).first<{ cursor: number; sync_identity: string }>(),
-  ]);
-  const page = memoRows.results.slice(0, limit);
-  const totalCount = totalRow?.count ?? page.length;
-  const nextAfterId = memoRows.results.length > limit ? page.at(-1)?.id ?? null : null;
-
-  return c.json({
-    notebooks: notebookRows.results.map(mapNotebook),
-    memos: page.map(mapMemoDetail),
-    snapshotCursor: cursorRow?.cursor ?? 0,
-    syncIdentity: cursorRow?.sync_identity,
-    totalCount,
-    nextAfterId,
-  });
+registerSyncRoutes(app, {
+  clampNumber: (...args) => clampNumber(...args),
+  mapMemoDetail: (...args) => mapMemoDetail(...args),
 });
-
-app.get("/api/v1/sync/changes", async (c) => {
-  const denied = requireScopes(c, "read:notebooks", "read:memos");
-
-  if (denied) {
-    return denied;
-  }
-
-  const workspaceId = getWorkspaceId(c);
-  const cursor = clampNumber(Number(c.req.query("cursor") ?? 0), 0, Number.MAX_SAFE_INTEGER);
-  const limit = clampNumber(Number(c.req.query("limit") ?? 100), 1, 200);
-  const [rows, cursorRow] = await Promise.all([
-    c.env.storage.db.prepare(
-      `SELECT id, entity_type, entity_id, operation
-       FROM mobile_sync_changes
-       WHERE workspace_id = ? AND id > ?
-       ORDER BY id ASC
-       LIMIT ?`
-    ).bind(workspaceId, cursor, limit + 1).all<MobileSyncChangeRow>(),
-    c.env.storage.db.prepare(
-      `SELECT w.created_at AS sync_identity, COALESCE(MAX(c.id), 0) AS cursor
-       FROM workspaces w
-       LEFT JOIN mobile_sync_changes c ON c.workspace_id = w.id
-       WHERE w.id = ?
-       GROUP BY w.created_at`
-    ).bind(workspaceId).first<{ cursor: number; sync_identity: string }>(),
-  ]);
-  const page = rows.results.slice(0, limit);
-  const memoIds = Array.from(new Set(page.filter((change) => change.entity_type === "memo" && change.operation === "upsert").map((change) => change.entity_id)));
-  const notebookIds = Array.from(new Set(page.filter((change) => change.entity_type === "notebook" && change.operation === "upsert").map((change) => change.entity_id)));
-  const memoPlaceholders = memoIds.map(() => "?").join(", ");
-  const notebookPlaceholders = notebookIds.map(() => "?").join(", ");
-  const [memoRows, notebookRows] = await Promise.all([
-    memoIds.length > 0
-      ? c.env.storage.db.prepare(
-          `SELECT m.id, m.notebook_id, m.title, m.excerpt, m.tags_json, m.is_pinned,
-                  m.is_archived, m.is_deleted, m.created_at, m.updated_at, m.deleted_at, mc.revision,
-                  mc.content_json, mc.content_markdown, mc.content_text, mc.content_hash,
-                  m.source_memo_ids, m.merge_source_count, m.merged_into_memo_id
-           FROM memos m
-           INNER JOIN memo_contents mc ON mc.memo_id = m.id
-           WHERE m.workspace_id = ? AND m.id IN (${memoPlaceholders})`
-        ).bind(workspaceId, ...memoIds).all<MemoDetailRow>()
-      : Promise.resolve({ results: [] as MemoDetailRow[] }),
-    notebookIds.length > 0
-      ? c.env.storage.db.prepare(
-          `SELECT n.id, n.parent_id, n.name, n.slug, n.icon, n.color, n.sort_order,
-                  n.created_at, n.updated_at, COUNT(m.id) AS memo_count, MAX(m.updated_at) AS last_memo_updated_at
-           FROM notebooks n
-           LEFT JOIN memos m ON m.notebook_id = n.id AND m.workspace_id = n.workspace_id AND m.is_deleted = 0
-           WHERE n.workspace_id = ? AND n.is_deleted = 0 AND n.id IN (${notebookPlaceholders})
-           GROUP BY n.id, n.parent_id, n.name, n.slug, n.icon, n.color, n.sort_order, n.created_at, n.updated_at`
-        ).bind(workspaceId, ...notebookIds).all<NotebookRow>()
-      : Promise.resolve({ results: [] as NotebookRow[] }),
-  ]);
-  const memosById = new Map(memoRows.results.map((row) => [row.id, mapMemoDetail(row)]));
-  const notebooksById = new Map(notebookRows.results.map((row) => [row.id, mapNotebook(row)]));
-  const changes = page.map((change) => {
-    if (change.entity_type === "memo") {
-      const memo = change.operation === "upsert" ? memosById.get(change.entity_id) ?? null : null;
-      return { cursor: change.id, entityType: change.entity_type, entityId: change.entity_id, operation: memo ? "upsert" as const : "delete" as const, notebook: null, memo };
-    }
-
-    const notebook = change.operation === "upsert" ? notebooksById.get(change.entity_id) ?? null : null;
-    return { cursor: change.id, entityType: change.entity_type, entityId: change.entity_id, operation: notebook ? "upsert" as const : "delete" as const, notebook, memo: null };
-  });
-
-  return c.json({
-    changes,
-    cursor: page.at(-1)?.id ?? cursor,
-    hasMore: rows.results.length > limit,
-    serverCursor: cursorRow?.cursor ?? 0,
-    syncIdentity: cursorRow?.sync_identity,
-  });
-});
-
 registerTagRoutes(app);
 registerMemoShareRoutes(app);
 registerTemplateRoutes(app, {
@@ -3245,28 +2903,6 @@ const assertNotebookIdsInWorkspace = async (db: D1Database, workspaceId: string,
     throw new AppError("invalid_backup_workspace", "Backup references a notebook outside the current workspace.", 400);
   }
 };
-
-const mapApiToken = (row: ApiTokenRow): ApiToken => ({
-  id: row.id,
-  name: row.name,
-  token: row.token_value,
-  scopes: parseJsonArray(row.scopes_json),
-  lastUsedAt: row.last_used_at,
-  expiresAt: row.expires_at,
-  isRevoked: Boolean(row.is_revoked),
-  createdAt: row.created_at,
-});
-
-
-const getApiTokenRow = async (db: D1Database, id: string, workspaceId: string): Promise<ApiTokenRow | null> =>
-  db
-    .prepare(
-      `SELECT id, name, token_value, scopes_json, last_used_at, expires_at, is_revoked, created_at, workspace_id
-       FROM api_tokens
-       WHERE id = ? AND workspace_id = ?`
-    )
-    .bind(id, workspaceId)
-    .first<ApiTokenRow>();
 
 const getCurrentWorkspaceIdentity = async (db: D1Database, auth: AuthContext) => {
   const row = await db.prepare(
