@@ -4,7 +4,8 @@ import UIKit
 import UniformTypeIdentifiers
 
 enum MemoEditMode: Equatable {
-    case create(notebookId: String)
+    /// `seed` pre-fills title/body/tags (template / clip-style create). When nil, restores local new-note draft.
+    case create(notebookId: String, seed: CreateMemoSeed? = nil)
     case edit(memoId: String)
 }
 
@@ -47,7 +48,11 @@ struct MemoEditView: View {
     @State private var showNotebookPicker = false
     @State private var showImagePicker = false
     @State private var showUploadError = false
+    @State private var showTemplatePicker = false
+    @State private var showApplyTemplateConfirm = false
+    @State private var pendingTemplateSeed: CreateMemoSeed?
     @State private var resourceTarget: ResourceTarget?
+    private let emptyDocJSON = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"
 
     var body: some View {
         ZStack {
@@ -88,6 +93,27 @@ struct MemoEditView: View {
                 showNotebookPicker = false
             }
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showTemplatePicker) {
+            TemplatePickerSheet { seed in
+                requestApplyTemplate(seed)
+            }
+        }
+        .alert(
+            env.preferences.t("应用模板？", en: "Apply template?"),
+            isPresented: $showApplyTemplateConfirm
+        ) {
+            Button(env.preferences.t("取消", en: "Cancel"), role: .cancel) {
+                pendingTemplateSeed = nil
+            }
+            Button(env.preferences.t("替换", en: "Replace"), role: .destructive) {
+                if let seed = pendingTemplateSeed {
+                    applyTemplateSeed(seed)
+                }
+                pendingTemplateSeed = nil
+            }
+        } message: {
+            Text(env.preferences.t("当前内容将被模板内容替换。", en: "The current content will be replaced by the template."))
         }
         .sheet(item: $resourceTarget) { target in
             ResourceActionSheet(
@@ -182,6 +208,25 @@ struct MemoEditView: View {
                     .clipShape(Capsule())
                     .lineLimit(1)
                     .accessibilityIdentifier(CreateMemoChrome.status)
+
+                if isCreate {
+                    Button {
+                        showTemplatePicker = true
+                    } label: {
+                        Text(env.preferences.t("模板", en: "Template"))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(canUseTemplate ? AppTheme.title : AppTheme.secondary)
+                            .frame(minHeight: 36)
+                            .padding(.horizontal, 12)
+                            .overlay(
+                                Capsule().stroke(AppTheme.border, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canUseTemplate)
+                    .accessibilityLabel(env.preferences.t("模板", en: "Template"))
+                    .accessibilityIdentifier(CreateMemoChrome.template)
+                }
 
                 Button {
                     Task { await handleDone() }
@@ -398,6 +443,10 @@ struct MemoEditView: View {
         return !isSaving && !isUploading && editorReady
     }
 
+    private var canUseTemplate: Bool {
+        isCreate && !isCreating && !isUploading
+    }
+
     private var availableNotebooks: [Notebook] {
         (try? env.mirror.listNotebooks(scope: env.session.dataScope ?? "")) ?? []
     }
@@ -427,6 +476,34 @@ struct MemoEditView: View {
         }
         isDirty = true
         scheduleSave()
+    }
+
+    private func requestApplyTemplate(_ seed: CreateMemoSeed) {
+        let current = CreateMemoSeed(title: title, contentMarkdown: contentMarkdown, tagsText: tagsText)
+        if current.hasContent {
+            pendingTemplateSeed = seed
+            showApplyTemplateConfirm = true
+            return
+        }
+        applyTemplateSeed(seed)
+    }
+
+    private func applyTemplateSeed(_ seed: CreateMemoSeed) {
+        title = seed.title
+        tagsText = seed.tagsText
+        contentMarkdown = seed.contentMarkdown
+        // Empty stub JSON forces TipTapContentSource to open from markdown structure.
+        contentJSON = emptyDocJSON
+        baselineMarkdown = seed.contentMarkdown
+        editorReady = false
+        isDirty = true
+        scheduleSave()
+        // Re-push body into the shared editor runtime.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            SharedTipTapRuntime.editor.focusEnd()
+            editorReady = true
+        }
     }
 
     private func handleBack() async {
@@ -522,9 +599,15 @@ struct MemoEditView: View {
     private func loadInitial() async {
         guard let scope = env.session.dataScope else { return }
         switch mode {
-        case .create(let nb):
+        case .create(let nb, let seed):
             notebookId = nb
-            if let draft = try? env.drafts.read(scope: scope, key: DraftRepository.newKey) {
+            if let seed {
+                // Template / explicit seed wins over local new-note draft (Android initialDraft).
+                title = seed.title
+                tagsText = seed.tagsText
+                contentMarkdown = seed.contentMarkdown
+                contentJSON = emptyDocJSON
+            } else if let draft = try? env.drafts.read(scope: scope, key: DraftRepository.newKey) {
                 title = draft.title
                 tagsText = draft.tagsText
                 contentMarkdown = draft.contentMarkdown

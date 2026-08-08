@@ -9,6 +9,7 @@ import { Alert, Pressable, Text, TextInput } from "../components/LocalizedText";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
 import { MobileResourceActions } from "../components/MobileResourceActions";
 import { SAFE_DOM_WEBVIEW_PROPS } from "../lib/mobile-dom";
+import { safeDomCall } from "../lib/safe-dom-call";
 import {
   getMobileImageTarget,
   openMobileResource,
@@ -476,7 +477,7 @@ export const MemoDetailModal = ({
     if (!viewerReady || !searchOpen) {
       return;
     }
-    viewerRef.current?.search(searchQuery, activeMatchIndex);
+    safeDomCall(() => viewerRef.current?.search(searchQuery, activeMatchIndex));
   }, [activeMatchIndex, searchOpen, searchQuery, viewerReady]);
 
   const moveSearchMatch = (direction: 1 | -1) => {
@@ -683,7 +684,7 @@ export const MemoDetailModal = ({
                       setSearchQuery("");
                       setSearchMatchCount(0);
                       setActiveMatchIndex(0);
-                      viewerRef.current?.search("", 0);
+                      safeDomCall(() => viewerRef.current?.search("", 0));
                     }}>
                       <X color="#0f172a" size={16} />
                     </DetailActionButton>
