@@ -1801,6 +1801,8 @@ const CreateMemoModal = ({
   const [dirty, setDirty] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
   const [imageOperation, setImageOperation] = useState<"idle" | "creating" | "uploading">("idle");
+  const imageOperationRef = useRef(imageOperation);
+  const createPendingRef = useRef(false);
   const [resourceTarget, setResourceTarget] = useState<MobileResourceTarget | null>(null);
   const targetNotebookId = notebookId || fallbackNotebookId;
   const selectedNotebookName = notebooks.find((notebook) => notebook.id === targetNotebookId)?.name ?? "选择笔记本";
@@ -1813,6 +1815,7 @@ const CreateMemoModal = ({
   titleRef.current = title;
   tagsTextRef.current = tagsText;
   targetNotebookIdRef.current = targetNotebookId;
+  imageOperationRef.current = imageOperation;
 
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2093,6 +2096,7 @@ const CreateMemoModal = ({
       onCreated(memo);
     },
   });
+  createPendingRef.current = createMutation.isPending;
   const canSubmitCreateMemo = Boolean(targetNotebookId) && !createMutation.isPending && imageOperation === "idle";
   const canUseTemplate = imageOperation === "idle" && !createMutation.isPending;
 
@@ -2193,7 +2197,7 @@ const CreateMemoModal = ({
   };
 
   const requestClose = async () => {
-    if (createMutation.isPending || imageOperation !== "idle") {
+    if (createPendingRef.current || imageOperationRef.current !== "idle") {
       return;
     }
     await flushEditor();

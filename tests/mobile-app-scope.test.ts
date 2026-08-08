@@ -86,6 +86,10 @@ describe("mobile app scope", () => {
     expect(memoDetailSource).toContain("SAFE_DOM_WEBVIEW_PROPS");
   });
 
+  test("reads the latest create and upload state from the hardware-back handler", () => {
+    expect(workspaceSource).toContain("createPendingRef.current || imageOperationRef.current");
+  });
+
   test("declares iOS privacy strings and full-screen phone-on-iPad presentation", () => {
     const infoPlist = appJson.expo.ios?.infoPlist ?? {};
     expect(appJson.expo.ios?.supportsTablet).toBe(false);

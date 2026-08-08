@@ -31,6 +31,7 @@ struct MemoEditView: View {
     @State private var memoId: String?
     @State private var error: String?
     @State private var saveTask: Task<Void, Never>?
+    @State private var editGeneration: UInt64 = 0
     @State private var isMaterializing = false
     @State private var isDirty = false
     @State private var isSaving = false
@@ -352,8 +353,9 @@ struct MemoEditView: View {
                         token: env.session.session?.token,
                         onChange: { md, json in
                             guard contentHydrated, !suppressPersistence else { return }
-                            // Always accept editor truth, even mid-upload (save stays gated).
-                            // @tiptap/markdown can drop text or images — reconcile carefully.
+                            // Accept the JSON and Markdown emitted by the same TipTap transaction.
+                            // Native code only falls back to its compatibility serializer when the
+                            // editor cannot provide Markdown at all.
                             applyEditorPayload(markdown: md, json: json)
                             if !isUploading {
                                 markDirtyAndScheduleSave()
@@ -469,6 +471,7 @@ struct MemoEditView: View {
 
     private func markDirtyAndScheduleSave() {
         guard !suppressPersistence else { return }
+        editGeneration &+= 1
         // Avoid autosaving mid-upload (placeholder / incomplete body).
         guard !isUploading else {
             isDirty = true
@@ -496,8 +499,7 @@ struct MemoEditView: View {
         contentJSON = emptyDocJSON
         baselineMarkdown = seed.contentMarkdown
         editorReady = false
-        isDirty = true
-        scheduleSave()
+        markDirtyAndScheduleSave()
         // Re-push body into the shared editor runtime.
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 50_000_000)
@@ -567,16 +569,11 @@ struct MemoEditView: View {
             return contentJSON
         }()
 
-        // Derive markdown from JSON whenever possible — preserves block order exactly.
-        let nextMD: String = {
-            if let derived = EditorContentCodec.markdownFromTipTapJSON(nextJSON) {
-                return derived
-            }
-            if !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return markdown
-            }
-            return contentMarkdown
-        }()
+        let nextMD = EditorContentCodec.preferredMarkdown(
+            editorMarkdown: markdown,
+            documentJSON: nextJSON,
+            fallback: contentMarkdown
+        )
 
         let nextText = EditorContentCodec.plainText(markdown: nextMD, json: nextJSON)
         let nextHasImage = EditorContentCodec.containsImageNode(nextJSON)
@@ -710,7 +707,10 @@ struct MemoEditView: View {
     private func persistDraftOrQueue() async {
         guard let scope = env.session.dataScope else { return }
         guard contentHydrated, !suppressPersistence else { return }
-        // Last chance: re-sync markdown from JSON so outbox markdown cannot drop text.
+        guard !isSaving else { return }
+        let generationAtStart = editGeneration
+        // Last chance: only backfill Markdown when the editor supplied none. Never replace
+        // valid TipTap Markdown with the intentionally limited native compatibility serializer.
         reconcileMarkdownWithJSON()
         if wouldClobberNonEmptyBody {
             NSLog(
@@ -724,7 +724,11 @@ struct MemoEditView: View {
         isSaving = true
         defer {
             isSaving = false
-            isDirty = false
+            if generationAtStart == editGeneration {
+                isDirty = false
+            } else if !suppressPersistence {
+                scheduleSave()
+            }
         }
         let now = EdgeEverDate.nowString()
 
@@ -898,8 +902,23 @@ struct MemoEditView: View {
     }
 
     private func flushPending() async {
-        await persistDraftOrQueue()
+        await drainPendingSave()
         await env.runSyncCycle()
+    }
+
+    /// Wait for an in-flight autosave before forcing the latest editor generation to disk.
+    private func drainPendingSave() async {
+        let pendingSave = saveTask
+        saveTask = nil
+        pendingSave?.cancel()
+        await pendingSave?.value
+        // An older save may have noticed a newer generation and scheduled another debounce.
+        // Cancel that debounce because this path persists the latest state immediately.
+        saveTask?.cancel()
+        saveTask = nil
+        if isDirty {
+            await persistDraftOrQueue()
+        }
     }
 
     /// K24 materialize: ensure a server memo id before image upload.
@@ -1015,10 +1034,10 @@ struct MemoEditView: View {
             } else {
                 reconcileMarkdownWithJSON()
             }
+            editGeneration &+= 1
             isDirty = true
             // Persist immediately so leaving the editor cannot orphan the resource.
-            saveTask?.cancel()
-            await persistDraftOrQueue()
+            await drainPendingSave()
             NSLog(
                 "MemoEditView insertImageData: done src=%@ mdHas=%d jsonHas=%d textLen=%d",
                 imageSrc,
@@ -1037,21 +1056,25 @@ struct MemoEditView: View {
         EditorContentCodec.protectedResourceRefs(in: text)
     }
 
-    /// Rebuild markdown from TipTap JSON so block order matches the editor (and detail view).
+    /// Compatibility fallback for legacy/editor failures that provide JSON without Markdown.
     private func reconcileMarkdownWithJSON() {
-        if let derived = EditorContentCodec.markdownFromTipTapJSON(contentJSON) {
-            contentMarkdown = derived
-        }
+        guard contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let recovered = EditorContentCodec.markdownFromTipTapJSON(contentJSON)
+        else { return }
+        contentMarkdown = recovered
     }
 
-    /// Last-resort: image missing from JSON after insert. Append only then, and rebuild md from JSON.
+    /// Last-resort: image missing from JSON after insert. Append it to both representations.
     private func ensureImageInContent(imageSrc: String, alt: String) {
         if EditorContentCodec.jsonContainsResource(contentJSON, src: imageSrc) {
             reconcileMarkdownWithJSON()
             return
         }
         contentJSON = EditorContentCodec.appendingImage(toJSON: contentJSON, src: imageSrc, alt: alt)
-        reconcileMarkdownWithJSON()
+        if !contentMarkdown.contains(imageSrc) {
+            let separator = contentMarkdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : "\n\n"
+            contentMarkdown += "\(separator)![\(alt)](\(imageSrc))\n"
+        }
     }
 
     /// When compression is off, still normalize HEIC → JPEG for reliable upload mime.
@@ -1075,9 +1098,27 @@ struct MemoEditView: View {
     }
 }
 
-// MARK: - TipTap content helpers (markdown serializer is lossy around images)
+// MARK: - TipTap content helpers (native Markdown serializer is recovery-only)
 
 enum EditorContentCodec {
+    /// TipTap's Markdown extension is authoritative because it understands the complete
+    /// registered schema (tables, nested/ordered lists, code languages, links and images).
+    /// The native serializer remains only as a recovery path for an absent bridge payload.
+    static func preferredMarkdown(
+        editorMarkdown: String?,
+        documentJSON: String,
+        fallback: String
+    ) -> String {
+        // A present-but-empty payload means the user intentionally cleared the note.
+        if let editorMarkdown {
+            return editorMarkdown
+        }
+        if !fallback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return fallback
+        }
+        return markdownFromTipTapJSON(documentJSON) ?? ""
+    }
+
     static func protectedResourceRefs(in text: String) -> [String] {
         guard let regex = try? NSRegularExpression(
             pattern: #"/api/v1/resources/[A-Za-z0-9_-]+(?:/blob)?"#,
