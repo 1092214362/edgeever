@@ -115,6 +115,7 @@ import MobileWebClipCapture from "../components/MobileWebClipCapture";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
 import { SAFE_DOM_WEBVIEW_PROPS } from "../lib/mobile-dom";
 import { safeDomCall } from "../lib/safe-dom-call";
+import { showEdgeEverKeyboard } from "../../modules/edgeever-keyboard";
 import { MobileResourceActions } from "../components/MobileResourceActions";
 import { MobileCreateChoiceModal, MobileTemplatePickerModal } from "../components/MobileTemplatePicker";
 import { resolveMobileThemeStyles, useMobileTheme } from "../lib/mobile-theme";
@@ -1814,20 +1815,65 @@ const CreateMemoModal = ({
   targetNotebookIdRef.current = targetNotebookId;
 
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleFocusTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const titleInputRef = useRef<ComponentRef<typeof TextInput>>(null);
+  // Blank create: focus native title so the soft keyboard shows immediately while DomWebView
+  // cold-starts. Template / share drafts already have structure — focus the body instead.
+  const preferTitleFocus = useMemo(() => {
+    if (!initialDraft) {
+      return true;
+    }
+    const seedTitle = initialDraft.title?.trim() ?? "";
+    const seedBody = initialDraft.contentMarkdown?.trim() ?? "";
+    return !seedTitle && !seedBody;
+  }, [initialDraft]);
+  const preferTitleFocusRef = useRef(preferTitleFocus);
+  preferTitleFocusRef.current = preferTitleFocus;
 
   const pushBodyToEditor = useCallback((doc: TiptapDoc) => {
     safeDomCall(() => editorRef.current?.setContent(JSON.stringify(doc)));
   }, []);
 
-  const scheduleFocusEnd = useCallback((delayMs = 60) => {
+  const clearFocusTimers = useCallback(() => {
     if (focusTimerRef.current !== null) {
       clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
     }
+    if (keyboardTimerRef.current !== null) {
+      clearTimeout(keyboardTimerRef.current);
+      keyboardTimerRef.current = null;
+    }
+    for (const timer of titleFocusTimersRef.current) {
+      clearTimeout(timer);
+    }
+    titleFocusTimersRef.current = [];
+  }, []);
+
+  const scheduleTitleFocus = useCallback((delaysMs: number[] = [0, 80, 220, 480]) => {
+    clearFocusTimers();
+    // DomWebView often steals focus when it attaches; reclaim the native title a few times.
+    titleFocusTimersRef.current = delaysMs.map((delayMs) =>
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, delayMs)
+    );
+  }, [clearFocusTimers]);
+
+  const scheduleBodyKeyboard = useCallback((delayMs = 160) => {
+    clearFocusTimers();
+    // Full-tree create only mounts the editor DomWebView, so native IME show is safe again.
     focusTimerRef.current = setTimeout(() => {
       focusTimerRef.current = null;
       safeDomCall(() => editorRef.current?.focusEnd());
+      if (Platform.OS === "android") {
+        keyboardTimerRef.current = setTimeout(() => {
+          keyboardTimerRef.current = null;
+          showEdgeEverKeyboard();
+        }, 120);
+      }
     }, delayMs);
-  }, []);
+  }, [clearFocusTimers]);
 
   // Component is only mounted while create is open — init once on mount.
   useEffect(() => {
@@ -1882,6 +1928,7 @@ const CreateMemoModal = ({
       setContentMarkdown(markdown);
       setNotebookId(restoredNotebookId);
       setDirty(false);
+      // setContent no longer steals focus — keep the title IME if the user is already typing.
       pushBodyToEditor(doc);
     });
     return () => {
@@ -1907,8 +1954,8 @@ const CreateMemoModal = ({
     setDirty(true);
     // In-place body replace — never remount DomWebView (remount costs ~1s and breaks Android IME).
     pushBodyToEditor(doc);
-    scheduleFocusEnd(80);
-  }, [pushBodyToEditor, scheduleFocusEnd]);
+    scheduleBodyKeyboard(80);
+  }, [pushBodyToEditor, scheduleBodyKeyboard]);
 
   const requestApplyTemplateSeed = useCallback((seed: MobileCreateMemoSeed) => {
     const current = {
@@ -2161,12 +2208,9 @@ const CreateMemoModal = ({
     });
     return () => {
       subscription.remove();
-      if (focusTimerRef.current !== null) {
-        clearTimeout(focusTimerRef.current);
-        focusTimerRef.current = null;
-      }
+      clearFocusTimers();
     };
-  }, []);
+  }, [clearFocusTimers]);
 
   const loadEditorResource = useCallback((source: string) => {
     if (!client) {
@@ -2216,7 +2260,8 @@ const CreateMemoModal = ({
 
   const editorElement = useMemo(() => draftLoaded && baseUrl ? (
     <LocalTiptapEditor
-      autoFocus
+      // Blank create keeps focus on the native title field; template/share focus the body.
+      autoFocus={!preferTitleFocus}
       baseUrl={baseUrl}
       content={contentJsonRef.current}
       dom={{
@@ -2242,14 +2287,18 @@ const CreateMemoModal = ({
       onReady={async (elapsedMs) => {
         setEditorReady(true);
         recordEditorStartup(elapsedMs);
-        // TipTap autofocus owns caret; avoid EdgeEverKeyboard (wrong WebView / stale inject).
-        scheduleFocusEnd(60);
+        if (preferTitleFocusRef.current) {
+          // DomWebView may steal focus on attach — reclaim the title (and soft keyboard).
+          scheduleTitleFocus();
+          return;
+        }
+        scheduleBodyKeyboard(60);
       }}
       ref={editorRef}
       locale={resolvedLocale}
       theme={resolvedTheme}
     />
-  ) : null, [baseUrl, draftLoaded, loadEditorResource, resolvedLocale, resolvedTheme, selectResource]);
+  ) : null, [baseUrl, draftLoaded, loadEditorResource, preferTitleFocus, resolvedLocale, resolvedTheme, scheduleBodyKeyboard, scheduleTitleFocus, selectResource]);
 
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.createMemoSafeArea}>
@@ -2259,7 +2308,7 @@ const CreateMemoModal = ({
         </Pressable>
         <View style={styles.createMemoHeaderActions}>
           <Text style={[styles.createMemoStatus, createMutation.isPending && styles.createMemoStatusActive]}>
-            {imageOperation === "creating" ? "正在创建" : imageOperation === "uploading" ? "正在上传" : createMutation.isPending || dirty ? "保存中" : editorReady ? "已保存" : "正在启动"}
+            {imageOperation === "creating" ? "正在创建" : imageOperation === "uploading" ? "正在上传" : createMutation.isPending || dirty ? "保存中" : editorReady ? "已保存" : "准备中"}
           </Text>
           <Pressable
             accessibilityLabel={translate("模板")}
@@ -2284,6 +2333,7 @@ const CreateMemoModal = ({
       <View style={styles.createMemoMain}>
         <TextInput
           autoCorrect
+          autoFocus={preferTitleFocus}
           accessibilityLabel="笔记标题"
           onChangeText={(value) => {
             setTitle(value);
@@ -2291,6 +2341,7 @@ const CreateMemoModal = ({
           }}
           placeholder={DEFAULT_MEMO_TITLE}
           placeholderTextColor="#94a3b8"
+          ref={titleInputRef}
           style={styles.createMemoTitleInput}
           value={title}
         />
@@ -2346,7 +2397,11 @@ const CreateMemoModal = ({
         client={client}
         onClose={() => {
           setTemplatePickerOpen(false);
-          scheduleFocusEnd(80);
+          if (preferTitleFocusRef.current) {
+            scheduleTitleFocus([80, 200]);
+          } else {
+            scheduleBodyKeyboard(80);
+          }
         }}
         onSelect={requestApplyTemplateSeed}
         presentation="overlay"
@@ -2822,10 +2877,15 @@ const RichEditorModal = ({
           if (initialFocusTimerRef.current !== null) {
             clearTimeout(initialFocusTimerRef.current);
           }
-          // TipTap autofocus only — EdgeEverKeyboard.show() often attaches IME to the wrong WebView.
+          // Full-tree edit mounts a single DomWebView — focus then show the soft keyboard.
           initialFocusTimerRef.current = setTimeout(() => {
             initialFocusTimerRef.current = null;
             safeDomCall(() => editorRef.current?.focusEnd());
+            if (Platform.OS === "android") {
+              setTimeout(() => {
+                showEdgeEverKeyboard();
+              }, 120);
+            }
           }, 60);
         }}
         ref={editorRef}

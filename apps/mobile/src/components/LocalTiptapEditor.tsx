@@ -466,10 +466,9 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     try {
       const parsed = JSON.parse(contentJsonSerialized) as EditorDoc;
       const next = resolveImageSources(parsed, props.baseUrl);
+      // Do not focus here: draft restore / template inject must not steal the native
+      // title TextInput IME. Callers that need caret at end use focusEnd().
       editor.commands.setContent(next, { emitUpdate: !isViewer });
-      if (!isViewer) {
-        editor.commands.focus("end");
-      }
     } catch {
       // Ignore malformed payloads from the native bridge.
     }
