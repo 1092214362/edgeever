@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { resolveMemoContentDoc, type MemoDetail, type TiptapDoc } from "@edgeever/shared";
+import { DEFAULT_MEMO_TITLE, resolveMemoContentDoc, type MemoDetail, type TiptapDoc } from "@edgeever/shared";
 import { ActivityIndicator, Image as RNImage, Platform, StyleSheet, View, type ImageStyle, type StyleProp } from "react-native";
 import { Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,7 +31,6 @@ import type { MobileSyncQueueItem } from "../lib/sync-queue";
 import { styles } from "./workspace-styles";
 
 const ANDROID_SYSTEM_NAVIGATION_FALLBACK = 48;
-const DEFAULT_MEMO_TITLE = "无标题笔记";
 const RESOURCE_DATA_URL_CACHE_LIMIT = 32;
 
 type SessionLike = { baseUrl: string; token: string } | null;

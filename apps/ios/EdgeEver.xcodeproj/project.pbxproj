@@ -38,11 +38,13 @@
 		50800DF91A760DE7FB68DFB4 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C065FED3C78404D4D8DD19 /* Motion.swift */; };
 		511A8DCB204AFCB2880AE51E /* MemoCreateCommitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E057D0906932A00DF62EBB /* MemoCreateCommitTests.swift */; };
 		541297DC463B8FC593ECB5F6 /* ResourceBlobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */; };
+		5724B9A66EC1AE14D4C48F8B /* EditorContentCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01CF1D403DB46FB8784062E /* EditorContentCodec.swift */; };
 		588019CB46131EDF8DCB2F53 /* MemoTemplatesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1DC59EC9FA65240DCBC19 /* MemoTemplatesTests.swift */; };
 		5EEFDEEDC372725C7C7F22ED /* EdgeEverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9CEA2902CDE0D7C4137D173 /* EdgeEverApp.swift */; };
 		5F5EC9565A02FAFDD5D7B54C /* SyncProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12236E3A2F318CDEB17B80CB /* SyncProtocol.swift */; };
 		63D4B562B4EF6ED7291155F6 /* TemplatePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA3D6859C4C6D9F65435671 /* TemplatePickerSheet.swift */; };
 		6A671BB702DA77A0548E6E29 /* URL+Normalize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A8662720DE42695E29F5741 /* URL+Normalize.swift */; };
+		6B2D55E0EA4D28EB7171A565 /* SystemImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A2092411EFC3765B97DF88 /* SystemImagePicker.swift */; };
 		7BDAD91E69B7B62D7D390CB5 /* MemoEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3674473015F8EB6863B69B0F /* MemoEditView.swift */; };
 		8430B1EDE6CA87A0C922E484 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D94BB61519CA2A345D99C1 /* SettingsView.swift */; };
 		8785D0133655387F399C3C58 /* LocalMirrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2035E878FD92B74D889D6047 /* LocalMirrorTests.swift */; };
@@ -111,6 +113,7 @@
 		12236E3A2F318CDEB17B80CB /* SyncProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProtocol.swift; sourceTree = "<group>"; };
 		12DCA98C14CC6F28C22C41A1 /* TipTapWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipTapWebView.swift; sourceTree = "<group>"; };
 		1606EF8ADEA4921421EB0690 /* MobileUIParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileUIParityTests.swift; sourceTree = "<group>"; };
+		17A2092411EFC3765B97DF88 /* SystemImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemImagePicker.swift; sourceTree = "<group>"; };
 		1CD75D20D94A27E982103AB3 /* EdgeEver.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EdgeEver.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2035E878FD92B74D889D6047 /* LocalMirrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalMirrorTests.swift; sourceTree = "<group>"; };
 		213837D2B2F025307A5EBB69 /* ChromeParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeParityTests.swift; sourceTree = "<group>"; };
@@ -170,6 +173,7 @@
 		E6159DBF27CC86920005E25D /* SyncProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProtocolTests.swift; sourceTree = "<group>"; };
 		EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceBlobStore.swift; sourceTree = "<group>"; };
 		EFF10CDC8FB8C97DA0103AA0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F01CF1D403DB46FB8784062E /* EditorContentCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorContentCodec.swift; sourceTree = "<group>"; };
 		F080AD98FDF3AADDD90B9931 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		F1F36ACF8073C8A61AE397CD /* MemoTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoTemplates.swift; sourceTree = "<group>"; };
 		F50D91D8505FE6446ABD647C /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
@@ -422,8 +426,10 @@
 		BEFB911E3106AB68356141B7 /* Editor */ = {
 			isa = PBXGroup;
 			children = (
+				F01CF1D403DB46FB8784062E /* EditorContentCodec.swift */,
 				F9182F742B06FB1713E27C2A /* ResourceActions.swift */,
 				EA9305413739F81EA39395F7 /* ResourceBlobStore.swift */,
+				17A2092411EFC3765B97DF88 /* SystemImagePicker.swift */,
 				AE1D4EB4B51C66E9CD72FF7F /* TipTapContentSource.swift */,
 				36831A94478123A1EE9BB538 /* TipTapWarmPool.swift */,
 				12DCA98C14CC6F28C22C41A1 /* TipTapWebView.swift */,
@@ -621,6 +627,7 @@
 				9CBE3E1196B24C4DDFC7CD0A /* DraftRepository.swift in Sources */,
 				5EEFDEEDC372725C7C7F22ED /* EdgeEverApp.swift in Sources */,
 				8C761DABADB93F2F15E21E80 /* EditFabButton.swift in Sources */,
+				5724B9A66EC1AE14D4C48F8B /* EditorContentCodec.swift in Sources */,
 				B13CF9D8320DF366EA58601F /* ImageCompressor.swift in Sources */,
 				132BA05FF9673B95D3E3959A /* JSONCoding.swift in Sources */,
 				BBFC2539859878814E2F7197 /* KeychainStore.swift in Sources */,
@@ -648,6 +655,7 @@
 				35AAF7A2B1B4D5EE38F8518C /* SyncEngine.swift in Sources */,
 				2E185C3C27DA3A729F2734B4 /* SyncOutboxRepository.swift in Sources */,
 				5F5EC9565A02FAFDD5D7B54C /* SyncProtocol.swift in Sources */,
+				6B2D55E0EA4D28EB7171A565 /* SystemImagePicker.swift in Sources */,
 				63D4B562B4EF6ED7291155F6 /* TemplatePickerSheet.swift in Sources */,
 				4A2DD0673B81D32FA9E5F9DB /* Theme.swift in Sources */,
 				265DB48114144779A7C807F7 /* TipTapContentSource.swift in Sources */,

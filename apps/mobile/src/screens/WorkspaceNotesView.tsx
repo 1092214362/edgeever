@@ -1,6 +1,6 @@
 import { memo, type ReactNode } from "react";
 import type { MemoFilterMode } from "@edgeever/client";
-import type { MemoSummary, Notebook } from "@edgeever/shared";
+import { DEFAULT_MEMO_TITLE, type MemoSummary, type Notebook } from "@edgeever/shared";
 import { MOBILE_UI_METRICS, toggleMobileMemoFilterMode } from "@edgeever/shared/mobile-ui";
 import { ActivityIndicator, FlatList, Platform, RefreshControl, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -13,7 +13,6 @@ import type { MobileMemoListDensity } from "../lib/preferences";
 import { formatMemoPreviewDate } from "./workspace-utils";
 import { styles } from "./workspace-styles";
 
-const DEFAULT_MEMO_TITLE = "无标题笔记";
 type MemoView = "notebook" | "trash";
 
 export const NotesView = ({
