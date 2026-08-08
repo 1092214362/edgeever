@@ -5,10 +5,7 @@ import {
   docToText,
   emptyDoc,
   ApiTokenCreateSchema,
-  ChangePasswordSchema,
   DeleteMemosSchema,
-  LoginSchema,
-  LoginDeviceSessionUpdateSchema,
   markdownToDoc,
   mergeMemoDocs,
   resolveMemoContentDoc,
@@ -21,11 +18,8 @@ import {
   MergeMemosSchema,
   MoveMemosSchema,
   normalizeTags,
-  UserCreateSchema,
-  UserUpdateSchema,
   RestoreJsonMemosSchema,
   RestoreJsonNotebooksSchema,
-  ResourceUpdateSchema,
   ObjectStorageConnectionTestSchema,
   ObjectStorageSettingsUpdateSchema,
   type ApiToken,
@@ -40,15 +34,12 @@ import {
   type JsonBackupResource,
   type JsonBackupRevision,
   type Resource,
-  type ResourceListItem,
-  type ResourceStorageSummary,
   type TiptapDoc,
-  type InstanceUser,
 } from "@edgeever/shared";
 import { zValidator } from "@hono/zod-validator";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import openApiSpec from "../../../docs/openapi.json";
 import packageMetadata from "../../../package.json";
@@ -61,20 +52,13 @@ import {
 } from "./auth-state";
 import {
   isDemoModeEnabled,
-  isProtectedDemoAccount,
   resolveDemoPasswordHash,
   shouldUpsertDemoSeedRecord,
 } from "./demo-mode";
 import {
-  groupLoginDeviceSessions,
   resolveSessionDeviceId,
-  type LoginDeviceSessionRow,
 } from "./auth-session-devices";
 import {
-  checkLoginRateLimit,
-  clearLoginAttempts,
-  recordLoginFailure,
-  resolveLoginRateLimitConfig,
   type LoginAttemptKey,
 } from "./auth-login-limiter";
 import {
@@ -155,6 +139,12 @@ import {
 } from "./request-auth";
 import { registerTagRoutes } from "./tag-routes";
 import { registerTemplateRoutes } from "./template-routes";
+import { registerAuthRoutes, type UserRow } from "./auth-routes";
+import { registerResourceRoutes } from "./resource-routes";
+import {
+  registerUserRoutes,
+  type InstanceUserRow,
+} from "./user-routes";
 import { registerNotebookRoutes } from "./notebook-routes";
 import { registerMemoShareRoutes, registerPublicShareRoutes } from "./share-routes";
 import { decryptSecret, encryptSecret } from "./secret-encryption";
@@ -169,6 +159,21 @@ import {
   resolveObjectStorage,
 } from "./object-storage";
 import { testWorkerS3Connection } from "./worker-s3-blob-store";
+import {
+  MAX_ATTACHMENT_UPLOAD_BYTES,
+  MAX_IMAGE_UPLOAD_BYTES,
+  inferImageExtension,
+  mapResource,
+  mapResourceListItem,
+  mapResourceStorageSummary,
+  normalizeFilename,
+  prepareImageForStorage,
+  validateAttachmentUpload,
+  validateImageUpload,
+  type ResourceListRow,
+  type ResourceRow,
+  type ResourceStatsRow,
+} from "./resource-service";
 
 // Compatibility aliases keep the existing SQL-heavy implementation small
 // while routing its dependency through the platform-neutral contract above.
@@ -249,20 +254,6 @@ type MemoEditSessionRow = {
   expires_at: string;
 };
 
-type UserRow = {
-  id: string;
-  username: string;
-  password_hash: string;
-  display_name: string | null;
-  is_disabled: number;
-};
-
-type InstanceUserRow = UserRow & {
-  last_login_at: string | null;
-  created_at: string;
-  role: "owner" | "member";
-};
-
 type SessionRow = {
   id: string;
   user_id: string;
@@ -299,37 +290,6 @@ type MemoImportSourceRow = {
   source_updated_at: string | null;
 };
 
-type ResourceRow = {
-  id: string;
-  memo_id: string;
-  original_memo_id: string | null;
-  bucket_name: string;
-  object_key: string;
-  storage_config_id: string;
-  kind: "image" | "attachment";
-  mime_type: string | null;
-  filename: string | null;
-  byte_size: number;
-  sha256: string | null;
-  width: number | null;
-  height: number | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type ResourceListRow = ResourceRow & {
-  memo_title: string | null;
-  memo_excerpt: string | null;
-  memo_is_deleted: number | null;
-};
-
-type ResourceStatsRow = {
-  total_count: number;
-  total_bytes: number;
-  image_count: number;
-  attachment_count: number;
-};
-
 const SESSION_COOKIE = "edgeever_session";
 const DEFAULT_WORKSPACE_ID = "ws_default";
 const DEFAULT_MEMO_LIST_LIMIT = 100;
@@ -337,19 +297,9 @@ const MAX_MEMO_LIST_LIMIT = 200;
 const DEFAULT_SESSION_TTL_DAYS = 400;
 const MAX_SESSION_TTL_DAYS = 400;
 const DEFAULT_R2_BUCKET_NAME = "edgeever-resources";
-const MAX_IMAGE_UPLOAD_BYTES = 100 * 1024 * 1024;
-const MAX_ATTACHMENT_UPLOAD_BYTES = 100 * 1024 * 1024;
 const REVISION_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000;
 const API_TOKEN_BYTES = 32;
 const API_TOKEN_PREFIX = "eev";
-const SUPPORTED_IMAGE_MIME_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-  "image/avif",
-]);
-
 const app = new Hono<AppEnv>();
 
 app.use(
@@ -391,401 +341,25 @@ app.get("/api/openapi.json", (c) => c.json(openApiSpec));
 
 registerPublicShareRoutes(app);
 
-app.get("/api/v1/auth/session", async (c) => {
-  const authMode = await getInstanceAuthMode(c.env);
-
-  if (authMode === "unconfigured") {
-    return authNotConfigured(c);
-  }
-
-  if (authMode === "disabled") {
-    return c.json({
-      authRequired: false,
-      authenticated: true,
-      demoMode: isDemoMode(c.env) || isLocalDemoSeedEnabled(c.env),
-      user: {
-        id: "local",
-        username: "owner",
-        displayName: "Owner",
-        role: "owner",
-      },
-    });
-  }
-
-  const auth = await authenticateRequest(c, false);
-
-  return c.json({
-    authRequired: true,
-    authenticated: Boolean(auth && auth.kind === "user"),
-    demoMode: isDemoMode(c.env) || isLocalDemoSeedEnabled(c.env),
-    user:
-      auth && auth.kind === "user"
-        ? {
-            id: auth.actorId,
-            username: auth.username,
-            displayName: auth.displayName,
-            role: auth.role,
-          }
-        : null,
-  });
+registerAuthRoutes(app, {
+  authenticateRequest: (...args) => authenticateRequest(...args),
+  authenticateSession: (...args) => authenticateSession(...args),
+  createSession: (...args) => createSession(...args),
+  ensureUserWorkspace: (...args) => ensureUserWorkspace(...args),
+  getBearerToken: (...args) => getBearerToken(...args),
+  getInstanceAuthMode: (...args) => getInstanceAuthMode(...args),
+  getLoginAttemptKeys: (...args) => getLoginAttemptKeys(...args),
+  isDemoEnvironment: (environment) => isDemoMode(environment) || isLocalDemoSeedEnabled(environment),
+  isDemoMode: (...args) => isDemoMode(...args),
+  revokeSession: (...args) => revokeSession(...args),
+  setSessionCookie: (...args) => setSessionCookie(...args),
+  tooManyLoginAttempts: (...args) => tooManyLoginAttempts(...args),
+  verifyLogin: (...args) => verifyLogin(...args),
 });
-
-app.get("/api/v1/auth/sessions", async (c) => {
-  const auth = await authenticateRequest(c, true);
-
-  if (!auth || auth.kind !== "user" || !auth.actorId || !auth.sessionId) {
-    return unauthorized(c, "An interactive user session is required.");
-  }
-
-  const now = isoNow();
-  const rows = await c.env.storage.db.prepare(
-    `SELECT id, device_id, user_agent, device_label, ip_address, ip_country, ip_region, expires_at, created_at, last_seen_at
-     FROM sessions
-     WHERE user_id = ?
-       AND revoked_at IS NULL
-       AND expires_at > ?
-     ORDER BY COALESCE(last_seen_at, created_at) DESC
-     LIMIT 200`
-  )
-    .bind(auth.actorId, now)
-    .all<LoginDeviceSessionRow>();
-
-  return c.json({
-    sessions: groupLoginDeviceSessions(rows.results, auth.sessionId).slice(0, 50),
-  });
-});
-
-app.patch("/api/v1/auth/sessions/:sessionId", zValidator("json", LoginDeviceSessionUpdateSchema), async (c) => {
-  const auth = await authenticateRequest(c, true);
-
-  if (!auth || auth.kind !== "user" || !auth.actorId || !auth.sessionId) {
-    return unauthorized(c, "An interactive user session is required.");
-  }
-
-  const sessionId = c.req.param("sessionId");
-  const input = c.req.valid("json");
-  const now = isoNow();
-  const session = await c.env.storage.db.prepare(
-    `SELECT id, device_id FROM sessions
-     WHERE id = ? AND user_id = ? AND revoked_at IS NULL AND expires_at > ?`
-  ).bind(sessionId, auth.actorId, now).first<{ id: string; device_id: string | null }>();
-
-  if (!session) return notFound(c, "Login session not found.");
-
-  const statement = session.device_id
-    ? c.env.storage.db.prepare(
-        `UPDATE sessions SET device_label = ?
-         WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL`
-      ).bind(input.label || null, auth.actorId, session.device_id)
-    : c.env.storage.db.prepare(`UPDATE sessions SET device_label = ? WHERE id = ?`).bind(input.label || null, session.id);
-
-  await c.env.storage.db.batch([
-    statement,
-    auditStatement(c.env.storage.db, "user", auth.actorId, "auth.session_label_update", "session", session.id, {
-      label: input.label || null,
-    }),
-  ]);
-
-  return c.json({ ok: true });
-});
-
-app.delete("/api/v1/auth/sessions", async (c) => {
-  const auth = await authenticateRequest(c, true);
-
-  if (!auth || auth.kind !== "user" || !auth.actorId || !auth.sessionId) {
-    return unauthorized(c, "An interactive user session is required.");
-  }
-
-  const now = isoNow();
-  await c.env.storage.db.batch([
-    c.env.storage.db.prepare(
-      `UPDATE sessions
-       SET revoked_at = ?
-       WHERE user_id = ? AND id != ? AND revoked_at IS NULL AND expires_at > ?`
-    ).bind(now, auth.actorId, auth.sessionId, now),
-    auditStatement(c.env.storage.db, "user", auth.actorId, "auth.sessions_revoke_others", "session", auth.sessionId, {}),
-  ]);
-
-  return c.json({ ok: true });
-});
-
-app.delete("/api/v1/auth/sessions/:sessionId", async (c) => {
-  const auth = await authenticateRequest(c, true);
-
-  if (!auth || auth.kind !== "user" || !auth.actorId || !auth.sessionId) {
-    return unauthorized(c, "An interactive user session is required.");
-  }
-
-  const sessionId = c.req.param("sessionId");
-  if (sessionId === auth.sessionId) {
-    return apiError(c, "current_session_cannot_be_revoked", "The current session cannot be revoked here.", 400);
-  }
-
-  const now = isoNow();
-  const session = await c.env.storage.db.prepare(
-    `SELECT id, device_id FROM sessions
-     WHERE id = ? AND user_id = ? AND revoked_at IS NULL AND expires_at > ?`
-  )
-    .bind(sessionId, auth.actorId, now)
-    .first<{ id: string; device_id: string | null }>();
-
-  if (!session) {
-    return notFound(c, "Login session not found.");
-  }
-
-  const currentSession = await c.env.storage.db.prepare(`SELECT device_id FROM sessions WHERE id = ? AND user_id = ?`)
-    .bind(auth.sessionId, auth.actorId)
-    .first<{ device_id: string | null }>();
-
-  if (session.device_id && currentSession?.device_id === session.device_id) {
-    return apiError(c, "current_session_cannot_be_revoked", "The current device cannot be revoked here.", 400);
-  }
-
-  await c.env.storage.db.batch([
-    session.device_id
-      ? c.env.storage.db.prepare(
-          `UPDATE sessions SET revoked_at = ?
-           WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL`
-        ).bind(now, auth.actorId, session.device_id)
-      : c.env.storage.db.prepare(`UPDATE sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`).bind(now, session.id),
-    auditStatement(c.env.storage.db, "user", auth.actorId, "auth.session_revoke", "session", session.id, {}),
-  ]);
-
-  return c.json({ ok: true });
-});
-
-app.post("/api/v1/auth/login", zValidator("json", LoginSchema), async (c) => {
-  const authMode = await getInstanceAuthMode(c.env);
-  if (authMode === "unconfigured") {
-    return authNotConfigured(c);
-  }
-
-  const input = c.req.valid("json");
-  const loginAttemptKeys = await getLoginAttemptKeys(c, input.username);
-  const loginRateLimitConfig = resolveLoginRateLimitConfig(c.env);
-  const currentRateLimit = await checkLoginRateLimit(c.env.storage.db, loginAttemptKeys, loginRateLimitConfig);
-
-  if (currentRateLimit.retryAfterSeconds > 0) {
-    return tooManyLoginAttempts(c, currentRateLimit.retryAfterSeconds);
-  }
-
-  const user = await verifyLogin(c.env, input.username, input.password);
-
-  if (!user) {
-    const updatedRateLimit = await recordLoginFailure(
-      c.env.storage.db,
-      loginAttemptKeys,
-      loginRateLimitConfig,
-    );
-
-    if (updatedRateLimit.retryAfterSeconds > 0) {
-      await audit(
-        c.env.storage.db,
-        "system",
-        null,
-        "auth.login_rate_limited",
-        "auth",
-        loginAttemptKeys[0]?.key ?? "unknown",
-        { retryAfterSeconds: updatedRateLimit.retryAfterSeconds },
-      );
-      return tooManyLoginAttempts(c, updatedRateLimit.retryAfterSeconds);
-    }
-
-    return unauthorized(c, "Username or password is incorrect.");
-  }
-
-  await clearLoginAttempts(c.env.storage.db, loginAttemptKeys);
-
-  const workspace = await ensureUserWorkspace(c.env.storage.db, user.id, user.username);
-  const session = await createSession(c, user, input.deviceId);
-  setSessionCookie(c, session.token, session.maxAge);
-
-  await c.env.storage.db.batch([
-    c.env.storage.db.prepare(`UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?`).bind(
-      isoNow(),
-      isoNow(),
-      user.id
-    ),
-    auditStatement(c.env.storage.db, "user", user.id, "auth.login", "session", session.id, {
-      username: user.username,
-    }),
-  ]);
-
-  return c.json({
-    authRequired: true,
-    authenticated: true,
-    demoMode: isDemoMode(c.env) || isLocalDemoSeedEnabled(c.env),
-    sessionToken: session.token,
-    user: {
-      id: user.id,
-      username: user.username,
-      displayName: user.display_name,
-      role: workspace.role,
-    },
-  });
-});
-
-app.post("/api/v1/auth/change-password", zValidator("json", ChangePasswordSchema), async (c) => {
-  const auth = await authenticateSession(c, true);
-
-  if (!auth || auth.kind !== "user" || !auth.actorId || !auth.sessionId) {
-    return unauthorized(c, "An interactive user session is required.");
-  }
-
-  if (isDemoMode(c.env)) {
-    return forbidden(c, "The demo environment does not allow changing login passwords.");
-  }
-
-  const input = c.req.valid("json");
-  const user = await c.env.storage.db.prepare(
-    `SELECT id, username, password_hash, display_name, is_disabled
-     FROM users
-     WHERE id = ? AND is_disabled = 0`
-  )
-    .bind(auth.actorId)
-    .first<UserRow>();
-
-  if (!user || !(await verifyPassword(input.currentPassword, user.password_hash))) {
-    return apiError(c, "invalid_current_password", "Current password is incorrect.", 400);
-  }
-
-  const now = isoNow();
-  const passwordHash = await hashPassword(input.newPassword);
-
-  await c.env.storage.db.batch([
-    c.env.storage.db.prepare(`UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`).bind(
-      passwordHash,
-      now,
-      user.id
-    ),
-    c.env.storage.db.prepare(
-      `UPDATE sessions SET revoked_at = ?
-       WHERE user_id = ? AND id != ? AND revoked_at IS NULL`
-    ).bind(now, user.id, auth.sessionId),
-    auditStatement(c.env.storage.db, "user", user.id, "auth.password_change", "user", user.id, {}),
-  ]);
-
-  return c.json({ ok: true });
-});
-
-app.get("/api/v1/users", async (c) => {
-  const auth = await authenticateRequest(c, true);
-  if (!auth) return unauthorized(c, "Authentication required.");
-  c.set("auth", auth);
-  const denied = requireOwner(c);
-  if (denied) return denied;
-
-  const rows = await c.env.storage.db.prepare(
-    `SELECT u.id, u.username, u.password_hash, u.display_name, u.is_disabled,
-            u.last_login_at, u.created_at, wm.role
-     FROM users u
-     INNER JOIN workspace_members wm ON wm.user_id = u.id
-     ORDER BY wm.role = 'owner' DESC, u.created_at ASC`
-  ).all<InstanceUserRow>();
-
-  return c.json({ users: rows.results.map(mapInstanceUser) });
-});
-
-app.post("/api/v1/users", zValidator("json", UserCreateSchema), async (c) => {
-  const auth = await authenticateRequest(c, true);
-  if (!auth) return unauthorized(c, "Authentication required.");
-  c.set("auth", auth);
-  const denied = requireOwner(c);
-  if (denied) return denied;
-
-  const input = c.req.valid("json");
-  const existing = await c.env.storage.db.prepare(`SELECT id FROM users WHERE username = ?`).bind(input.username).first();
-  if (existing) return conflict(c, "username_exists", "Username already exists.");
-
-  const userId = createId("usr");
-  const workspaceId = createId("ws");
-  const now = isoNow();
-  const passwordHash = await hashPassword(input.password);
-  const notebooks = createDefaultNotebookRows(workspaceId, now);
-  const statements = [
-    c.env.storage.db.prepare(
-      `INSERT INTO users (id, username, password_hash, display_name, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(userId, input.username, passwordHash, input.displayName ?? input.username, now, now),
-    c.env.storage.db.prepare(`INSERT INTO workspaces (id, name, is_personal, created_at, updated_at) VALUES (?, ?, 1, ?, ?)`)
-      .bind(workspaceId, `${input.displayName ?? input.username}'s workspace`, now, now),
-    c.env.storage.db.prepare(`INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)`)
-      .bind(workspaceId, userId, now),
-    ...notebooks.map((notebook) => c.env.storage.db.prepare(
-      `INSERT INTO notebooks (id, workspace_id, parent_id, name, slug, icon, color, sort_order, created_at, updated_at)
-       VALUES (?, ?, NULL, ?, ?, 'notebook', ?, ?, ?, ?)`
-    ).bind(notebook.id, workspaceId, notebook.name, notebook.slug, notebook.color, notebook.sortOrder, now, now)),
-    auditStatement(c.env.storage.db, "user", c.get("auth").actorId, "user.create", "user", userId, { username: input.username }),
-  ];
-  await c.env.storage.db.batch(statements);
-
-  const user = await getInstanceUser(c.env.storage.db, userId);
-  return c.json({ user: user ? mapInstanceUser(user) : null }, 201);
-});
-
-app.patch("/api/v1/users/:id", zValidator("json", UserUpdateSchema), async (c) => {
-  const auth = await authenticateRequest(c, true);
-  if (!auth) return unauthorized(c, "Authentication required.");
-  c.set("auth", auth);
-  const denied = requireOwner(c);
-  if (denied) return denied;
-
-  const userId = c.req.param("id");
-  const input = c.req.valid("json");
-  const current = await getInstanceUser(c.env.storage.db, userId);
-  if (!current) return notFound(c, "User not found");
-  if (
-    isProtectedDemoAccount(c.env.EDGE_EVER_DEMO_MODE, c.env.EDGE_EVER_AUTH_USERNAME, current.username)
-    && (input.password !== undefined || input.isDisabled !== undefined)
-  ) {
-    return forbidden(c, "The demo owner account uses fixed credentials and cannot be modified.");
-  }
-  if (current.role === "owner" && input.isDisabled === true) {
-    return badRequest(c, "The instance owner cannot be disabled.");
-  }
-
-  const updates: string[] = [];
-  const binds: unknown[] = [];
-  if (input.displayName !== undefined) {
-    updates.push("display_name = ?");
-    binds.push(input.displayName);
-  }
-  if (input.password !== undefined) {
-    updates.push("password_hash = ?");
-    binds.push(await hashPassword(input.password));
-  }
-  if (input.isDisabled !== undefined) {
-    updates.push("is_disabled = ?");
-    binds.push(input.isDisabled ? 1 : 0);
-  }
-  updates.push("updated_at = ?");
-  binds.push(isoNow(), userId);
-
-  const statements = [
-    c.env.storage.db.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).bind(...binds),
-    auditStatement(c.env.storage.db, "user", c.get("auth").actorId, "user.update", "user", userId, {
-      passwordReset: input.password !== undefined,
-      isDisabled: input.isDisabled,
-    }),
-  ];
-  if (input.password !== undefined || input.isDisabled === true) {
-    statements.push(c.env.storage.db.prepare(`UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`).bind(isoNow(), userId));
-  }
-  await c.env.storage.db.batch(statements);
-
-  const user = await getInstanceUser(c.env.storage.db, userId);
-  return c.json({ user: user ? mapInstanceUser(user) : null });
-});
-
-app.post("/api/v1/auth/logout", async (c) => {
-  const token = getCookie(c, SESSION_COOKIE) ?? getBearerToken(c);
-
-  if (token) {
-    await revokeSession(c.env.storage.db, token);
-  }
-
-  deleteCookie(c, SESSION_COOKIE, { path: "/" });
-  return c.json({ ok: true });
+registerUserRoutes(app, {
+  authenticateRequest: (...args) => authenticateRequest(...args),
+  createDefaultNotebookRows: (...args) => createDefaultNotebookRows(...args),
+  getInstanceUser: (...args) => getInstanceUser(...args),
 });
 
 app.use("/api/v1/*", async (c, next) => {
@@ -1904,97 +1478,12 @@ app.put("/api/v1/restores/json/resources/:id", async (c) => {
   return c.json({ ok: true });
 });
 
-app.get("/api/v1/resources", async (c) => {
-  const denied = requireScopes(c, "read:resources");
-
-  if (denied) {
-    return denied;
-  }
-
-  const limit = clampNumber(Number(c.req.query("limit") ?? 500), 1, 500);
-  const [rows, stats] = await Promise.all([
-    c.env.storage.db.prepare(
-      `SELECT r.id, r.memo_id, r.original_memo_id, r.bucket_name, r.object_key, r.storage_config_id, r.kind,
-              r.mime_type, r.filename, r.byte_size, r.sha256, r.width, r.height,
-              r.created_at, r.updated_at, m.title AS memo_title, m.excerpt AS memo_excerpt,
-              m.is_deleted AS memo_is_deleted
-       FROM resources r
-       INNER JOIN memos m ON m.id = r.memo_id
-       WHERE m.workspace_id = ? AND r.is_deleted = 0
-       ORDER BY r.created_at DESC
-       LIMIT ?`
-    )
-      .bind(getWorkspaceId(c), limit)
-      .all<ResourceListRow>(),
-    c.env.storage.db.prepare(
-      `SELECT COUNT(*) AS total_count,
-              COALESCE(SUM(byte_size), 0) AS total_bytes,
-              COALESCE(SUM(CASE WHEN kind = 'image' THEN 1 ELSE 0 END), 0) AS image_count,
-              COALESCE(SUM(CASE WHEN kind = 'attachment' THEN 1 ELSE 0 END), 0) AS attachment_count
-       FROM resources r
-       INNER JOIN memos m ON m.id = r.memo_id
-       WHERE m.workspace_id = ? AND r.is_deleted = 0`
-    ).bind(getWorkspaceId(c)).first<ResourceStatsRow>(),
-  ]);
-
-  return c.json({
-    resources: rows.results.map(mapResourceListItem),
-    summary: mapResourceStorageSummary(stats),
-  });
-});
-
-app.post("/api/v1/memos/:id/resources", async (c) => {
-  const denied = requireScopes(c, "write:resources");
-
-  if (denied) {
-    return denied;
-  }
-
-  const memoId = c.req.param("id");
-  const memo = await getMemoDetail(c.env.storage.db, getWorkspaceId(c), memoId);
-
-  if (!memo) {
-    return notFound(c, "Memo not found");
-  }
-
-  const form = await c.req.raw.formData();
-  const file = form.get("file");
-
-  if (!(file instanceof File)) {
-    return badRequest(c, "Expected multipart form field named file.");
-  }
-
-  const actor = getAuditActor(c);
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const mimeType = file.type || "application/octet-stream";
-  let resource: Resource;
-
-  try {
-    resource = SUPPORTED_IMAGE_MIME_TYPES.has(mimeType)
-      ? await createImageResource(c, {
-          memoId,
-          filename: file.name,
-          mimeType,
-          bytes,
-          actor,
-          source: "upload",
-        })
-      : await createAttachmentResource(c, {
-          memoId,
-          filename: file.name,
-          mimeType,
-          bytes,
-          actor,
-        });
-  } catch (error) {
-    if (error instanceof AppError) {
-      return apiError(c, error.code, error.message, error.status);
-    }
-
-    throw error;
-  }
-
-  return c.json({ resource }, 201);
+registerResourceRoutes(app, {
+  clampNumber: (...args) => clampNumber(...args),
+  createAttachmentResource: (...args) => createAttachmentResource(...args),
+  createImageResource: (...args) => createImageResource(...args),
+  getMemoDetail: (...args) => getMemoDetail(...args),
+  getResourceRow: (...args) => getResourceRow(...args),
 });
 
 const createImageResource = async (
@@ -2150,161 +1639,6 @@ const createAttachmentResource = async (
 
   return mapResource(resource);
 };
-
-const validateImageUpload = (mimeType: string, size: number) => {
-  if (!SUPPORTED_IMAGE_MIME_TYPES.has(mimeType)) {
-    throw new AppError("unsupported_media_type", "Only PNG, JPEG, GIF, WebP and AVIF images are supported.", 415);
-  }
-
-  if (size <= 0 || size > MAX_IMAGE_UPLOAD_BYTES) {
-    throw new AppError("upload_too_large", "Image must be between 1 byte and 50 MB.", 413);
-  }
-};
-
-const validateAttachmentUpload = (size: number) => {
-  if (size <= 0 || size > MAX_ATTACHMENT_UPLOAD_BYTES) {
-    throw new AppError("upload_too_large", "Attachment must be between 1 byte and 100 MB.", 413);
-  }
-};
-
-type PreparedImage = {
-  bytes: Uint8Array;
-  mimeType: string;
-  filename: string;
-  width: number | null;
-  height: number | null;
-  compressed: boolean;
-  metadata: Record<string, unknown>;
-};
-
-const prepareImageForStorage = (input: {
-  bytes: Uint8Array;
-  filename: string;
-  mimeType: string;
-  source: "upload" | "mcp";
-}): PreparedImage => ({
-  bytes: input.bytes,
-  mimeType: input.mimeType,
-  filename: input.filename,
-  width: null,
-  height: null,
-  compressed: false,
-  metadata: {
-    source: input.source,
-    originalFilename: normalizeFilename(input.filename) || null,
-    originalMimeType: input.mimeType,
-    originalByteSize: input.bytes.byteLength,
-    compression: "disabled",
-  },
-});
-
-app.get("/api/v1/resources/:id/blob", async (c) => {
-  const denied = requireScopes(c, "read:resources");
-
-  if (denied) {
-    return denied;
-  }
-
-  const resource = await getResourceRow(c.env.storage.db, getWorkspaceId(c), c.req.param("id"));
-
-  if (!resource) {
-    return notFound(c, "Resource not found");
-  }
-
-  const source = await resolveObjectStorage(c.env, resource.storage_config_id);
-  const object = await source.store.get(resource.object_key);
-
-  if (!object) {
-    return notFound(c, "Resource object not found");
-  }
-
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set("Content-Type", resource.mime_type ?? headers.get("Content-Type") ?? "application/octet-stream");
-  headers.set("Cache-Control", headers.get("Cache-Control") ?? "private, max-age=3600");
-  headers.set("Content-Length", String(object.size));
-  headers.set(
-    "Content-Disposition",
-    resource.kind === "image"
-      ? contentDispositionInline(resource.filename)
-      : contentDispositionAttachment(resource.filename)
-  );
-  headers.set("X-Content-Type-Options", "nosniff");
-
-  return new Response(object.body, { headers });
-});
-
-app.patch("/api/v1/resources/:id", zValidator("json", ResourceUpdateSchema), async (c) => {
-  const denied = requireScopes(c, "write:resources");
-
-  if (denied) {
-    return denied;
-  }
-
-  const resourceId = c.req.param("id");
-  const resource = await getResourceRow(c.env.storage.db, getWorkspaceId(c), resourceId);
-
-  if (!resource) {
-    return notFound(c, "Resource not found");
-  }
-
-  const filename = normalizeFilename(c.req.valid("json").filename);
-  if (!filename) {
-    return badRequest(c, "Resource filename is required.");
-  }
-
-  const now = isoNow();
-  const actor = getAuditActor(c);
-  await c.env.storage.db.batch([
-    c.env.storage.db.prepare(
-      `UPDATE resources SET filename = ?, updated_at = ? WHERE id = ?`
-    ).bind(filename, now, resourceId),
-    auditStatement(c.env.storage.db, actor.actorType, actor.actorId, "resource.rename", "resource", resourceId, {
-      memoId: resource.memo_id,
-      previousFilename: resource.filename,
-      filename,
-    }),
-  ]);
-
-  const updated = await getResourceRow(c.env.storage.db, getWorkspaceId(c), resourceId);
-  if (!updated) {
-    return notFound(c, "Resource not found");
-  }
-
-  return c.json({ resource: mapResource(updated) });
-});
-
-app.delete("/api/v1/resources/:id", async (c) => {
-  const denied = requireScopes(c, "write:resources");
-
-  if (denied) {
-    return denied;
-  }
-
-  const resourceId = c.req.param("id");
-  const resource = await getResourceRow(c.env.storage.db, getWorkspaceId(c), resourceId);
-
-  if (!resource) {
-    return notFound(c, "Resource not found");
-  }
-
-  const now = isoNow();
-  const actor = getAuditActor(c);
-  await c.env.storage.db.batch([
-    c.env.storage.db.prepare(
-      `UPDATE resources SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?`
-    ).bind(now, now, resourceId),
-    auditStatement(c.env.storage.db, actor.actorType, actor.actorId, "resource.delete", "resource", resourceId, {
-      memoId: resource.memo_id,
-      filename: resource.filename,
-      byteSize: resource.byte_size,
-    }),
-  ]);
-  const source = await resolveObjectStorage(c.env, resource.storage_config_id);
-  await source.store.delete(resource.object_key);
-
-  return c.json({ ok: true });
-});
 
 app.post("/api/v1/demo/reset", async (c) => {
   if (!isDemoMode(c.env) && !isLocalDemoSeedEnabled(c.env)) {
@@ -3433,16 +2767,6 @@ const getInstanceUser = (db: D1Database, userId: string) =>
      WHERE u.id = ?`
   ).bind(userId).first<InstanceUserRow>();
 
-const mapInstanceUser = (row: InstanceUserRow): InstanceUser => ({
-  id: row.id,
-  username: row.username,
-  displayName: row.display_name,
-  role: row.role,
-  isDisabled: Boolean(row.is_disabled),
-  lastLoginAt: row.last_login_at,
-  createdAt: row.created_at,
-});
-
 const ensureUserWorkspace = async (db: D1Database, userId: string, username: string) => {
   const existing = await db.prepare(
     `SELECT workspace_id, role FROM workspace_members WHERE user_id = ? LIMIT 1`
@@ -3921,36 +3245,6 @@ const assertNotebookIdsInWorkspace = async (db: D1Database, workspaceId: string,
     throw new AppError("invalid_backup_workspace", "Backup references a notebook outside the current workspace.", 400);
   }
 };
-
-const mapResource = (row: ResourceRow): Resource => ({
-  id: row.id,
-  memoId: row.memo_id,
-  originalMemoId: row.original_memo_id,
-  kind: row.kind,
-  mimeType: row.mime_type,
-  filename: row.filename,
-  byteSize: row.byte_size,
-  sha256: row.sha256,
-  width: row.width,
-  height: row.height,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-  url: `/api/v1/resources/${row.id}/blob`,
-});
-
-const mapResourceListItem = (row: ResourceListRow): ResourceListItem => ({
-  ...mapResource(row),
-  memoTitle: row.memo_title,
-  memoExcerpt: row.memo_excerpt,
-  memoDeleted: Boolean(row.memo_is_deleted),
-});
-
-const mapResourceStorageSummary = (row: ResourceStatsRow | null): ResourceStorageSummary => ({
-  totalCount: row?.total_count ?? 0,
-  totalBytes: row?.total_bytes ?? 0,
-  imageCount: row?.image_count ?? 0,
-  attachmentCount: row?.attachment_count ?? 0,
-});
 
 const mapApiToken = (row: ApiTokenRow): ApiToken => ({
   id: row.id,
@@ -5798,52 +5092,4 @@ const sha256Bytes = async (bytes: Uint8Array) => {
     hexString += hex.length === 1 ? "0" + hex : hex;
   }
   return hexString;
-};
-
-const inferImageExtension = (filename: string, mimeType: string) => {
-  const extension = /\.(png|jpe?g|gif|webp|avif)$/i.exec(filename)?.[0]?.toLowerCase();
-
-  if (extension) {
-    return extension === ".jpeg" ? ".jpg" : extension;
-  }
-
-  switch (mimeType) {
-    case "image/png":
-      return ".png";
-    case "image/jpeg":
-      return ".jpg";
-    case "image/gif":
-      return ".gif";
-    case "image/webp":
-      return ".webp";
-    case "image/avif":
-      return ".avif";
-    default:
-      return "";
-  }
-};
-
-const normalizeFilename = (filename: string) =>
-  filename
-    .trim()
-    .replace(/[\\/]/g, "-")
-    .replace(/[\u0000-\u001f\u007f]/g, "")
-    .slice(0, 160);
-
-const contentDispositionInline = (filename: string | null) => {
-  if (!filename) {
-    return "inline";
-  }
-
-  const fallback = normalizeFilename(filename).replace(/"/g, "'");
-  return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
-};
-
-const contentDispositionAttachment = (filename: string | null) => {
-  if (!filename) {
-    return "attachment";
-  }
-
-  const fallback = normalizeFilename(filename).replace(/"/g, "'");
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 };
