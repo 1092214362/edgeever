@@ -44,3 +44,8 @@ Related Issue: #<issue-number>
 - **本地启动**：默认 `bun run dev`（纯本地环境）；指定远程实例用 `EDGE_EVER_INSTANCE=<实例名> bun run dev:remote`；纯前端用 `bun run dev:web`。
 - **Demo 示例同步**：修改示例笔记后，在 `main` 分支干净状态下执行 `bun run demo:sync` 重置公开 Demo。
 - **组件复用**：优先复用 `shadcn/ui` 与已成熟依赖，禁止无意义造轮子；复杂或重复模块封装为独立组件。
+
+## 品牌视觉规范 / Brand Identity
+
+- **品牌色**：主绿色 `#16A06E`，Logo 图形色 `#07130B`。
+- 修改 Logo 后执行 `bun run prepare:brand:icons` 同步各平台资源。
