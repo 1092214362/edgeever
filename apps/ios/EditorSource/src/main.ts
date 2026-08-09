@@ -1,4 +1,5 @@
 import "./styles.css";
+import "katex/dist/katex.min.css";
 import { Editor, mergeAttributes, Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -8,6 +9,7 @@ import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 import { NodeSelection } from "@tiptap/pm/state";
 import mermaid from "mermaid";
+import { createEdgeEverMathematics } from "./mathematics";
 
 /** Keep in sync with packages/shared MergeDivider (iOS bundle cannot import monorepo shared). */
 const MERGE_DIVIDER_MARKDOWN_MARKER = "<!-- edgeever:merge-divider -->";
@@ -603,6 +605,7 @@ function buildExtensions(placeholder: string) {
       codeBlock: false,
     }),
     MergeDivider,
+    ...createEdgeEverMathematics(),
     CodeBlock.configure({
       languageClassPrefix: "language-",
     }),
@@ -768,15 +771,37 @@ function handleResourcePointer(event: Event, kind: "click" | "contextmenu"): boo
   editorEl.addEventListener("touchcancel", clear, { passive: true });
 })();
 
+const LITERAL_DOLLAR_PLACEHOLDER = "\uE000edgeever-dollar\uE001";
+
+const protectLiteralDollarPairs = (value: unknown): unknown => {
+  if (!value || typeof value !== "object") return value;
+  const node = value as { type?: unknown; text?: unknown; content?: unknown };
+  if (node.type === "text" && typeof node.text === "string") {
+    const dollarCount = Array.from(node.text).filter((character) => character === "$").length;
+    return dollarCount >= 2
+      ? { ...node, text: node.text.replaceAll("$", LITERAL_DOLLAR_PLACEHOLDER) }
+      : value;
+  }
+  return Array.isArray(node.content)
+    ? { ...node, content: node.content.map(protectLiteralDollarPairs) }
+    : value;
+};
+
+const serializeEditorMarkdown = (ed: Editor) => {
+  const manager = (ed.storage as { markdown?: { manager?: { serialize?: (doc: unknown) => string } } })
+    .markdown?.manager;
+  if (manager?.serialize) {
+    return manager.serialize(protectLiteralDollarPairs(ed.getJSON())).replaceAll(LITERAL_DOLLAR_PLACEHOLDER, "\\$");
+  }
+  return typeof ed.getMarkdown === "function"
+    ? ed.getMarkdown()
+    : ed.getText({ blockSeparator: "\n\n" });
+};
+
 function emitChange(ed: Editor) {
   try {
     const contentJson = JSON.stringify(ed.getJSON());
-    // @tiptap/markdown storage
-    const storage = ed.storage as { markdown?: { getMarkdown?: () => string } };
-    const contentMarkdown =
-      storage.markdown?.getMarkdown?.() ??
-      // fallback: plain text
-      ed.getText({ blockSeparator: "\n\n" });
+    const contentMarkdown = serializeEditorMarkdown(ed);
     post({ type: "change", contentMarkdown, contentJson });
   } catch (error) {
     post({ type: "error", message: error instanceof Error ? error.message : String(error) });
@@ -926,8 +951,7 @@ const api: EdgeEverEditorAPI = {
   },
 
   getMarkdown() {
-    const storage = editor.storage as { markdown?: { getMarkdown?: () => string } };
-    return storage.markdown?.getMarkdown?.() ?? editor.getText({ blockSeparator: "\n\n" });
+    return serializeEditorMarkdown(editor);
   },
 
   getDocument() {

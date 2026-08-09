@@ -8,6 +8,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import { useTranslation } from "react-i18next";
 import * as m from "motion/react-m";
+import "katex/dist/katex.min.css";
 import {
   ChevronLeft,
   ChevronRight,
@@ -84,6 +85,7 @@ import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
 import { EDITOR_CONTENT_MAX_WIDTH, EDITOR_CONTENT_MAX_WIDTH_COLLAPSED } from "@/lib/workspace-ui";
 import {
   countMemoCharacters,
+  createEdgeEverMathematics,
   docToMarkdown,
   MEMO_CONTENT_STYLE,
   markdownToDoc,
@@ -1025,6 +1027,7 @@ const RichEditorPane = ({
       }),
       EdgeEverCodeBlock.configure({ lowlight: codeBlockLowlight, defaultLanguage: "plaintext" }),
       MergeDivider,
+      ...createEdgeEverMathematics(),
       ThemeBlock,
       ResizableImage.configure({
         allowBase64: false,
