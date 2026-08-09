@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     private enum RootTab: Hashable {
         case general
@@ -18,6 +19,7 @@ struct SettingsView: View {
 
     @State private var tab: RootTab?
     @State private var showLocalePicker = false
+    @State private var copiedSystemInfo = false
 
     private var title: String {
         switch tab {
@@ -100,16 +102,11 @@ struct SettingsView: View {
 
             Button {
                 withAnimation(Motion.chip) {
-                    // cycle: system → light → dark → system
-                    switch env.preferences.theme {
-                    case "light": env.preferences.theme = "dark"
-                    case "dark": env.preferences.theme = "system"
-                    default: env.preferences.theme = "light"
-                    }
+                    env.preferences.theme = resolvedDarkMode ? "light" : "dark"
                 }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: env.preferences.theme == "dark" ? "sun.max" : "moon")
+                    Image(systemName: resolvedDarkMode ? "sun.max" : "moon")
                         .font(.system(size: 16, weight: .semibold))
                     Text(themeToggleLabel)
                         .font(.system(size: 14, weight: .bold))
@@ -131,10 +128,14 @@ struct SettingsView: View {
 
     private var themeToggleLabel: String {
         // Android shows the *action* text: switch to light when dark, else switch to dark
-        if env.preferences.theme == "dark" || (env.preferences.theme == "system" && env.preferences.colorScheme == .dark) {
+        if resolvedDarkMode {
             return env.preferences.t("切换到浅色模式", en: "Light mode")
         }
         return env.preferences.t("切换到深色模式", en: "Dark mode")
+    }
+
+    private var resolvedDarkMode: Bool {
+        env.preferences.theme == "dark" || (env.preferences.theme == "system" && colorScheme == .dark)
     }
 
     // MARK: - Root Me menu (Android activeTab === null)
@@ -190,9 +191,7 @@ struct SettingsView: View {
                     trailing: .external,
                     showBorder: true
                 ) {
-                    if let url = URL(string: "https://github.com/tianma-if/edgeever/issues") {
-                        UIApplication.shared.open(url)
-                    }
+                    if let url = feedbackURL { UIApplication.shared.open(url) }
                 }
             }
         }
@@ -431,17 +430,30 @@ struct SettingsView: View {
     private var systemContent: some View {
         VStack(spacing: 16) {
             settingsGroup(title: env.preferences.t("系统信息", en: "System info"), icon: "info.circle") {
-                infoRow(env.preferences.t("版本", en: "Version"),
-                        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—",
-                        showBorder: false)
-                infoRow("Build",
-                        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—",
-                        showBorder: true)
+                Button {
+                    UIPasteboard.general.string = systemInfoText
+                    copiedSystemInfo = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { copiedSystemInfo = false }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: copiedSystemInfo ? "checkmark.shield" : "doc.on.doc")
+                        Text(copiedSystemInfo
+                            ? env.preferences.t("已复制", en: "Copied")
+                            : env.preferences.t("复制信息", en: "Copy info"))
+                            .font(.system(size: 14, weight: .bold))
+                        Spacer()
+                    }
+                    .foregroundStyle(copiedSystemInfo ? AppTheme.accentStrong : AppTheme.title)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+
+                ForEach(Array(systemInfoItems.enumerated()), id: \.offset) { index, item in
+                    infoRow(item.label, item.value, showBorder: true)
+                }
                 infoRow(env.preferences.t("实例", en: "Instance"),
                         env.session.session?.baseUrl ?? "—",
-                        showBorder: true)
-                infoRow(env.preferences.t("运行环境", en: "Runtime"),
-                        "Native SwiftUI",
                         showBorder: true)
             }
 
@@ -480,6 +492,64 @@ struct SettingsView: View {
         case "en-US": return "English"
         default: return env.preferences.t("跟随系统", en: "System")
         }
+    }
+
+    private var systemInfoItems: [(label: String, value: String)] {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        let language = env.preferences.localeCode == "system"
+            ? "\(env.preferences.resolvedLocale.identifier) (\(env.preferences.t("跟随系统", en: "Follow system")))"
+            : env.preferences.resolvedLocale.identifier
+        return [
+            (env.preferences.t("版本", en: "Version"), "v\(version)"),
+            (env.preferences.t("构建", en: "Build"), build),
+            (env.preferences.t("客户端", en: "Client"), env.preferences.t("移动应用", en: "Mobile app")),
+            (env.preferences.t("系统", en: "System"), "iOS"),
+            (env.preferences.t("系统版本", en: "System version"), UIDevice.current.systemVersion),
+            (env.preferences.t("语言", en: "Language"), language),
+            (env.preferences.t("时区", en: "Time zone"), TimeZone.current.identifier),
+            (env.preferences.t("安装形态", en: "Mode"), env.preferences.t("原生 SwiftUI 应用", en: "Native SwiftUI app")),
+        ]
+    }
+
+    private var systemInfoText: String {
+        systemInfoItems.map { "\($0.label): \($0.value)" }.joined(separator: "\n")
+    }
+
+    private var feedbackURL: URL? {
+        let english = env.preferences.isEnglish
+        let heading = english ? "Feedback" : "反馈内容"
+        let prompt = english
+            ? "Describe the problem, steps to reproduce it, or the feature you would like to see."
+            : "请描述遇到的问题、复现步骤，或你希望增加的功能。"
+        let privacy = english
+            ? "GitHub Issues are public. Do not include passwords, tokens, instance URLs, or private note content."
+            : "GitHub Issue 公开可见，请勿提交密码、Token、实例地址或私人笔记内容。"
+        let infoHeading = english ? "System information" : "系统信息"
+        let notice = english
+            ? "The following information was generated by EdgeEver to help diagnose the issue."
+            : "以下信息由 EdgeEver 自动生成，可帮助定位问题。"
+        let body = """
+        ## \(heading)
+
+        \(prompt)
+
+        > \(privacy)
+
+        ## \(infoHeading)
+
+        \(notice)
+
+        ```text
+        \(systemInfoText)
+        ```
+        """
+        var components = URLComponents(string: "https://github.com/tianma-if/edgeever/issues/new")
+        components?.queryItems = [
+            URLQueryItem(name: "title", value: english ? "[Feedback] " : "[反馈] "),
+            URLQueryItem(name: "body", value: body),
+        ]
+        return components?.url
     }
 
     private func settingsGroup<Content: View>(

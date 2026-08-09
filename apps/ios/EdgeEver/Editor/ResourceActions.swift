@@ -764,7 +764,7 @@ private enum ResourceActionError: LocalizedError {
 }
 
 /// System share sheet with completion so the user always gets feedback.
-private struct ActivityShareView: UIViewControllerRepresentable {
+struct ActivityShareView: UIViewControllerRepresentable {
     let items: [Any]
     var onComplete: (_ completed: Bool, _ activityType: UIActivity.ActivityType?, _ error: Error?) -> Void
 

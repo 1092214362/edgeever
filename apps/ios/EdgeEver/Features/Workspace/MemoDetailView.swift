@@ -5,14 +5,14 @@ import Pow
 struct MemoDetailView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     let memoId: String
     /// Present editor from the parent `WorkspaceView` (more reliable than cover on a pushed page).
     var onEdit: (String) -> Void = { _ in }
 
     @State private var memo: MemoDetail?
     @State private var showRevisions = false
-    @State private var showShareAlert = false
-    @State private var shareURL: String?
+    @State private var memoSharePayload: MemoSharePayload?
     @State private var error: String?
     @State private var conflictItem: OutboxItem?
     @State private var outboxStatus: OutboxStatus?
@@ -20,6 +20,8 @@ struct MemoDetailView: View {
     @State private var pinPulse = false
     @State private var searchOpen = false
     @State private var searchQuery = ""
+    @State private var searchMatchCount = 0
+    @State private var searchMatchIndex = 0
     @State private var showDeleteConfirm = false
     @State private var showMoreMenu = false
     @State private var resourceTarget: ResourceTarget?
@@ -94,6 +96,12 @@ struct MemoDetailView: View {
             .presentationDetents([.height(360), .medium])
             .presentationDragIndicator(.hidden)
         }
+        .sheet(item: $memoSharePayload) { payload in
+            ActivityShareView(items: [payload.message, payload.url]) { _, _, error in
+                if let error { self.error = error.localizedDescription }
+                memoSharePayload = nil
+            }
+        }
         .fullScreenCover(isPresented: Binding(
             get: { imagePreview != nil },
             set: { if !$0 { imagePreview = nil } }
@@ -150,16 +158,6 @@ struct MemoDetailView: View {
         } message: {
             Text(env.preferences.t("笔记将移入回收站。", en: "The note will move to trash."))
         }
-        .alert(env.preferences.t("分享链接", en: "Share link"), isPresented: $showShareAlert) {
-            Button(env.preferences.t("复制", en: "Copy")) {
-                if let shareURL {
-                    UIPasteboard.general.string = shareURL
-                }
-            }
-            Button(env.preferences.t("关闭", en: "Close"), role: .cancel) {}
-        } message: {
-            Text(shareURL ?? "")
-        }
         // Local SQLite mirror is sync and cheap — load before the first blank ProgressView frame.
         .onAppear {
             if memo == nil {
@@ -180,6 +178,9 @@ struct MemoDetailView: View {
         }
         .onChange(of: memoId) { _, _ in
             bodyReady = false
+            searchQuery = ""
+            searchMatchCount = 0
+            searchMatchIndex = 0
             load()
             refreshSyncStatus()
         }
@@ -244,7 +245,13 @@ struct MemoDetailView: View {
                         label: env.preferences.t("搜索当前笔记", en: "Search in note"),
                         id: DetailMemoChrome.search
                     ) {
-                        withAnimation(Motion.chip) { searchOpen.toggle() }
+                        withAnimation(Motion.chip) {
+                            if searchOpen {
+                                closeSearch()
+                            } else {
+                                searchOpen = true
+                            }
+                        }
                     }
                     headerIconButton(
                         systemImage: "ellipsis",
@@ -421,7 +428,7 @@ struct MemoDetailView: View {
                             .font(.system(size: 16))
                             .foregroundStyle(AppTheme.secondary)
                     }
-                    Text(memo.displayTitle)
+                    Text(localizedTitle(for: memo))
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(AppTheme.title)
                         .lineLimit(4)
@@ -477,9 +484,40 @@ struct MemoDetailView: View {
                         )
                         .font(.system(size: 14))
                         .textFieldStyle(.plain)
+                        .onChange(of: searchQuery) { _, query in
+                            searchMatchIndex = 0
+                            SharedTipTapRuntime.viewer.search(query, index: 0)
+                        }
+                        Text(searchMatchCount == 0 ? "0/0" : "\(searchMatchIndex + 1)/\(searchMatchCount)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AppTheme.secondary)
+                            .monospacedDigit()
                         Button {
-                            searchOpen = false
-                            searchQuery = ""
+                            guard searchMatchCount > 0 else { return }
+                            let next = (searchMatchIndex - 1 + searchMatchCount) % searchMatchCount
+                            SharedTipTapRuntime.viewer.search(searchQuery, index: next)
+                        } label: {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 12, weight: .bold))
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(searchMatchCount == 0)
+                        .accessibilityLabel(env.preferences.t("上一个匹配项", en: "Previous match"))
+                        Button {
+                            guard searchMatchCount > 0 else { return }
+                            let next = (searchMatchIndex + 1) % searchMatchCount
+                            SharedTipTapRuntime.viewer.search(searchQuery, index: next)
+                        } label: {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .bold))
+                                .frame(width: 28, height: 28)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(searchMatchCount == 0)
+                        .accessibilityLabel(env.preferences.t("下一个匹配项", en: "Next match"))
+                        Button {
+                            closeSearch()
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 12, weight: .bold))
@@ -516,12 +554,20 @@ struct MemoDetailView: View {
                     markdown: memo.contentMarkdown,
                     baseURL: env.session.session.flatMap { URL(string: $0.baseUrl) },
                     token: env.session.session?.token,
+                    locale: env.preferences.isEnglish ? "en-US" : "zh-CN",
+                    theme: colorScheme == .dark ? "dark" : "light",
+                    placeholder: env.preferences.t("开始输入…", en: "Start writing…"),
                     onChange: nil,
                     onResourcePress: { target in
                         resourceTarget = target
                     },
                     onImagePreview: { source, alt in
                         imagePreview = (source, alt)
+                    },
+                    onPickImage: nil,
+                    onSearchResult: { count, index in
+                        searchMatchCount = count
+                        searchMatchIndex = index
                     },
                     onBodyReady: {
                         bodyReady = true
@@ -620,8 +666,21 @@ struct MemoDetailView: View {
 
     private func copyLocalDraft() async {
         guard let memo else { return }
-        let text = [memo.displayTitle, memo.contentMarkdown].filter { !$0.isEmpty }.joined(separator: "\n\n")
+        let text = [localizedTitle(for: memo), memo.contentMarkdown].filter { !$0.isEmpty }.joined(separator: "\n\n")
         UIPasteboard.general.string = text
+    }
+
+    private func closeSearch() {
+        searchOpen = false
+        searchQuery = ""
+        searchMatchCount = 0
+        searchMatchIndex = 0
+        SharedTipTapRuntime.viewer.search("", index: 0)
+    }
+
+    private func localizedTitle(for memo: MemoDetail) -> String {
+        let title = memo.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? env.preferences.t("无标题笔记", en: "Untitled note") : title
     }
 
     private func togglePin(_ memo: MemoDetail) async {
@@ -649,8 +708,12 @@ struct MemoDetailView: View {
         do {
             let share = try await env.session.client.createMemoShare(memoId: memo.id)
             let base = env.session.session?.baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
-            shareURL = "\(base)/share/\(share.token)"
-            showShareAlert = true
+            guard let url = URL(string: "\(base)/share/\(share.token)") else { return }
+            let title = memo.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayTitle = title?.isEmpty == false
+                ? title!
+                : env.preferences.t("无标题笔记", en: "Untitled note")
+            memoSharePayload = MemoSharePayload(message: "\(displayTitle)\n\(url.absoluteString)", url: url)
         } catch {
             self.error = error.localizedDescription
         }
@@ -671,6 +734,12 @@ struct MemoDetailView: View {
             self.error = error.localizedDescription
         }
     }
+}
+
+private struct MemoSharePayload: Identifiable {
+    let id = UUID()
+    let message: String
+    let url: URL
 }
 
 // MARK: - String helper

@@ -6,7 +6,7 @@ struct ListActionsSheet: View {
     @Bindable var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
 
-    private var listTitle: String { store.titleLabel }
+    private var listTitle: String { store.activeNotebook?.name ?? env.preferences.t("全部笔记", en: "All notes") }
     private var listDescription: String {
         env.preferences.t("\(store.totalCount) 条笔记", en: "\(store.totalCount) notes")
     }

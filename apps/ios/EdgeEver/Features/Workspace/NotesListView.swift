@@ -625,6 +625,6 @@ struct MemoCardContent: View {
 
     private var displayTitle: String {
         let t = memo.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return t.isEmpty ? "无标题笔记" : t
+        return t.isEmpty ? (isEnglish ? "Untitled note" : "无标题笔记") : t
     }
 }
