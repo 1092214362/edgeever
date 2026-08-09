@@ -71,12 +71,12 @@ describe("mobile app scope", () => {
     expect(memoDetailSource).not.toContain("react-native-markdown-display");
   });
 
-  test("keeps memo list free of Reanimated layout transitions that crash Fabric text layout", () => {
-    expect(notesViewSource).not.toContain("FadeInDown");
-    expect(notesViewSource).not.toContain("FadeOutUp");
-    expect(notesViewSource).not.toContain("LinearTransition");
-    expect(notesViewSource).not.toContain("entering=");
-    expect(notesViewSource).not.toContain("layout={LinearTransition");
+  test("keeps Android memo list motion and spring feedback", () => {
+    expect(notesViewSource).toContain("FadeInDown.duration(260).springify().damping(18)");
+    expect(notesViewSource).toContain("FadeOutUp.duration(220)");
+    expect(notesViewSource).toContain("LinearTransition.duration(220)");
+    expect(notesViewSource).toContain("pressScale.value = withTiming(0.985");
+    expect(notesViewSource).toContain("pressScale.value = withTiming(1");
   });
 
   test("hardens DOM/WebView hosts against media capture probes during App Review", () => {
