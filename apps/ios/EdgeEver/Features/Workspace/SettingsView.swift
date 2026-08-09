@@ -123,7 +123,7 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 12)
         .frame(minHeight: 56)
-        .background(Color.white)
+        .background(AppTheme.card)
         .overlay(alignment: .bottom) {
             Rectangle().fill(AppTheme.border).frame(height: 1)
         }
@@ -204,7 +204,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             content()
         }
-        .background(Color.white)
+        .background(AppTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -235,7 +235,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title)
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color(hex: 0x1E293B))
+                        .foregroundStyle(AppTheme.title)
                     if let subtitle {
                         Text(subtitle)
                             .font(.system(size: 12))
@@ -309,7 +309,7 @@ struct SettingsView: View {
                         }
                         .padding(.horizontal, 12)
                         .frame(minHeight: 40)
-                        .background(Color.white)
+                        .background(AppTheme.card)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8).stroke(AppTheme.border, lineWidth: 1)
@@ -363,7 +363,7 @@ struct SettingsView: View {
                 Spacer(minLength: 0)
             }
             .padding(16)
-            .background(Color.white)
+            .background(AppTheme.card)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -412,18 +412,18 @@ struct SettingsView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 40)
-                    .background(Color(hex: 0xE11D48))
+                    .background(AppTheme.dangerAction)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(Color(hex: 0xFFF1F2))
+            .background(AppTheme.dangerSurface)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color(hex: 0xFECACA), lineWidth: 1)
+                    .stroke(AppTheme.dangerBorder, lineWidth: 1)
             )
         }
     }
@@ -457,7 +457,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 44)
                 .foregroundStyle(AppTheme.title)
-                .background(Color.white)
+                .background(AppTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.border, lineWidth: 1))
             }
@@ -499,7 +499,7 @@ struct SettingsView: View {
             .padding(16)
             content()
         }
-        .background(Color.white)
+        .background(AppTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)

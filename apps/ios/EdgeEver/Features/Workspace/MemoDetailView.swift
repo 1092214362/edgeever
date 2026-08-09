@@ -49,7 +49,7 @@ struct MemoDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .background(Color.white)
+        .background(AppTheme.card)
         // UIKit FAB in overlay — SwiftUI Button over WKWebView often receives zero taps.
         .overlay(alignment: .bottomTrailing) {
             if let memo, !memo.isDeleted {
@@ -63,7 +63,7 @@ struct MemoDetailView: View {
                 .padding(.bottom, 12)
             }
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(AppTheme.card.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier(DetailMemoChrome.root)
         .sheet(isPresented: $showRevisions) {
@@ -259,7 +259,7 @@ struct MemoDetailView: View {
         }
         .padding(.horizontal, 12)
         .frame(minHeight: 48)
-        .background(Color.white)
+        .background(AppTheme.card)
         .overlay(alignment: .bottom) {
             Rectangle().fill(AppTheme.cardBorder).frame(height: 1)
         }
@@ -293,13 +293,13 @@ struct MemoDetailView: View {
                 en: "This note changed on another device or while offline. Copy the local draft, then adopt the cloud version to continue."
             ))
             .font(.system(size: 12))
-            .foregroundStyle(Color(hex: 0x9F1239))
+            .foregroundStyle(AppTheme.dangerStrong)
             .fixedSize(horizontal: false, vertical: true)
 
             if let lastOutboxError, !lastOutboxError.isEmpty {
                 Text(lastOutboxError)
                     .font(.system(size: 12))
-                    .foregroundStyle(Color(hex: 0x9F1239))
+                    .foregroundStyle(AppTheme.dangerStrong)
             }
 
             HStack(spacing: 8) {
@@ -316,7 +316,7 @@ struct MemoDetailView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .background(Color(hex: 0xBE123C))
+                        .background(AppTheme.dangerAction)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
@@ -326,13 +326,13 @@ struct MemoDetailView: View {
                 } label: {
                     Text(env.preferences.t("复制本地草稿", en: "Copy local draft"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0x9F1239))
+                        .foregroundStyle(AppTheme.dangerStrong)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .background(Color.white)
+                        .background(AppTheme.card)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(hex: 0xFECDD3), lineWidth: 1)
+                                .stroke(AppTheme.dangerBorder, lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
@@ -341,9 +341,9 @@ struct MemoDetailView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(hex: 0xFFF1F2))
+        .background(AppTheme.dangerSurface)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(Color(hex: 0xFECDD3)).frame(height: 0.5)
+            Rectangle().fill(AppTheme.dangerBorder).frame(height: 0.5)
         }
     }
 
@@ -357,7 +357,7 @@ struct MemoDetailView: View {
                         : env.preferences.t("本地改动待上传。下拉刷新或点此可立即同步。", en: "Local changes pending upload. Pull to refresh or tap to sync now."))
             )
             .font(.system(size: 12))
-            .foregroundStyle(isError ? Color(hex: 0x991B1B) : Color(hex: 0x1E3A8A))
+            .foregroundStyle(isError ? AppTheme.dangerStrong : AppTheme.infoText)
             .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
@@ -375,7 +375,7 @@ struct MemoDetailView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .background(isError ? Color(hex: 0xB91C1C) : Color(hex: 0x1D4ED8))
+                        .background(isError ? AppTheme.dangerAction : AppTheme.infoAction)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
@@ -386,13 +386,13 @@ struct MemoDetailView: View {
                     } label: {
                         Text(env.preferences.t("复制本地草稿", en: "Copy local draft"))
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(hex: 0x991B1B))
+                            .foregroundStyle(AppTheme.dangerStrong)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 8)
-                            .background(Color.white)
+                            .background(AppTheme.card)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color(hex: 0xFECACA), lineWidth: 1)
+                                    .stroke(AppTheme.dangerBorder, lineWidth: 1)
                             )
                     }
                     .buttonStyle(.plain)
@@ -402,10 +402,10 @@ struct MemoDetailView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isError ? Color(hex: 0xFEF2F2) : Color(hex: 0xEFF6FF))
+        .background(isError ? AppTheme.dangerSurface : AppTheme.infoSurface)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(isError ? Color(hex: 0xFECACA) : Color(hex: 0xBFDBFE))
+                .fill(isError ? AppTheme.dangerBorder : AppTheme.infoText.opacity(0.55))
                 .frame(height: 0.5)
         }
     }
@@ -532,7 +532,7 @@ struct MemoDetailView: View {
                     ProgressView()
                         .tint(AppTheme.title)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.white.opacity(0.92))
+                        .background(AppTheme.card.opacity(0.92))
                         .allowsHitTesting(false)
                 }
             }

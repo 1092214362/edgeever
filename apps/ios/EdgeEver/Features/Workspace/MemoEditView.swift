@@ -79,7 +79,7 @@ struct MemoEditView: View {
                 .accessibilityIdentifier("createMemoUploadOverlay")
             }
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(AppTheme.card.ignoresSafeArea())
         .accessibilityIdentifier(CreateMemoChrome.root)
         .sheet(isPresented: $showNotebookPicker) {
             EditNotebookPickerSheet(
@@ -242,7 +242,7 @@ struct MemoEditView: View {
                     }
                     .frame(minWidth: 58, minHeight: 36)
                     .padding(.horizontal, 12)
-                    .background(canSubmitDone ? AppTheme.title : Color(hex: 0xE2E8F0))
+                    .background(canSubmitDone ? AppTheme.title : AppTheme.disabledFill)
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -255,7 +255,7 @@ struct MemoEditView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(minHeight: 52)
-        .background(Color.white)
+        .background(AppTheme.card)
         .overlay(alignment: .bottom) {
             Rectangle().fill(AppTheme.cardBorder).frame(height: 1)
         }
@@ -388,12 +388,12 @@ struct MemoEditView: View {
                             .foregroundStyle(AppTheme.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.white)
+                    .background(AppTheme.card)
                     .allowsHitTesting(false)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.white)
+            .background(AppTheme.card)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -981,7 +981,7 @@ private struct EditNotebookPickerSheet: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color.white)
+            .background(AppTheme.card)
             .overlay(alignment: .bottom) {
                 Rectangle().fill(AppTheme.border).frame(height: 1)
             }
@@ -1006,6 +1006,6 @@ private struct EditNotebookPickerSheet: View {
             }
             .listStyle(.plain)
         }
-        .background(Color.white)
+        .background(AppTheme.card)
     }
 }

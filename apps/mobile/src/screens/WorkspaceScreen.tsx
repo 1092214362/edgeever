@@ -5,6 +5,7 @@ import Constants from "expo-constants";
 import { File as ExpoFile } from "expo-file-system";
 import type { MemoFilterMode, MemoSortMode } from "@edgeever/client";
 import {
+  ActivityIndicator,
   BookOpen,
   Check,
   ChevronDown,
@@ -40,7 +41,6 @@ import {
   X,
 } from "../components/icons";
 import {
-  ActivityIndicator,
   BackHandler,
   FlatList,
   Image as RNImage,

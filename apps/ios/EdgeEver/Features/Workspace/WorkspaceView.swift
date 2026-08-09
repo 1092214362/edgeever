@@ -380,7 +380,7 @@ struct WorkspaceView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minHeight: 32)
-        .background(searchActive ? AppTheme.searchActiveFill : Color.white)
+        .background(searchActive ? AppTheme.searchActiveFill : AppTheme.card)
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(searchActive ? AppTheme.accentBorder : AppTheme.border, lineWidth: 1)
@@ -420,7 +420,7 @@ struct WorkspaceView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(active ? .white : AppTheme.slate)
                 .frame(width: MobileUIMetrics.compactControlHeight, height: MobileUIMetrics.compactControlHeight)
-                .background(active ? AppTheme.filterActive : Color.white)
+                .background(active ? AppTheme.filterActive : AppTheme.card)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(active ? AppTheme.filterActive : AppTheme.border, lineWidth: 1))
                 .accessibilityLabel(label)
@@ -472,9 +472,9 @@ struct WorkspaceView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(canCreate ? .white : Color(hex: 0xE2E8F0))
+                        .foregroundStyle(canCreate ? .white : AppTheme.disabledText)
                         .frame(width: createSize, height: createSize)
-                        .background(canCreate ? AppTheme.accentBright : Color(hex: 0xCBD5E1))
+                        .background(canCreate ? AppTheme.accentAction : AppTheme.disabledFill)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(Color.white, lineWidth: 3))
                         .shadow(
@@ -514,11 +514,11 @@ struct WorkspaceView: View {
             .frame(maxWidth: .infinity)
 
             // Home indicator — same white surface, continuous with the 52pt band.
-            Color.white
+            AppTheme.card
                 .frame(height: bottomInset)
                 .frame(maxWidth: .infinity)
         }
-        .background(Color.white)
+        .background(AppTheme.card)
         .accessibilityIdentifier("bottomNav")
     }
 
@@ -573,11 +573,11 @@ struct WorkspaceView: View {
             .frame(height: MobileUIMetrics.bottomNavigationHeight, alignment: .top)
             .frame(maxWidth: .infinity)
 
-            Color.white
+            AppTheme.card
                 .frame(height: bottomInset)
                 .frame(maxWidth: .infinity)
         }
-        .background(Color.white)
+        .background(AppTheme.card)
         .overlay(alignment: .top) {
             Rectangle().fill(AppTheme.border).frame(height: 1)
         }
@@ -600,7 +600,7 @@ struct WorkspaceView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.white)
+                .background(AppTheme.card)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
@@ -662,7 +662,7 @@ struct MoveNotebookSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             Capsule()
-                .fill(Color(hex: 0xCBD5E1))
+                .fill(AppTheme.sheetHandle)
                 .frame(width: 42, height: 4)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
@@ -713,7 +713,7 @@ struct MoveNotebookSheet: View {
                 }
             }
         }
-        .background(Color.white)
+        .background(AppTheme.card)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
     }
