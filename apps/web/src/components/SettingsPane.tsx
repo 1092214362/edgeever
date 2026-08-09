@@ -50,6 +50,7 @@ interface SettingsPaneProps {
   demoMode: boolean;
   isOwner: boolean;
   user: AuthUser | null;
+  refreshWorkspaceAfterImport: () => Promise<void>;
 }
 
 // Slate and brand color variables already switch values with the root theme.
@@ -87,6 +88,7 @@ export const SettingsPane = ({
   demoMode,
   isOwner,
   user,
+  refreshWorkspaceAfterImport,
 }: SettingsPaneProps) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("general");
@@ -211,7 +213,7 @@ export const SettingsPane = ({
       case "data":
         return (
           <SettingsGroup>
-            <DataExportCard />
+            <DataExportCard refreshWorkspaceAfterImport={refreshWorkspaceAfterImport} />
             <EvernoteImportGuideCard />
           </SettingsGroup>
         );
