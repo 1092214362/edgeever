@@ -35,6 +35,7 @@ import {
   FileDown,
   Printer,
   Link2,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GitHubRepositoryLink } from "@/components/GitHubRepositoryLink";
@@ -726,6 +727,7 @@ const RichEditorPane = ({
   const [mobileImeDebugActiveElement, setMobileImeDebugActiveElement] = useState(getActiveElementLabel);
   const [mobileImeDebugEvents, setMobileImeDebugEvents] = useState<MobileImeDebugEntry[]>([]);
   const [wechatCopyState, setWechatCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+  const [memoIdCopyNotice, setMemoIdCopyNotice] = useState<{ status: "copied" | "error"; id: string } | null>(null);
   const noteLinkModifier = useMemo(
     () => typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.platform) ? "⌘" : "Ctrl",
     []
@@ -2215,6 +2217,15 @@ const RichEditorPane = ({
     }
   }, [editor, markdownSource, useMarkdownSourceEditor]);
 
+  const handleCopyMemoId = useCallback(async () => {
+    if (!memo || isLocalMemoId(memo.id)) {
+      return;
+    }
+    const copied = await copyTextToClipboard(memo.id);
+    setMemoIdCopyNotice({ status: copied ? "copied" : "error", id: memo.id });
+    window.setTimeout(() => setMemoIdCopyNotice(null), copied ? 2200 : 3000);
+  }, [memo]);
+
   const handleExportPdf = useCallback((preopenedWindow?: Window | null) => {
     if (!isEditorReady(editor) || !memo) {
       return;
@@ -3491,6 +3502,14 @@ const RichEditorPane = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  disabled={isLocalMemoId(memo.id)}
+                  onClick={() => void handleCopyMemoId()}
+                >
+                  <Copy className="h-4 w-4 text-slate-500" />
+                  {t(isLocalMemoId(memo.id) ? "editor.copyNoteIdAfterSync" : "editor.copyNoteId")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
                   onClick={openNoteReplace}
                 >
                   <ReplaceAll className="h-4 w-4 text-slate-500" />
@@ -4044,6 +4063,18 @@ const RichEditorPane = ({
       {resourceActionError && !resourceDialog && (
         <div className="fixed bottom-5 left-1/2 z-[120] -translate-x-1/2 rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow-lg" role="alert">
           {resourceActionError}
+        </div>
+      )}
+
+      {memoIdCopyNotice && (
+        <div
+          className={cn(
+            "fixed bottom-5 left-1/2 z-[120] max-w-[calc(100vw-2rem)] -translate-x-1/2 truncate rounded-md px-3 py-2 text-sm font-medium text-white shadow-lg",
+            memoIdCopyNotice.status === "copied" ? "bg-emerald-700" : "bg-rose-600",
+          )}
+          role={memoIdCopyNotice.status === "copied" ? "status" : "alert"}
+        >
+          {t(memoIdCopyNotice.status === "copied" ? "editor.noteIdCopied" : "editor.noteIdCopyFailed", { id: memoIdCopyNotice.id })}
         </div>
       )}
 

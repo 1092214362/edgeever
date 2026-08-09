@@ -730,6 +730,10 @@ export const enUS = {
     searchCurrentMemo: "Search current note",
     replaceCurrentMemo: "Replace in current note",
     versionHistory: "Version history",
+    copyNoteId: "Copy note ID",
+    copyNoteIdAfterSync: "Copy note ID after sync",
+    noteIdCopied: "Note ID copied: {{id}}",
+    noteIdCopyFailed: "Could not copy the note ID.",
     exportMarkdown: "Export Markdown",
     exportPdf: "Export PDF",
     pdfExport: {

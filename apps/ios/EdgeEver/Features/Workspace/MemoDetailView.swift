@@ -1,5 +1,6 @@
 import SwiftUI
 import Pow
+import UIKit
 
 /// Android WorkspaceMemoDetail shell parity (detailHeader*, detailMeta*, detailEditFab).
 struct MemoDetailView: View {
@@ -24,6 +25,7 @@ struct MemoDetailView: View {
     @State private var searchMatchIndex = 0
     @State private var showDeleteConfirm = false
     @State private var showMoreMenu = false
+    @State private var showNoteIdCopied = false
     @State private var resourceTarget: ResourceTarget?
     @State private var imagePreview: (source: String, alt: String)?
     /// TipTap EditorBundle is ~4MB; keep native text visible until first setContent finishes.
@@ -144,6 +146,15 @@ struct MemoDetailView: View {
                 Button(env.preferences.t("分享链接", en: "Share link")) {
                     Task { await shareMemo(memo) }
                 }
+                Button(
+                    isTemporaryMemoId(memo.id)
+                        ? env.preferences.t("同步后可复制笔记 ID", en: "Copy note ID after sync")
+                        : env.preferences.t("复制笔记 ID", en: "Copy note ID")
+                ) {
+                    UIPasteboard.general.string = memo.id
+                    showNoteIdCopied = true
+                }
+                .disabled(isTemporaryMemoId(memo.id))
                 Button(env.preferences.t("修订历史", en: "Revisions")) { showRevisions = true }
                 Button(env.preferences.t("删除", en: "Delete"), role: .destructive) {
                     showDeleteConfirm = true
@@ -157,6 +168,14 @@ struct MemoDetailView: View {
             Button(env.preferences.t("取消", en: "Cancel"), role: .cancel) {}
         } message: {
             Text(env.preferences.t("笔记将移入回收站。", en: "The note will move to trash."))
+        }
+        .alert(
+            env.preferences.t("笔记 ID 已复制", en: "Note ID copied"),
+            isPresented: $showNoteIdCopied
+        ) {
+            Button(env.preferences.t("好", en: "OK"), role: .cancel) {}
+        } message: {
+            Text(memo?.id ?? memoId)
         }
         // Local SQLite mirror is sync and cheap — load before the first blank ProgressView frame.
         .onAppear {
@@ -668,6 +687,10 @@ struct MemoDetailView: View {
         guard let memo else { return }
         let text = [localizedTitle(for: memo), memo.contentMarkdown].filter { !$0.isEmpty }.joined(separator: "\n\n")
         UIPasteboard.general.string = text
+    }
+
+    private func isTemporaryMemoId(_ id: String) -> Bool {
+        id.hasPrefix("local:") || id.hasPrefix("local_")
     }
 
     private func closeSearch() {

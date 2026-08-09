@@ -730,6 +730,10 @@ export const zhCN = {
     searchCurrentMemo: "搜索当前笔记",
     replaceCurrentMemo: "替换当前笔记",
     versionHistory: "版本历史",
+    copyNoteId: "复制笔记 ID",
+    copyNoteIdAfterSync: "同步后可复制笔记 ID",
+    noteIdCopied: "笔记 ID 已复制：{{id}}",
+    noteIdCopyFailed: "复制笔记 ID 失败。",
     exportMarkdown: "导出 Markdown",
     exportPdf: "导出 PDF",
     pdfExport: {
