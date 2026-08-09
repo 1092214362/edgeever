@@ -90,6 +90,22 @@ describe("mobile app scope", () => {
     expect(workspaceSource).toContain("createPendingRef.current || imageOperationRef.current");
   });
 
+  test("focuses the note body instead of the title when creating a note", () => {
+    const createMemoSource = workspaceSource.slice(
+      workspaceSource.indexOf("const CreateMemoModal ="),
+      workspaceSource.indexOf("const RichEditorModal =")
+    );
+    const titleInput = createMemoSource.match(
+      /<TextInput\s+autoCorrect\s+accessibilityLabel="笔记标题"[\s\S]*?\/>/
+    )?.[0];
+
+    expect(createMemoSource).toMatch(/<LocalTiptapEditor\s+autoFocus\s/);
+    expect(createMemoSource).toContain("scheduleBodyKeyboard(60)");
+    expect(titleInput).toBeDefined();
+    expect(titleInput).not.toContain("autoFocus");
+    expect(createMemoSource).not.toContain("scheduleTitleFocus");
+  });
+
   test("declares iOS privacy strings and full-screen phone-on-iPad presentation", () => {
     const infoPlist = appJson.expo.ios?.infoPlist ?? {};
     expect(appJson.expo.ios?.supportsTablet).toBe(false);

@@ -466,8 +466,8 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     try {
       const parsed = JSON.parse(contentJsonSerialized) as EditorDoc;
       const next = resolveImageSources(parsed, props.baseUrl);
-      // Do not focus here: draft restore / template inject must not steal the native
-      // title TextInput IME. Callers that need caret at end use focusEnd().
+      // Do not focus while replacing content. Callers decide when the editor should
+      // take focus and place the caret via focusEnd().
       editor.commands.setContent(next, { emitUpdate: !isViewer });
     } catch {
       // Ignore malformed payloads from the native bridge.
@@ -1950,4 +1950,3 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-editor-content hr { margin: 24px 0; border: 0; border-top: 1px solid #cbd5e1; }
 `;
 };
-

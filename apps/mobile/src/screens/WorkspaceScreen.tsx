@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
@@ -1733,20 +1733,6 @@ const CreateMemoModal = ({
 
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const titleFocusTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
-  const titleInputRef = useRef<ComponentRef<typeof TextInput>>(null);
-  // Blank create: focus native title so the soft keyboard shows immediately while DomWebView
-  // cold-starts. Template / share drafts already have structure — focus the body instead.
-  const preferTitleFocus = useMemo(() => {
-    if (!initialDraft) {
-      return true;
-    }
-    const seedTitle = initialDraft.title?.trim() ?? "";
-    const seedBody = initialDraft.contentMarkdown?.trim() ?? "";
-    return !seedTitle && !seedBody;
-  }, [initialDraft]);
-  const preferTitleFocusRef = useRef(preferTitleFocus);
-  preferTitleFocusRef.current = preferTitleFocus;
 
   const pushBodyToEditor = useCallback((doc: TiptapDoc) => {
     safeDomCall(() => editorRef.current?.setContent(JSON.stringify(doc)));
@@ -1761,21 +1747,7 @@ const CreateMemoModal = ({
       clearTimeout(keyboardTimerRef.current);
       keyboardTimerRef.current = null;
     }
-    for (const timer of titleFocusTimersRef.current) {
-      clearTimeout(timer);
-    }
-    titleFocusTimersRef.current = [];
   }, []);
-
-  const scheduleTitleFocus = useCallback((delaysMs: number[] = [0, 80, 220, 480]) => {
-    clearFocusTimers();
-    // DomWebView often steals focus when it attaches; reclaim the native title a few times.
-    titleFocusTimersRef.current = delaysMs.map((delayMs) =>
-      setTimeout(() => {
-        titleInputRef.current?.focus();
-      }, delayMs)
-    );
-  }, [clearFocusTimers]);
 
   const scheduleBodyKeyboard = useCallback((delayMs = 160) => {
     clearFocusTimers();
@@ -2125,8 +2097,7 @@ const CreateMemoModal = ({
 
   const editorElement = useMemo(() => draftLoaded && baseUrl ? (
     <LocalTiptapEditor
-      // Blank create keeps focus on the native title field; template/share focus the body.
-      autoFocus={!preferTitleFocus}
+      autoFocus
       baseUrl={baseUrl}
       content={contentJsonRef.current}
       dom={{
@@ -2152,18 +2123,13 @@ const CreateMemoModal = ({
       onReady={async (elapsedMs) => {
         setEditorReady(true);
         recordEditorStartup(elapsedMs);
-        if (preferTitleFocusRef.current) {
-          // DomWebView may steal focus on attach — reclaim the title (and soft keyboard).
-          scheduleTitleFocus();
-          return;
-        }
         scheduleBodyKeyboard(60);
       }}
       ref={editorRef}
       locale={resolvedLocale}
       theme={resolvedTheme}
     />
-  ) : null, [baseUrl, draftLoaded, loadEditorResource, preferTitleFocus, resolvedLocale, resolvedTheme, scheduleBodyKeyboard, scheduleTitleFocus, selectResource]);
+  ) : null, [baseUrl, draftLoaded, loadEditorResource, resolvedLocale, resolvedTheme, scheduleBodyKeyboard, selectResource]);
 
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.createMemoSafeArea}>
@@ -2198,7 +2164,6 @@ const CreateMemoModal = ({
       <View style={styles.createMemoMain}>
         <TextInput
           autoCorrect
-          autoFocus={preferTitleFocus}
           accessibilityLabel="笔记标题"
           onChangeText={(value) => {
             setTitle(value);
@@ -2206,7 +2171,6 @@ const CreateMemoModal = ({
           }}
           placeholder={DEFAULT_MEMO_TITLE}
           placeholderTextColor="#94a3b8"
-          ref={titleInputRef}
           style={styles.createMemoTitleInput}
           value={title}
         />
@@ -2262,11 +2226,7 @@ const CreateMemoModal = ({
         client={client}
         onClose={() => {
           setTemplatePickerOpen(false);
-          if (preferTitleFocusRef.current) {
-            scheduleTitleFocus([80, 200]);
-          } else {
-            scheduleBodyKeyboard(80);
-          }
+          scheduleBodyKeyboard(80);
         }}
         onSelect={requestApplyTemplateSeed}
         presentation="overlay"
