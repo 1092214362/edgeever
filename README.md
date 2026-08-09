@@ -132,35 +132,9 @@ On platforms without a native client, EdgeEver can be installed as a PWA using C
 
 ## Quick Start
 
-Install dependencies:
-
 ```sh
 bun install
-```
-
-Apply local D1 migrations:
-
-```sh
-bun run db:migrate:local
-```
-
-Start the default development environment. It applies pending local migrations and initializes local D1/R2 stores once with the repository's fixed demo seed. Existing local changes are preserved on later restarts, and no remote instance is contacted.
-
-```sh
 bun run dev
-```
-
-To intentionally develop against a configured remote instance, select it explicitly:
-
-```sh
-EDGE_EVER_INSTANCE=<name> bun run dev:remote
-```
-
-Checks:
-
-```sh
-bun run typecheck
-bun run build
 ```
 
 ## Project Structure

@@ -142,35 +142,9 @@ macOS App 可从 [GitHub Releases](https://github.com/tianma-if/edgeever/release
 
 ## 快速开始
 
-安装依赖：
-
 ```sh
 bun install
-```
-
-应用本地 D1 迁移：
-
-```sh
-bun run db:migrate:local
-```
-
-启动默认开发环境。它会先应用本地迁移，并在首次启动时使用仓库内固定的 Demo 种子初始化本地 D1/R2；后续重启会保留本地修改，且不会连接任何远程实例。
-
-```sh
 bun run dev
-```
-
-如需明确连接已配置的远程实例，必须显式指定实例名：
-
-```sh
-EDGE_EVER_INSTANCE=<实例名> bun run dev:remote
-```
-
-常用检查：
-
-```sh
-bun run typecheck
-bun run build
 ```
 
 ## 目录结构
