@@ -2852,7 +2852,7 @@ export const WorkspaceApp = ({
                     }}
                   />
                   ) : rightView === "assets" ? (
-                    <AssetsPane onClose={handleCloseAssets} activeMemo={selectedMemo} repository={repository} />
+                    <AssetsPane onClose={handleCloseAssets} repository={repository} />
                   ) : rightView === "tags" ? (
                     <TagsPane onClose={handleCloseAssets} repository={repository} />
                   ) : rightView === "templates" ? (
