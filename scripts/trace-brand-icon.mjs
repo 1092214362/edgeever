@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const conceptPath = path.join(projectRoot, "assets/brand/edgeever-concept-bold-outline.png");
+const conceptPath = path.join(projectRoot, "assets/brand/edgeever-concept-open-cat.png");
 const iconPath = path.join(projectRoot, "assets/brand/edgeever-icon.svg");
 const markPath = path.join(projectRoot, "assets/brand/edgeever-mark.svg");
 const adaptiveMarkPath = path.join(projectRoot, "apps/mobile/assets/adaptive-icon-foreground.svg");
@@ -12,7 +12,7 @@ const adaptiveMarkPath = path.join(projectRoot, "apps/mobile/assets/adaptive-ico
 const source = await readFile(conceptPath);
 const { data, info } = await sharp(source)
   .removeAlpha()
-  .blur(1.5)
+  .blur(0.8)
   .raw()
   .toBuffer({ resolveWithObject: true });
 const { width, height, channels } = info;
@@ -24,10 +24,10 @@ for (let index = 0; index < pixelCount; index += 1) {
   const red = data[offset];
   const green = data[offset + 1];
   const blue = data[offset + 2];
-  // The generated concept uses a pale mint backdrop and a highly saturated teal
-  // mark. Require strong saturation so the backdrop vignette cannot leak into
-  // the traced outline as small edge artifacts.
-  if (green - red > 60 && green - blue > 4 && red < 180) {
+  // The approved concept uses a near-black mark over a green field. Trace only
+  // genuinely dark pixels so the generated backdrop variation cannot leak into
+  // the production vector.
+  if (red < 72 && green < 72 && blue < 72) {
     mask[index] = 1;
   }
 }
@@ -204,12 +204,21 @@ const pathData = loops
     return `M${start[0]} ${start[1]}${curves.join("")}Z`;
   })
   .join("");
-const title = "  <title id=\"title\">EdgeEver</title>\n  <desc id=\"desc\">A rounded cat face drawn with bold lines on the EdgeEver theme block.</desc>\n";
-const sharedPath = `  <path fill=\"#2b968b\" fill-rule=\"evenodd\" d=\"${pathData}\" />\n`;
-const iconSvg = `<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ${width} ${height}\" role=\"img\" aria-labelledby=\"title desc\">\n${title}  <rect width=\"${width}\" height=\"${height}\" fill=\"#d8f3ec\" />\n${sharedPath}</svg>\n`;
-const markSvg = `<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ${width} ${height}\" role=\"img\" aria-label=\"EdgeEver\">\n${sharedPath}</svg>\n`;
+const iconSize = 1024;
+const tileInset = 100;
+const tileSize = 824;
+const tileRadius = 188;
+const sourceCropInset = 72;
+const sourceCropSize = width - sourceCropInset * 2;
+const scale = Number((tileSize / sourceCropSize).toFixed(8));
+const transform = `translate(${tileInset} ${tileInset}) scale(${scale}) translate(-${sourceCropInset} -${sourceCropInset})`;
+const title = "  <title id=\"title\">EdgeEver</title>\n  <desc id=\"desc\">An open cat face in near-black on the EdgeEver green rounded tile.</desc>\n";
+const sharedPath = `    <path fill=\"#07130b\" fill-rule=\"evenodd\" d=\"${pathData}\" />\n`;
+const transformedMark = `  <g transform=\"${transform}\">\n${sharedPath}  </g>\n`;
+const iconSvg = `<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ${iconSize} ${iconSize}\" role=\"img\" aria-labelledby=\"title desc\">\n${title}  <rect x=\"${tileInset}\" y=\"${tileInset}\" width=\"${tileSize}\" height=\"${tileSize}\" rx=\"${tileRadius}\" fill=\"#16a06e\" />\n${transformedMark}</svg>\n`;
+const markSvg = `<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ${iconSize} ${iconSize}\" role=\"img\" aria-label=\"EdgeEver\">\n${transformedMark}</svg>\n`;
 
 await writeFile(iconPath, iconSvg);
 await writeFile(markPath, markSvg);
 await writeFile(adaptiveMarkPath, markSvg);
-console.log(`[trace-brand-icon] traced ${loops.length} contours from ${width}x${height} bold-outline concept`);
+console.log(`[trace-brand-icon] traced ${loops.length} contours from ${width}x${height} open-cat concept`);
