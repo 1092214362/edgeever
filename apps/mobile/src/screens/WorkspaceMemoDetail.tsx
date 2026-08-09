@@ -5,9 +5,10 @@ import { Image as RNImage, Platform, StyleSheet, View, type ImageStyle, type Sty
 import { Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
-import { ActivityIndicator, ChevronDown, ChevronLeft, ChevronRight, Copy, History, MoreHorizontal, Pencil, RotateCcw, Search, Share2, Tag, Trash2, X } from "../components/icons";
+import { ActivityIndicator, ChevronDown, ChevronLeft, ChevronRight, Copy, History, MoreHorizontal, Pencil, RotateCcw, Search, Share2, Sparkles, Tag, Trash2, X } from "../components/icons";
 import { Alert, Pressable, Text, TextInput } from "../components/LocalizedText";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
+import { MobileAiAssistantModal } from "../components/MobileAiAssistantModal";
 import { MobileResourceActions } from "../components/MobileResourceActions";
 import { SAFE_DOM_WEBVIEW_PROPS } from "../lib/mobile-dom";
 import { safeDomCall } from "../lib/safe-dom-call";
@@ -300,6 +301,7 @@ export const MemoDetailModal = ({
   memo,
   notebookName,
   onAdoptCloudVersion,
+  onApplyAiDraft,
   onClose,
   onCopyLocalDraft,
   onDelete,
@@ -323,6 +325,7 @@ export const MemoDetailModal = ({
   memo: MemoDetail | null;
   notebookName: string;
   onAdoptCloudVersion: (memo: MemoDetail) => void;
+  onApplyAiDraft: (memo: MemoDetail, draft: string, mode: "append" | "replace") => Promise<void>;
   onClose: () => void;
   onCopyLocalDraft: (memo: MemoDetail) => void;
   onDelete: (memo: MemoDetail) => void;
@@ -343,6 +346,7 @@ export const MemoDetailModal = ({
   const { resolvedLocale } = useMobileLocale();
   const safeAreaInsets = useSafeAreaInsets();
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMatchCount, setSearchMatchCount] = useState(0);
@@ -776,6 +780,13 @@ export const MemoDetailModal = ({
               <Pressable style={styles.actionSheet}>
                 <View style={styles.actionSheetHandle} />
                 <Text style={styles.actionSheetTitle}>笔记操作</Text>
+                {!memo.isDeleted ? (
+                  <DetailActionSheetItem
+                    icon={<Sparkles color="#16A06E" size={18} />}
+                    label="AI 笔记助手"
+                    onPress={() => closeActionsAndRun(() => setAiAssistantOpen(true))}
+                  />
+                ) : null}
                 <DetailActionSheetItem
                   disabled={!canCopyMemoId}
                   icon={<Copy color="#0f172a" size={18} />}
@@ -796,6 +807,14 @@ export const MemoDetailModal = ({
               </Pressable>
             </Pressable>
           </Modal>
+        ) : null}
+        {memo && !memo.isDeleted ? (
+          <MobileAiAssistantModal
+            memo={memo}
+            onApply={(draft, mode) => onApplyAiDraft(memo, draft, mode)}
+            onClose={() => setAiAssistantOpen(false)}
+            visible={aiAssistantOpen}
+          />
         ) : null}
         <Modal animationType="fade" onRequestClose={() => setImagePreview(null)} transparent visible={Boolean(imagePreview)}>
           <View style={resourceImageStyles.previewBackdrop}>

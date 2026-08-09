@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		039594C5BEE4844FBB131C7F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F510BF90B418266F363EBD /* APIClient.swift */; };
+		B2B2B2B2B2B2B2B2B2B2B2B2 /* AiAssistantSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A1A1A1A1A1A1A1A1A1A1A1 /* AiAssistantSheet.swift */; };
 		0614453E8E9EC13B212B5A2F /* NotebookPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3328D871910187ED827B6CE /* NotebookPickerSheet.swift */; };
 		06D2661CAB0ADED27F322649 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = D87A8CED8498AE654EF8CD1F /* Localizable.xcstrings */; };
 		08A3D4F0E80ACE44E36AD87D /* MemoCreateCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBC0AD00435CCEFD7934201C /* MemoCreateCommit.swift */; };
@@ -119,6 +120,7 @@
 
 /* Begin PBXFileReference section */
 		033565CE2E96EC2D23105188 /* ListActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListActionsSheet.swift; sourceTree = "<group>"; };
+		A1A1A1A1A1A1A1A1A1A1A1A1 /* AiAssistantSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiAssistantSheet.swift; sourceTree = "<group>"; };
 		0531FC6AA81DAF0A55B42362 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		12236E3A2F318CDEB17B80CB /* SyncProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProtocol.swift; sourceTree = "<group>"; };
 		12DCA98C14CC6F28C22C41A1 /* TipTapWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipTapWebView.swift; sourceTree = "<group>"; };
@@ -402,6 +404,7 @@
 		AE31B21B9B3513CC73436E46 /* Workspace */ = {
 			isa = PBXGroup;
 			children = (
+				A1A1A1A1A1A1A1A1A1A1A1A1 /* AiAssistantSheet.swift */,
 				BA6E24432E3A724DB34CFEB5 /* AccountPasswordPanel.swift */,
 				73FA569C71080B6F9989AA03 /* ApiTokensView.swift */,
 				776B0012B526A65B99921B4B /* ConflictResolutionView.swift */,
@@ -650,6 +653,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				039594C5BEE4844FBB131C7F /* APIClient.swift in Sources */,
+				B2B2B2B2B2B2B2B2B2B2B2B2 /* AiAssistantSheet.swift in Sources */,
 				564B7A4D6CD3C8140286F881 /* AccountPasswordPanel.swift in Sources */,
 				12F0F0D1E937AA88C33222FF /* ApiTokensView.swift in Sources */,
 				35DF4BD1617191AB0B95CC4A /* AppDatabase.swift in Sources */,

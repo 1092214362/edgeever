@@ -72,6 +72,7 @@ export const Share2 = createIcon("share-2");
 export const ShieldCheck = createIcon("shield");
 export const SlidersHorizontal = createIcon("sliders");
 export const Sparkles = createIcon("star");
+export const Square = createIcon("square");
 export const Sun = createIcon("sun");
 export const Tag = createIcon("tag");
 export const Trash2 = createIcon("trash-2");

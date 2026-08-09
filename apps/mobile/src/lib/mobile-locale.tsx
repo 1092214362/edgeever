@@ -31,6 +31,7 @@ const mobileOnlyTranslations = new Map<string, string>([
   ["输入关键词开始搜索", "Enter a keyword to search"],
   ["搜索本机同步缓存，结果会即时显示", "Search the local synced cache with instant results"],
   ["笔记操作", "Note actions"],
+  ["AI 笔记助手", "AI note assistant"],
   ["版本历史", "Version history"],
   ["分享笔记", "Share note"],
   ["复制笔记 ID", "Copy note ID"],
