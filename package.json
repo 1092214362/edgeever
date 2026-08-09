@@ -94,10 +94,16 @@
       },
       "EDGE_EVER_STORAGE_ENCRYPTION_KEY": {
         "description": "可选。启用高级设置中的第三方 OSS 时必填，用于加密保存在 D1 中的对象存储访问密钥。"
+      },
+      "EDGE_EVER_CREDENTIALS_ENCRYPTION_KEY": {
+        "description": "可选的高级配置。覆盖从实例认证 Secret 自动派生的 AI 凭据加密密钥，用于独立密钥轮换。"
       }
     }
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.36",
+    "@ai-sdk/google": "^4.0.39",
+    "@ai-sdk/openai-compatible": "^3.0.27",
     "@aws-sdk/client-s3": "^3.1095.0",
     "@edgeever/shared": "workspace:*",
     "@hono/zod-validator": "latest",
@@ -118,6 +124,7 @@
     "@tiptap/extension-table": "3.27.1",
     "@tiptap/react": "latest",
     "@tiptap/starter-kit": "latest",
+    "ai": "^7.0.58",
     "aws4fetch": "^1.0.20",
     "class-variance-authority": "latest",
     "clsx": "latest",

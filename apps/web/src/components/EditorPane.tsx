@@ -79,6 +79,7 @@ import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { memoShareQueryKey, ShareMemoDialog } from "./dialogs/ShareMemoDialog";
+import { AiAssistantDialog } from "./dialogs/AiAssistantDialog";
 import { api } from "@/lib/api";
 import { isDesktopResourceRuntime, stageDesktopResource, toDesktopResourceUrl } from "@/lib/desktop-resources";
 import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
@@ -675,6 +676,7 @@ const RichEditorPane = ({
   const [imageUploadState, setImageUploadState] = useState<"idle" | "compressing" | "uploading" | "error">("idle");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [systemInfoOpen, setSystemInfoOpen] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [mobileNotebookSheetOpen, setMobileNotebookSheetOpen] = useState(false);
@@ -1783,6 +1785,32 @@ const RichEditorPane = ({
 
     markDirtyStatus();
   }, [markDirtyStatus]);
+
+  const getCurrentMarkdownForAi = useCallback(() => {
+    if (useMobilePlainTextEditor) return getMobilePlainTextValue();
+    if (useMarkdownSourceEditor) return markdownSource;
+    return isEditorReady(editor)
+      ? docToMarkdown(editor.getJSON() as TiptapDoc)
+      : memoRef.current?.contentMarkdown ?? "";
+  }, [editor, getMobilePlainTextValue, markdownSource, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+
+  const applyAiDraft = useCallback((draft: string, mode: "append" | "replace") => {
+    const current = getCurrentMarkdownForAi();
+    const next = mode === "append" && current.trim()
+      ? `${current.replace(/\s+$/, "")}\n\n${draft}`
+      : draft;
+    if (useMobilePlainTextEditor) {
+      setMobilePlainText(next);
+      setMobilePlainTextElementValue(mobileTextAreaRef.current, next);
+      persistCurrentDraft(title, tagsText, next);
+    } else if (useMarkdownSourceEditor) {
+      setMarkdownSource(next);
+    } else if (isEditorReady(editor)) {
+      editor.commands.setContent(markdownToDoc(next));
+    }
+    markDirty();
+    setAiAssistantOpen(false);
+  }, [editor, getCurrentMarkdownForAi, markDirty, persistCurrentDraft, tagsText, title, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   const getCurrentContentJson = useCallback((): TiptapDoc | null => {
     if (useMobilePlainTextEditor) {
@@ -3366,6 +3394,13 @@ const RichEditorPane = ({
                 <Search className="h-5 w-5" strokeWidth={2.25} />
               </Button>
             </IconTooltip>
+            {!readOnly && (
+              <IconTooltip label={t("aiAssistant.open")}>
+                <Button className="hidden h-8 w-8 text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-300 sm:inline-flex" size="icon" variant="ghost" aria-label={t("aiAssistant.open")} onClick={() => setAiAssistantOpen(true)}>
+                  <Sparkles className="h-5 w-5" strokeWidth={2.25} />
+                </Button>
+              </IconTooltip>
+            )}
             <TooltipProvider delayDuration={0} skipDelayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -3438,6 +3473,15 @@ const RichEditorPane = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 bg-white border border-slate-200 rounded-md py-1 shadow-md">
+                {!readOnly && (
+                  <DropdownMenuItem
+                    className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-emerald-700 hover:bg-emerald-50 cursor-pointer outline-none"
+                    onClick={() => setAiAssistantOpen(true)}
+                  >
+                    <Sparkles className="h-4 w-4 text-emerald-600" />
+                    {t("aiAssistant.title")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
                   onClick={() => openNoteSearch()}
@@ -4114,6 +4158,14 @@ const RichEditorPane = ({
       )}
 
       <SystemInfoDialog open={systemInfoOpen} onOpenChange={setSystemInfoOpen} />
+
+      <AiAssistantDialog
+        open={aiAssistantOpen}
+        title={title}
+        contentMarkdown={getCurrentMarkdownForAi()}
+        onOpenChange={setAiAssistantOpen}
+        onApply={applyAiDraft}
+      />
 
       <ShareMemoDialog memoId={memo.id} open={shareOpen} onOpenChange={setShareOpen} />
 
