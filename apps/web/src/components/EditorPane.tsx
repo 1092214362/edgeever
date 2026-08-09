@@ -1137,7 +1137,12 @@ const RichEditorPane = ({
         return true;
       },
     },
-  });
+  }, [
+    // A ProseMirror undo history belongs to exactly one memo. Reusing the same
+    // Editor instance across memo switches lets Ctrl/Cmd+Z undo the hydration
+    // transaction and restore another memo's entire document.
+    memo?.id,
+  ]);
 
   const insertMemoLink = useCallback((target: MemoSummary) => {
     if (!isEditorReady(editor) || effectiveReadOnly || target.id === memo?.id) {
