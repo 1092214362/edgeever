@@ -2088,8 +2088,32 @@ const RichEditorPane = ({
 
   useEffect(() => {
     const handleSyncCompleted = (event: Event) => {
-      const result = (event as CustomEvent<{ failed?: number; conflicted?: number }>).detail;
+      const result = (event as CustomEvent<{
+        failed?: number;
+        conflicted?: number;
+        syncedMemos?: ReadonlyMap<string, MemoDetail>;
+      }>).detail;
       const memoId = memoRef.current?.id;
+
+      const syncedMemo = memoId ? result?.syncedMemos?.get(memoId) : null;
+      if (syncedMemo && memoRef.current?.id === syncedMemo.id) {
+        // Keep the live editor document, title, and tags intact while moving
+        // its concurrency base to the revision just acknowledged by this
+        // device. This closes the query-refresh window after an autosave.
+        memoRef.current = {
+          ...memoRef.current,
+          revision: syncedMemo.revision,
+          contentHash: syncedMemo.contentHash,
+          updatedAt: syncedMemo.updatedAt,
+        };
+        if (editSessionRef.current?.memoId === syncedMemo.id) {
+          editSessionRef.current = {
+            ...editSessionRef.current,
+            baseRevision: syncedMemo.revision,
+            baseContentHash: syncedMemo.contentHash,
+          };
+        }
+      }
 
       if (memoId && (result?.conflicted ?? 0) > 0) {
         void localDb.syncQueue.get(getMemoUpdateQueueId(memoId)).then((item) => {
