@@ -83,13 +83,13 @@ const createDatabaseEnvironment = () => {
   };
 };
 
-const createApp = ({ currentAuth = auth, demoMode = false } = {}) => {
+const createApp = ({ currentAuth = auth, demoMode = false, testConnection } = {}) => {
   const app = new Hono();
   app.use("/api/v1/*", async (context, next) => {
     context.set("auth", currentAuth);
     await next();
   });
-  registerAiRoutes(app, { isDemoMode: () => demoMode });
+  registerAiRoutes(app, { isDemoMode: () => demoMode, testConnection });
   return app;
 };
 
@@ -264,6 +264,59 @@ describe("AI route contracts", () => {
     );
     expect(disableResponse.status).toBe(200);
     expect((await disableResponse.json()).providers[0].isEnabled).toBe(false);
+
+    sqlite.close();
+  });
+
+  test("tests unsaved connection fields without changing the saved provider", async () => {
+    const testedConnections = [];
+    const app = createApp({
+      testConnection: async (config) => {
+        testedConnections.push(config);
+        return { text: "OK" };
+      },
+    });
+    const { sqlite, environment: databaseEnvironment } = createDatabaseEnvironment();
+    const createResponse = await app.request(
+      "/api/v1/ai/providers",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(validSettings),
+      },
+      databaseEnvironment,
+    );
+    const created = await createResponse.json();
+    const provider = created.providers[0];
+
+    const testResponse = await app.request(
+      `/api/v1/ai/providers/${provider.id}/test`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          modelId: "draft-model",
+          provider: "google",
+          baseUrl: "https://draft.example.com/v1/",
+          apiKey: "draft-key",
+        }),
+      },
+      databaseEnvironment,
+    );
+
+    expect(testResponse.status).toBe(200);
+    expect(await testResponse.json()).toEqual({ ok: true, response: "OK" });
+    expect(testedConnections).toEqual([{
+      modelId: "draft-model",
+      provider: "google",
+      baseUrl: "https://draft.example.com/v1",
+      apiKey: "draft-key",
+    }]);
+    expect((await app.request("/api/v1/ai/settings", {}, databaseEnvironment).then((response) => response.json())).providers[0])
+      .toMatchObject({
+        provider: validSettings.provider,
+        baseUrl: validSettings.baseUrl,
+      });
 
     sqlite.close();
   });

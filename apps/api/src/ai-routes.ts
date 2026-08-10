@@ -31,6 +31,7 @@ import { encryptSecret } from "./secret-encryption";
 
 type AiRouteDependencies = {
   isDemoMode: (environment: Bindings) => boolean;
+  testConnection?: (config: Parameters<typeof testAiModel>[0]) => Promise<{ text: string }>;
 };
 
 const providerErrorMessage = (error: unknown) => {
@@ -257,13 +258,16 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
       if (denied) return denied;
       try {
         const input = context.req.valid("json");
-        const { row, apiKey } = await getSavedProviderApiKey(
-          context,
+        const row = await getAiProviderConfig(
+          context.env.storage.db,
+          getWorkspaceId(context),
           context.req.param("providerConfigId"),
         );
-        const result = await testAiModel({
-          provider: row.provider,
-          baseUrl: row.base_url,
+        if (!row) throw new AppError("ai_provider_not_found", "AI provider not found.", 404);
+        const apiKey = input.apiKey ?? await decryptAiCredential(row.api_key_encrypted, context.env);
+        const result = await (dependencies.testConnection ?? testAiModel)({
+          provider: input.provider ?? row.provider,
+          baseUrl: input.baseUrl ? normalizeAiBaseUrl(input.baseUrl) : row.base_url,
           apiKey,
           modelId: input.modelId,
         });

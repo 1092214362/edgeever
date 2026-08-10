@@ -469,7 +469,12 @@ export const api = {
       method: "DELETE",
     }),
 
-  testAiProvider: (providerConfigId: string, payload: { modelId: string }) =>
+  testAiProvider: (providerConfigId: string, payload: {
+    modelId: string;
+    provider?: AiProvider;
+    baseUrl?: string;
+    apiKey?: string;
+  }) =>
     request<{ ok: true; response: string }>(`/api/v1/ai/providers/${encodeURIComponent(providerConfigId)}/test`, {
       method: "POST",
       body: JSON.stringify(payload),

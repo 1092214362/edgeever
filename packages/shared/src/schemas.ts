@@ -189,6 +189,9 @@ export const AiProviderConfigUpdateSchema = AiProviderConfigFieldsSchema.extend(
 
 export const AiProviderConnectionTestSchema = z.object({
   modelId: z.string().trim().min(1).max(200),
+  provider: AiProviderSchema.optional(),
+  baseUrl: AiBaseUrlSchema.optional(),
+  apiKey: z.string().min(1).max(4096).optional(),
 });
 
 export const AiModelConfigCreateSchema = z.object({

@@ -1,13 +1,21 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AiProvider } from "@edgeever/shared";
-import { ChevronDown, Loader2, Plus, Sparkles, TriangleAlert } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Server, Sparkles, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AiProviderCard } from "@/components/settings/AiProviderCard";
 import { aiErrorMessage, providerDefaults } from "@/components/settings/ai-provider-options";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from "@/lib/api";
@@ -26,6 +34,14 @@ export const AiModelCard = () => {
   const [initialModelId, setInitialModelId] = useState(providerDefaults["openai-compatible"].modelId);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["ai-settings"] });
+  const resetAddForm = () => {
+    setProvider("openai-compatible");
+    setDisplayName(providerDefaults["openai-compatible"].displayName);
+    setBaseUrl(providerDefaults["openai-compatible"].baseUrl);
+    setInitialModelId(providerDefaults["openai-compatible"].modelId);
+    setApiKey("");
+    createMutation.reset();
+  };
   const createMutation = useMutation({
     mutationFn: () => api.createAiProvider({
       provider,
@@ -36,8 +52,8 @@ export const AiModelCard = () => {
       ...(initialModelId.trim() ? { initialModelId: initialModelId.trim() } : {}),
     }),
     onSuccess: async () => {
-      setApiKey("");
       setShowAdd(false);
+      setApiKey("");
       await refresh();
     },
   });
@@ -54,14 +70,9 @@ export const AiModelCard = () => {
     if (!baseUrl || baseUrl === previous.baseUrl) setBaseUrl(defaults.baseUrl);
     if (!initialModelId || initialModelId === previous.modelId) setInitialModelId(defaults.modelId);
   };
-
-  const resetAddForm = () => {
-    setProvider("openai-compatible");
-    setDisplayName(providerDefaults["openai-compatible"].displayName);
-    setBaseUrl(providerDefaults["openai-compatible"].baseUrl);
-    setInitialModelId(providerDefaults["openai-compatible"].modelId);
-    setApiKey("");
-    createMutation.reset();
+  const handleAddDialogChange = (open: boolean) => {
+    setShowAdd(open);
+    if (!open) resetAddForm();
   };
 
   const settings = settingsQuery.data;
@@ -70,7 +81,7 @@ export const AiModelCard = () => {
     item.models.map((model) => ({ ...model, providerName: item.displayName, providerEnabled: item.isEnabled }))) ?? [];
   const defaultModelAvailable = !settings?.defaultModelId
     || allModels.some((model) => model.id === settings.defaultModelId && model.providerEnabled);
-  const error = createMutation.error ?? defaultMutation.error ?? settingsQuery.error;
+  const error = defaultMutation.error ?? settingsQuery.error;
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
@@ -90,7 +101,7 @@ export const AiModelCard = () => {
           </CollapsibleTrigger>
         </CardHeader>
         <CollapsibleContent asChild>
-          <CardContent className="grid gap-4 p-4 pt-0 sm:px-5 sm:pb-5">
+          <CardContent className="grid gap-5 p-4 pt-0 sm:px-5 sm:pb-5">
             {settingsQuery.isLoading ? (
               <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />{t("common.loading")}</p>
             ) : (
@@ -101,66 +112,115 @@ export const AiModelCard = () => {
                   </p>
                 ) : null}
 
-                <Field label={t("aiModel.defaultModel")}>
-                  <Select
-                    value={settings?.defaultModelId ?? "none"}
-                    onValueChange={(value) => defaultMutation.mutate(value === "none" ? null : value)}
-                    disabled={readOnly || defaultMutation.isPending}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t("aiModel.noDefaultModel")}</SelectItem>
-                      {allModels.map((model) => (
-                        <SelectItem key={model.id} value={model.id} disabled={!model.providerEnabled}>
-                          {model.providerName} · {model.displayName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                {!defaultModelAvailable ? (
-                  <p className="flex items-center gap-2 text-xs text-amber-700"><TriangleAlert className="h-4 w-4" />{t("aiModel.defaultUnavailable")}</p>
-                ) : null}
+                <section className="grid gap-3 rounded-lg bg-slate-50/80 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,1.25fr)] sm:items-center">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">{t("aiModel.defaultSettingsTitle")}</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{t("aiModel.defaultModelHint")}</p>
+                  </div>
+                  <Field label={t("aiModel.defaultModel")}>
+                    <Select
+                      value={settings?.defaultModelId ?? "none"}
+                      onValueChange={(value) => defaultMutation.mutate(value === "none" ? null : value)}
+                      disabled={readOnly || defaultMutation.isPending}
+                    >
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t("aiModel.noDefaultModel")}</SelectItem>
+                        {allModels.map((model) => (
+                          <SelectItem key={model.id} value={model.id} disabled={!model.providerEnabled}>
+                            {model.displayName} · {model.providerName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {!defaultModelAvailable ? (
+                    <p className="flex items-center gap-2 text-xs text-amber-700 sm:col-start-2"><TriangleAlert className="h-4 w-4 shrink-0" />{t("aiModel.defaultUnavailable")}</p>
+                  ) : null}
+                </section>
 
-                <div className="grid gap-3">
-                  {settings?.providers.map((item) => (
-                    <AiProviderCard key={item.id} provider={item} readOnly={readOnly} onChanged={refresh} />
-                  ))}
-                  {!settings?.providers.length ? <p className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">{t("aiModel.noProviders")}</p> : null}
-                </div>
-
-                {showAdd ? (
-                  <form className="grid gap-4 rounded-lg border bg-slate-50/60 p-4" onSubmit={(event: FormEvent) => { event.preventDefault(); createMutation.mutate(); }}>
-                    <h3 className="text-sm font-semibold text-slate-900">{t("aiModel.addProvider")}</h3>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label={t("aiModel.provider")}>
-                        <Select value={provider} onValueChange={(value) => handleProviderChange(value as AiProvider)}>
-                          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="openai-compatible">{t("aiModel.providers.openai-compatible")}</SelectItem>
-                            <SelectItem value="anthropic">{t("aiModel.providers.anthropic")}</SelectItem>
-                            <SelectItem value="google">{t("aiModel.providers.google")}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <Field label={t("aiModel.displayName")}><Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required maxLength={80} /></Field>
-                      <Field label={t("aiModel.baseUrl")}><Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required inputMode="url" /></Field>
-                      <Field label={t("aiModel.initialModelId")}><Input value={initialModelId} onChange={(event) => setInitialModelId(event.target.value)} /></Field>
-                      <div className="sm:col-span-2"><Field label={t("aiModel.apiKey")}><Input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required autoComplete="new-password" /></Field></div>
+                <section className="grid gap-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                        <Server className="h-4 w-4 text-slate-500" />{t("aiModel.servicesTitle")}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {t("aiModel.serviceCount", { count: settings?.providers.length ?? 0 })}
+                      </p>
                     </div>
-                    {createMutation.isError ? <p className="text-xs font-medium text-rose-600" role="alert">{aiErrorMessage(createMutation.error, t("aiModel.failed"), t("aiModel.encryptionKeyMissing"))}</p> : null}
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={() => { setShowAdd(false); resetAddForm(); }}>{t("common.cancel")}</Button>
-                      <Button type="submit" disabled={readOnly || createMutation.isPending || !settings?.encryptionConfigured}>
-                        {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t("aiModel.createProvider")}
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <Button type="button" variant="outline" className="justify-self-start" disabled={readOnly} onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" />{t("aiModel.addProvider")}</Button>
-                )}
+                    <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={() => setShowAdd(true)}>
+                      <Plus className="h-4 w-4" />{t("aiModel.addProvider")}
+                    </Button>
+                  </div>
 
-                {error && !createMutation.isError ? <p className="text-xs font-medium text-rose-600" role="alert">{aiErrorMessage(error, t("aiModel.failed"), t("aiModel.encryptionKeyMissing"))}</p> : null}
+                  <div className="grid gap-3">
+                    {settings?.providers.map((item) => (
+                      <AiProviderCard
+                        key={item.id}
+                        provider={item}
+                        defaultModelId={settings.defaultModelId}
+                        readOnly={readOnly}
+                        onChanged={refresh}
+                      />
+                    ))}
+                    {!settings?.providers.length ? (
+                      <p className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">{t("aiModel.noProviders")}</p>
+                    ) : null}
+                  </div>
+                </section>
+
+                <Dialog open={showAdd} onOpenChange={handleAddDialogChange}>
+                  <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+                    <form className="grid gap-5" onSubmit={(event: FormEvent) => { event.preventDefault(); createMutation.mutate(); }}>
+                      <DialogHeader>
+                        <DialogTitle>{t("aiModel.addProvider")}</DialogTitle>
+                        <DialogDescription>{t("aiModel.addProviderDescription")}</DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label={t("aiModel.displayName")}>
+                          <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required maxLength={80} />
+                        </Field>
+                        <Field label={t("aiModel.provider")}>
+                          <Select value={provider} onValueChange={(value) => handleProviderChange(value as AiProvider)}>
+                            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="openai-compatible">{t("aiModel.providers.openai-compatible")}</SelectItem>
+                              <SelectItem value="anthropic">{t("aiModel.providers.anthropic")}</SelectItem>
+                              <SelectItem value="google">{t("aiModel.providers.google")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <div className="sm:col-span-2">
+                          <Field label={t("aiModel.baseUrl")}><Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required inputMode="url" /></Field>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Field label={t("aiModel.apiKey")} hint={t("aiModel.apiKeyCreateHint")}>
+                            <Input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required autoComplete="new-password" />
+                          </Field>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Field label={t("aiModel.initialModelId")} hint={t("aiModel.initialModelIdHint")}>
+                            <Input value={initialModelId} onChange={(event) => setInitialModelId(event.target.value)} />
+                          </Field>
+                        </div>
+                      </div>
+                      {createMutation.isError ? (
+                        <p className="text-xs font-medium text-rose-600" role="alert">
+                          {aiErrorMessage(createMutation.error, t("aiModel.failed"), t("aiModel.encryptionKeyMissing"))}
+                        </p>
+                      ) : null}
+                      <DialogFooter className="gap-2 sm:space-x-0">
+                        <Button type="button" variant="outline" onClick={() => handleAddDialogChange(false)}>{t("common.cancel")}</Button>
+                        <Button type="submit" variant="solid" disabled={readOnly || createMutation.isPending || !settings?.encryptionConfigured}>
+                          {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t("aiModel.createProvider")}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
+                {error ? <p className="text-xs font-medium text-rose-600" role="alert">{aiErrorMessage(error, t("aiModel.failed"), t("aiModel.encryptionKeyMissing"))}</p> : null}
               </>
             )}
           </CardContent>
