@@ -269,7 +269,11 @@ export default defineConfig({
               name: "vendor-code-highlight",
               test: /node_modules[\\/](?:lowlight|highlight\.js|@tiptap[\\/]extension-code-block-lowlight)[\\/]/,
               priority: 50,
-              maxSize: TARGET_VENDOR_CHUNK_BYTES,
+              // lowlight registers highlight.js languages through a cyclic
+              // module graph. Splitting this group by size can evaluate a
+              // language before its constructor is initialized in packaged
+              // file:// desktop builds, leaving the entire window blank.
+              // Keep the graph atomic and load it lazily instead.
             },
             {
               name: "vendor-react",
