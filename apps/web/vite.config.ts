@@ -261,6 +261,13 @@ export default defineConfig({
         "mobile-edit": fileURLToPath(new URL("./mobile-edit.html", import.meta.url)),
         "note-print": fileURLToPath(new URL("./note-print.html", import.meta.url)),
         "tiptap-ime-test": fileURLToPath(new URL("./tiptap-ime-test.html", import.meta.url)),
+        ...(isDesktopBuild
+          ? {
+              "desktop-renderer-test": fileURLToPath(
+                new URL("./desktop-renderer-test.html", import.meta.url)
+              ),
+            }
+          : {}),
       },
       output: {
         codeSplitting: {
