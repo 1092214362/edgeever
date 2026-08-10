@@ -138,29 +138,6 @@ bun install
 bun run dev
 ```
 
-The local runner exposes two isolated profiles backed by the same application
-code. `bun run dev` starts the persistent `LOCAL DEV` profile, always uses
-`.wrangler/state`, applies pending D1 migrations before startup, and preserves
-local notes and AI settings across restarts. `bun run dev:demo` starts the
-resettable `LOCAL DEMO` profile in `.wrangler/demo-state`. Browser titles and
-corner badges identify the active profile; neither profile shares data with a
-configured remote instance.
-
-Optional local AI bootstrap:
-
-```sh
-cp .env.local-dev.example .env.local-dev
-# Fill EDGE_EVER_LOCAL_AI_API_KEY, then restart bun run dev.
-```
-
-The bootstrap profile is gitignored and is used only when the local D1 has no
-AI provider. Existing local providers are never overwritten. Run
-`bun run dev:doctor` to inspect Wrangler, D1 migrations, persistence, health,
-and AI bootstrap status without displaying secrets. Run
-`bun run dev:demo:reset` to restore the Demo profile without touching the
-persistent development database. Remote development remains explicit:
-`EDGE_EVER_INSTANCE=<name> bun run dev:remote`.
-
 ## Project Structure
 
 ```text
