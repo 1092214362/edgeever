@@ -147,13 +147,6 @@ export type AiDiscoveredModel = {
   displayName: string;
 };
 
-export type AiAction =
-  | "summarize"
-  | "extract-key-points"
-  | "extract-todos"
-  | "rewrite-proofread"
-  | "translate";
-
 export type AiStreamEvent =
   | { type: "start" }
   | { type: "text-delta"; text: string }

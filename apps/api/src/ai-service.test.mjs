@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
   aiActionInstructions,
+  buildAiGenerationPrompt,
   discoverAiModels,
   mapAiProviderConfig,
   normalizeAiBaseUrl,
+  resolveAiGenerationSystemInstruction,
   decryptAiCredential,
   resolveAiCredentialEncryptionKeys,
   resolveCredentialEncryptionKey,
@@ -11,14 +13,37 @@ import {
 import { encryptSecret } from "./secret-encryption.ts";
 
 describe("AI model service", () => {
-  test("limits the first release to note-processing instructions", () => {
+  test("owns every built-in note-processing instruction on the server", () => {
     expect(Object.keys(aiActionInstructions).sort()).toEqual([
+      "continue-writing",
       "extract-key-points",
       "extract-todos",
+      "fix-spelling-grammar",
+      "improve-writing",
+      "make-longer",
+      "make-shorter",
       "rewrite-proofread",
+      "simplify-language",
       "summarize",
     ]);
     expect(aiActionInstructions["extract-todos"]).toContain("- [ ]");
+    expect(resolveAiGenerationSystemInstruction({ action: "change-tone", tone: "friendly" }))
+      .toContain("friendly tone");
+  });
+
+  test("supports bounded custom and follow-up editing instructions", () => {
+    const instruction = "Make this shorter while preserving every date.";
+    expect(resolveAiGenerationSystemInstruction({ action: "rewrite-proofread", instruction }))
+      .toContain("user's editing instruction");
+    expect(buildAiGenerationPrompt({
+      title: "Plan",
+      contentMarkdown: "Ship on Friday.",
+      instruction,
+    })).toBe([
+      `User instruction:\n${instruction}`,
+      "Note title:\nPlan",
+      "Note content:\nShip on Friday.",
+    ].join("\n\n"));
   });
 
   test("normalizes only trailing separators from a custom Base URL", () => {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AI_ACTIONS, AI_TARGET_LANGUAGES, AI_TONES } from "./ai-assistant";
 
 export const NotebookCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -200,19 +201,21 @@ export const AiDefaultModelUpdateSchema = z.object({
 });
 
 export const AiGenerateSchema = z.object({
-  action: z.enum([
-    "summarize",
-    "extract-key-points",
-    "extract-todos",
-    "rewrite-proofread",
-    "translate",
-  ]),
+  action: z.enum(AI_ACTIONS),
   title: z.string().trim().max(160).default(""),
   contentMarkdown: z.string().max(300_000),
-  targetLanguage: z.string().trim().min(1).max(80).optional(),
+  targetLanguage: z.enum(AI_TARGET_LANGUAGES).optional(),
+  tone: z.enum(AI_TONES).optional(),
+  instruction: z.string().trim().min(1).max(2_000).optional(),
 }).superRefine((input, context) => {
   if (input.action === "translate" && !input.targetLanguage) {
     context.addIssue({ code: "custom", path: ["targetLanguage"], message: "A target language is required for translation." });
+  }
+  if (input.action === "change-tone" && !input.tone) {
+    context.addIssue({ code: "custom", path: ["tone"], message: "A tone is required when changing tone." });
+  }
+  if (input.action === "custom" && !input.instruction) {
+    context.addIssue({ code: "custom", path: ["instruction"], message: "An instruction is required for a custom action." });
   }
   if (!input.title && !input.contentMarkdown.trim()) {
     context.addIssue({ code: "custom", path: ["contentMarkdown"], message: "Note content is required." });

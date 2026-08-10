@@ -499,7 +499,7 @@ export const api = {
     }),
 
   streamAiGeneration: async (
-    payload: { action: AiAction; title: string; contentMarkdown: string; targetLanguage?: string },
+    payload: { action: AiAction; title: string; contentMarkdown: string; targetLanguage?: string; instruction?: string },
     options: { signal?: AbortSignal; onEvent: (event: AiStreamEvent) => void },
   ) => {
     const headers = new Headers({ "Content-Type": "application/json" });

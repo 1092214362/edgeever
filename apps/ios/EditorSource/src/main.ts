@@ -807,6 +807,20 @@ const serializeEditorMarkdown = (ed: Editor) => {
     : ed.getText({ blockSeparator: "\n\n" });
 };
 
+let pendingAiSelection: { from: number; to: number; documentFingerprint: string } | null = null;
+
+const serializeSelectionMarkdown = (ed: Editor, from: number, to: number) => {
+  const manager = (ed.storage as { markdown?: { manager?: { serialize?: (doc: unknown) => string } } })
+    .markdown?.manager;
+  const content = ed.state.doc.slice(from, to).content.toJSON();
+  if (manager?.serialize) {
+    return manager
+      .serialize(protectLiteralDollarPairs({ type: "doc", content }))
+      .replaceAll(LITERAL_DOLLAR_PLACEHOLDER, "\\$");
+  }
+  return ed.state.doc.textBetween(from, to, "\n\n");
+};
+
 function emitChange(ed: Editor) {
   try {
     const contentJson = JSON.stringify(ed.getJSON());
@@ -949,6 +963,9 @@ export type EdgeEverEditorAPI = {
   resolveResource: (requestId: string, dataUrl: string | null) => void;
   getMarkdown: () => string;
   getDocument: () => string;
+  captureSelection: () => string | null;
+  applySelectionDraft: (markdown: string, mode: "append" | "replace") => boolean;
+  undo: () => boolean;
   focusEnd: () => void;
   flush: () => void;
   exec: (actionId: string) => void;
@@ -1043,6 +1060,53 @@ const api: EdgeEverEditorAPI = {
 
   getDocument() {
     return JSON.stringify(editor.getJSON());
+  },
+
+  captureSelection() {
+    const { from, to, empty } = editor.state.selection;
+    if (empty || from >= to) {
+      pendingAiSelection = null;
+      return null;
+    }
+    pendingAiSelection = { from, to, documentFingerprint: JSON.stringify(editor.getJSON()) };
+    return JSON.stringify({
+      from,
+      to,
+      markdown: serializeSelectionMarkdown(editor, from, to),
+      text: editor.state.doc.textBetween(from, to, "\n\n"),
+    });
+  },
+
+  applySelectionDraft(markdown, applyMode) {
+    const range = pendingAiSelection;
+    if (!range || !markdown.trim()) return false;
+    if (JSON.stringify(editor.getJSON()) !== range.documentFingerprint) {
+      pendingAiSelection = null;
+      return false;
+    }
+    const docSize = editor.state.doc.content.size;
+    const from = Math.min(Math.max(range.from, 0), docSize);
+    const to = Math.min(Math.max(range.to, from), docSize);
+    try {
+      const manager = (editor.storage as { markdown?: { manager?: { parse?: (value: string) => { content?: unknown[] } } } })
+        .markdown?.manager;
+      const parsed = manager?.parse?.(markdown);
+      const content = parsed?.content ?? markdown;
+      const insertRange = applyMode === "append" ? { from: to, to } : { from, to };
+      editor.chain().focus().insertContentAt(insertRange, content as never).run();
+      pendingAiSelection = null;
+      emitChange(editor);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  undo() {
+    if (!editor.can().undo()) return false;
+    const changed = editor.commands.undo();
+    if (changed) emitChange(editor);
+    return changed;
   },
 
   focusEnd() {

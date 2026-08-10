@@ -44,6 +44,9 @@ struct MemoEditView: View {
     @State private var showApplyTemplateConfirm = false
     @State private var pendingTemplateSeed: CreateMemoSeed?
     @State private var resourceTarget: ResourceTarget?
+    @State private var aiSelection: AiEditorSelection?
+    @State private var showEmptyAiSelectionAlert = false
+    @State private var aiUndoToken: UUID?
 
     private var title: String { get { viewModel.title } nonmutating set { viewModel.title = newValue } }
     private var tagsText: String { get { viewModel.tagsText } nonmutating set { viewModel.tagsText = newValue } }
@@ -91,6 +94,40 @@ struct MemoEditView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .accessibilityIdentifier("createMemoUploadOverlay")
             }
+
+            if aiUndoToken != nil {
+                VStack {
+                    Spacer()
+                    HStack(spacing: 12) {
+                        Text(env.preferences.t("AI 已更新选中内容。", en: "AI updated the selection."))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                        Spacer(minLength: 0)
+                        Button(env.preferences.t("撤销", en: "Undo")) {
+                            Task {
+                                guard await SharedTipTapRuntime.editor.undoAiSelectionDraft() else {
+                                    aiUndoToken = nil
+                                    return
+                                }
+                                await pullEditorSnapshotIfPossible()
+                                markDirtyAndScheduleSave()
+                                aiUndoToken = nil
+                            }
+                        }
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color(red: 0.43, green: 0.91, blue: 0.72))
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 48)
+                    .background(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 12)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .allowsHitTesting(true)
+            }
         }
         .background(AppTheme.card.ignoresSafeArea())
         .accessibilityIdentifier(CreateMemoChrome.root)
@@ -109,6 +146,42 @@ struct MemoEditView: View {
             TemplatePickerSheet { seed in
                 requestApplyTemplate(seed)
             }
+        }
+        .sheet(item: $aiSelection) { selection in
+            AiAssistantSheet(
+                title: title,
+                selectedMarkdown: selection.markdown.isEmpty ? selection.text : selection.markdown
+            ) { draft, mode in
+                let applied = await SharedTipTapRuntime.editor.applyAiSelectionDraft(
+                    draft,
+                    append: mode == .append
+                )
+                guard applied else {
+                    throw NSError(
+                        domain: "EdgeEverAiSelection",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: env.preferences.t(
+                            "选区已失效，请重新选择文本后再试。",
+                            en: "The selection expired. Select the text again and retry."
+                        )]
+                    )
+                }
+                await pullEditorSnapshotIfPossible()
+                markDirtyAndScheduleSave()
+                presentAiUndo()
+            }
+            .presentationDetents([.large])
+        }
+        .alert(
+            env.preferences.t("请先选择正文", en: "Select text first"),
+            isPresented: $showEmptyAiSelectionAlert
+        ) {
+            Button(env.preferences.t("好的", en: "OK"), role: .cancel) {}
+        } message: {
+            Text(env.preferences.t(
+                "在正文中选中一段文字，然后再点 AI。",
+                en: "Select some text in the note body, then tap AI again."
+            ))
         }
         .alert(
             env.preferences.t("应用模板？", en: "Apply template?"),
@@ -263,6 +336,26 @@ struct MemoEditView: View {
                     .accessibilityLabel(env.preferences.t("模板", en: "Template"))
                     .accessibilityIdentifier(CreateMemoChrome.template)
                 }
+
+                Button {
+                    Task {
+                        if let selection = await SharedTipTapRuntime.editor.captureAiSelection() {
+                            aiSelection = selection
+                        } else {
+                            showEmptyAiSelectionAlert = true
+                        }
+                    }
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(editorReady && !busyChrome ? AppTheme.accentStrong : AppTheme.muted)
+                        .frame(width: 36, height: 36)
+                        .background(AppTheme.accentSoft)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!editorReady || busyChrome)
+                .accessibilityLabel(env.preferences.t("用 AI 处理选中内容", en: "Use AI on selection"))
 
                 Button {
                     Task { await handleDone() }
@@ -654,6 +747,16 @@ struct MemoEditView: View {
     private func pullEditorSnapshotIfPossible() async {
         guard let snap = await SharedTipTapRuntime.editor.snapshotContent() else { return }
         viewModel.applyEditorPayload(markdown: snap.markdown, json: snap.json)
+    }
+
+    private func presentAiUndo() {
+        let token = UUID()
+        aiUndoToken = token
+        Task {
+            try? await Task.sleep(nanoseconds: 6_500_000_000)
+            guard !Task.isCancelled, aiUndoToken == token else { return }
+            aiUndoToken = nil
+        }
     }
 
     private func loadInitial() async {

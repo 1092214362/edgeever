@@ -22,6 +22,8 @@ import type {
   TagSummary,
   TiptapDoc,
   AiAction,
+  AiTargetLanguage,
+  AiTone,
   AiSettings,
   AiDiscoveredModel,
   AiProvider,
@@ -287,7 +289,14 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
       }),
 
     streamAiGeneration: async (
-      payload: { action: AiAction; title: string; contentMarkdown: string; targetLanguage?: string },
+      payload: {
+        action: AiAction;
+        title: string;
+        contentMarkdown: string;
+        targetLanguage?: AiTargetLanguage;
+        tone?: AiTone;
+        instruction?: string;
+      },
       streamOptions: { signal?: AbortSignal; onEvent: (event: AiStreamEvent) => void },
     ) => {
       const headers = new Headers({ "Content-Type": "application/json" });

@@ -138,6 +138,7 @@ import { useMobileAutomaticSync } from "../hooks/useMobileAutomaticSync";
 import { useMobileLocalMirrorSync } from "../hooks/useMobileLocalMirrorSync";
 import { useMobileEditorResourceActions } from "../hooks/useMobileEditorResourceActions";
 import { useMobileEditorUploadAsset } from "../hooks/useMobileEditorUploadAsset";
+import { useMobileSelectionAi } from "../hooks/useMobileSelectionAi";
 import {
   filterCollapsedNotebookOptions,
   filterNotebookOptions,
@@ -185,6 +186,7 @@ const ANDROID_SYSTEM_NAVIGATION_FALLBACK = 48;
 const DETAIL_CONTENT_HORIZONTAL_PADDING = 16;
 const DETAIL_TABLE_FIT_COLUMN_COUNT = 3;
 const DETAIL_TABLE_MIN_COLUMN_WIDTH = 132;
+
 const resolveEditableMemoTitle = (title?: string | null) => {
   const trimmedTitle = title?.trim() ?? "";
   return trimmedTitle === DEFAULT_MEMO_TITLE ? "" : trimmedTitle;
@@ -1748,6 +1750,13 @@ const CreateMemoModal = ({
   targetNotebookIdRef.current = targetNotebookId;
   imageOperationRef.current = imageOperation;
 
+  const { cancelSelectionAi, requestSelectionAi } = useMobileSelectionAi({
+    client,
+    editorRef,
+    resolvedLocale,
+    titleRef,
+  });
+
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -2128,6 +2137,8 @@ const CreateMemoModal = ({
         flushResolverRef.current?.();
         flushResolverRef.current = null;
       }}
+      onAiCancel={cancelSelectionAi}
+      onAiRequest={requestSelectionAi}
       onResourcePress={selectResource}
       onLoadResource={loadEditorResource}
       onPickImage={pickAndUploadImage}
@@ -2140,7 +2151,7 @@ const CreateMemoModal = ({
       locale={resolvedLocale}
       theme={resolvedTheme}
     />
-  ) : null, [baseUrl, draftLoaded, loadEditorResource, resolvedLocale, resolvedTheme, scheduleBodyKeyboard, selectResource]);
+  ) : null, [baseUrl, cancelSelectionAi, draftLoaded, loadEditorResource, requestSelectionAi, resolvedLocale, resolvedTheme, scheduleBodyKeyboard, selectResource]);
 
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.createMemoSafeArea}>
@@ -2551,6 +2562,12 @@ const RichEditorModal = ({
   };
 
   const flushEditor = () => flushMobileEditor(editorRef, flushResolverRef);
+  const { cancelSelectionAi, requestSelectionAi } = useMobileSelectionAi({
+    client,
+    editorRef,
+    resolvedLocale,
+    titleRef,
+  });
 
   const requestClose = async () => {
     if (savingRef.current || uploadingRef.current) {
@@ -2648,6 +2665,8 @@ const RichEditorModal = ({
           style: styles.richEditorWebView,
         }}
         onChange={persistDraft}
+        onAiCancel={cancelSelectionAi}
+        onAiRequest={requestSelectionAi}
         onResourcePress={selectResource}
         onLoadResource={loadEditorResource}
         onPickImage={pickAndUploadImage}
@@ -2674,7 +2693,7 @@ const RichEditorModal = ({
         theme={resolvedTheme}
       />
     ) : null,
-    [baseUrl, loadEditorResource, memo?.id, resolvedLocale, resolvedTheme, selectResource]
+    [baseUrl, cancelSelectionAi, loadEditorResource, memo?.id, requestSelectionAi, resolvedLocale, resolvedTheme, selectResource]
   );
 
   useEffect(() => {

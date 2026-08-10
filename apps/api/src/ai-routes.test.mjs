@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { globSync, readFileSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { Hono } from "hono";
+import { AI_ACTIONS, AiGenerateSchema } from "@edgeever/shared";
 import { registerAiRoutes } from "./ai-routes.ts";
 
 const auth = {
@@ -102,6 +103,20 @@ const validSettings = {
 };
 
 describe("AI route contracts", () => {
+  test("accepts the shared semantic action catalog with required parameters", () => {
+    for (const action of AI_ACTIONS) {
+      const parsed = AiGenerateSchema.safeParse({
+        action,
+        title: "Note",
+        contentMarkdown: "Body",
+        ...(action === "translate" ? { targetLanguage: "en" } : {}),
+        ...(action === "change-tone" ? { tone: "friendly" } : {}),
+        ...(action === "custom" ? { instruction: "Keep every date." } : {}),
+      });
+      expect(parsed.success, action).toBe(true);
+    }
+  });
+
   test("does not allow API tokens to manage personal AI credentials", async () => {
     const app = createApp({ currentAuth: { ...auth, kind: "agent", actorType: "agent" } });
     const response = await app.request("/api/v1/ai/settings", {}, environment);
@@ -138,7 +153,7 @@ describe("AI route contracts", () => {
     expect(response.status).toBe(400);
   });
 
-  test("rejects actions outside the first note-processing release", async () => {
+  test("rejects actions outside the shared note-processing catalog", async () => {
     const app = createApp();
     const response = await app.request(
       "/api/v1/ai/generate",
@@ -160,6 +175,25 @@ describe("AI route contracts", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "translate", title: "Note", contentMarkdown: "Body" }),
+      },
+      environment,
+    );
+    expect(response.status).toBe(400);
+  });
+
+  test("bounds custom editing instructions", async () => {
+    const app = createApp();
+    const response = await app.request(
+      "/api/v1/ai/generate",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "rewrite-proofread",
+          title: "Note",
+          contentMarkdown: "Body",
+          instruction: "x".repeat(2_001),
+        }),
       },
       environment,
     );
