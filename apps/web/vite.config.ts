@@ -115,6 +115,7 @@ export default defineConfig({
     __EDGEEVER_RELEASED_AT__: JSON.stringify(releaseTimestamp),
     __EDGEEVER_DEPLOYMENT_TRIGGER__: JSON.stringify(deploymentTrigger),
     __EDGEEVER_DEPLOYMENT_METHOD__: JSON.stringify(deploymentMethod),
+    __EDGEEVER_DEVELOPMENT_PROFILE__: JSON.stringify(process.env.EDGE_EVER_DEVELOPMENT_PROFILE ?? ""),
   },
   plugins: [
     developmentServiceWorkerReset,

@@ -148,6 +148,17 @@ bun install
 bun run dev
 ```
 
+本地启动器基于同一套应用代码提供两个数据隔离的 Profile。`bun run dev` 启动持久化的 `LOCAL DEV`：固定使用 `.wrangler/state`，启动前自动应用待执行的 D1 Migration，并在重启后保留本地笔记和 AI 设置。`bun run dev:demo` 启动可重置的 `LOCAL DEMO`，数据独立存放在 `.wrangler/demo-state`。浏览器标题与右下角标识会显示当前 Profile；两者都不会与已配置的远程实例共享数据。
+
+可选的本地 AI 自动引导：
+
+```sh
+cp .env.local-dev.example .env.local-dev
+# 填写 EDGE_EVER_LOCAL_AI_API_KEY，然后重新运行 bun run dev。
+```
+
+引导文件已被 Git 忽略，仅当 `LOCAL DEV` 的 D1 没有任何 AI 服务时才会创建配置，绝不会覆盖已有服务。运行 `bun run dev:doctor` 可同时检查两个 Profile 的 Wrangler、D1 Migration、健康状态和 AI 引导状态，且不会显示 Secret。运行 `bun run dev:demo:reset` 可恢复 Demo 数据，不会修改日常开发数据库。远程开发仍须显式指定：`EDGE_EVER_INSTANCE=<实例名> bun run dev:remote`。
+
 ## 目录结构
 
 ```text
