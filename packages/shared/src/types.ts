@@ -118,14 +118,33 @@ export type ObjectStorageSettings = {
 
 export type AiProvider = "openai-compatible" | "anthropic" | "google";
 
-export type AiModelSettings = {
+export type AiModelConfig = {
+  id: string;
+  providerConfigId: string;
+  modelId: string;
+  displayName: string;
+};
+
+export type AiProviderConfig = {
+  id: string;
   provider: AiProvider;
   displayName: string;
   baseUrl: string;
-  modelId: string;
   isEnabled: boolean;
   hasApiKey: boolean;
+  models: AiModelConfig[];
+};
+
+export type AiSettings = {
+  providers: AiProviderConfig[];
+  defaultModelId: string | null;
   encryptionConfigured: boolean;
+  readOnly: boolean;
+};
+
+export type AiDiscoveredModel = {
+  modelId: string;
+  displayName: string;
 };
 
 export type AiAction =

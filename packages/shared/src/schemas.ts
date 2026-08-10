@@ -170,16 +170,34 @@ const AiBaseUrlSchema = z.string().trim().url().max(500).superRefine((value, con
   }
 });
 
-export const AiModelSettingsUpdateSchema = z.object({
+const AiProviderConfigFieldsSchema = z.object({
   provider: AiProviderSchema,
   displayName: z.string().trim().min(1).max(80),
   baseUrl: AiBaseUrlSchema,
-  apiKey: z.string().min(1).max(4096).optional(),
-  modelId: z.string().trim().min(1).max(200),
   isEnabled: z.boolean().default(true),
 });
 
-export const AiConnectionTestSchema = AiModelSettingsUpdateSchema.omit({ isEnabled: true });
+export const AiProviderConfigCreateSchema = AiProviderConfigFieldsSchema.extend({
+  apiKey: z.string().min(1).max(4096),
+  initialModelId: z.string().trim().min(1).max(200).optional(),
+});
+
+export const AiProviderConfigUpdateSchema = AiProviderConfigFieldsSchema.extend({
+  apiKey: z.string().min(1).max(4096).optional(),
+});
+
+export const AiProviderConnectionTestSchema = z.object({
+  modelId: z.string().trim().min(1).max(200),
+});
+
+export const AiModelConfigCreateSchema = z.object({
+  modelId: z.string().trim().min(1).max(200),
+  displayName: z.string().trim().min(1).max(200).optional(),
+});
+
+export const AiDefaultModelUpdateSchema = z.object({
+  modelConfigId: z.string().trim().min(1).nullable(),
+});
 
 export const AiGenerateSchema = z.object({
   action: z.enum([
@@ -220,6 +238,9 @@ export type TagRenameInput = z.infer<typeof TagRenameSchema>;
 export type ResourceUpdateInput = z.infer<typeof ResourceUpdateSchema>;
 export type ObjectStorageSettingsUpdateInput = z.infer<typeof ObjectStorageSettingsUpdateSchema>;
 export type ObjectStorageConnectionTestInput = z.infer<typeof ObjectStorageConnectionTestSchema>;
-export type AiModelSettingsUpdateInput = z.infer<typeof AiModelSettingsUpdateSchema>;
-export type AiConnectionTestInput = z.infer<typeof AiConnectionTestSchema>;
+export type AiProviderConfigCreateInput = z.infer<typeof AiProviderConfigCreateSchema>;
+export type AiProviderConfigUpdateInput = z.infer<typeof AiProviderConfigUpdateSchema>;
+export type AiProviderConnectionTestInput = z.infer<typeof AiProviderConnectionTestSchema>;
+export type AiModelConfigCreateInput = z.infer<typeof AiModelConfigCreateSchema>;
+export type AiDefaultModelUpdateInput = z.infer<typeof AiDefaultModelUpdateSchema>;
 export type AiGenerateInput = z.infer<typeof AiGenerateSchema>;
