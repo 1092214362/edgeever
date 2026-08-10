@@ -808,6 +808,7 @@ export const enUS = {
     strike: "Strikethrough",
     inlineCode: "Inline code",
     bulletList: "Bulleted list",
+    taskList: "Task list",
     orderedList: "Numbered list",
     increaseListIndent: "Increase list level (Tab)",
     decreaseListIndent: "Decrease list level (Shift + Tab)",
@@ -1117,7 +1118,7 @@ export const enUS = {
       weeklyReview: {
         title: "Weekly Review & Status",
         description: "Summarize weekly highlights, blockers, and next week's key priorities.",
-        contentMarkdown: "# 🗓️ Weekly Status Report\n\n## 🌟 Highlights\n\n- [x] **[Project/Feature]** Accomplishment details\n- [x] **[Project/Feature]** Accomplishment details\n\n## 🚧 Blockers & Risks\n\n- ⚠️ **Blocker**: Reason and required support\n\n## 🎯 Next Week Priorities\n\n1. [ ] \n2. [ ] \n3. [ ] \n\n## 💡 Reflection & Insights\n\n- \n",
+        contentMarkdown: "# 🗓️ Weekly Status Report\n\n## 🌟 Highlights\n\n- [x] **[Project/Feature]** Accomplishment details\n- [x] **[Project/Feature]** Accomplishment details\n\n## 🚧 Blockers & Risks\n\n- ⚠️ **Blocker**: Reason and required support\n\n## 🎯 Next Week Priorities\n\n- [ ] \n- [ ] \n- [ ] \n\n## 💡 Reflection & Insights\n\n- \n",
       },
       reading: {
         title: "Reading Note Card",

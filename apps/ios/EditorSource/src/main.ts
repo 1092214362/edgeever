@@ -3,6 +3,7 @@ import "katex/dist/katex.min.css";
 import { Editor, mergeAttributes, Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import Placeholder from "@tiptap/extension-placeholder";
 import CodeBlock from "@tiptap/extension-code-block";
 import { TableKit } from "@tiptap/extension-table";
@@ -608,6 +609,8 @@ function buildExtensions(placeholder: string) {
     StarterKit.configure({
       codeBlock: false,
     }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
     MergeDivider,
     ...createEdgeEverMathematics(),
     CodeBlock.configure({
@@ -847,6 +850,8 @@ function getEditorSearchMatches(ed: Editor, query: string): EditorSearchMatch[] 
   return matches;
 }
 
+const activeListItemType = () => editor.isActive("taskItem") ? "taskItem" : "listItem";
+
 function setToolbarVisible(visible: boolean) {
   toolbarEl.classList.toggle("editor-mode", visible);
   toolbarEl.innerHTML = "";
@@ -864,14 +869,19 @@ function setToolbarVisible(visible: boolean) {
       run: () => editor.chain().focus().toggleBulletList().run(),
     },
     {
+      id: "task",
+      label: "☑",
+      run: () => editor.chain().focus().toggleTaskList().run(),
+    },
+    {
       id: "indent",
       label: "⇥",
-      run: () => editor.chain().focus().sinkListItem("listItem").run(),
+      run: () => editor.chain().focus().sinkListItem(activeListItemType()).run(),
     },
     {
       id: "outdent",
       label: "⇤",
-      run: () => editor.chain().focus().liftListItem("listItem").run(),
+      run: () => editor.chain().focus().liftListItem(activeListItemType()).run(),
     },
     {
       id: "quote",
@@ -893,6 +903,7 @@ function setToolbarVisible(visible: boolean) {
       image: ["插入图片", "Insert image"],
       bold: ["粗体", "Bold"],
       bullet: ["项目符号列表", "Bullet list"],
+      task: ["任务清单", "Task list"],
       indent: ["增加列表缩进", "Increase list indent"],
       outdent: ["减少列表缩进", "Decrease list indent"],
       quote: ["引用", "Block quote"],
@@ -913,6 +924,7 @@ function refreshToolbarState() {
   const active: Record<string, boolean> = {
     bold: editor.isActive("bold"),
     bullet: editor.isActive("bulletList"),
+    task: editor.isActive("taskList"),
     quote: editor.isActive("blockquote"),
   };
   toolbarEl.querySelectorAll<HTMLButtonElement>("button[data-action]").forEach((button) => {
@@ -1059,6 +1071,7 @@ const api: EdgeEverEditorAPI = {
     const map: Record<string, () => void> = {
       bold: () => editor.chain().focus().toggleBold().run(),
       bulletList: () => editor.chain().focus().toggleBulletList().run(),
+      taskList: () => editor.chain().focus().toggleTaskList().run(),
       blockquote: () => editor.chain().focus().toggleBlockquote().run(),
       horizontalRule: () => editor.chain().focus().setHorizontalRule().run(),
       heading2: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),

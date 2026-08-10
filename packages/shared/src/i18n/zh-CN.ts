@@ -808,6 +808,7 @@ export const zhCN = {
     strike: "删除线",
     inlineCode: "行内代码",
     bulletList: "无序列表",
+    taskList: "任务清单",
     orderedList: "有序列表",
     increaseListIndent: "增加列表层级（Tab）",
     decreaseListIndent: "减少列表层级（Shift + Tab）",
@@ -1117,7 +1118,7 @@ export const zhCN = {
       weeklyReview: {
         title: "周报与进展复盘",
         description: "梳理本周核心产出、风险卡点与下周关键优先级。",
-        contentMarkdown: "# 🗓️ 工作周报\n\n## 🌟 本周核心进展 (Highlights)\n\n- [x] **[项目/功能]** 完成情况与成果说明\n- [x] **[项目/功能]** 完成情况与成果说明\n\n## 🚧 卡点与风险 (Blockers & Risks)\n\n- ⚠️ **阻塞项**：原因及所需支持\n\n## 🎯 下周优先级 (Next Week Priorities)\n\n1. [ ] \n2. [ ] \n3. [ ] \n\n## 💡 总结与思考\n\n- \n",
+        contentMarkdown: "# 🗓️ 工作周报\n\n## 🌟 本周核心进展 (Highlights)\n\n- [x] **[项目/功能]** 完成情况与成果说明\n- [x] **[项目/功能]** 完成情况与成果说明\n\n## 🚧 卡点与风险 (Blockers & Risks)\n\n- ⚠️ **阻塞项**：原因及所需支持\n\n## 🎯 下周优先级 (Next Week Priorities)\n\n- [ ] \n- [ ] \n- [ ] \n\n## 💡 总结与思考\n\n- \n",
       },
       reading: {
         title: "深度阅读卡片",

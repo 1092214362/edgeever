@@ -6,6 +6,7 @@ import { renderMermaidSVG, THEMES } from "beautiful-mermaid";
 import Image from "@tiptap/extension-image";
 import CodeBlock from "@tiptap/extension-code-block";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -404,6 +405,8 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     autofocus: autoFocus ? "end" : false,
     extensions: [
       StarterKit.configure({ codeBlock: false, link: { openOnClick: false } }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
       MergeDivider,
       ...createEdgeEverMathematics(),
       mermaidCodeBlockExtension,
@@ -703,6 +706,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     selector: ({ editor: activeEditor }) =>
       (activeEditor?.isActive("bold") ? MOBILE_EDITOR_ACTIVE_FLAGS.bold : 0) |
       (activeEditor?.isActive("bulletList") ? MOBILE_EDITOR_ACTIVE_FLAGS.bulletList : 0) |
+      (activeEditor?.isActive("taskList") ? MOBILE_EDITOR_ACTIVE_FLAGS.taskList : 0) |
       (activeEditor?.isActive("blockquote") ? MOBILE_EDITOR_ACTIVE_FLAGS.blockquote : 0),
   });
 
@@ -729,17 +733,20 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     image: <ImagePlusIcon />,
     bold: <BoldIcon />,
     bulletList: <ListIcon />,
+    taskList: <ListTodoIcon />,
     increaseListIndent: <ListIndentIncreaseIcon />,
     decreaseListIndent: <ListIndentDecreaseIcon />,
     blockquote: <QuoteIcon />,
     horizontalRule: <MinusIcon />,
   };
+  const activeListItemType = editor?.isActive("taskItem") ? "taskItem" : "listItem";
   const toolbarHandlers: Record<MobileEditorToolbarActionId, () => void> = {
     image: () => void insertImage(),
     bold: () => editor?.chain().focus().toggleBold().run(),
     bulletList: () => editor?.chain().focus().toggleBulletList().run(),
-    increaseListIndent: () => editor?.chain().focus().sinkListItem("listItem").run(),
-    decreaseListIndent: () => editor?.chain().focus().liftListItem("listItem").run(),
+    taskList: () => editor?.chain().focus().toggleTaskList().run(),
+    increaseListIndent: () => editor?.chain().focus().sinkListItem(activeListItemType).run(),
+    decreaseListIndent: () => editor?.chain().focus().liftListItem(activeListItemType).run(),
     blockquote: () => editor?.chain().focus().toggleBlockquote().run(),
     horizontalRule: () => editor?.chain().focus().setHorizontalRule().run(),
   };
@@ -754,9 +761,9 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
                 key={action.id}
                 active={action.activeFlag > 0 && Boolean(toolbarState & action.activeFlag)}
                 disabled={(action.id === "increaseListIndent"
-                    && !Boolean(editor?.can().chain().focus().sinkListItem("listItem").run()))
+                    && !Boolean(editor?.can().chain().focus().sinkListItem(activeListItemType).run()))
                   || (action.id === "decreaseListIndent"
-                    && !Boolean(editor?.can().chain().focus().liftListItem("listItem").run()))}
+                    && !Boolean(editor?.can().chain().focus().liftListItem(activeListItemType).run()))}
                 icon={toolbarIcons[action.id]}
                 label={getMobileEditorToolbarActionLabel(action.id, props.locale)}
                 onRun={toolbarHandlers[action.id]}
@@ -847,6 +854,15 @@ const BoldIcon = () => (
 const ListIcon = () => (
   <EditorIcon size={18} strokeWidth={2.2}>
     <path d="M3 5h.01M3 12h.01M3 19h.01M8 5h13M8 12h13M8 19h13" />
+  </EditorIcon>
+);
+
+const ListTodoIcon = () => (
+  <EditorIcon size={18} strokeWidth={2.1}>
+    <rect height="6" rx="1" width="6" x="3" y="3" />
+    <path d="m4.5 6 1 1 2-2M13 6h8" />
+    <rect height="6" rx="1" width="6" x="3" y="15" />
+    <path d="M13 18h8" />
   </EditorIcon>
 );
 
@@ -1790,6 +1806,13 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-editor-content h1 { margin: 0.7em 0 0.4em; font-size: 1.6rem; }
   .edgeever-editor-content h2 { margin: 0.85em 0 0.35em; font-size: 1.35rem; }
   .edgeever-editor-content h3 { margin: 0.75em 0 0.3em; font-size: 1.15rem; }
+  .edgeever-editor-content ul[data-type="taskList"] { margin: 0 0 var(--editor-paragraph-spacing); padding-left: 0; list-style: none; }
+  .edgeever-editor-content ul[data-type="taskList"] li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 9px; margin: 4px 0; }
+  .edgeever-editor-content ul[data-type="taskList"] li[data-type="taskItem"] > label { display: inline-flex; flex: 0 0 auto; align-items: center; margin-top: 3px; user-select: none; }
+  .edgeever-editor-content ul[data-type="taskList"] li[data-type="taskItem"] > label input { width: 18px; height: 18px; margin: 0; accent-color: #16a06e; }
+  .edgeever-editor-content ul[data-type="taskList"] li[data-type="taskItem"] > div { min-width: 0; flex: 1 1 auto; }
+  .edgeever-editor-content ul[data-type="taskList"] li[data-type="taskItem"] > div > p { margin-bottom: 0; }
+  .edgeever-editor-content ul[data-type="taskList"] ul[data-type="taskList"] { margin: 4px 0 0; padding-left: 24px; }
   .edgeever-editor-content blockquote { margin-left: 0; max-width: 100%; padding-left: 14px; border-left: 3px solid #5eead4; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; }
   .edgeever-editor-content pre { max-width: 100%; overflow-x: auto; border-radius: 10px; padding: 14px 90px 14px 14px; background: #0f172a; color: #e2e8f0; font-size: 0.9rem; }
   .edgeever-editor-content code { border-radius: 4px; padding: 2px 4px; background: ${theme === "dark" ? "#1e293b" : "#f1f5f9"}; font-size: 0.9em; }
