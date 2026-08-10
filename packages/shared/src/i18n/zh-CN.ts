@@ -272,15 +272,6 @@ export const zhCN = {
   aiModel: {
     title: "外部 AI 配置",
     description: "连接你自己的云端模型服务。凭据由 EdgeEver 服务端加密保存，并按个人工作区隔离。",
-    preset: "服务商预设",
-    presets: {
-      deepseek: "DeepSeek",
-      openai: "OpenAI",
-      anthropic: "Anthropic Claude",
-      google: "Google Gemini",
-      ollama: "Ollama (本地运行)",
-      custom: "自定义 / 其他兼容协议",
-    },
     provider: "API 协议",
     providers: {
       "openai-compatible": "OpenAI 兼容协议",

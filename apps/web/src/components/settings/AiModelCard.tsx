@@ -12,34 +12,20 @@ import { Switch } from "@/components/ui/switch";
 import { ApiRequestError, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type PresetKey = "deepseek" | "openai" | "anthropic" | "google" | "ollama" | "custom";
-
-const PRESET_CONFIGS: Record<Exclude<PresetKey, "custom">, { provider: AiProvider; displayName: string; baseUrl: string; modelId: string }> = {
-  deepseek: { provider: "openai-compatible", displayName: "DeepSeek", baseUrl: "https://api.deepseek.com", modelId: "deepseek-chat" },
-  openai: { provider: "openai-compatible", displayName: "OpenAI", baseUrl: "https://api.openai.com/v1", modelId: "gpt-4.1-mini" },
-  anthropic: { provider: "anthropic", displayName: "Anthropic Claude", baseUrl: "https://api.anthropic.com/v1", modelId: "claude-sonnet-4-5" },
-  google: { provider: "google", displayName: "Google Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta", modelId: "gemini-2.5-flash" },
-  ollama: { provider: "openai-compatible", displayName: "Ollama", baseUrl: "http://localhost:11434/v1", modelId: "llama3.2" },
-};
-
-const inferPreset = (provider: AiProvider, baseUrl: string): PresetKey => {
-  if (baseUrl.includes("deepseek.com")) return "deepseek";
-  if (baseUrl.includes("openai.com")) return "openai";
-  if (provider === "anthropic" || baseUrl.includes("anthropic.com")) return "anthropic";
-  if (provider === "google" || baseUrl.includes("googleapis.com")) return "google";
-  if (baseUrl.includes("11434") || baseUrl.includes("ollama")) return "ollama";
-  return "custom";
+const providerDefaults: Record<AiProvider, { displayName: string; baseUrl: string; modelId: string }> = {
+  "openai-compatible": { displayName: "OpenAI-compatible", baseUrl: "https://api.openai.com/v1", modelId: "gpt-4.1-mini" },
+  anthropic: { displayName: "Anthropic", baseUrl: "https://api.anthropic.com/v1", modelId: "claude-sonnet-4-5" },
+  google: { displayName: "Google Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta", modelId: "gemini-2.5-flash" },
 };
 
 export const AiModelCard = ({ demoMode }: { demoMode: boolean }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({ queryKey: ["ai-settings"], queryFn: api.getAiSettings });
-  const [preset, setPreset] = useState<PresetKey>("deepseek");
   const [provider, setProvider] = useState<AiProvider>("openai-compatible");
-  const [displayName, setDisplayName] = useState(PRESET_CONFIGS.deepseek.displayName);
-  const [baseUrl, setBaseUrl] = useState(PRESET_CONFIGS.deepseek.baseUrl);
-  const [modelId, setModelId] = useState(PRESET_CONFIGS.deepseek.modelId);
+  const [displayName, setDisplayName] = useState(providerDefaults["openai-compatible"].displayName);
+  const [baseUrl, setBaseUrl] = useState(providerDefaults["openai-compatible"].baseUrl);
+  const [modelId, setModelId] = useState(providerDefaults["openai-compatible"].modelId);
   const [apiKey, setApiKey] = useState("");
   const [isEnabled, setIsEnabled] = useState(true);
   const [expanded, setExpanded] = useState(true);
@@ -52,14 +38,13 @@ export const AiModelCard = ({ demoMode }: { demoMode: boolean }) => {
     setBaseUrl(settings.baseUrl);
     setModelId(settings.modelId);
     setIsEnabled(settings.isEnabled);
-    setPreset(inferPreset(settings.provider, settings.baseUrl));
   }, [settingsQuery.data]);
 
   const payload = () => ({
     provider,
-    displayName: displayName.trim() || (preset !== "custom" ? PRESET_CONFIGS[preset].displayName : "External AI"),
-    baseUrl: baseUrl.trim(),
-    modelId: modelId.trim(),
+    displayName,
+    baseUrl,
+    modelId,
     ...(apiKey ? { apiKey } : {}),
   });
 
@@ -72,22 +57,13 @@ export const AiModelCard = ({ demoMode }: { demoMode: boolean }) => {
     },
   });
 
-  const handlePresetChange = (nextPreset: PresetKey) => {
-    setPreset(nextPreset);
-    if (nextPreset !== "custom") {
-      const config = PRESET_CONFIGS[nextPreset];
-      setProvider(config.provider);
-      setDisplayName(config.displayName);
-      setBaseUrl(config.baseUrl);
-      setModelId(config.modelId);
-    }
-    testMutation.reset();
-    saveMutation.reset();
-  };
-
   const handleProviderChange = (next: AiProvider) => {
+    const previousDefaults = providerDefaults[provider];
+    const nextDefaults = providerDefaults[next];
     setProvider(next);
-    setPreset("custom");
+    if (!displayName || displayName === previousDefaults.displayName) setDisplayName(nextDefaults.displayName);
+    if (!baseUrl || baseUrl === previousDefaults.baseUrl) setBaseUrl(nextDefaults.baseUrl);
+    if (!modelId || modelId === previousDefaults.modelId) setModelId(nextDefaults.modelId);
     testMutation.reset();
     saveMutation.reset();
   };
@@ -145,21 +121,6 @@ export const AiModelCard = ({ demoMode }: { demoMode: boolean }) => {
                   </p>
                 ) : null}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label={t("aiModel.preset")}>
-                    <Select value={preset} onValueChange={(value) => handlePresetChange(value as PresetKey)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="deepseek">{t("aiModel.presets.deepseek")}</SelectItem>
-                        <SelectItem value="openai">{t("aiModel.presets.openai")}</SelectItem>
-                        <SelectItem value="anthropic">{t("aiModel.presets.anthropic")}</SelectItem>
-                        <SelectItem value="google">{t("aiModel.presets.google")}</SelectItem>
-                        <SelectItem value="ollama">{t("aiModel.presets.ollama")}</SelectItem>
-                        <SelectItem value="custom">{t("aiModel.presets.custom")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
                   <Field label={t("aiModel.provider")}>
                     <Select value={provider} onValueChange={(value) => handleProviderChange(value as AiProvider)}>
                       <SelectTrigger>
@@ -172,26 +133,14 @@ export const AiModelCard = ({ demoMode }: { demoMode: boolean }) => {
                       </SelectContent>
                     </Select>
                   </Field>
+                  <Field label={t("aiModel.displayName")}>
+                    <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required maxLength={80} />
+                  </Field>
                   <Field label={t("aiModel.baseUrl")}>
-                    <Input
-                      value={baseUrl}
-                      onChange={(event) => {
-                        setBaseUrl(event.target.value);
-                        setPreset("custom");
-                      }}
-                      required
-                      inputMode="url"
-                    />
+                    <Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required inputMode="url" />
                   </Field>
                   <Field label={t("aiModel.modelId")}>
-                    <Input
-                      value={modelId}
-                      onChange={(event) => {
-                        setModelId(event.target.value);
-                        setPreset("custom");
-                      }}
-                      required
-                    />
+                    <Input value={modelId} onChange={(event) => setModelId(event.target.value)} required />
                   </Field>
                   <Field label={t("aiModel.apiKey")} hint={hasSavedKey ? t("aiModel.apiKeySavedHint") : undefined}>
                     <Input
@@ -267,4 +216,3 @@ const Field = ({ label, hint, children }: { label: string; hint?: string; childr
     {hint ? <span className="text-xs font-normal leading-4 text-slate-500">{hint}</span> : null}
   </label>
 );
-

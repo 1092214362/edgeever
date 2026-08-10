@@ -272,15 +272,6 @@ export const enUS = {
   aiModel: {
     title: "External AI configuration",
     description: "Connect your own cloud model endpoint. Credentials are encrypted on the EdgeEver server and isolated to your workspace.",
-    preset: "Provider preset",
-    presets: {
-      deepseek: "DeepSeek",
-      openai: "OpenAI",
-      anthropic: "Anthropic Claude",
-      google: "Google Gemini",
-      ollama: "Ollama (Local)",
-      custom: "Custom / Other compatible",
-    },
     provider: "API protocol",
     providers: {
       "openai-compatible": "OpenAI-compatible",
