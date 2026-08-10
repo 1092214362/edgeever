@@ -90,7 +90,7 @@ sqlite.run(
     "MCP regression",
     tokenHash,
     token,
-    JSON.stringify(["read:notebooks", "read:memos", "write:memos", "read:resources", "read:tags"]),
+    JSON.stringify(["read:notebooks", "write:notebooks", "read:memos", "write:memos", "read:resources", "read:tags"]),
   ],
 );
 
@@ -155,6 +155,9 @@ assert.equal(tools.get("trash_memos").annotations.destructiveHint, true);
 assert.equal(tools.get("create_memo").annotations.destructiveHint, false);
 assert.equal(tools.get("import_memos").annotations.idempotentHint, true);
 assert.equal(tools.get("import_memos").annotations.destructiveHint, false);
+assert.equal(tools.get("rename_notebook").annotations.readOnlyHint, false);
+assert.equal(tools.get("rename_notebook").annotations.destructiveHint, false);
+assert.equal(tools.get("rename_notebook").annotations.idempotentHint, true);
 
 body = await callTool(4, "get_current_user");
 assert.equal(body.result.structuredContent.user.username, "zack42");
@@ -180,6 +183,15 @@ assert.equal(body.result.structuredContent.error.code, "not_found");
 
 body = await callTool(10, "list_notebooks");
 assert.ok(!body.result.structuredContent.notebooks.some((notebook) => notebook.id === "nb_other"));
+
+body = await callTool(101, "rename_notebook", { notebookId: "nb_flomo", name: "Flomo Archive" });
+assert.equal(body.result.isError, false);
+assert.equal(body.result.structuredContent.notebook.name, "Flomo Archive");
+assert.equal(sqlite.query("SELECT name FROM notebooks WHERE id = ?").get("nb_flomo").name, "Flomo Archive");
+
+body = await callTool(102, "rename_notebook", { notebookId: "nb_other", name: "Leaked" });
+assert.equal(body.result.isError, true);
+assert.equal(body.result.structuredContent.error.code, "not_found");
 
 body = await callTool(11, "import_memos", {
   source: "Flomo",
@@ -259,4 +271,4 @@ assert.equal(response.status, 202);
 response = await fetchMcp(null, { method: "GET" });
 assert.equal(response.status, 405);
 
-console.log("MCP protocol, identity, notebook lookup, and idempotent import regression passed");
+console.log("MCP protocol, identity, notebook lookup and rename, and idempotent import regression passed");
