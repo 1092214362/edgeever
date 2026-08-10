@@ -222,8 +222,8 @@ export const SettingsPane = ({
         return (
           <SettingsGroup>
             <AiModelCard demoMode={demoMode} />
-            <AdvancedPlayCard />
             <McpConfigCard />
+            <AdvancedPlayCard />
           </SettingsGroup>
         );
       case "advanced":
