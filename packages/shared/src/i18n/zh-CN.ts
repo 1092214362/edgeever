@@ -298,6 +298,7 @@ export const zhCN = {
     noProviders: "还没有模型服务。添加 OpenAI、OpenRouter、Anthropic、Gemini 或其他兼容服务即可开始。",
     servicesTitle: "模型服务",
     serviceCount: "{{count}} 个服务",
+    defaultProviderName: "模型服务商{{ordinal}}",
     addProvider: "添加模型服务",
     addProviderDescription: "连接一个模型 API；创建后可以继续发现或添加更多模型。",
     createProvider: "添加服务",

@@ -4,7 +4,12 @@ import type { AiProvider } from "@edgeever/shared";
 import { ChevronDown, Loader2, Plus, Server, Sparkles, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AiProviderCard } from "@/components/settings/AiProviderCard";
-import { aiErrorMessage, providerDefaults } from "@/components/settings/ai-provider-options";
+import {
+  aiErrorMessage,
+  formatProviderOrdinal,
+  isLegacyProviderDisplayName,
+  providerDefaults,
+} from "@/components/settings/ai-provider-options";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -22,21 +27,21 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export const AiModelCard = () => {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({ queryKey: ["ai-settings"], queryFn: api.getAiSettings });
   const [expanded, setExpanded] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [provider, setProvider] = useState<AiProvider>("openai-compatible");
-  const [displayName, setDisplayName] = useState(providerDefaults["openai-compatible"].displayName);
+  const [displayName, setDisplayName] = useState("");
   const [baseUrl, setBaseUrl] = useState(providerDefaults["openai-compatible"].baseUrl);
   const [apiKey, setApiKey] = useState("");
   const [initialModelId, setInitialModelId] = useState(providerDefaults["openai-compatible"].modelId);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["ai-settings"] });
-  const resetAddForm = () => {
+  const resetAddForm = (nextDisplayName = "") => {
     setProvider("openai-compatible");
-    setDisplayName(providerDefaults["openai-compatible"].displayName);
+    setDisplayName(nextDisplayName);
     setBaseUrl(providerDefaults["openai-compatible"].baseUrl);
     setInitialModelId(providerDefaults["openai-compatible"].modelId);
     setApiKey("");
@@ -66,7 +71,6 @@ export const AiModelCard = () => {
     const previous = providerDefaults[provider];
     const defaults = providerDefaults[next];
     setProvider(next);
-    if (!displayName || displayName === previous.displayName) setDisplayName(defaults.displayName);
     if (!baseUrl || baseUrl === previous.baseUrl) setBaseUrl(defaults.baseUrl);
     if (!initialModelId || initialModelId === previous.modelId) setInitialModelId(defaults.modelId);
   };
@@ -77,11 +81,21 @@ export const AiModelCard = () => {
 
   const settings = settingsQuery.data;
   const readOnly = settings?.readOnly ?? true;
-  const allModels = settings?.providers.flatMap((item) =>
-    item.models.map((model) => ({ ...model, providerName: item.displayName, providerEnabled: item.isEnabled }))) ?? [];
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const getDefaultProviderName = (index: number) => t("aiModel.defaultProviderName", {
+    ordinal: formatProviderOrdinal(index + 1, locale),
+  });
+  const getProviderName = (item: NonNullable<typeof settings>["providers"][number], index: number) =>
+    isLegacyProviderDisplayName(item.displayName, item.provider) ? getDefaultProviderName(index) : item.displayName;
+  const allModels = settings?.providers.flatMap((item, index) =>
+    item.models.map((model) => ({ ...model, providerName: getProviderName(item, index), providerEnabled: item.isEnabled }))) ?? [];
   const defaultModelAvailable = !settings?.defaultModelId
     || allModels.some((model) => model.id === settings.defaultModelId && model.providerEnabled);
   const error = defaultMutation.error ?? settingsQuery.error;
+  const openAddDialog = () => {
+    resetAddForm(getDefaultProviderName(settings?.providers.length ?? 0));
+    setShowAdd(true);
+  };
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
@@ -149,16 +163,17 @@ export const AiModelCard = () => {
                         {t("aiModel.serviceCount", { count: settings?.providers.length ?? 0 })}
                       </p>
                     </div>
-                    <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={() => setShowAdd(true)}>
+                    <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={openAddDialog}>
                       <Plus className="h-4 w-4" />{t("aiModel.addProvider")}
                     </Button>
                   </div>
 
                   <div className="grid gap-3">
-                    {settings?.providers.map((item) => (
+                    {settings?.providers.map((item, index) => (
                       <AiProviderCard
                         key={item.id}
                         provider={item}
+                        defaultDisplayName={getDefaultProviderName(index)}
                         defaultModelId={settings.defaultModelId}
                         readOnly={readOnly}
                         onChanged={refresh}

@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import type { AiDiscoveredModel, AiModelConfig, AiProvider, AiProviderConfig } from "@edgeever/shared";
 import { CheckCircle2, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { aiErrorMessage, providerDefaults } from "@/components/settings/ai-provider-options";
+import { aiErrorMessage, isLegacyProviderDisplayName, providerDefaults } from "@/components/settings/ai-provider-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,16 +25,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/lib/api";
 
-export const AiProviderCard = ({ provider: saved, defaultModelId, readOnly, onChanged }: {
+export const AiProviderCard = ({ provider: saved, defaultDisplayName, defaultModelId, readOnly, onChanged }: {
   provider: AiProviderConfig;
+  defaultDisplayName: string;
   defaultModelId: string | null;
   readOnly: boolean;
   onChanged: () => Promise<unknown>;
 }) => {
   const { t } = useTranslation();
   const datalistId = `ai-models-${useId().replaceAll(":", "")}`;
+  const effectiveDisplayName = isLegacyProviderDisplayName(saved.displayName, saved.provider)
+    ? defaultDisplayName
+    : saved.displayName;
   const [provider, setProvider] = useState<AiProvider>(saved.provider);
-  const [displayName, setDisplayName] = useState(saved.displayName);
+  const [displayName, setDisplayName] = useState(effectiveDisplayName);
   const [baseUrl, setBaseUrl] = useState(saved.baseUrl);
   const [apiKey, setApiKey] = useState("");
   const [modelId, setModelId] = useState("");
@@ -44,9 +48,9 @@ export const AiProviderCard = ({ provider: saved, defaultModelId, readOnly, onCh
 
   useEffect(() => {
     setProvider(saved.provider);
-    setDisplayName(saved.displayName);
+    setDisplayName(effectiveDisplayName);
     setBaseUrl(saved.baseUrl);
-  }, [saved.baseUrl, saved.displayName, saved.provider]);
+  }, [effectiveDisplayName, saved.baseUrl, saved.provider]);
 
   const saveMutation = useMutation({
     mutationFn: () => api.updateAiProvider(saved.id, {
@@ -104,24 +108,22 @@ export const AiProviderCard = ({ provider: saved, defaultModelId, readOnly, onCh
   const modelBusy = discoverMutation.isPending || addModelMutation.isPending || deleteModelMutation.isPending;
   const cardBusy = toggleMutation.isPending || deleteMutation.isPending || modelBusy;
   const connectionDirty = provider !== saved.provider
-    || displayName.trim() !== saved.displayName
+    || displayName.trim() !== effectiveDisplayName
     || baseUrl.trim() !== saved.baseUrl
     || Boolean(apiKey);
   const connectionError = saveMutation.error ?? testMutation.error;
   const cardError = toggleMutation.error ?? deleteMutation.error ?? discoverMutation.error ?? addModelMutation.error ?? deleteModelMutation.error;
   const providerLabel = t(`aiModel.providers.${saved.provider}`);
-  const showProviderLabel = saved.displayName.trim().toLocaleLowerCase() !== providerLabel.trim().toLocaleLowerCase();
 
   const handleProviderChange = (next: AiProvider) => {
     const previous = providerDefaults[provider];
     const defaults = providerDefaults[next];
     setProvider(next);
-    if (!displayName || displayName === previous.displayName) setDisplayName(defaults.displayName);
     if (!baseUrl || baseUrl === previous.baseUrl) setBaseUrl(defaults.baseUrl);
   };
   const resetConnectionForm = () => {
     setProvider(saved.provider);
-    setDisplayName(saved.displayName);
+    setDisplayName(effectiveDisplayName);
     setBaseUrl(saved.baseUrl);
     setApiKey("");
     saveMutation.reset();
@@ -148,7 +150,7 @@ export const AiProviderCard = ({ provider: saved, defaultModelId, readOnly, onCh
     saveMutation.mutate();
   };
   const deleteProvider = () => {
-    if (window.confirm(t("aiModel.deleteProviderConfirm", { name: saved.displayName }))) deleteMutation.mutate();
+    if (window.confirm(t("aiModel.deleteProviderConfirm", { name: effectiveDisplayName }))) deleteMutation.mutate();
   };
   const deleteModel = (model: AiModelConfig) => {
     if (window.confirm(t("aiModel.deleteModelConfirm", { name: model.displayName }))) deleteModelMutation.mutate(model.id);
@@ -158,9 +160,9 @@ export const AiProviderCard = ({ provider: saved, defaultModelId, readOnly, onCh
     <section className="overflow-hidden rounded-lg border bg-white">
       <div className="flex items-start justify-between gap-3 p-4">
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-slate-900">{saved.displayName}</h3>
+          <h3 className="truncate text-sm font-semibold text-slate-900">{effectiveDisplayName}</h3>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-            {showProviderLabel ? <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">{providerLabel}</span> : null}
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">{providerLabel}</span>
             <span className="max-w-full truncate">{formatBaseUrl(saved.baseUrl)}</span>
             <span aria-hidden="true">·</span>
             <span>{t("aiModel.modelCount", { count: saved.models.length })}</span>
@@ -250,7 +252,7 @@ export const AiProviderCard = ({ provider: saved, defaultModelId, readOnly, onCh
           <form className="grid gap-5" onSubmit={submit}>
             <DialogHeader>
               <DialogTitle>{t("aiModel.editConnection")}</DialogTitle>
-              <DialogDescription>{t("aiModel.connectionDescription", { name: saved.displayName })}</DialogDescription>
+              <DialogDescription>{t("aiModel.connectionDescription", { name: effectiveDisplayName })}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("aiModel.displayName")}>

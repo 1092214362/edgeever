@@ -298,6 +298,7 @@ export const enUS = {
     noProviders: "No model services yet. Add OpenAI, OpenRouter, Anthropic, Gemini, or another compatible service to begin.",
     servicesTitle: "Model services",
     serviceCount: "Configured: {{count}}",
+    defaultProviderName: "Model provider {{ordinal}}",
     addProvider: "Add model service",
     addProviderDescription: "Connect a model API, then discover or add more models after the service is created.",
     createProvider: "Add service",
