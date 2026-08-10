@@ -1,4 +1,12 @@
+import AVFoundation
 import SwiftUI
+
+private enum ImagePickerRoute: String, Identifiable {
+    case camera
+    case library
+
+    var id: String { rawValue }
+}
 
 enum MemoEditMode: Equatable {
     /// `seed` pre-fills title/body/tags (template / clip-style create). When nil, restores local new-note draft.
@@ -26,7 +34,11 @@ struct MemoEditView: View {
     /// with empty defaults from overwriting a non-empty note via autosave / flush.
     /// Snapshot of body when edit opened (or last intentional load). Used to reject empty clobbers.
     @State private var showNotebookPicker = false
-    @State private var showImagePicker = false
+    @State private var showImageSourcePicker = false
+    @State private var imagePickerRoute: ImagePickerRoute?
+    @State private var showCameraAccessAlert = false
+    @State private var cameraAccessCanOpenSettings = false
+    @State private var cameraAccessMessage = ""
     @State private var showUploadError = false
     @State private var showTemplatePicker = false
     @State private var showApplyTemplateConfirm = false
@@ -128,22 +140,47 @@ struct MemoEditView: View {
             .presentationDetents([.height(360), .medium])
             .presentationDragIndicator(.hidden)
         }
+        .confirmationDialog(
+            env.preferences.t("添加图片", en: "Add image"),
+            isPresented: $showImageSourcePicker,
+            titleVisibility: .visible
+        ) {
+            Button(env.preferences.t("拍照", en: "Take photo")) {
+                scheduleCameraCapture()
+            }
+            Button(env.preferences.t("从相册选择", en: "Choose from library")) {
+                scheduleImagePicker(.library)
+            }
+            Button(env.preferences.t("取消", en: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(env.preferences.t("直接拍照或选择已有照片", en: "Take a new photo or choose an existing one"))
+        }
         // fullScreenCover avoids nested-sheet bugs when MemoEditView itself is already a fullScreenCover.
         // PHPicker + NSItemProvider (not SwiftUI PhotosPicker/Transferable) is the reliable path.
-        .fullScreenCover(isPresented: $showImagePicker) {
-            SystemImagePicker { result in
-                showImagePicker = false
-                switch result {
-                case .cancelled:
-                    break
-                case .failed(let message):
-                    error = message
-                    showUploadError = true
-                case .picked(let data, let filename):
-                    Task { await insertImageData(data, filename: filename) }
+        .fullScreenCover(item: $imagePickerRoute) { route in
+            Group {
+                switch route {
+                case .camera:
+                    SystemCameraPicker(onFinish: handleImagePickerResult)
+                case .library:
+                    SystemImagePicker(onFinish: handleImagePickerResult)
                 }
             }
             .ignoresSafeArea()
+        }
+        .alert(
+            env.preferences.t("无法使用相机", en: "Unable to use camera"),
+            isPresented: $showCameraAccessAlert
+        ) {
+            Button(env.preferences.t("取消", en: "Cancel"), role: .cancel) {}
+            if cameraAccessCanOpenSettings {
+                Button(env.preferences.t("前往设置", en: "Open settings")) {
+                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                    UIApplication.shared.open(url)
+                }
+            }
+        } message: {
+            Text(cameraAccessMessage)
         }
         .alert(
             env.preferences.t("图片上传失败", en: "Image upload failed"),
@@ -362,7 +399,7 @@ struct MemoEditView: View {
                                 for: nil
                             )
                             error = nil
-                            showImagePicker = true
+                            showImageSourcePicker = true
                         },
                         onSearchResult: nil,
                         onBodyReady: {
@@ -408,6 +445,82 @@ struct MemoEditView: View {
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    // MARK: - Image source
+
+    private func scheduleImagePicker(_ route: ImagePickerRoute) {
+        Task { @MainActor in
+            // Let the confirmation dialog finish dismissing before presenting UIKit.
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+            imagePickerRoute = route
+        }
+    }
+
+    private func scheduleCameraCapture() {
+        Task { @MainActor in
+            // Permission prompts and full-screen covers must not race the source dialog dismissal.
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+            beginCameraCapture()
+        }
+    }
+
+    @MainActor
+    private func beginCameraCapture() {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        switch CameraCaptureAccess.nextStep(
+            isCameraAvailable: SystemCameraPicker.isAvailable,
+            authorizationStatus: status
+        ) {
+        case .openCamera:
+            imagePickerRoute = .camera
+        case .requestPermission:
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                await MainActor.run {
+                    if granted {
+                        imagePickerRoute = .camera
+                    } else {
+                        showCameraSettingsAlert()
+                    }
+                }
+            }
+        case .showSettings:
+            showCameraSettingsAlert()
+        case .unavailable:
+            cameraAccessCanOpenSettings = false
+            cameraAccessMessage = env.preferences.t(
+                "此设备没有可用相机。",
+                en: "This device does not have an available camera."
+            )
+            showCameraAccessAlert = true
+        }
+    }
+
+    @MainActor
+    private func showCameraSettingsAlert() {
+        cameraAccessCanOpenSettings = true
+        cameraAccessMessage = env.preferences.t(
+            "请前往系统设置，允许 EdgeEver 使用相机后再试。",
+            en: "Open system settings and allow EdgeEver to use the camera, then try again."
+        )
+        showCameraAccessAlert = true
+    }
+
+    @MainActor
+    private func handleImagePickerResult(_ result: ImagePickerResult) {
+        imagePickerRoute = nil
+        switch result {
+        case .cancelled:
+            break
+        case .failed(let message):
+            error = message
+            showUploadError = true
+        case .picked(let data, let filename):
+            Task { await insertImageData(data, filename: filename) }
+        }
     }
 
     // MARK: - Derived state
