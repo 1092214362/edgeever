@@ -143,7 +143,7 @@ import {
   isAttachmentLinkHref,
 } from "@/lib/editor-external-link";
 import { processFilesSequentially } from "@/lib/file-batch";
-import { MEMO_ID_REMAPPED_EVENT } from "@/lib/sync-events";
+import { MEMO_ID_REMAPPED_EVENT, MEMO_SYNC_ACKNOWLEDGED_EVENT } from "@/lib/sync-events";
 import { useStandaloneMobileEditor } from "@/hooks/useStandaloneMobileEditor";
 import { statusSettleMotion } from "@/lib/motion";
 import { getAttachmentFilenameFromLabel, getAttachmentResourceId } from "@/lib/attachment-links";
@@ -2117,6 +2117,33 @@ const RichEditorPane = ({
   }, [editor, markDirty, memo, persistCurrentDraft]);
 
   useEffect(() => {
+    const advanceMemoSyncBase = (syncedMemo: MemoDetail | null | undefined) => {
+      const currentMemo = memoRef.current;
+      if (!syncedMemo || currentMemo?.id !== syncedMemo.id || syncedMemo.revision < currentMemo.revision) {
+        return;
+      }
+
+      // Keep the live document, title, and tags intact while moving its
+      // concurrency base to the revision acknowledged for this device.
+      memoRef.current = {
+        ...currentMemo,
+        revision: syncedMemo.revision,
+        contentHash: syncedMemo.contentHash,
+        updatedAt: syncedMemo.updatedAt,
+      };
+      if (editSessionRef.current?.memoId === syncedMemo.id) {
+        editSessionRef.current = {
+          ...editSessionRef.current,
+          baseRevision: syncedMemo.revision,
+          baseContentHash: syncedMemo.contentHash,
+        };
+      }
+    };
+
+    const handleMemoSyncAcknowledged = (event: Event) => {
+      advanceMemoSyncBase((event as CustomEvent<MemoDetail>).detail);
+    };
+
     const handleSyncCompleted = (event: Event) => {
       const result = (event as CustomEvent<{
         failed?: number;
@@ -2126,24 +2153,7 @@ const RichEditorPane = ({
       const memoId = memoRef.current?.id;
 
       const syncedMemo = memoId ? result?.syncedMemos?.get(memoId) : null;
-      if (syncedMemo && memoRef.current?.id === syncedMemo.id) {
-        // Keep the live editor document, title, and tags intact while moving
-        // its concurrency base to the revision just acknowledged by this
-        // device. This closes the query-refresh window after an autosave.
-        memoRef.current = {
-          ...memoRef.current,
-          revision: syncedMemo.revision,
-          contentHash: syncedMemo.contentHash,
-          updatedAt: syncedMemo.updatedAt,
-        };
-        if (editSessionRef.current?.memoId === syncedMemo.id) {
-          editSessionRef.current = {
-            ...editSessionRef.current,
-            baseRevision: syncedMemo.revision,
-            baseContentHash: syncedMemo.contentHash,
-          };
-        }
-      }
+      advanceMemoSyncBase(syncedMemo);
 
       if (memoId && (result?.conflicted ?? 0) > 0) {
         void localDb.syncQueue.get(getMemoUpdateQueueId(memoId)).then((item) => {
@@ -2169,8 +2179,12 @@ const RichEditorPane = ({
       });
     };
 
+    window.addEventListener(MEMO_SYNC_ACKNOWLEDGED_EVENT, handleMemoSyncAcknowledged);
     window.addEventListener("edgeever:sync-completed", handleSyncCompleted);
-    return () => window.removeEventListener("edgeever:sync-completed", handleSyncCompleted);
+    return () => {
+      window.removeEventListener(MEMO_SYNC_ACKNOWLEDGED_EVENT, handleMemoSyncAcknowledged);
+      window.removeEventListener("edgeever:sync-completed", handleSyncCompleted);
+    };
   }, []);
 
   const handleMarkdownModeChange = useCallback(() => {
