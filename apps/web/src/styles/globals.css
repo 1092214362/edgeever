@@ -5,6 +5,35 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes edgeever-token-created {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.625rem);
+    background-color: rgb(209 250 229 / 90%);
+    box-shadow: inset 0 0 0 1px rgb(52 211 153 / 55%);
+  }
+  24% {
+    opacity: 1;
+    transform: translateY(0);
+    background-color: rgb(209 250 229 / 75%);
+    box-shadow: inset 0 0 0 1px rgb(52 211 153 / 45%);
+  }
+  68% {
+    background-color: rgb(236 253 245 / 72%);
+    box-shadow: inset 0 0 0 1px rgb(110 231 183 / 30%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+}
+
+.edgeever-token-created {
+  animation: edgeever-token-created 2.2s ease-out;
+}
+
 html[data-edgeever-environment="local"] body::after,
 html[data-edgeever-environment="demo"] body::after {
   position: fixed;
