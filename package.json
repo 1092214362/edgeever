@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "test": "bun test --path-ignore-patterns='tests/e2e/**'",
     "dev": "bun run dev:local",
     "dev:api": "bun run dev:api:local",
     "dev:local": "bun scripts/local-dev.mjs start local",
