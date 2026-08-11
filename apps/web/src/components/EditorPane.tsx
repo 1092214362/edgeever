@@ -148,6 +148,11 @@ import { processFilesSequentially } from "@/lib/file-batch";
 import { MEMO_ID_REMAPPED_EVENT, MEMO_SYNC_ACKNOWLEDGED_EVENT } from "@/lib/sync-events";
 import { useStandaloneMobileEditor } from "@/hooks/useStandaloneMobileEditor";
 import { statusSettleMotion } from "@/lib/motion";
+import {
+  getRichTextAiSelectionContext,
+  getRichTextAiSelectionReplacement,
+  normalizeAiSelectionReplacement,
+} from "@/lib/ai-selection-replacement";
 import { getAttachmentFilenameFromLabel, getAttachmentResourceId } from "@/lib/attachment-links";
 import {
   IMAGE_MENU_HIDE_EVENT,
@@ -205,10 +210,16 @@ type NoteLinkHintPosition = {
 };
 
 type AiSelectionContext = {
-  kind: "rich" | "markdown" | "plain";
+  kind: "markdown" | "plain";
   from: number;
   to: number;
   contentMarkdown: string;
+} | {
+  kind: "rich";
+  from: number;
+  to: number;
+  contentMarkdown: string;
+  isInline: boolean;
 };
 
 const getAttachmentLinkFromEventTarget = (target: EventTarget | null) =>
@@ -1824,15 +1835,8 @@ const RichEditorPane = ({
       const contentMarkdown = markdownSource.slice(from, to).trim();
       if (to > from && contentMarkdown) selection = { kind: "markdown", from, to, contentMarkdown };
     } else if (isEditorReady(editor)) {
-      const { from, to, empty } = editor.state.selection;
-      if (!empty) {
-        const selectedContent = editor.state.selection.content().content.toJSON() as TiptapDoc["content"];
-        const contentMarkdown = (
-          docToMarkdown({ type: "doc", content: selectedContent }) ||
-          editor.state.doc.textBetween(from, to, "\n")
-        ).trim();
-        if (contentMarkdown) selection = { kind: "rich", from, to, contentMarkdown };
-      }
+      const richSelection = getRichTextAiSelectionContext(editor.state.doc, editor.state.selection);
+      if (richSelection) selection = { kind: "rich", ...richSelection };
     }
 
     setAiSelection(selection);
@@ -1846,9 +1850,12 @@ const RichEditorPane = ({
 
   const applyAiDraft = useCallback((draft: string, mode: "append" | "replace") => {
     if (mode === "replace" && aiSelection) {
+      const replacementDraft = normalizeAiSelectionReplacement(draft);
+      if (!replacementDraft) return;
+
       if (aiSelection.kind === "plain") {
         const source = getMobilePlainTextValue();
-        const { next, caret } = insertMarkdownSnippet(source, draft, aiSelection.from, aiSelection.to);
+        const { next, caret } = insertMarkdownSnippet(source, replacementDraft, aiSelection.from, aiSelection.to);
         setMobilePlainText(next);
         setMobilePlainTextElementValue(mobileTextAreaRef.current, next);
         persistCurrentDraft(title, tagsText, next);
@@ -1858,17 +1865,20 @@ const RichEditorPane = ({
           if (plainTextElement instanceof HTMLTextAreaElement) plainTextElement.setSelectionRange(caret, caret);
         });
       } else if (aiSelection.kind === "markdown") {
-        const { next, caret } = insertMarkdownSnippet(markdownSource, draft, aiSelection.from, aiSelection.to);
+        const { next, caret } = insertMarkdownSnippet(markdownSource, replacementDraft, aiSelection.from, aiSelection.to);
         setMarkdownSource(next);
         window.requestAnimationFrame(() => {
           markdownTextAreaRef.current?.focus();
           markdownTextAreaRef.current?.setSelectionRange(caret, caret);
         });
-      } else if (isEditorReady(editor)) {
+      } else if (aiSelection.kind === "rich" && isEditorReady(editor)) {
         const maxPos = editor.state.doc.content.size;
         const from = Math.max(1, Math.min(aiSelection.from, maxPos));
         const to = Math.max(from, Math.min(aiSelection.to, maxPos));
-        editor.chain().focus().insertContentAt({ from, to }, markdownToDoc(draft).content).run();
+        editor.chain().focus().insertContentAt(
+          { from, to },
+          getRichTextAiSelectionReplacement(replacementDraft, aiSelection.isInline),
+        ).run();
       }
       markDirty();
       setAiSelection(null);
