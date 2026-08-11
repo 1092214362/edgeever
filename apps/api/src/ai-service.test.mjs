@@ -29,6 +29,9 @@ describe("AI model service", () => {
       "simplify-language",
       "summarize",
     ]);
+    expect(aiActionInstructions.summarize).toContain("genuinely condensed summary");
+    expect(aiActionInstructions.summarize).toContain("20–30% of the source length");
+    expect(aiActionInstructions.summarize).toContain("Do not reproduce long passages verbatim");
     expect(aiActionInstructions["extract-todos"]).toContain("- [ ]");
     expect(resolveAiGenerationSystemInstruction({ action: "change-tone", tone: "friendly" }))
       .toContain("friendly tone");

@@ -328,7 +328,14 @@ export const testAiModel = async (config: {
 });
 
 export const aiActionInstructions: Record<Exclude<AiAction, "translate" | "change-tone" | "custom">, string> = {
-  summarize: "Summarize the note clearly and concisely. Preserve its language. Return Markdown only.",
+  summarize: [
+    "Create a genuinely condensed summary of the note rather than rewriting, paraphrasing line by line, or echoing it.",
+    "Identify the central topic, main claims, essential conclusions, and actionable outcomes.",
+    "Omit repetition, rhetorical phrasing, examples, quotations, and minor details unless they are necessary to understand a key conclusion.",
+    "For a substantial note, target roughly 20–30% of the source length and use 3–7 concise Markdown bullet points; for a short note, use 1–3 concise sentences.",
+    "Do not reproduce long passages verbatim or add facts that are not present in the source.",
+    "Preserve the note's language and return only the summary in Markdown.",
+  ].join(" "),
   "extract-key-points": "Extract the note's most important points as a concise Markdown bullet list. Preserve its language and do not add information that is not present in the note.",
   "extract-todos": "Extract explicit or implied actionable tasks from the note as a Markdown task list using '- [ ]'. Preserve its language and do not invent tasks. If there are no actionable tasks, say so briefly in the note's language.",
   "rewrite-proofread": "Rewrite and proofread the complete note. Correct spelling, grammar, punctuation, clarity, and structure without changing its meaning. Preserve its language and Markdown formatting. Return the complete revised note only.",
