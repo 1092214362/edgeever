@@ -271,7 +271,7 @@ export const enUS = {
   },
   aiModel: {
     title: "External AI models",
-    description: "Connect your own cloud model endpoint. Credentials are encrypted on the EdgeEver server and isolated to your workspace.",
+    description: "Connect external AI models for note processing. Configure once to share across all devices.",
     provider: "API protocol",
     providers: {
       "openai-compatible": "OpenAI-compatible",
@@ -297,7 +297,7 @@ export const enUS = {
     defaultUnavailable: "The service for the current default model is disabled. Enable it or choose another model.",
     noProviders: "No model services yet. Add OpenAI, OpenRouter, Anthropic, Gemini, or another compatible service to begin.",
     servicesTitle: "Model services",
-    serviceCount: "Configured: {{count}}",
+    serviceCount: "{{count}} services",
     defaultProviderName: "Model provider {{ordinal}}",
     addProvider: "Add model service",
     addProviderDescription: "Connect a model API, then discover or add more models after the service is created.",
@@ -1087,13 +1087,13 @@ export const enUS = {
   },
   mcp: {
     copyToken: "Copy token",
-    copyConfig: "Copy full MCP config",
+    copyConfig: "Copy MCP config",
     bearerPlaceholder: "Bearer my-created-token",
     title: "API tokens & MCP configuration",
-    example: "Example",
-    exampleTitle: "Remote MCP example",
+    example: "Example config",
+    exampleTitle: "Remote MCP configuration example",
     copyExample: "Copy example",
-    accessLevelTitle: "Token access",
+    accessLevelTitle: "Access level",
     accessLevels: {
       full: {
         label: "Full access",
@@ -1116,9 +1116,9 @@ export const enUS = {
     legacyTokenCannotCopy: "Old token cannot be copied",
     legacyConfigCannotCopy: "MCP config cannot be copied for old tokens",
     deleteToken: "Delete token",
-    description: "Used for the web clipper extension, MCP services, and AI Agent workflows to access and manage your notes.",
-    namePlaceholder: "Token name, e.g. Chrome Clipper or Claude Desktop",
-    createToken: "Generate token",
+    description: "Authorize Web Clipper, MCP services, and AI Agents to access your notes.",
+    namePlaceholder: "Token name (e.g. Chrome Clipper or Claude Desktop)",
+    createToken: "Create Token",
     activeTokens: "Token list",
     deleteConfirmTitle: "Delete token “{{name}}”?",
     deleteConfirmDescription: "This cannot be undone. Once deleted, all clients using this token for API or MCP calls will immediately lose access.",
