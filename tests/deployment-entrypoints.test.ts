@@ -178,6 +178,7 @@ describe("Cloudflare deployment entrypoints", () => {
 
   test("deployed repositories receive guarded daily upstream updates", () => {
     const workflow = readRepositoryFile(".github/workflows/sync-edgeever-upstream.yml");
+    const bunConfig = readRepositoryFile("bunfig.toml");
     const packageJson = JSON.parse(readRepositoryFile("package.json"));
     const scripts = packageJson.scripts as Record<string, string>;
 
@@ -190,6 +191,7 @@ describe("Cloudflare deployment entrypoints", () => {
     expect(workflow).toContain("edge)");
     expect(workflow).toContain("force_redeploy");
     expect(workflow).toContain("bun run db:migrate:local");
+    expect(bunConfig).toContain('pathIgnorePatterns = ["tests/e2e/**"]');
     expect(scripts.test).toBe("bun test --path-ignore-patterns='tests/e2e/**'");
     expect(workflow).toContain(scripts.test);
     expect(workflow.match(/if: steps\.upstream\.outputs\.align_mode == 'merge'/g)).toHaveLength(2);
