@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -154,7 +153,6 @@ export const AiAssistantDialog = ({
       <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-emerald-600" />{t("aiAssistant.title")}</DialogTitle>
-          <DialogDescription>{t("aiAssistant.description")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">

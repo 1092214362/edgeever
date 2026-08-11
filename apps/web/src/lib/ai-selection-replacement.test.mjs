@@ -90,10 +90,9 @@ describe("getRichTextAiSelectionReplacement", () => {
     ]);
   });
 
-  test("keeps genuine multi-block output as blocks", () => {
+  test("collapses multi-block output when replacing an inline selection", () => {
     expect(getRichTextAiSelectionReplacement("第一段\n\n第二段", true)).toEqual([
-      { type: "paragraph", content: [{ type: "text", text: "第一段" }] },
-      { type: "paragraph", content: [{ type: "text", text: "第二段" }] },
+      { type: "text", text: "第一段 第二段" },
     ]);
   });
 

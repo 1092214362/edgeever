@@ -93,11 +93,12 @@ export const getRichTextAiSelectionContext = (
  * Parse an AI draft for a rich-text selection.
  *
  * A Markdown parser treats list-like text such as `1. - review` as a block.
- * Inserting that block into a selection inside a paragraph splits the paragraph
- * and creates an unwanted line break. Prefixing inline selections with an
- * internal sentinel keeps single-block output in an inline parsing context;
- * the sentinel is removed before insertion. Genuine multi-block output still
- * falls back to normal block Markdown parsing.
+ * Inserting block content into a selection inside a paragraph splits the
+ * paragraph and creates an unwanted line break. Inline selections therefore
+ * collapse generated block boundaries to spaces before parsing. Prefixing the
+ * result with an internal sentinel keeps list-like text in an inline parsing
+ * context; the sentinel is removed before insertion. Selections that originally
+ * span blocks continue to use normal block Markdown parsing.
  */
 export const getRichTextAiSelectionReplacement = (
   draft: string,
@@ -106,15 +107,16 @@ export const getRichTextAiSelectionReplacement = (
   const blockContent = markdownToDoc(draft).content;
   if (!selectionIsInline) return blockContent;
 
-  const inlineDoc = markdownToDoc(`${INLINE_SENTINEL}${draft}`);
+  const inlineDraft = draft.replace(/\s*\n+\s*/g, " ");
+  const inlineDoc = markdownToDoc(`${INLINE_SENTINEL}${inlineDraft}`);
   if (inlineDoc.content.length !== 1 || inlineDoc.content[0]?.type !== "paragraph") {
-    return blockContent;
+    return [{ type: "text", text: inlineDraft }];
   }
 
   const inlineContent = inlineDoc.content[0].content ?? [];
   const firstNode = inlineContent[0];
   if (!firstNode || !isTextNode(firstNode) || !firstNode.text.startsWith(INLINE_SENTINEL)) {
-    return blockContent;
+    return [{ type: "text", text: inlineDraft }];
   }
 
   const firstText = firstNode.text.slice(INLINE_SENTINEL.length);

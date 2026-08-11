@@ -52,6 +52,9 @@ const openMemo = async (page: Page, memoId: string, notebookName: string) => {
 const applyAiReplacement = async (page: Page) => {
   await page.getByRole("button", { name: "用 AI 处理" }).click();
   const dialog = page.getByRole("dialog", { name: "AI 笔记助手" });
+  await expect(dialog.getByText("生成结果", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("AI 输出会先作为草稿展示，只有你主动操作后才会修改笔记。", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByText("AI 草稿", { exact: true })).toHaveCount(0);
   await dialog.getByRole("button", { name: "生成", exact: true }).click();
   await expect(dialog.getByRole("button", { name: "接受并替换选中内容" })).toBeEnabled();
   await dialog.getByRole("button", { name: "接受并替换选中内容" }).click();
@@ -137,5 +140,21 @@ test.describe("AI selected-text replacement", () => {
     await expect(editor.locator("ol ol, ol ul")).toHaveCount(0);
     await expect(editor.locator(":scope > p").first()).toHaveText("入口放在选中文本菜单和笔记栏中，");
     await expect(editor.locator(":scope > p").last()).toHaveText("先预览结果，再进行写入。");
+  });
+
+  test("does not split a paragraph when a rewrite returns multiple blocks", async ({ page }) => {
+    const marker = `ai-multiblock-replace-${Date.now()}`;
+    const content = "入口放在笔记栏中，在线模式下先预览结果，再进行写入。";
+    const memo = await createMemo(page, marker, content);
+    await mockAiReplacement(page, "优化后的第一部分\n\n优化后的第二部分");
+
+    const editor = await openMemo(page, memo.id, notebookName);
+    await selectEditorText(page, editor, "在线模式下");
+    await applyAiReplacement(page);
+
+    await expect(editor.locator(":scope > p")).toHaveCount(1);
+    await expect(editor.locator(":scope > p")).toHaveText(
+      "入口放在笔记栏中，优化后的第一部分 优化后的第二部分先预览结果，再进行写入。",
+    );
   });
 });
