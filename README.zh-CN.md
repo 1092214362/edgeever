@@ -1,5 +1,8 @@
 # EdgeEver
 
+[![GitHub Stars](https://img.shields.io/github/stars/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/network/members)
+
 简体中文 | [English](README.md)
 
 > **EdgeEver：无需服务器、0 费用、开源且原生支持 AI 的自托管「印象笔记」替代方案。**

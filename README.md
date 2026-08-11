@@ -1,5 +1,8 @@
 # EdgeEver
 
+[![GitHub Stars](https://img.shields.io/github/stars/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/network/members)
+
 [简体中文](README.zh-CN.md) | English
 
 > **EdgeEver: A serverless, 100% free, open-source, and AI-native self-hosted Evernote alternative.**
