@@ -35,6 +35,7 @@ import {
   LoaderCircle,
   Info,
   FileDown,
+  FileCode2,
   Printer,
   Link2,
   Copy,
@@ -130,6 +131,8 @@ import { SystemInfoDialog } from "./SystemInfoDialog";
 import { fetchLatestRelease, isVersionOutdated } from "@/lib/version-check";
 import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
 import { downloadMarkdownFile } from "@/lib/note-markdown-export";
+import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
+import { downloadNoteHtmlFile, getHtmlImageEmbedNoticeKind } from "@/lib/note-html-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
 import { isBrowserOffline } from "@/lib/network-status";
 import {
@@ -2411,6 +2414,60 @@ const RichEditorPane = ({
     useMobilePlainTextEditor,
   ]);
 
+  const handleExportHtml = useCallback(async () => {
+    if (!isEditorReady(editor) || !memo) {
+      return;
+    }
+
+    const currentDocument = useMobilePlainTextEditor
+      ? markdownToDoc(getMobilePlainTextValue())
+      : useMarkdownSourceEditor
+        ? markdownToDoc(markdownSource)
+        : editor.getJSON() as TiptapDoc;
+    const bodyHtml = serializeNoteDocumentForPrint(editor, currentDocument);
+
+    try {
+      const { images } = await downloadNoteHtmlFile({
+        bodyHtml,
+        title: title.trim() || t("common.untitledMemo"),
+        notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
+        tags: parseTagsText(tagsText),
+        updatedAt: formatDateTime(memo.updatedAt),
+        language: i18n.resolvedLanguage ?? i18n.language,
+        fallbackTitle: t("common.untitledMemo"),
+        styles: NOTE_HTML_FULL_STYLES,
+      });
+
+      const noticeKind = getHtmlImageEmbedNoticeKind(images);
+      if (noticeKind === "partial") {
+        window.alert(t("editor.htmlExport.imageEmbedPartial", {
+          embedded: images.embedded,
+          total: images.total,
+          failed: images.failed,
+        }));
+      } else if (noticeKind === "failed-all") {
+        window.alert(t("editor.htmlExport.imageEmbedFailed", {
+          total: images.total,
+        }));
+      }
+    } catch {
+      window.alert(t("editor.htmlExport.error"));
+    }
+  }, [
+    editor,
+    getMobilePlainTextValue,
+    i18n.language,
+    i18n.resolvedLanguage,
+    markdownSource,
+    memo,
+    notebookOptions,
+    t,
+    tagsText,
+    title,
+    useMarkdownSourceEditor,
+    useMobilePlainTextEditor,
+  ]);
+
   const handleSaveAsTemplate = useCallback(() => {
     if (!memo) {
       return;
@@ -2455,6 +2512,9 @@ const RichEditorPane = ({
       case "export-markdown":
         handleExportMarkdown();
         break;
+      case "export-html":
+        void handleExportHtml();
+        break;
       case "export-pdf":
         handleExportPdf(documentActionRequest.printWindow);
         break;
@@ -2465,6 +2525,7 @@ const RichEditorPane = ({
   }, [
     documentActionRequest,
     editor,
+    handleExportHtml,
     handleExportMarkdown,
     handleExportPdf,
     handleSaveAsTemplate,
@@ -3647,6 +3708,13 @@ const RichEditorPane = ({
                 >
                   <FileDown className="h-4 w-4 text-slate-500" />
                   {t("editor.exportMarkdown")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={() => void handleExportHtml()}
+                >
+                  <FileCode2 className="h-4 w-4 text-slate-500" />
+                  {t("editor.exportHtml")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"

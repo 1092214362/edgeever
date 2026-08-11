@@ -809,7 +809,15 @@ export const zhCN = {
     noteIdCopied: "笔记 ID 已复制：{{id}}",
     noteIdCopyFailed: "复制笔记 ID 失败。",
     exportMarkdown: "导出 Markdown",
+    exportHtml: "导出 HTML",
     exportPdf: "导出 PDF",
+    htmlExport: {
+      error: "导出 HTML 失败。",
+      imageEmbedPartial:
+        "HTML 已导出。已内嵌 {{embedded}}/{{total}} 张图片；另有 {{failed}} 张未能内嵌，离线打开时可能无法显示。",
+      imageEmbedFailed:
+        "HTML 已导出，但全部 {{total}} 张图片都未能内嵌，离线打开时可能无法显示。",
+    },
     pdfExport: {
       preparing: "正在生成打印预览…",
       ready: "打印预览已就绪",

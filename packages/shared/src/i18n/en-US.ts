@@ -809,7 +809,15 @@ export const enUS = {
     noteIdCopied: "Note ID copied: {{id}}",
     noteIdCopyFailed: "Could not copy the note ID.",
     exportMarkdown: "Export Markdown",
+    exportHtml: "Export HTML",
     exportPdf: "Export PDF",
+    htmlExport: {
+      error: "Could not export the note as HTML.",
+      imageEmbedPartial:
+        "HTML exported. Embedded {{embedded}} of {{total}} images. {{failed}} image(s) could not be embedded and may not display when the file is opened offline.",
+      imageEmbedFailed:
+        "HTML exported, but none of the {{total}} images could be embedded. They may not display when the file is opened offline.",
+    },
     pdfExport: {
       preparing: "Preparing print preview…",
       ready: "Print preview is ready",
