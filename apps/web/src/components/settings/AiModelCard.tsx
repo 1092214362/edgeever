@@ -168,21 +168,22 @@ export const AiModelCard = () => {
                     </Button>
                   </div>
 
-                  <div className="grid gap-3">
-                    {settings?.providers.map((item, index) => (
-                      <AiProviderCard
-                        key={item.id}
-                        provider={item}
-                        defaultDisplayName={getDefaultProviderName(index)}
-                        defaultModelId={settings.defaultModelId}
-                        readOnly={readOnly}
-                        onChanged={refresh}
-                      />
-                    ))}
-                    {!settings?.providers.length ? (
-                      <p className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">{t("aiModel.noProviders")}</p>
-                    ) : null}
-                  </div>
+                  {settings?.providers.length ? (
+                    <div className="divide-y border-y">
+                      {settings.providers.map((item, index) => (
+                        <AiProviderCard
+                          key={item.id}
+                          provider={item}
+                          defaultDisplayName={getDefaultProviderName(index)}
+                          defaultModelId={settings.defaultModelId}
+                          readOnly={readOnly}
+                          onChanged={refresh}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">{t("aiModel.noProviders")}</p>
+                  )}
                 </section>
 
                 <Dialog open={showAdd} onOpenChange={handleAddDialogChange}>
