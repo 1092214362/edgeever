@@ -330,7 +330,6 @@ export const enUS = {
     openForSelection: "Ask AI",
     actionLabel: "Writing action",
     selectedScope: "Selected text",
-    selectedScopeHint: "AI will only process the text you selected.",
     noteScope: "Whole note",
     noteScopeHint: "AI will use the current note as context.",
     selectedActions: "Edit selected text",

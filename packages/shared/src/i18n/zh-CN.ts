@@ -330,7 +330,6 @@ export const zhCN = {
     openForSelection: "用 AI 处理",
     actionLabel: "处理方式",
     selectedScope: "选中内容",
-    selectedScopeHint: "AI 只会处理当前选中的文字。",
     noteScope: "整篇笔记",
     noteScopeHint: "AI 会使用当前笔记作为上下文。",
     selectedActions: "编辑选中内容",

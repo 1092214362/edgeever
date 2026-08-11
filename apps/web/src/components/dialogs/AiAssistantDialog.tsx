@@ -160,7 +160,7 @@ export const AiAssistantDialog = ({
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
                 {t(hasSelection ? "aiAssistant.selectedScope" : "aiAssistant.noteScope")}
               </span>
-              {t(hasSelection ? "aiAssistant.selectedScopeHint" : "aiAssistant.noteScopeHint")}
+              {hasSelection ? null : t("aiAssistant.noteScopeHint")}
             </div>
             {hasSelection ? (
               <p className="mt-2 max-h-16 overflow-hidden whitespace-pre-wrap border-l-2 border-emerald-200 pl-3 text-xs leading-5 text-slate-500">
