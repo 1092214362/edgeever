@@ -2051,6 +2051,9 @@ const RichEditorPane = ({
       }
 
       const resolvedDraft = resolveEditorDraftState({ memo, draft, queuedUpdate });
+      if (draft && !queuedUpdate && resolvedDraft.source === "memo") {
+        await localDb.drafts.delete(memo.id);
+      }
       const {
         title: nextTitle,
         tagsText: nextTagsText,
@@ -2102,7 +2105,14 @@ const RichEditorPane = ({
 
       hydratingRef.current = true;
       editingMemoIdRef.current = memo.id;
-      setHasUnsavedChanges(nextHasUnsavedChanges);
+      if (nextHasUnsavedChanges) {
+        // A recovered draft is a real save request, not merely a label state.
+        // Incrementing dirtyVersion guarantees the autosave effect is armed
+        // after the editor and local edit session finish hydrating.
+        markDirtyStatus();
+      } else {
+        setHasUnsavedChanges(false);
+      }
       if (queuedUpdate) {
         const nextState = syncStatusToSaveState(queuedUpdate.status);
         setSaveState(nextState);
@@ -2665,6 +2675,12 @@ const RichEditorPane = ({
       setSaveState("error");
     },
   });
+  // useMutation returns a new result object on every render. Depending on the
+  // whole object makes autosave timers restart during unrelated renders and
+  // can starve a recovered draft indefinitely. These members are stable (or
+  // primitive) and are safe effect dependencies.
+  const mutateSave = saveMutation.mutate;
+  const saveMutationPending = saveMutation.isPending;
 
   const replaceAttachmentLabel = useCallback((target: AttachmentMenuTarget, filename: string) => {
     const activeEditor = editorRef.current;
@@ -2854,15 +2870,15 @@ const RichEditorPane = ({
         !memoRef.current ||
         memoRef.current.isDeleted ||
         !hasUnsavedChangesRef.current ||
-        saveMutation.isPending ||
+        saveMutationPending ||
         saveState === "conflict"
       ) {
         return;
       }
 
-      saveMutation.mutate();
+      mutateSave();
     }, EDITOR_LOCAL_SAVE_DELAY_MS);
-  }, [getMobilePlainTextValue, persistCurrentDraft, saveMutation, saveState, tagsText, title]);
+  }, [getMobilePlainTextValue, mutateSave, persistCurrentDraft, saveMutationPending, saveState, tagsText, title]);
 
   useEffect(() => {
     markMobilePlainTextDirtyRef.current = markMobilePlainTextDirty;
@@ -2923,18 +2939,18 @@ const RichEditorPane = ({
       useMobilePlainTextEditor ||
       !editor ||
       !hasUnsavedChanges ||
-      saveMutation.isPending ||
+      saveMutationPending ||
       saveState === "conflict"
     ) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      saveMutation.mutate();
+      mutateSave();
     }, EDITOR_LOCAL_SAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [dirtyVersion, editor, hasUnsavedChanges, memo, saveMutation, saveState, useMobilePlainTextEditor]);
+  }, [dirtyVersion, editor, hasUnsavedChanges, memo, mutateSave, saveMutationPending, saveState, useMobilePlainTextEditor]);
 
   // Must stay above early returns so hook order never changes across loading/empty/editor states.
   const saveConflictReason = useMemo(
