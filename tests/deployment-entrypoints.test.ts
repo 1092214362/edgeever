@@ -9,10 +9,29 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
+import {
+  deploymentPrompts,
+  manualDeploymentCopy,
+} from "../apps/site/src/deployment-prompts";
 import { decideUpstreamSync } from "../scripts/upstream-sync-plan.mjs";
 
 const repositoryRoot = resolve(import.meta.dir, "..");
 const readRepositoryFile = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
+const extractTextPrompt = (document: string, sectionHeading: string) => {
+  const sectionStart = document.indexOf(sectionHeading);
+  if (sectionStart === -1) throw new Error(`Missing deployment section: ${sectionHeading}`);
+  const match = document.slice(sectionStart).match(/```text\n([\s\S]*?)\n```/);
+  if (!match?.[1]) throw new Error(`Missing deployment prompt after: ${sectionHeading}`);
+  return match[1];
+};
+const extractSection = (document: string, sectionHeading: string) => {
+  const sectionStart = document.indexOf(sectionHeading);
+  if (sectionStart === -1) throw new Error(`Missing section: ${sectionHeading}`);
+  const sectionEnd = document.indexOf("\n---", sectionStart);
+  return document.slice(sectionStart, sectionEnd === -1 ? undefined : sectionEnd);
+};
+const normalizeMarkdownCopy = (value: string) =>
+  value.replace(/[`*]/g, "").replace(/\s+/g, " ").trim();
 
 describe("Cloudflare deployment entrypoints", () => {
   test("all entrypoints converge on the common deployment pipeline", () => {
@@ -273,6 +292,39 @@ describe("Cloudflare deployment entrypoints", () => {
     expect(chineseReadme).not.toContain("deploy.workers.cloudflare.com");
     expect(chineseReadme).not.toContain("方案 C：手动部署");
     expect(chineseReadme).toContain("Fork https://github.com/tianma-if/edgeever");
+  });
+
+  test("product site deployment prompts mirror the root READMEs", () => {
+    const englishReadme = readRepositoryFile("README.md");
+    const chineseReadme = readRepositoryFile("README.zh-CN.md");
+    const siteDeploymentComponent = readRepositoryFile(
+      "apps/site/src/components/agent-install-tabs.astro",
+    );
+
+    expect(deploymentPrompts["en-US"]).toBe(
+      extractTextPrompt(englishReadme, "### Option A: Deploy with an AI Agent (Recommended)"),
+    );
+    expect(deploymentPrompts["zh-CN"]).toBe(
+      extractTextPrompt(chineseReadme, "### 方案一：AI Agent 一键部署（推荐）"),
+    );
+    expect(siteDeploymentComponent).toContain('deploymentPrompts["en-US"]');
+    expect(siteDeploymentComponent).toContain('deploymentPrompts["zh-CN"]');
+    expect(siteDeploymentComponent).toContain('manualDeploymentCopy["en-US"]');
+    expect(siteDeploymentComponent).toContain('manualDeploymentCopy["zh-CN"]');
+
+    for (const [locale, readme, heading, separator] of [
+      ["en-US", englishReadme, "### Option B: Manual Online Deployment", ": "],
+      ["zh-CN", chineseReadme, "### 方案二：手动在线部署", "："],
+    ] as const) {
+      const section = normalizeMarkdownCopy(extractSection(readme, heading));
+      const manualCopy = manualDeploymentCopy[locale];
+      expect(section).toContain(manualCopy.intro);
+      manualCopy.steps.forEach((step, index) => {
+        expect(section).toContain(
+          normalizeMarkdownCopy(`${index + 1}. ${step.title}${separator}${step.body}`),
+        );
+      });
+    }
   });
 
   test("AI Agent deployment remains fully online", () => {
