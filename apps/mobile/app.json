@@ -86,10 +86,12 @@
           "android": {
             "enabled": true,
             "multipleShareMimeTypes": [
-              "text/plain"
+              "text/plain",
+              "image/*"
             ],
             "singleShareMimeTypes": [
-              "text/plain"
+              "text/plain",
+              "image/*"
             ]
           }
         }
