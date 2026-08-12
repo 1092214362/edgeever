@@ -91,6 +91,15 @@ describe("desktop instance setup", () => {
     expect(storage.get(DESKTOP_API_BASE_URL_STORAGE_KEY)).toBe("https://notes.example.com");
   });
 
+  test("maps the App Review demo alias to the public instance", async () => {
+    calls.length = 0;
+    const saving = saveDesktopApiBaseUrl("demo");
+    await Promise.resolve();
+    expect(calls).toEqual([["bridge:start", "https://demo.edgeever.org"]]);
+    completeSave();
+    await expect(saving).resolves.toBe("https://demo.edgeever.org");
+  });
+
   test("clears the cached session when the login form changes instances", async () => {
     calls.length = 0;
     window.edgeeverDesktop.apiBaseUrl = "https://notes.example.com";

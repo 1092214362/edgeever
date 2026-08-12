@@ -1,4 +1,5 @@
 export * from "./content";
+export * from "./public-demo";
 export * from "./ai-assistant";
 export * from "./ai-prompt-seeds";
 export * from "./ai-selection";

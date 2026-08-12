@@ -35,6 +35,7 @@ import type {
   SyncBootstrapResponse,
   SyncChangesResponse,
 } from "@edgeever/shared";
+import { resolveInstanceUrlInput } from "@edgeever/shared";
 import type { MemoFilterMode, MemoSortMode } from "./app-helpers";
 
 type ListNotebooksResponse = {
@@ -192,7 +193,7 @@ export class DesktopInstanceUrlError extends Error {
 }
 
 export const saveDesktopApiBaseUrl = async (value: string) => {
-  const normalized = value.trim().replace(/\/$/, "");
+  const normalized = resolveInstanceUrlInput(value).replace(/\/$/, "");
   let parsed: URL;
   try {
     parsed = new URL(normalized);
