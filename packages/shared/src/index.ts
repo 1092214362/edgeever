@@ -6,6 +6,7 @@ export * from "./backup";
 export * from "./github-feedback";
 export * from "./image-display";
 export * from "./image-referrer";
+export * from "./markdown-image";
 export * from "./memo-safety";
 export * from "./memo-conflict";
 export * from "./memo-content-style";
