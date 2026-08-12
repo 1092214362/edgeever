@@ -27,6 +27,7 @@ import type {
   AiSettings,
   AiDiscoveredModel,
   AiProvider,
+  AiPromptTemplate,
   AiStreamEvent,
 } from "@edgeever/shared";
 
@@ -286,6 +287,34 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
       request<AiSettings>("/api/v1/ai/default-model", {
         method: "PUT",
         body: JSON.stringify({ modelConfigId }),
+      }),
+
+    listAiPrompts: () => request<{ prompts: AiPromptTemplate[] }>("/api/v1/ai/prompts"),
+
+    createAiPrompt: (payload: { name: string; description?: string; instruction: string }) =>
+      request<{ prompt: AiPromptTemplate }>("/api/v1/ai/prompts", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+
+    updateAiPrompt: (
+      promptId: string,
+      payload: { name?: string; description?: string | null; instruction?: string },
+    ) =>
+      request<{ prompt: AiPromptTemplate }>(`/api/v1/ai/prompts/${encodeURIComponent(promptId)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+
+    deleteAiPrompt: (promptId: string) =>
+      request<{ ok: true }>(`/api/v1/ai/prompts/${encodeURIComponent(promptId)}`, {
+        method: "DELETE",
+      }),
+
+    restoreDefaultAiPrompts: () =>
+      request<{ prompts: AiPromptTemplate[]; restoredCount: number }>("/api/v1/ai/prompts/restore-defaults", {
+        method: "POST",
+        body: JSON.stringify({}),
       }),
 
     streamAiGeneration: async (

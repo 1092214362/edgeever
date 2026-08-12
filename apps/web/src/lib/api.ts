@@ -21,6 +21,7 @@ import type {
   AiSettings,
   AiDiscoveredModel,
   AiProvider,
+  AiPromptTemplate,
   AiAction,
   AiStreamEvent,
   PublicMemoShare,
@@ -283,9 +284,59 @@ export type ApiResponseDiagnostics = {
 };
 
 let desktopSessionRejected = false;
+let unauthorizedConfirmPromise: Promise<boolean> | null = null;
 
 const isDesktopAuthenticationRequest = (path: string) =>
   path === "/api/v1/auth/login" || path === "/api/v1/auth/session";
+
+/**
+ * Confirm the browser is actually logged out before forcing the login screen.
+ * A single flaky 401 (or a mid-session local-dev auth mode flip) should not
+ * wipe the whole workspace if the session cookie is still valid.
+ */
+const confirmSessionLost = async (): Promise<boolean> => {
+  if (typeof window === "undefined") return true;
+  if (unauthorizedConfirmPromise) return unauthorizedConfirmPromise;
+
+  unauthorizedConfirmPromise = (async () => {
+    try {
+      const headers = new Headers();
+      const isDesktop = Boolean(window.edgeeverDesktop?.isAvailable);
+      const sessionToken = isDesktop ? getDesktopSessionToken() : undefined;
+      if (sessionToken) headers.set("Authorization", `Bearer ${sessionToken}`);
+      const baseUrl = getConfiguredDesktopApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/v1/auth/session`, {
+        credentials: "include",
+        headers,
+      });
+      if (!response.ok) return true;
+      const session = await response.json().catch(() => null) as AuthSession | null;
+      return !session?.authenticated;
+    } catch {
+      return true;
+    } finally {
+      // Allow a later 401 to re-check after this round finishes.
+      queueMicrotask(() => {
+        unauthorizedConfirmPromise = null;
+      });
+    }
+  })();
+
+  return unauthorizedConfirmPromise;
+};
+
+const notifyUnauthorized = async (isDesktop: boolean) => {
+  if (isDesktop && desktopSessionRejected) return;
+
+  const sessionLost = await confirmSessionLost();
+  if (!sessionLost) return;
+
+  if (isDesktop) {
+    clearCachedDesktopSession();
+    desktopSessionRejected = true;
+  }
+  window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
+};
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const headers = new Headers(init?.headers);
@@ -328,16 +379,8 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
       ...(rayId ? { rayId } : {}),
     };
 
-    if (response.status === 401) {
-      if (isDesktop) {
-        clearCachedDesktopSession();
-        if (!desktopSessionRejected) {
-          desktopSessionRejected = true;
-          window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
-        }
-      } else {
-        window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
-      }
+    if (response.status === 401 && path !== "/api/v1/auth/login") {
+      void notifyUnauthorized(isDesktop);
     }
 
     throw new ApiRequestError(
@@ -528,6 +571,34 @@ export const api = {
     request<AiSettings>("/api/v1/ai/default-model", {
       method: "PUT",
       body: JSON.stringify({ modelConfigId }),
+    }),
+
+  listAiPrompts: () => request<{ prompts: AiPromptTemplate[] }>("/api/v1/ai/prompts"),
+
+  createAiPrompt: (payload: { name: string; description?: string; instruction: string }) =>
+    request<{ prompt: AiPromptTemplate }>("/api/v1/ai/prompts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateAiPrompt: (
+    promptId: string,
+    payload: { name?: string; description?: string | null; instruction?: string },
+  ) =>
+    request<{ prompt: AiPromptTemplate }>(`/api/v1/ai/prompts/${encodeURIComponent(promptId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteAiPrompt: (promptId: string) =>
+    request<{ ok: true }>(`/api/v1/ai/prompts/${encodeURIComponent(promptId)}`, {
+      method: "DELETE",
+    }),
+
+  restoreDefaultAiPrompts: () =>
+    request<{ prompts: AiPromptTemplate[]; restoredCount: number }>("/api/v1/ai/prompts/restore-defaults", {
+      method: "POST",
+      body: JSON.stringify({}),
     }),
 
   streamAiGeneration: async (
@@ -790,7 +861,7 @@ export const api = {
 
     if (!response.ok) {
       if (response.status === 401) {
-        window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
+        void notifyUnauthorized(Boolean(window.edgeeverDesktop?.isAvailable));
       }
 
       throw new ApiRequestError(response.statusText || "Resource download failed", response.status);

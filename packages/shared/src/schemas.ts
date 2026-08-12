@@ -225,6 +225,20 @@ export const AiGenerateSchema = z.object({
   }
 });
 
+export const AiPromptTemplateCreateSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(200).optional(),
+  instruction: z.string().trim().min(1).max(2_000),
+});
+
+export const AiPromptTemplateUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().trim().max(200).nullable().optional(),
+  instruction: z.string().trim().min(1).max(2_000).optional(),
+}).refine((input) => input.name !== undefined || input.description !== undefined || input.instruction !== undefined, {
+  message: "At least one field is required.",
+});
+
 export type NotebookCreateInput = z.infer<typeof NotebookCreateSchema>;
 export type NotebookUpdateInput = z.infer<typeof NotebookUpdateSchema>;
 export type MemoCreateInput = z.infer<typeof MemoCreateSchema>;
@@ -250,3 +264,5 @@ export type AiProviderConnectionTestInput = z.infer<typeof AiProviderConnectionT
 export type AiModelConfigCreateInput = z.infer<typeof AiModelConfigCreateSchema>;
 export type AiDefaultModelUpdateInput = z.infer<typeof AiDefaultModelUpdateSchema>;
 export type AiGenerateInput = z.infer<typeof AiGenerateSchema>;
+export type AiPromptTemplateCreateInput = z.infer<typeof AiPromptTemplateCreateSchema>;
+export type AiPromptTemplateUpdateInput = z.infer<typeof AiPromptTemplateUpdateSchema>;

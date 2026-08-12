@@ -22,6 +22,7 @@ import {
   normalizeAiBaseUrl,
   parseAiGenerationResult,
   resolvePrimaryAiCredentialEncryptionKey,
+  resolveWorkspaceActionInstruction,
   streamAiGeneration,
   testAiModel,
 } from "./ai-service";
@@ -445,12 +446,22 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
       if (denied) return denied;
       try {
         const input = context.req.valid("json");
+        const workspaceId = getWorkspaceId(context);
         const model = await loadDefaultAiModel(
           context.env.storage.db,
-          getWorkspaceId(context),
+          workspaceId,
           context.env,
         );
-        const result = streamAiGeneration({ ...input, model, abortSignal: context.req.raw.signal });
+        // Always prefer the user-visible prompt library text (workspace DB seed or freeform).
+        const resolvedInstruction = input.instruction?.trim()
+          || await resolveWorkspaceActionInstruction(context.env.storage.db, workspaceId, input.action)
+          || undefined;
+        const result = streamAiGeneration({
+          ...input,
+          instruction: resolvedInstruction,
+          model,
+          abortSignal: context.req.raw.signal,
+        });
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {

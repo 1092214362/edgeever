@@ -1,5 +1,6 @@
 export * from "./content";
 export * from "./ai-assistant";
+export * from "./ai-prompt-seeds";
 export * from "./ai-selection";
 export * from "./backup";
 export * from "./github-feedback";

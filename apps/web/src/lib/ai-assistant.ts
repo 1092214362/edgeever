@@ -3,9 +3,12 @@ import {
   AI_TARGET_LANGUAGES,
   AI_TONES,
   AI_WHOLE_NOTE_ACTIONS,
+  actionNeedsTargetLanguage,
+  actionNeedsTone,
   canReplaceAiSource,
   getDefaultAiAction,
   getDefaultAiTargetLanguage,
+  parseDefaultAiPromptKey,
   type AiAction,
   type AiTargetLanguage,
   type AiTone,
@@ -21,7 +24,13 @@ export type AiAssistantAction = AiAction;
 export const selectedTextAiActions = AI_SELECTED_TEXT_ACTIONS;
 export const wholeNoteAiActions = AI_WHOLE_NOTE_ACTIONS;
 export const getDefaultTargetLanguage = getDefaultAiTargetLanguage;
-export { canReplaceAiSource, getDefaultAiAction };
+export {
+  actionNeedsTargetLanguage,
+  actionNeedsTone,
+  canReplaceAiSource,
+  getDefaultAiAction,
+  parseDefaultAiPromptKey,
+};
 
 export const buildAiAssistantRequest = ({
   action,
@@ -44,11 +53,15 @@ export const buildAiAssistantRequest = ({
   targetLanguage?: AiTargetLanguage;
   tone?: AiTone;
   instruction?: string;
-} => ({
-  action,
-  title,
-  contentMarkdown,
-  ...(action === "translate" ? { targetLanguage } : {}),
-  ...(action === "change-tone" ? { tone } : {}),
-  ...(action === "custom" ? { instruction: customInstruction.trim() } : {}),
-});
+} => {
+  const instruction = customInstruction.trim();
+  return {
+    action,
+    title,
+    contentMarkdown,
+    // Always send the visible instruction so library text and freeform share one path.
+    ...(instruction ? { instruction } : {}),
+    ...(actionNeedsTargetLanguage(action) ? { targetLanguage } : {}),
+    ...(actionNeedsTone(action) ? { tone } : {}),
+  };
+};

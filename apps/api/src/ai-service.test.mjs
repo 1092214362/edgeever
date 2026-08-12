@@ -29,14 +29,18 @@ describe("AI model service", () => {
       "simplify-language",
       "summarize",
     ]);
-    expect(aiActionInstructions.summarize).toContain("genuinely condensed summary");
-    expect(aiActionInstructions.summarize).toContain("20–30% of the source length");
-    expect(aiActionInstructions.summarize).toContain("Do not reproduce long passages verbatim");
+    // Shared seed catalog is the user-visible source of truth (Chinese defaults).
+    expect(aiActionInstructions.summarize).toContain("精简总结");
+    expect(aiActionInstructions.summarize).toContain("20–30%");
     expect(aiActionInstructions["extract-todos"]).toContain("- [ ]");
-    expect(resolveAiGenerationSystemInstruction({ action: "change-tone", tone: "friendly" }))
-      .toContain("friendly tone");
-    expect(resolveAiGenerationSystemInstruction({ action: "improve-writing" }))
-      .toContain("Never include 'User instruction:'");
+    expect(resolveAiGenerationSystemInstruction({
+      action: "change-tone",
+      instruction: "按用户指定的语气重写内容，不改变原意。",
+    })).toContain("user's editing instruction");
+    expect(resolveAiGenerationSystemInstruction({
+      action: "improve-writing",
+      instruction: aiActionInstructions["improve-writing"],
+    })).toContain("Never include 'User instruction:'");
   });
 
   test("supports bounded custom and follow-up editing instructions", () => {

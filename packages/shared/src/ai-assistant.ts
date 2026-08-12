@@ -64,3 +64,12 @@ export const getDefaultAiTargetLanguage = (locale: string | undefined): AiTarget
   locale?.toLowerCase().startsWith("zh") ? "en" : "zh-CN";
 
 export const canReplaceAiSource = (action: AiAction) => !NON_REPLACEABLE_AI_ACTIONS.includes(action);
+
+/** Actions that need an extra picker (language / tone) in the assistant UI. */
+export const AI_ACTIONS_WITH_EXTRA_PARAMS: readonly AiAction[] = ["translate", "change-tone"];
+
+export const actionNeedsTargetLanguage = (action: AiAction | string | null | undefined) =>
+  action === "translate";
+
+export const actionNeedsTone = (action: AiAction | string | null | undefined) =>
+  action === "change-tone";

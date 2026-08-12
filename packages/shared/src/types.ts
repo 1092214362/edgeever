@@ -142,6 +142,15 @@ export type AiSettings = {
   readOnly: boolean;
 };
 
+export type AiPromptTemplate = {
+  id: string;
+  name: string;
+  description: string | null;
+  instruction: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AiDiscoveredModel = {
   modelId: string;
   displayName: string;

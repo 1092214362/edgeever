@@ -610,6 +610,7 @@ type EditorPaneProps = {
   onDocumentActionConsumed?: (requestId: number) => void;
   selectionActionBar?: ReactNode;
   onOpenMemo?: (memoId: string) => void;
+  onOpenAiPrompts?: () => void;
 };
 
 type RichEditorPaneProps = EditorPaneProps & {
@@ -673,6 +674,7 @@ const RichEditorPane = ({
   onDocumentActionConsumed,
   selectionActionBar,
   onOpenMemo,
+  onOpenAiPrompts,
   onRequestMobileNativeEdit,
 }: RichEditorPaneProps) => {
   const { t, i18n } = useTranslation();
@@ -4404,6 +4406,7 @@ const RichEditorPane = ({
         selectionMarkdown={aiSelection?.contentMarkdown}
         onOpenChange={handleAiAssistantOpenChange}
         onApply={applyAiDraft}
+        onOpenPromptLibrary={onOpenAiPrompts}
       />
 
       <ShareMemoDialog memoId={memo.id} open={shareOpen} onOpenChange={setShareOpen} />
