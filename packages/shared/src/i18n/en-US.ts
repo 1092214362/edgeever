@@ -180,7 +180,7 @@ export const enUS = {
     imageCompressionDescription: "Compress large images locally before upload to reduce storage use.",
     imageCompressionAria: "Compress note images",
     linkOpenModifierTitle: "Open links with Ctrl/⌘ + click while editing",
-    linkOpenModifierDescription: "When on, hold Ctrl/⌘ and click to open; off (default) opens on a single click. Desktop only.",
+    linkOpenModifierDescription: "On by default: hold Ctrl/⌘ and click to open links, preventing accidental opens while editing. Turn off to use a single click. Desktop only.",
     linkOpenModifierAria: "Require Ctrl or ⌘ click to open links while editing",
     syncIntervalTitle: "Automatic sync interval",
     syncIntervalDescription: "Sync edits to the server automatically while keeping local drafts available immediately.",
@@ -1036,6 +1036,7 @@ export const enUS = {
     loading: "Searching notes...",
     close: "Close note picker",
     openHint: "Hold {{modifier}} and click to open the link. To open links with a single click, turn this option off in Profile → General",
+    clickOpenHint: "Click to open the link. To require {{modifier}} + click instead, turn this option on in Profile → General",
   },
   mobileNotebookPicker: {
     title: "Switch notebook",

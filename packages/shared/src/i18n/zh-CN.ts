@@ -180,7 +180,7 @@ export const zhCN = {
     imageCompressionDescription: "上传大图时在本地压缩，节省资源占用。",
     imageCompressionAria: "是否压缩笔记内图片",
     linkOpenModifierTitle: "编辑时用 Ctrl/⌘ + 点击打开链接",
-    linkOpenModifierDescription: "开启后需按修饰键再点链接，避免误触；默认单击即可打开（仅桌面）。",
+    linkOpenModifierDescription: "默认开启：需按住 Ctrl/⌘ 再点击链接，避免编辑时误触；关闭后可单击打开（仅桌面）。",
     linkOpenModifierAria: "编辑时是否需要 Ctrl 或 ⌘ 再点击才能打开链接",
     syncIntervalTitle: "自动同步间隔",
     syncIntervalDescription: "定期将编辑内容同步到服务器，本地草稿仍会即时保留。",
@@ -1036,6 +1036,7 @@ export const zhCN = {
     loading: "正在搜索笔记...",
     close: "关闭引用笔记",
     openHint: "按住 {{modifier}} 点击链接即可打开。如需改为单击打开，请前往个人中心 → 常规设置关闭此选项",
+    clickOpenHint: "单击即可打开链接。如需改为按住 {{modifier}} 再点击，请前往个人中心 → 常规设置开启此选项",
   },
   mobileNotebookPicker: {
     title: "切换笔记本",

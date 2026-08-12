@@ -141,6 +141,7 @@ import {
   getStoredEditorLinkOpenMode,
   resolveEditorLinkRequireModifier,
   shouldOpenEditorLink,
+  shouldShowEditorLinkOpenHint,
   type EditorLinkOpenMode,
 } from "@/lib/editor-link-click";
 import {
@@ -1405,8 +1406,7 @@ const RichEditorPane = ({
   }, [cancelResourceMenuHide, isMobileViewport, showResourceMenu]);
 
   const showEditorLinkOpenHint = useCallback((target: EventTarget | null) => {
-    // Tip only when desktop + "require modifier" preference is on (default click-to-open needs no tip).
-    if (!editor?.isEditable || isMobileViewport || editorLinkOpenMode !== "modifier") {
+    if (!shouldShowEditorLinkOpenHint(Boolean(editor?.isEditable), isMobileViewport, editorLinkOpenMode)) {
       return;
     }
 
@@ -1461,12 +1461,6 @@ const RichEditorPane = ({
       setNoteLinkHintPosition(null);
     }
   }, []);
-
-  useEffect(() => {
-    if (editorLinkOpenMode !== "modifier") {
-      setNoteLinkHintPosition(null);
-    }
-  }, [editorLinkOpenMode]);
 
   useEffect(() => {
     if (!noteLinkHintPosition) {
@@ -4167,7 +4161,9 @@ const RichEditorPane = ({
 
       {noteLinkHintPosition && (
         <NoteLinkInteractionHint
-          label={t("noteLinkPicker.openHint", { modifier: noteLinkModifier })}
+          label={editorLinkOpenMode === "modifier"
+            ? t("noteLinkPicker.openHint", { modifier: noteLinkModifier })
+            : t("noteLinkPicker.clickOpenHint", { modifier: noteLinkModifier })}
           position={noteLinkHintPosition}
         />
       )}
