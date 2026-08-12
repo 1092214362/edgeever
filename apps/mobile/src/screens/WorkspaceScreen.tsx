@@ -46,6 +46,7 @@ import {
   Image as RNImage,
   type ImageStyle,
   InteractionManager,
+  KeyboardAvoidingView,
   type LayoutChangeEvent,
   Linking,
   Modal,
@@ -1336,6 +1337,7 @@ export const WorkspaceScreen = ({
       ) : null}
 
       <MemoDetailModal
+        initialSearchQuery={selectedMemoId ? searchText.trim() : ""}
         isDeleting={deleteMemoMutation.isPending}
         isLoading={memoDetailQuery.isLoading}
         isRestoring={restoreMemoMutation.isPending}
@@ -2810,6 +2812,11 @@ const RichEditorModal = ({
 
   return (
     <SafeAreaView style={styles.richEditorSafeArea}>
+      <KeyboardAvoidingView
+        behavior="height"
+        enabled={Platform.OS === "android"}
+        style={styles.richEditorKeyboardAvoiding}
+      >
         <View style={styles.createMemoHeader}>
           <Pressable accessibilityLabel="返回" accessibilityRole="button" disabled={saving || uploading} onPress={() => void requestClose()} style={styles.createMemoBackButton}>
             <ChevronLeft color={saving || uploading ? "#cbd5e1" : "#0f172a"} size={30} />
@@ -2893,6 +2900,7 @@ const RichEditorModal = ({
           target={resourceTarget}
         />
         {uploadSourcePicker}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
