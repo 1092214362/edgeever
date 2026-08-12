@@ -1086,6 +1086,18 @@ export const enUS = {
     loggingOut: "Signing out...",
     logout: "Sign out",
   },
+  localDataReset: {
+    title: "Danger zone",
+    description: "Remove all EdgeEver data from this Mac and return the app to its first-use state.",
+    action: "Clear local data",
+    dialogTitle: "Clear EdgeEver data from this Mac?",
+    dialogDescription: "This will remove all local notes, unsynced changes, offline attachments, caches, local backups, app settings, and sign-in information.",
+    remoteUnaffected: "Data on your server and exported files will not be affected. The app will restart automatically when clearing is complete.",
+    warning: "This action cannot be undone. Any notes or changes that have not been synced will be permanently lost.",
+    confirm: "Clear local data",
+    clearing: "Clearing...",
+    error: "Local data could not be cleared. Please try again.",
+  },
   loginDevices: {
     title: "Signed-in devices",
     description: "View devices where this account is still signed in and their latest activity.",

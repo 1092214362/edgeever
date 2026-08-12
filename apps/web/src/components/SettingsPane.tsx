@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { AdvancedPlayCard } from "./settings/AdvancedPlayCard";
 import { AccountInfoCard } from "./settings/AccountInfoCard";
 import { DataExportCard } from "./settings/DataExportCard";
+import { DesktopLocalDataCard } from "./settings/DesktopLocalDataCard";
 import { LoginDevicesCard } from "./settings/LoginDevicesCard";
 import { EvernoteImportGuideCard } from "./settings/EvernoteImportGuideCard";
 import { FeedbackLink } from "./settings/FeedbackLink";
@@ -98,6 +99,7 @@ export const SettingsPane = ({
   const [activeTab, setActiveTab] = useState<TabKey>("general");
   const [activeMobileTab, setActiveMobileTab] = useState<TabKey | null>(null);
   const [systemInfoOpen, setSystemInfoOpen] = useState(false);
+  const canClearLocalData = Boolean(window.edgeeverDesktop?.canClearLocalData);
 
   const tabItems: TabItem[] = [
     {
@@ -138,16 +140,18 @@ export const SettingsPane = ({
             hoverColorClass: "hover:bg-emerald-50/40",
             iconColorClass: "text-emerald-600",
           },
-          {
-            key: "advanced" as const,
-            label: t("settings.tabs.advanced"),
-            icon: Wrench,
-            colorClass: "text-emerald-700",
-            bgColorClass: "bg-emerald-50/80",
-            hoverColorClass: "hover:bg-emerald-50/40",
-            iconColorClass: "text-emerald-600",
-          },
         ]
+      : []),
+    ...(isOwner || canClearLocalData
+      ? [{
+          key: "advanced" as const,
+          label: t("settings.tabs.advanced"),
+          icon: Wrench,
+          colorClass: "text-emerald-700",
+          bgColorClass: "bg-emerald-50/80",
+          hoverColorClass: "hover:bg-emerald-50/40",
+          iconColorClass: "text-emerald-600",
+        }]
       : []),
     {
       key: "account",
@@ -231,9 +235,10 @@ export const SettingsPane = ({
           </SettingsGroup>
         );
       case "advanced":
-        return isOwner ? (
+        return isOwner || canClearLocalData ? (
           <SettingsGroup>
-            <ObjectStorageCard demoMode={demoMode} />
+            {isOwner ? <ObjectStorageCard demoMode={demoMode} /> : null}
+            <DesktopLocalDataCard />
           </SettingsGroup>
         ) : null;
       case "account":

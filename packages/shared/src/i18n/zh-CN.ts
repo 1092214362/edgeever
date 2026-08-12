@@ -1086,6 +1086,18 @@ export const zhCN = {
     loggingOut: "安全退出中...",
     logout: "退出登录",
   },
+  localDataReset: {
+    title: "危险操作",
+    description: "清除这台 Mac 上的所有 EdgeEver 本地数据，并恢复到首次使用状态。",
+    action: "清除本地数据",
+    dialogTitle: "清除这台 Mac 上的 EdgeEver 数据？",
+    dialogDescription: "这将清除所有本地笔记、未同步的更改、离线附件、缓存、本地备份、应用设置和登录状态。",
+    remoteUnaffected: "服务器上的数据和已经导出的文件不会受到影响。应用将在清除完成后自动重新启动。",
+    warning: "此操作无法撤销。尚未同步的笔记和更改将永久丢失。",
+    confirm: "清除本地数据",
+    clearing: "正在清除...",
+    error: "无法清除本地数据，请重试。",
+  },
   loginDevices: {
     title: "登录设备",
     description: "查看当前账号仍保持登录的设备及最近访问时间。",
