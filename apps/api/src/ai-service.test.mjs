@@ -5,6 +5,7 @@ import { MockLanguageModelV4 } from "ai/test";
 import {
   aiActionInstructions,
   buildAiGenerationPrompt,
+  createAiGenerationResultBoundary,
   discoverAiModels,
   mapAiProviderConfig,
   normalizeAiGenerationText,
@@ -16,6 +17,11 @@ import {
   streamAiGeneration,
 } from "./ai-service.ts";
 import { encryptSecret } from "./secret-encryption.ts";
+
+const resultBoundary = {
+  start: "<edgeever-result-test123>",
+  end: "</edgeever-result-test123>",
+};
 
 describe("AI model service", () => {
   test("owns every built-in note-processing instruction on the server", () => {
@@ -42,7 +48,14 @@ describe("AI model service", () => {
     expect(resolveAiGenerationSystemInstruction({
       action: "improve-writing",
       instruction: aiActionInstructions["improve-writing"],
+      resultBoundary,
     })).toContain("Never include 'User instruction:'");
+    const boundedInstruction = resolveAiGenerationSystemInstruction({
+      action: "improve-writing",
+      resultBoundary,
+    });
+    expect(boundedInstruction).toContain(resultBoundary.start);
+    expect(boundedInstruction).toContain(resultBoundary.end);
   });
 
   test("supports bounded custom and follow-up editing instructions", () => {
@@ -55,7 +68,6 @@ describe("AI model service", () => {
       instruction,
     })).toBe([
       `User instruction:\n${instruction}`,
-      "Note title:\nPlan",
       "Note content:\nShip on Friday.",
     ].join("\n\n"));
   });
@@ -73,9 +85,14 @@ describe("AI model service", () => {
                 {
                   type: "text-delta",
                   id: "text-1",
-                  delta: "*在线",
+                  delta: `我已经为你改好了。\n${resultBoundary.start.slice(0, 18)}`,
                 },
-                { type: "text-delta", id: "text-1", delta: "模式下*" },
+                {
+                  type: "text-delta",
+                  id: "text-1",
+                  delta: `${resultBoundary.start.slice(18)}\n*在线模式下*\n${resultBoundary.end}`,
+                },
+                { type: "text-delta", id: "text-1", delta: "\n希望这能帮到你。" },
                 { type: "text-end", id: "text-1" },
                 {
                   type: "finish",
@@ -94,6 +111,7 @@ describe("AI model service", () => {
       action: "improve-writing",
       title: "富文本测试",
       contentMarkdown: "*在线模式下*",
+      resultBoundary,
     });
 
     let submittedContent = "";
@@ -101,7 +119,9 @@ describe("AI model service", () => {
       if (part.type === "text-delta") submittedContent += part.text;
     }
 
-    expect(submittedContent).toBe("*在线模式下*");
+    expect(normalizeAiGenerationText(submittedContent, resultBoundary)).toBe("*在线模式下*");
+    expect(JSON.stringify(request.prompt)).not.toContain("富文本测试");
+    expect(JSON.stringify(request.prompt)).not.toContain("Note title:");
     expect(request.tools).toBeUndefined();
     expect(request.toolChoice).not.toMatchObject({ type: "tool" });
     expect(await result.finishReason).toBe("stop");
@@ -116,7 +136,7 @@ describe("AI model service", () => {
       fetch: async (_url, init) => {
         requests.push(JSON.parse(String(init?.body)));
         return new Response([
-          'data: {"id":"chunk-1","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","content":"兼容结果"},"finish_reason":null}]}',
+          `data: {"id":"chunk-1","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","content":${JSON.stringify(`${resultBoundary.start}\n兼容结果\n${resultBoundary.end}`)}} ,"finish_reason":null}]}`,
           'data: {"id":"chunk-2","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
           "data: [DONE]",
           "",
@@ -130,6 +150,7 @@ describe("AI model service", () => {
       action: "summarize",
       title: "测试",
       contentMarkdown: "正文",
+      resultBoundary,
     });
 
     let output = "";
@@ -137,10 +158,63 @@ describe("AI model service", () => {
       if (part.type === "text-delta") output += part.text;
     }
 
-    expect(output).toBe("兼容结果");
+    expect(normalizeAiGenerationText(output, resultBoundary)).toBe("兼容结果");
     expect(requests).toHaveLength(1);
     expect(requests[0].tools).toBeUndefined();
     expect(requests[0].tool_choice).toBeUndefined();
+    expect(JSON.stringify(requests[0].messages)).not.toContain("Note title:");
+    expect(JSON.stringify(requests[0].messages)).not.toContain("测试");
+    expect(JSON.stringify(requests[0].messages)).toContain(resultBoundary.start);
+    expect(JSON.stringify(requests[0].messages)).toContain(resultBoundary.end);
+  });
+
+  test("extracts only the bounded result and preserves real code blocks", () => {
+    const response = [
+      "当然，下面是处理后的内容：",
+      resultBoundary.start,
+      "# 标题",
+      "",
+      "```ts",
+      "const ready = true;",
+      "```",
+      resultBoundary.end,
+      "如果还需要调整，请告诉我。",
+    ].join("\n");
+    expect(normalizeAiGenerationText(response, resultBoundary)).toBe([
+      "# 标题",
+      "",
+      "```ts",
+      "const ready = true;",
+      "```",
+    ].join("\n"));
+  });
+
+  test("ignores marker-like note content that does not match the request boundary", () => {
+    const response = [
+      "<edgeever-result-fixed>",
+      "不应采用的内容",
+      "</edgeever-result-fixed>",
+      resultBoundary.start,
+      "正确内容",
+      resultBoundary.end,
+    ].join("\n");
+    expect(normalizeAiGenerationText(response, resultBoundary)).toBe("正确内容");
+  });
+
+  test("falls back safely when a model omits a result boundary", () => {
+    expect(normalizeAiGenerationText(
+      `${resultBoundary.start}\n没有结束标记`,
+      resultBoundary,
+    )).toBe("没有结束标记");
+    expect(normalizeAiGenerationText("没有任何标记", resultBoundary)).toBe("没有任何标记");
+  });
+
+  test("creates an unpredictable result boundary for each generation", () => {
+    const first = createAiGenerationResultBoundary();
+    const second = createAiGenerationResultBoundary();
+    expect(first).not.toEqual(second);
+    expect(first.start).toMatch(/^<edgeever-result-[a-f0-9]{32}>$/);
+    expect(first.end).toBe(`</${first.start.slice(1)}`);
   });
 
   test("removes only whole-response Markdown wrappers", () => {

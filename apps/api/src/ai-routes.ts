@@ -15,6 +15,7 @@ import { AppError } from "./app-error";
 import { auditStatement } from "./audit";
 import { getAiPromptTemplate, resolveWorkspaceActionInstruction } from "./ai-prompt-service";
 import {
+  createAiGenerationResultBoundary,
   decryptAiCredential,
   discoverAiModels,
   getAiModelConfig,
@@ -489,6 +490,7 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
           workspaceId,
           context.env,
         );
+        const resultBoundary = createAiGenerationResultBoundary();
         const result = streamAiGeneration({
           ...input,
           action,
@@ -496,6 +498,7 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
           targetLanguage: needsTargetLanguage ? input.targetLanguage : undefined,
           tone: needsTone ? input.tone : undefined,
           model,
+          resultBoundary,
           abortSignal: context.req.raw.signal,
         });
         const encoder = new TextEncoder();
@@ -509,7 +512,7 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
                 if (part.type === "error") throw part.error;
                 if (part.type === "text-delta") generatedContent += part.text;
               }
-              const contentMarkdown = normalizeAiGenerationText(generatedContent);
+              const contentMarkdown = normalizeAiGenerationText(generatedContent, resultBoundary);
               if (!contentMarkdown) throw new Error("The AI did not return a note result.");
               send({ type: "text-delta", text: contentMarkdown });
               const [usage, finishReason] = await Promise.all([result.usage, result.finishReason]);
