@@ -11,7 +11,7 @@ import type {
   AiTargetLanguage,
   AiTone,
 } from "@edgeever/shared";
-import { defaultAiPromptId, getDefaultAiPromptSeed } from "@edgeever/shared";
+import { getDefaultAiPromptSeed } from "@edgeever/shared";
 import { generateText, streamText, tool } from "ai";
 import { z } from "zod";
 import { AppError } from "./app-error";
@@ -348,24 +348,6 @@ export const aiActionInstructions: Record<Exclude<AiAction, "translate" | "chang
 const AI_PROMPT_METADATA_INSTRUCTION =
   "Call the submitNoteResult tool exactly once. Treat the user-prompt field labels as metadata. Put only the requested Markdown result in the contentMarkdown field. Never include 'User instruction:', 'Target language:', 'Tone:', 'Note title:', or 'Note content:' in that field, and never repeat the note title unless it is part of the note content.";
 
-/** Load the workspace copy of a default prompt, falling back to the shared seed text. */
-export const resolveWorkspaceActionInstruction = async (
-  db: DatabaseAdapter,
-  workspaceId: string,
-  action: AiAction,
-): Promise<string | undefined> => {
-  if (action === "custom") return undefined;
-  const seed = getDefaultAiPromptSeed(action);
-  if (!seed) return undefined;
-
-  const row = await db.prepare(
-    `SELECT instruction FROM ai_prompt_templates WHERE id = ? AND workspace_id = ?`,
-  ).bind(defaultAiPromptId(workspaceId, seed.key), workspaceId).first<{ instruction: string }>();
-
-  const instruction = row?.instruction?.trim() || seed.instruction;
-  return instruction || undefined;
-};
-
 const aiGenerationResultSchema = z.object({
   contentMarkdown: z.string().describe(
     "Only the requested Markdown result, without prompt labels, the note title, commentary, or surrounding code fences.",
@@ -432,8 +414,8 @@ export const streamAiGeneration = (input: {
   prompt: buildAiGenerationPrompt({
     title: input.title,
     contentMarkdown: input.contentMarkdown,
-    targetLanguage: input.action === "translate" ? input.targetLanguage : undefined,
-    tone: input.action === "change-tone" ? input.tone : undefined,
+    targetLanguage: input.targetLanguage,
+    tone: input.tone,
     instruction: input.instruction,
   }),
   maxOutputTokens: 4096,

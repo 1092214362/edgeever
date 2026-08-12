@@ -9,7 +9,13 @@ import {
   getDefaultAiAction,
   getDefaultAiTargetLanguage,
   parseDefaultAiPromptKey,
+  promptAllowsAppend,
+  promptAllowsReplace,
+  promptNeedsTargetLanguage,
+  promptNeedsTone,
   type AiAction,
+  type AiPromptParameterKind,
+  type AiPromptResultMode,
   type AiTargetLanguage,
   type AiTone,
 } from "@edgeever/shared";
@@ -30,12 +36,19 @@ export {
   canReplaceAiSource,
   getDefaultAiAction,
   parseDefaultAiPromptKey,
+  promptAllowsAppend,
+  promptAllowsReplace,
+  promptNeedsTargetLanguage,
+  promptNeedsTone,
 };
 
 export const buildAiAssistantRequest = ({
   action,
   contentMarkdown,
   customInstruction,
+  locale,
+  parameterKind,
+  promptId,
   targetLanguage,
   title,
   tone,
@@ -43,6 +56,9 @@ export const buildAiAssistantRequest = ({
   action: AiAssistantAction;
   contentMarkdown: string;
   customInstruction: string;
+  locale?: string;
+  parameterKind?: AiPromptParameterKind;
+  promptId?: string | null;
   targetLanguage: TargetLanguage;
   title: string;
   tone: AiTone;
@@ -50,18 +66,28 @@ export const buildAiAssistantRequest = ({
   action: AiAction;
   title: string;
   contentMarkdown: string;
+  promptId?: string;
+  locale?: string;
   targetLanguage?: AiTargetLanguage;
   tone?: AiTone;
   instruction?: string;
 } => {
   const instruction = customInstruction.trim();
+  const needsTargetLanguage = parameterKind
+    ? promptNeedsTargetLanguage(parameterKind)
+    : actionNeedsTargetLanguage(action);
+  const needsTone = parameterKind ? promptNeedsTone(parameterKind) : actionNeedsTone(action);
   return {
     action,
+    ...(promptId ? { promptId } : {}),
+    ...(locale ? { locale } : {}),
     title,
     contentMarkdown,
-    // Always send the visible instruction so library text and freeform share one path.
-    ...(instruction ? { instruction } : {}),
-    ...(actionNeedsTargetLanguage(action) ? { targetLanguage } : {}),
-    ...(actionNeedsTone(action) ? { tone } : {}),
+    // Saved prompts are resolved by id on the server; only freeform actions send client text.
+    ...(!promptId && instruction ? { instruction } : {}),
+    ...(needsTargetLanguage ? { targetLanguage } : {}),
+    ...(needsTone ? { tone } : {}),
   };
 };
+
+export type { AiPromptParameterKind, AiPromptResultMode };

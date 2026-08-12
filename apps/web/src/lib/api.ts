@@ -6,6 +6,7 @@ import type {
   CreatedApiToken,
   JsonBackupMemo,
   JsonBackupNotebook,
+  JsonBackupAiPrompt,
   JsonBackupRevision,
   MemoDetail,
   MemoTemplate,
@@ -22,7 +23,11 @@ import type {
   AiDiscoveredModel,
   AiProvider,
   AiPromptTemplate,
+  AiPromptTemplateCreateInput,
+  AiPromptTemplateUpdateInput,
   AiAction,
+  AiTargetLanguage,
+  AiTone,
   AiStreamEvent,
   PublicMemoShare,
   TagSummary,
@@ -573,9 +578,12 @@ export const api = {
       body: JSON.stringify({ modelConfigId }),
     }),
 
-  listAiPrompts: () => request<{ prompts: AiPromptTemplate[] }>("/api/v1/ai/prompts"),
+  listAiPrompts: (locale?: string) => {
+    const search = locale ? `?locale=${encodeURIComponent(locale)}` : "";
+    return request<{ prompts: AiPromptTemplate[] }>(`/api/v1/ai/prompts${search}`);
+  },
 
-  createAiPrompt: (payload: { name: string; description?: string; instruction: string }) =>
+  createAiPrompt: (payload: AiPromptTemplateCreateInput) =>
     request<{ prompt: AiPromptTemplate }>("/api/v1/ai/prompts", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -583,7 +591,7 @@ export const api = {
 
   updateAiPrompt: (
     promptId: string,
-    payload: { name?: string; description?: string | null; instruction?: string },
+    payload: AiPromptTemplateUpdateInput,
   ) =>
     request<{ prompt: AiPromptTemplate }>(`/api/v1/ai/prompts/${encodeURIComponent(promptId)}`, {
       method: "PATCH",
@@ -595,14 +603,25 @@ export const api = {
       method: "DELETE",
     }),
 
-  restoreDefaultAiPrompts: () =>
-    request<{ prompts: AiPromptTemplate[]; restoredCount: number }>("/api/v1/ai/prompts/restore-defaults", {
+  restoreDefaultAiPrompts: (locale?: string) => {
+    const search = locale ? `?locale=${encodeURIComponent(locale)}` : "";
+    return request<{ prompts: AiPromptTemplate[]; restoredCount: number }>(`/api/v1/ai/prompts/restore-defaults${search}`, {
       method: "POST",
       body: JSON.stringify({}),
-    }),
+    });
+  },
 
   streamAiGeneration: async (
-    payload: { action: AiAction; title: string; contentMarkdown: string; targetLanguage?: string; instruction?: string },
+    payload: {
+      action: AiAction;
+      promptId?: string;
+      locale?: string;
+      title: string;
+      contentMarkdown: string;
+      targetLanguage?: AiTargetLanguage;
+      tone?: AiTone;
+      instruction?: string;
+    },
     options: { signal?: AbortSignal; onEvent: (event: AiStreamEvent) => void },
   ) => {
     const headers = new Headers({ "Content-Type": "application/json" });
@@ -843,6 +862,12 @@ export const api = {
     request<{ ok: true }>("/api/v1/restores/json/memos", {
       method: "POST",
       body: JSON.stringify({ memos }),
+    }),
+
+  restoreJsonAiPrompts: (prompts: JsonBackupAiPrompt[]) =>
+    request<{ ok: true }>("/api/v1/restores/json/ai-prompts", {
+      method: "POST",
+      body: JSON.stringify({ prompts }),
     }),
 
   restoreJsonResource: (resourceId: string, metadata: JsonBackupMemo["resources"][number], file: Blob) => {

@@ -4,7 +4,7 @@ import { isoNow } from "./entity-utils";
 
 /**
  * Insert any missing factory-default prompts for a workspace.
- * Uses deterministic ids + INSERT OR IGNORE so:
+ * Uses explicit seed keys plus deterministic ids so:
  * - deleted defaults are re-created
  * - user-edited defaults (same id) are left alone
  * - user-created prompts (random ids) are never touched
@@ -14,12 +14,13 @@ export const restoreMissingDefaultAiPrompts = async (
   workspaceId: string,
 ): Promise<{ restoredCount: number; restoredIds: string[] }> => {
   const existing = await db.prepare(
-    `SELECT id FROM ai_prompt_templates WHERE workspace_id = ? AND id LIKE ?`,
-  ).bind(workspaceId, `${workspaceId}_aiprompt_%`).all<{ id: string }>();
+    `SELECT id, seed_key FROM ai_prompt_templates
+     WHERE workspace_id = ? AND seed_key IS NOT NULL`,
+  ).bind(workspaceId).all<{ id: string; seed_key: string }>();
 
-  const existingIds = new Set((existing.results ?? []).map((row) => row.id));
+  const existingSeedKeys = new Set((existing.results ?? []).map((row) => row.seed_key));
   const missing = DEFAULT_AI_PROMPT_SEEDS.filter(
-    (seed) => !existingIds.has(defaultAiPromptId(workspaceId, seed.key)),
+    (seed) => !existingSeedKeys.has(seed.key),
   );
 
   if (missing.length === 0) {
@@ -27,24 +28,37 @@ export const restoreMissingDefaultAiPrompts = async (
   }
 
   const now = isoNow();
-  const restoredIds: string[] = [];
   for (const seed of missing) {
-    const id = defaultAiPromptId(workspaceId, seed.key);
     await db.prepare(
       `INSERT OR IGNORE INTO ai_prompt_templates (
-         id, workspace_id, name, description, instruction, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         id, workspace_id, seed_key, action, parameter_kind, result_mode,
+         name, description, instruction,
+         name_customized, description_customized, instruction_customized,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?)`,
     ).bind(
-      id,
+      defaultAiPromptId(workspaceId, seed.key),
       workspaceId,
+      seed.key,
+      seed.action,
+      seed.parameterKind,
+      seed.resultMode,
       seed.name,
       seed.description,
       seed.instruction,
       now,
       now,
     ).run();
-    restoredIds.push(id);
   }
+
+  const restored = await db.prepare(
+    `SELECT id, seed_key FROM ai_prompt_templates
+     WHERE workspace_id = ? AND seed_key IS NOT NULL`,
+  ).bind(workspaceId).all<{ id: string; seed_key: string }>();
+  const missingSeedKeys = new Set<string>(missing.map((seed) => seed.key));
+  const restoredIds = (restored.results ?? [])
+    .filter((row) => missingSeedKeys.has(row.seed_key))
+    .map((row) => row.id);
 
   return { restoredCount: restoredIds.length, restoredIds };
 };

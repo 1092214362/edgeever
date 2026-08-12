@@ -78,6 +78,35 @@ const createDatabaseEnvironment = () => {
   };
 };
 
+const createUpgradedDatabaseEnvironment = () => {
+  const sqlite = new Database(":memory:");
+  const migrations = globSync("migrations/*.sql").sort();
+  for (const migration of migrations.filter((path) => path < "migrations/0027")) {
+    sqlite.exec(readFileSync(migration, "utf8"));
+  }
+  sqlite.query("INSERT INTO workspaces (id, name, is_personal) VALUES (?, ?, 1)")
+    .run("ws_member", "Member workspace");
+  for (const migration of migrations.filter((path) => path >= "migrations/0027" && path < "migrations/0029")) {
+    sqlite.exec(readFileSync(migration, "utf8"));
+  }
+  sqlite.query(
+    `UPDATE ai_prompt_templates
+     SET instruction = ?, updated_at = ?
+     WHERE id = ?`,
+  ).run(
+    "Only this instruction was customized before the metadata migration.",
+    "2026-08-12T01:00:00.000Z",
+    defaultAiPromptId("ws_member", "summarize"),
+  );
+  sqlite.exec(readFileSync("migrations/0029_ai_prompt_behavior_and_localization.sql", "utf8"));
+  return {
+    sqlite,
+    environment: {
+      storage: { db: new SqliteD1Database(sqlite), resources: {} },
+    },
+  };
+};
+
 const createApp = ({ currentAuth = auth, demoMode = false } = {}) => {
   const app = new Hono();
   app.use("/api/v1/*", async (context, next) => {
@@ -93,7 +122,10 @@ describe("AI prompt template routes", () => {
     expect(AiPromptTemplateCreateSchema.safeParse({
       name: "Weekly digest",
       instruction: "Summarize progress and risks.",
-    }).success).toBe(true);
+    })).toMatchObject({
+      success: true,
+      data: { parameterKind: "none", resultMode: "both" },
+    });
     expect(AiPromptTemplateCreateSchema.safeParse({
       name: "",
       instruction: "Body",
@@ -124,6 +156,14 @@ describe("AI prompt template routes", () => {
     expect(created.status).toBe(201);
     const createdBody = await created.json();
     expect(createdBody.prompt).toMatchObject({
+      origin: "custom",
+      seedKey: null,
+      action: "custom",
+      parameterKind: "none",
+      resultMode: "both",
+      nameCustomized: true,
+      descriptionCustomized: true,
+      instructionCustomized: true,
       name: "会议待办",
       description: "提取行动项",
       instruction: "提取明确待办，输出 Markdown 任务列表。",
@@ -221,7 +261,7 @@ describe("AI prompt template routes", () => {
     const workspaceId = auth.workspaceId;
 
     const first = await app.request(
-      "/api/v1/ai/prompts/restore-defaults",
+      "/api/v1/ai/prompts/restore-defaults?locale=en-US",
       { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
       environment,
     );
@@ -229,6 +269,16 @@ describe("AI prompt template routes", () => {
     const firstBody = await first.json();
     expect(firstBody.restoredCount).toBe(DEFAULT_AI_PROMPT_SEEDS.length);
     expect(firstBody.prompts).toHaveLength(DEFAULT_AI_PROMPT_SEEDS.length);
+    expect(firstBody.prompts.find((prompt) => prompt.seedKey === "summarize")).toMatchObject({
+      origin: "default",
+      action: "summarize",
+      parameterKind: "none",
+      resultMode: "append",
+      nameCustomized: false,
+      descriptionCustomized: false,
+      instructionCustomized: false,
+      name: "Summarize",
+    });
 
     const summarizeId = defaultAiPromptId(workspaceId, "summarize");
     await app.request(
@@ -263,5 +313,126 @@ describe("AI prompt template routes", () => {
       environment,
     );
     expect(await third.json()).toMatchObject({ restoredCount: 0 });
+  });
+
+  test("localizes untouched factory fields while preserving field-level edits after upgrade", async () => {
+    const { environment } = createUpgradedDatabaseEnvironment();
+    const app = createApp();
+
+    const english = await app.request("/api/v1/ai/prompts?locale=en-US", {}, environment);
+    expect(english.status).toBe(200);
+    const englishSummary = (await english.json()).prompts.find(
+      (prompt) => prompt.seedKey === "summarize",
+    );
+    expect(englishSummary).toMatchObject({
+      origin: "default",
+      action: "summarize",
+      resultMode: "append",
+      name: "Summarize",
+      description: "Condense the note into its topic, conclusions, and actionable outcomes",
+      instruction: "Only this instruction was customized before the metadata migration.",
+      nameCustomized: false,
+      descriptionCustomized: false,
+      instructionCustomized: true,
+    });
+
+    const chinese = await app.request("/api/v1/ai/prompts?locale=zh-CN", {}, environment);
+    const chineseSummary = (await chinese.json()).prompts.find(
+      (prompt) => prompt.seedKey === "summarize",
+    );
+    expect(chineseSummary).toMatchObject({
+      name: "总结",
+      description: "压缩全文，提炼主题、结论与可执行结果",
+      instruction: "Only this instruction was customized before the metadata migration.",
+    });
+  });
+
+  test("restores prompt behavior from backup without overwriting factory identity", async () => {
+    const { environment } = createDatabaseEnvironment();
+    const app = createApp();
+    await app.request(
+      "/api/v1/ai/prompts/restore-defaults?locale=en-US",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+      environment,
+    );
+
+    const now = "2026-08-12T01:00:00.000Z";
+    const response = await app.request(
+      "/api/v1/restores/json/ai-prompts",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          prompts: [{
+            id: defaultAiPromptId(auth.workspaceId, "summarize"),
+            origin: "custom",
+            seedKey: null,
+            action: "custom",
+            parameterKind: "tone",
+            resultMode: "replace",
+            nameCustomized: true,
+            descriptionCustomized: true,
+            instructionCustomized: true,
+            name: "Collision-safe custom prompt",
+            description: null,
+            instruction: "Rewrite in the requested tone.",
+            createdAt: now,
+            updatedAt: now,
+          }],
+        }),
+      },
+      environment,
+    );
+    expect(response.status).toBe(200);
+
+    const listed = await app.request("/api/v1/ai/prompts?locale=en-US", {}, environment);
+    const prompts = (await listed.json()).prompts;
+    expect(prompts).toHaveLength(DEFAULT_AI_PROMPT_SEEDS.length + 1);
+    expect(prompts.find((prompt) => prompt.seedKey === "summarize")).toMatchObject({
+      origin: "default",
+      name: "Summarize",
+    });
+    expect(prompts.find((prompt) => prompt.name === "Collision-safe custom prompt")).toMatchObject({
+      origin: "custom",
+      seedKey: null,
+      parameterKind: "tone",
+      resultMode: "replace",
+    });
+  });
+
+  test("keeps untouched factory copy localizable when restoring a backup made in another locale", async () => {
+    const { environment } = createDatabaseEnvironment();
+    const app = createApp();
+    const restored = await app.request(
+      "/api/v1/ai/prompts/restore-defaults?locale=en-US",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+      environment,
+    );
+    const englishSummary = (await restored.json()).prompts.find(
+      (prompt) => prompt.seedKey === "summarize",
+    );
+
+    const response = await app.request(
+      "/api/v1/restores/json/ai-prompts",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompts: [englishSummary] }),
+      },
+      environment,
+    );
+    expect(response.status).toBe(200);
+
+    const chinese = await app.request("/api/v1/ai/prompts?locale=zh-CN", {}, environment);
+    const chineseSummary = (await chinese.json()).prompts.find(
+      (prompt) => prompt.seedKey === "summarize",
+    );
+    expect(chineseSummary).toMatchObject({
+      name: "总结",
+      description: "压缩全文，提炼主题、结论与可执行结果",
+      nameCustomized: false,
+      descriptionCustomized: false,
+      instructionCustomized: false,
+    });
   });
 });

@@ -23,14 +23,14 @@ import {
 } from "@/components/ui/select";
 import { api, ApiRequestError } from "@/lib/api";
 import {
-  actionNeedsTargetLanguage,
-  actionNeedsTone,
   aiTones,
   buildAiAssistantRequest,
-  canReplaceAiSource,
   getDefaultAiAction,
   getDefaultTargetLanguage,
-  parseDefaultAiPromptKey,
+  promptAllowsAppend,
+  promptAllowsReplace,
+  promptNeedsTargetLanguage,
+  promptNeedsTone,
   targetLanguages,
   type AiAssistantAction,
   type AiTone,
@@ -89,8 +89,8 @@ export const AiAssistantDialog = ({
   const lastRequestRef = useRef<Parameters<typeof api.streamAiGeneration>[0] | null>(null);
 
   const promptsQuery = useQuery({
-    queryKey: ["ai-prompts"],
-    queryFn: async () => (await api.listAiPrompts()).prompts,
+    queryKey: ["ai-prompts", i18n.resolvedLanguage],
+    queryFn: async () => (await api.listAiPrompts(i18n.resolvedLanguage)).prompts,
     enabled: open,
     retry: false,
   });
@@ -99,15 +99,13 @@ export const AiAssistantDialog = ({
     () => prompts.find((prompt) => prompt.id === selectedPromptId) ?? null,
     [prompts, selectedPromptId],
   );
-  const effectiveActionKey = selectedPromptId
-    ? (parseDefaultAiPromptKey(selectedPromptId) ?? "custom")
-    : action;
+  const effectiveActionKey = selectedPrompt?.action ?? action;
+  const effectiveParameterKind = selectedPrompt?.parameterKind ?? "none";
+  const effectiveResultMode = selectedPrompt?.resultMode ?? "both";
 
   const selectValue = selectedPromptId
     ? promptSelectValue(selectedPromptId)
-    : action === "custom"
-      ? FREEFORM_VALUE
-      : FREEFORM_VALUE;
+    : FREEFORM_VALUE;
 
   useEffect(() => () => controllerRef.current?.abort(), []);
   useEffect(() => {
@@ -137,13 +135,12 @@ export const AiAssistantDialog = ({
   // Once prompts load, pick the library entry that matches the default action (same text as the library).
   useEffect(() => {
     if (!open || initializedForOpen || promptsQuery.isLoading) return;
-    const preferred = prompts.find((prompt) => parseDefaultAiPromptKey(prompt.id) === defaultAction)
+    const preferred = prompts.find((prompt) => prompt.seedKey === defaultAction)
       ?? prompts[0]
       ?? null;
     if (preferred) {
-      const key = parseDefaultAiPromptKey(preferred.id);
       setSelectedPromptId(preferred.id);
-      setAction(key ?? "custom");
+      setAction(preferred.action);
       setCustomInstruction(preferred.instruction);
     } else {
       setAction("custom");
@@ -152,6 +149,15 @@ export const AiAssistantDialog = ({
     }
     setInitializedForOpen(true);
   }, [defaultAction, initializedForOpen, open, prompts, promptsQuery.isLoading]);
+
+  useEffect(() => {
+    if (!open || !initializedForOpen || promptsQuery.isLoading || !selectedPromptId || selectedPrompt) return;
+    setSelectedPromptId(null);
+    setAction("custom");
+    setCustomInstruction("");
+    setOutput("");
+    setError(t("aiAssistant.promptMissing"));
+  }, [initializedForOpen, open, promptsQuery.isLoading, selectedPrompt, selectedPromptId, t]);
 
   const clearResult = () => {
     setOutput("");
@@ -171,9 +177,8 @@ export const AiAssistantDialog = ({
     const promptId = parsePromptSelectValue(value);
     if (!promptId) return;
     const prompt = prompts.find((item) => item.id === promptId);
-    const key = parseDefaultAiPromptKey(promptId);
     setSelectedPromptId(promptId);
-    setAction(key ?? "custom");
+    setAction(prompt?.action ?? "custom");
     setCustomInstruction(prompt?.instruction ?? "");
     clearResult();
   };
@@ -215,6 +220,9 @@ export const AiAssistantDialog = ({
     action: effectiveActionKey,
     contentMarkdown: sourceMarkdown,
     customInstruction,
+    locale: i18n.resolvedLanguage,
+    parameterKind: selectedPrompt ? effectiveParameterKind : undefined,
+    promptId: selectedPrompt?.id,
     targetLanguage,
     title,
     tone,
@@ -249,11 +257,13 @@ export const AiAssistantDialog = ({
       name: saveName.trim(),
       description: saveDescription.trim() || undefined,
       instruction: customInstruction.trim(),
+      parameterKind: "none",
+      resultMode: "both",
     }),
     onSuccess: async (response) => {
       await queryClient.invalidateQueries({ queryKey: ["ai-prompts"] });
       setSelectedPromptId(response.prompt.id);
-      setAction(parseDefaultAiPromptKey(response.prompt.id) ?? "custom");
+      setAction(response.prompt.action);
       setCustomInstruction(response.prompt.instruction);
       setSaveDialogOpen(false);
       setSaveName("");
@@ -275,8 +285,8 @@ export const AiAssistantDialog = ({
   const generateDisabled = isGenerating
     || (isFreeformCustom && !customInstruction.trim())
     || (!isFreeformCustom && !selectedPromptId)
-    || (actionNeedsTargetLanguage(effectiveActionKey) && !targetLanguage)
-    || (actionNeedsTone(effectiveActionKey) && !tone);
+    || (promptNeedsTargetLanguage(effectiveParameterKind) && !targetLanguage)
+    || (promptNeedsTone(effectiveParameterKind) && !tone);
 
   return (
     <>
@@ -316,9 +326,9 @@ export const AiAssistantDialog = ({
                   </button>
                 ) : null}
               </div>
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                 <Select value={selectValue} onValueChange={handleActionChange}>
-                  <SelectTrigger aria-label={t("aiAssistant.actionLabel")} className="h-10 w-[14rem] shrink-0 sm:w-60">
+                  <SelectTrigger aria-label={t("aiAssistant.actionLabel")} className="h-10 w-full min-w-0 sm:w-60 sm:shrink-0">
                     <SelectValue placeholder={t("aiAssistant.actionLabel")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -337,27 +347,29 @@ export const AiAssistantDialog = ({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <Button
-                  type="button"
-                  variant={!selectedPromptId && action === "custom" ? "solid" : "outline"}
-                  className="h-8 shrink-0 gap-1 px-2 text-xs font-normal text-slate-600"
-                  onClick={() => handleActionChange(FREEFORM_VALUE)}
-                >
-                  <PenLine className="h-3.5 w-3.5" />
-                  {t("aiAssistant.useCustom")}
-                </Button>
-                {isGenerating ? (
-                  <Button type="button" variant="solid" className="h-10 w-[7.5rem] shrink-0 gap-1.5 px-0 text-sm font-semibold" onClick={() => controllerRef.current?.abort()}>
-                    <Square className="h-3.5 w-3.5" />{t("aiAssistant.stop")}
+                <div className="flex min-w-0 gap-2">
+                  <Button
+                    type="button"
+                    variant={!selectedPromptId && action === "custom" ? "solid" : "outline"}
+                    className="h-10 min-w-0 flex-1 gap-1 px-2 text-xs font-normal text-slate-600 sm:h-8 sm:flex-none sm:shrink-0"
+                    onClick={() => handleActionChange(FREEFORM_VALUE)}
+                  >
+                    <PenLine className="h-3.5 w-3.5" />
+                    {t("aiAssistant.useCustom")}
                   </Button>
-                ) : (
-                  <Button type="button" variant="solid" className="h-10 w-[7.5rem] shrink-0 gap-1.5 px-0 text-sm font-semibold" disabled={generateDisabled} onClick={() => void generate()}>
-                    <Sparkles className="h-4 w-4" />{t("aiAssistant.generate")}
-                  </Button>
-                )}
+                  {isGenerating ? (
+                    <Button type="button" variant="solid" className="h-10 min-w-[7.5rem] flex-1 shrink-0 gap-1.5 px-3 text-sm font-semibold sm:w-[7.5rem] sm:flex-none sm:px-0" onClick={() => controllerRef.current?.abort()}>
+                      <Square className="h-3.5 w-3.5" />{t("aiAssistant.stop")}
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="solid" className="h-10 min-w-[7.5rem] flex-1 shrink-0 gap-1.5 px-3 text-sm font-semibold sm:w-[7.5rem] sm:flex-none sm:px-0" disabled={generateDisabled} onClick={() => void generate()}>
+                      <Sparkles className="h-4 w-4" />{t("aiAssistant.generate")}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-            {actionNeedsTargetLanguage(effectiveActionKey) ? (
+            {promptNeedsTargetLanguage(effectiveParameterKind) ? (
               <div className="grid gap-1.5">
                 <span className="text-sm font-medium text-slate-700">{t("aiAssistant.targetLanguage")}</span>
                 <Select value={targetLanguage} onValueChange={(value) => {
@@ -375,7 +387,7 @@ export const AiAssistantDialog = ({
                 </Select>
               </div>
             ) : null}
-            {actionNeedsTone(effectiveActionKey) ? (
+            {promptNeedsTone(effectiveParameterKind) ? (
               <div className="grid gap-1.5">
                 <span className="text-sm font-medium text-slate-700">{t("aiAssistant.tone")}</span>
                 <Select value={tone} onValueChange={(value) => {
@@ -475,12 +487,14 @@ export const AiAssistantDialog = ({
                 <Button type="button" variant="outline" disabled={isGenerating} onClick={() => void retry()}><RefreshCw className="h-4 w-4" />{t("aiAssistant.retry")}</Button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {canReplaceAiSource(effectiveActionKey) ? (
+                {promptAllowsReplace(effectiveResultMode) ? (
                   <Button type="button" variant={hasSelection ? "solid" : "outline"} disabled={isGenerating} onClick={() => onApply(output, "replace")}>
                     {t(hasSelection ? "aiAssistant.replaceSelection" : "aiAssistant.replace")}
                   </Button>
                 ) : null}
-                <Button type="button" variant={hasSelection && canReplaceAiSource(effectiveActionKey) ? "outline" : "solid"} disabled={isGenerating} onClick={() => onApply(output, "append")}>{t("aiAssistant.append")}</Button>
+                {promptAllowsAppend(effectiveResultMode) ? (
+                  <Button type="button" variant={hasSelection && promptAllowsReplace(effectiveResultMode) ? "outline" : "solid"} disabled={isGenerating} onClick={() => onApply(output, "append")}>{t("aiAssistant.append")}</Button>
+                ) : null}
               </div>
             </DialogFooter>
           ) : null}

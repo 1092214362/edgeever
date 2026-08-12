@@ -5,12 +5,15 @@ import {
   AiProviderConfigCreateSchema,
   AiProviderConfigUpdateSchema,
   AiProviderConnectionTestSchema,
+  promptNeedsTargetLanguage,
+  promptNeedsTone,
 } from "@edgeever/shared";
 import { zValidator } from "@hono/zod-validator";
 import type { Hono } from "hono";
 import type { AppContext, AppEnv, Bindings } from "./api-context";
 import { AppError } from "./app-error";
 import { auditStatement } from "./audit";
+import { getAiPromptTemplate, resolveWorkspaceActionInstruction } from "./ai-prompt-service";
 import {
   decryptAiCredential,
   discoverAiModels,
@@ -22,7 +25,6 @@ import {
   normalizeAiBaseUrl,
   parseAiGenerationResult,
   resolvePrimaryAiCredentialEncryptionKey,
-  resolveWorkspaceActionInstruction,
   streamAiGeneration,
   testAiModel,
 } from "./ai-service";
@@ -447,18 +449,52 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
       try {
         const input = context.req.valid("json");
         const workspaceId = getWorkspaceId(context);
+        const selectedPrompt = input.promptId
+          ? await getAiPromptTemplate(
+            context.env.storage.db,
+            workspaceId,
+            input.promptId,
+            input.locale,
+          )
+          : null;
+        if (input.promptId && !selectedPrompt) {
+          throw new AppError("ai_prompt_not_found", "The selected prompt no longer exists.", 404);
+        }
+
+        const action = selectedPrompt?.action ?? input.action;
+        const needsTargetLanguage = selectedPrompt
+          ? promptNeedsTargetLanguage(selectedPrompt.parameterKind)
+          : action === "translate";
+        const needsTone = selectedPrompt
+          ? promptNeedsTone(selectedPrompt.parameterKind)
+          : action === "change-tone";
+        if (needsTargetLanguage && !input.targetLanguage) {
+          throw new AppError("ai_target_language_required", "Choose a target language for this prompt.", 400);
+        }
+        if (needsTone && !input.tone) {
+          throw new AppError("ai_tone_required", "Choose a tone for this prompt.", 400);
+        }
+
+        const resolvedInstruction = selectedPrompt?.instruction
+          || input.instruction?.trim()
+          || await resolveWorkspaceActionInstruction(
+            context.env.storage.db,
+            workspaceId,
+            action,
+            input.locale,
+          )
+          || undefined;
         const model = await loadDefaultAiModel(
           context.env.storage.db,
           workspaceId,
           context.env,
         );
-        // Always prefer the user-visible prompt library text (workspace DB seed or freeform).
-        const resolvedInstruction = input.instruction?.trim()
-          || await resolveWorkspaceActionInstruction(context.env.storage.db, workspaceId, input.action)
-          || undefined;
         const result = streamAiGeneration({
           ...input,
+          action,
           instruction: resolvedInstruction,
+          targetLanguage: needsTargetLanguage ? input.targetLanguage : undefined,
+          tone: needsTone ? input.tone : undefined,
           model,
           abortSignal: context.req.raw.signal,
         });

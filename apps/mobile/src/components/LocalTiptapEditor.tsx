@@ -27,6 +27,9 @@ import {
   getImageReferrerPolicy,
   getResourceIdFromUrl,
   type AiAction,
+  type AiPromptParameterKind,
+  type AiPromptResultMode,
+  type AiPromptTemplate,
   type AiStreamEvent,
   type AiTargetLanguage,
   type AiTone,
@@ -95,6 +98,7 @@ type LocalTiptapEditorSharedProps = {
 /** Editable note body with toolbar (create / rich edit). */
 type LocalTiptapEditorModeProps = LocalTiptapEditorSharedProps & {
   mode?: "editor";
+  aiPromptsJson?: string;
   autoFocus?: boolean;
   onChange: (content: EditorDoc) => Promise<void>;
   onPickImage: () => Promise<void>;
@@ -127,6 +131,13 @@ const CHANGE_IDLE_MS = 500;
 const TRANSIENT_IMAGE_UPLOAD_META = "edgeeverImageUploadPlaceholder";
 const ignoreSearchResult = async () => undefined;
 const ignoreAiRequest = async () => undefined;
+const AI_PROMPT_OPTION_PREFIX = "prompt:";
+
+const fallbackPromptParameterKind = (action: AiAction): AiPromptParameterKind =>
+  action === "translate" ? "target-language" : action === "change-tone" ? "tone" : "none";
+
+const fallbackPromptResultMode = (action: AiAction): AiPromptResultMode =>
+  canReplaceAiSource(action) ? "both" : "append";
 
 type MobileAiSelection = {
   from: number;
@@ -139,6 +150,9 @@ type MobileAiSelection = {
 type MobileAiPanelState = {
   selection: MobileAiSelection;
   action: AiAction;
+  promptId: string | null;
+  parameterKind: AiPromptParameterKind;
+  resultMode: AiPromptResultMode;
   targetLanguage: AiTargetLanguage;
   tone: AiTone;
   customInstruction: string;
@@ -412,6 +426,21 @@ const inlineMermaidSvgStyles = (svg: string) => {
 function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   const isViewer = props.mode === "viewer";
   const autoFocus = props.mode === "viewer" ? false : Boolean(props.autoFocus);
+  const aiPromptsJson = props.mode === "viewer" ? "[]" : (props.aiPromptsJson ?? "[]");
+  const aiPrompts = useMemo(() => {
+    try {
+      const parsed = JSON.parse(aiPromptsJson) as unknown;
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((prompt): prompt is AiPromptTemplate =>
+        Boolean(prompt)
+        && typeof prompt === "object"
+        && typeof (prompt as Partial<AiPromptTemplate>).id === "string"
+        && typeof (prompt as Partial<AiPromptTemplate>).name === "string"
+        && typeof (prompt as Partial<AiPromptTemplate>).action === "string");
+    } catch {
+      return [];
+    }
+  }, [aiPromptsJson]);
   const startedAtRef = useRef(performance.now());
   const changeTimerRef = useRef<number | null>(null);
   const imageUploadInFlightRef = useRef(false);
@@ -430,6 +459,44 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   const aiSelectionHintTimerRef = useRef<number | null>(null);
   const [aiUndoFingerprint, setAiUndoFingerprint] = useState<string | null>(null);
   const aiUndoTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setAiPanel((current) => {
+      if (!current) return current;
+      if (current.promptId) {
+        const selected = aiPrompts.find((prompt) => prompt.id === current.promptId);
+        if (!selected) {
+          return {
+            ...current,
+            action: "custom",
+            promptId: null,
+            parameterKind: "none",
+            resultMode: "both",
+            output: "",
+            error: props.locale === "en-US"
+              ? "The selected prompt no longer exists. Choose another prompt."
+              : "所选提示词已不存在，请重新选择。",
+          };
+        }
+        return {
+          ...current,
+          action: selected.action,
+          parameterKind: selected.parameterKind,
+          resultMode: selected.resultMode,
+        };
+      }
+      if (current.action === "custom" || aiPrompts.length === 0) return current;
+      const preferred = aiPrompts.find((prompt) => prompt.seedKey === current.action)
+        ?? aiPrompts[0];
+      return preferred ? {
+        ...current,
+        action: preferred.action,
+        promptId: preferred.id,
+        parameterKind: preferred.parameterKind,
+        resultMode: preferred.resultMode,
+      } : current;
+    });
+  }, [aiPrompts, props.locale]);
 
   onChangeRef.current = props.mode === "viewer" ? undefined : props.onChange;
   onLoadResourceRef.current = props.onLoadResource;
@@ -693,6 +760,11 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     } as EditorDoc, props.baseUrl);
     const markdown = docToMarkdown(selectionDoc).trim();
     if (!markdown) return false;
+    const preferredAction = wholeNote ? "summarize" : "improve-writing";
+    const preferredPrompt = aiPrompts.find((prompt) => prompt.seedKey === preferredAction)
+      ?? aiPrompts[0]
+      ?? null;
+    const initialAction = preferredPrompt?.action ?? preferredAction;
     setAiPanel({
       selection: {
         from,
@@ -701,7 +773,10 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
         markdown,
         documentFingerprint: getAiDocumentFingerprint(getPersistableEditorDoc(editor.getJSON() as EditorDoc, props.baseUrl)),
       },
-      action: "improve-writing",
+      action: initialAction,
+      promptId: preferredPrompt?.id ?? null,
+      parameterKind: preferredPrompt?.parameterKind ?? fallbackPromptParameterKind(initialAction),
+      resultMode: preferredPrompt?.resultMode ?? fallbackPromptResultMode(initialAction),
       targetLanguage: getDefaultAiTargetLanguage(props.locale),
       tone: "professional",
       customInstruction: "",
@@ -713,7 +788,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     });
     editor.commands.blur();
     return true;
-  }, [editor, isViewer, props.baseUrl, props.locale]);
+  }, [aiPrompts, editor, isViewer, props.baseUrl, props.locale]);
 
   const closeAiPanel = useCallback(() => {
     if (!aiPanel || !editor) return;
@@ -736,6 +811,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     const requestId = globalThis.crypto?.randomUUID?.() ?? `ai-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const source = instruction ? aiPanel.output : aiPanel.selection.markdown;
     const action = instruction ? "custom" : aiPanel.action;
+    const promptId = instruction ? null : aiPanel.promptId;
     setAiPanel((current) => current ? {
       ...current,
       output: "",
@@ -747,10 +823,12 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     void onAiRequestRef.current(JSON.stringify({
       requestId,
       action,
+      locale: props.locale,
+      ...(promptId ? { promptId } : {}),
       contentMarkdown: source,
-      ...(action === "translate" ? { targetLanguage: aiPanel.targetLanguage } : {}),
-      ...(action === "change-tone" ? { tone: aiPanel.tone } : {}),
-      ...(action === "custom" ? { instruction: instruction ?? aiPanel.customInstruction.trim() } : {}),
+      ...(aiPanel.parameterKind === "target-language" && !instruction ? { targetLanguage: aiPanel.targetLanguage } : {}),
+      ...(aiPanel.parameterKind === "tone" && !instruction ? { tone: aiPanel.tone } : {}),
+      ...(!promptId && action === "custom" ? { instruction: instruction ?? aiPanel.customInstruction.trim() } : {}),
     })).catch((requestError) => {
       setAiPanel((current) => current?.requestId === requestId ? {
         ...current,
@@ -802,7 +880,8 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       } : current);
       return;
     }
-    if (mode === "replace" && !canReplaceAiSource(aiPanel.action)) return;
+    if (mode === "append" && aiPanel.resultMode === "replace") return;
+    if (mode === "replace" && aiPanel.resultMode === "append") return;
     const parsed = resolveImageSources(markdownToDoc(aiPanel.output), props.baseUrl);
     const content = parsed.content ?? [];
     const range = mode === "append"
@@ -1037,6 +1116,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
           onRefine={(instruction) => runAiSelectionRequest(instruction)}
           onStop={stopAiSelectionRequest}
           panel={aiPanel}
+          prompts={aiPrompts}
         />
       ) : null}
     </div>
@@ -1066,6 +1146,7 @@ const MobileSelectionAiPanel = ({
   onRefine,
   onStop,
   panel,
+  prompts,
 }: {
   locale: "zh-CN" | "en-US";
   onApply: (mode: "append" | "replace") => void;
@@ -1075,6 +1156,7 @@ const MobileSelectionAiPanel = ({
   onRefine: (instruction: string) => void;
   onStop: () => void;
   panel: MobileAiPanelState;
+  prompts: AiPromptTemplate[];
 }) => {
   const english = locale === "en-US";
   const actionLabels: Record<AiAction, string> = {
@@ -1110,8 +1192,36 @@ const MobileSelectionAiPanel = ({
     direct: english ? "Direct" : "直接",
   };
   const update = (next: Partial<MobileAiPanelState>) => onChange((current) => current ? { ...current, ...next } : current);
-  const generateDisabled = panel.generating || (panel.action === "custom" && !panel.customInstruction.trim());
-  const replaceDisabled = panel.generating || !panel.output || !canReplaceAiSource(panel.action);
+  const generateDisabled = panel.generating || (!panel.promptId && panel.action === "custom" && !panel.customInstruction.trim());
+  const appendDisabled = panel.generating || !panel.output || panel.resultMode === "replace";
+  const replaceDisabled = panel.generating || !panel.output || panel.resultMode === "append";
+  const selectedValue = panel.promptId ? `${AI_PROMPT_OPTION_PREFIX}${panel.promptId}` : panel.action;
+
+  const selectPromptOrAction = (value: string) => {
+    if (value.startsWith(AI_PROMPT_OPTION_PREFIX)) {
+      const promptId = value.slice(AI_PROMPT_OPTION_PREFIX.length);
+      const prompt = prompts.find((item) => item.id === promptId);
+      if (!prompt) return;
+      update({
+        action: prompt.action,
+        promptId: prompt.id,
+        parameterKind: prompt.parameterKind,
+        resultMode: prompt.resultMode,
+        output: "",
+        error: null,
+      });
+      return;
+    }
+    const action = value as AiAction;
+    update({
+      action,
+      promptId: null,
+      parameterKind: fallbackPromptParameterKind(action),
+      resultMode: fallbackPromptResultMode(action),
+      output: "",
+      error: null,
+    });
+  };
 
   return (
     <section
@@ -1138,13 +1248,18 @@ const MobileSelectionAiPanel = ({
           <span>{english ? "AI action" : "AI 操作"}</span>
           <select
             disabled={panel.generating}
-            onChange={(event) => update({ action: event.target.value as AiAction, output: "", error: null })}
-            value={panel.action}
+            onChange={(event) => selectPromptOrAction(event.target.value)}
+            value={selectedValue}
           >
-            {AI_SELECTED_TEXT_ACTIONS.map((action) => <option key={action} value={action}>{actionLabels[action]}</option>)}
+            {prompts.length > 0
+              ? <>
+                  {prompts.map((prompt) => <option key={prompt.id} value={`${AI_PROMPT_OPTION_PREFIX}${prompt.id}`}>{prompt.name}</option>)}
+                  <option value="custom">{actionLabels.custom}</option>
+                </>
+              : AI_SELECTED_TEXT_ACTIONS.map((action) => <option key={action} value={action}>{actionLabels[action]}</option>)}
           </select>
         </label>
-        {panel.action === "translate" ? (
+        {panel.parameterKind === "target-language" ? (
           <label>
             <span>{english ? "Target language" : "目标语言"}</span>
             <select disabled={panel.generating} onChange={(event) => update({ targetLanguage: event.target.value as AiTargetLanguage, output: "", error: null })} value={panel.targetLanguage}>
@@ -1152,7 +1267,7 @@ const MobileSelectionAiPanel = ({
             </select>
           </label>
         ) : null}
-        {panel.action === "change-tone" ? (
+        {panel.parameterKind === "tone" ? (
           <label>
             <span>{english ? "Tone" : "语气"}</span>
             <select disabled={panel.generating} onChange={(event) => update({ tone: event.target.value as AiTone, output: "", error: null })} value={panel.tone}>
@@ -1160,7 +1275,7 @@ const MobileSelectionAiPanel = ({
             </select>
           </label>
         ) : null}
-        {panel.action === "custom" ? (
+        {!panel.promptId && panel.action === "custom" ? (
           <label>
             <span>{english ? "Tell AI what to do" : "告诉 AI 你想怎么处理"}</span>
             <textarea
@@ -1206,7 +1321,7 @@ const MobileSelectionAiPanel = ({
       </div>
       <footer className="edgeever-ai-panel-footer">
         <div>
-          <button disabled={!panel.output || panel.generating} onClick={() => onApply("append")} type="button">
+          <button disabled={appendDisabled} onClick={() => onApply("append")} type="button">
             {english ? "Insert after" : "插入到选区后"}
           </button>
           <button disabled={replaceDisabled} onClick={() => onApply("replace")} type="button">

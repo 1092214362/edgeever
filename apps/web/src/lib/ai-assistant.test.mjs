@@ -43,6 +43,27 @@ describe("AI assistant interaction model", () => {
     });
   });
 
+  test("sends saved prompt identity and explicit parameters without duplicating its instruction", () => {
+    expect(buildAiAssistantRequest({
+      action: "custom",
+      contentMarkdown: "Hello",
+      customInstruction: "A stale client-side copy that must not be trusted.",
+      locale: "en-US",
+      parameterKind: "target-language",
+      promptId: "aiprompt_translate_for_clients",
+      targetLanguage: "zh-CN",
+      title: "Draft",
+      tone: "professional",
+    })).toEqual({
+      action: "custom",
+      promptId: "aiprompt_translate_for_clients",
+      locale: "en-US",
+      title: "Draft",
+      contentMarkdown: "Hello",
+      targetLanguage: "zh-CN",
+    });
+  });
+
   test("keeps extractive output additive while allowing rewritten content to replace its source", () => {
     expect(canReplaceAiSource("summarize")).toBe(false);
     expect(canReplaceAiSource("continue-writing")).toBe(false);

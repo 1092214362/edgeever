@@ -1,4 +1,5 @@
 import type { TiptapDoc } from "./content";
+import type { AiAction, AiPromptParameterKind, AiPromptResultMode } from "./ai-assistant";
 
 export type Notebook = {
   id: string;
@@ -144,6 +145,14 @@ export type AiSettings = {
 
 export type AiPromptTemplate = {
   id: string;
+  origin: "default" | "custom";
+  seedKey: Exclude<AiAction, "custom"> | null;
+  action: AiAction;
+  parameterKind: AiPromptParameterKind;
+  resultMode: AiPromptResultMode;
+  nameCustomized: boolean;
+  descriptionCustomized: boolean;
+  instructionCustomized: boolean;
   name: string;
   description: string | null;
   instruction: string;

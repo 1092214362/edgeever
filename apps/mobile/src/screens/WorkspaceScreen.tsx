@@ -1815,7 +1815,7 @@ const CreateMemoModal = ({
   targetNotebookIdRef.current = targetNotebookId;
   imageOperationRef.current = imageOperation;
 
-  const { cancelSelectionAi, requestSelectionAi } = useMobileSelectionAi({
+  const { aiPromptsJson, cancelSelectionAi, requestSelectionAi } = useMobileSelectionAi({
     client,
     editorRef,
     resolvedLocale,
@@ -2199,6 +2199,7 @@ const CreateMemoModal = ({
   const editorElement = useMemo(() => draftLoaded && baseUrl ? (
     <LocalTiptapEditor
       autoFocus
+      aiPromptsJson={aiPromptsJson}
       baseUrl={baseUrl}
       content={contentJsonRef.current}
       dom={{
@@ -2232,7 +2233,7 @@ const CreateMemoModal = ({
       locale={resolvedLocale}
       theme={resolvedTheme}
     />
-  ) : null, [baseUrl, cancelSelectionAi, draftLoaded, loadEditorResource, requestSelectionAi, resolvedLocale, resolvedTheme, scheduleBodyKeyboard, selectResource]);
+  ) : null, [aiPromptsJson, baseUrl, cancelSelectionAi, draftLoaded, loadEditorResource, requestSelectionAi, resolvedLocale, resolvedTheme, scheduleBodyKeyboard, selectResource]);
 
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.createMemoSafeArea}>
@@ -2643,7 +2644,7 @@ const RichEditorModal = ({
   };
 
   const flushEditor = () => flushMobileEditor(editorRef, flushResolverRef);
-  const { cancelSelectionAi, requestSelectionAi } = useMobileSelectionAi({
+  const { aiPromptsJson, cancelSelectionAi, requestSelectionAi } = useMobileSelectionAi({
     client,
     editorRef,
     resolvedLocale,
@@ -2735,6 +2736,7 @@ const RichEditorModal = ({
     () => memo && baseUrl ? (
       <LocalTiptapEditor
         autoFocus
+        aiPromptsJson={aiPromptsJson}
         baseUrl={baseUrl}
         content={contentJsonRef.current}
         dom={{
@@ -2774,7 +2776,7 @@ const RichEditorModal = ({
         theme={resolvedTheme}
       />
     ) : null,
-    [baseUrl, cancelSelectionAi, loadEditorResource, memo?.id, requestSelectionAi, resolvedLocale, resolvedTheme, selectResource]
+    [aiPromptsJson, baseUrl, cancelSelectionAi, loadEditorResource, memo?.id, requestSelectionAi, resolvedLocale, resolvedTheme, selectResource]
   );
 
   useEffect(() => {

@@ -9,11 +9,11 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export const AiPromptsCard = ({ onOpenLibrary }: { onOpenLibrary: () => void }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const promptsQuery = useQuery({
-    queryKey: ["ai-prompts"],
-    queryFn: async () => (await api.listAiPrompts()).prompts,
+    queryKey: ["ai-prompts", i18n.resolvedLanguage],
+    queryFn: async () => (await api.listAiPrompts(i18n.resolvedLanguage)).prompts,
     retry: false,
   });
   const count = promptsQuery.data?.length ?? 0;
