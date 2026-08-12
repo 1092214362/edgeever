@@ -1036,7 +1036,6 @@ export const zhCN = {
     loading: "正在搜索笔记...",
     close: "关闭引用笔记",
     openHint: "按住 {{modifier}} 点击链接即可打开。如需改为单击打开，请前往个人中心 → 常规设置关闭此选项",
-    clickOpenHint: "单击即可打开链接。如需改为按住 {{modifier}} 再点击，请前往个人中心 → 常规设置开启此选项",
   },
   mobileNotebookPicker: {
     title: "切换笔记本",

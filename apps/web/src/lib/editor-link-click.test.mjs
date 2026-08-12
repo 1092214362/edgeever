@@ -22,10 +22,10 @@ describe("editor link click policy", () => {
     expect(resolveStoredEditorLinkOpenMode("modifier")).toBe("modifier");
   });
 
-  test("shows a hover hint for both desktop link opening modes", () => {
-    expect(shouldShowEditorLinkOpenHint(true, false, "click")).toBe(true);
+  test("shows a hover hint only when desktop editing requires a modifier", () => {
+    expect(shouldShowEditorLinkOpenHint(true, false, "click")).toBe(false);
     expect(shouldShowEditorLinkOpenHint(true, false, "modifier")).toBe(true);
-    expect(shouldShowEditorLinkOpenHint(true, true, "click")).toBe(false);
+    expect(shouldShowEditorLinkOpenHint(true, true, "modifier")).toBe(false);
     expect(shouldShowEditorLinkOpenHint(false, false, "modifier")).toBe(false);
   });
 

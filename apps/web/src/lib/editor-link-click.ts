@@ -21,7 +21,7 @@ export const shouldShowEditorLinkOpenHint = (
   editable: boolean,
   isMobileViewport: boolean,
   mode: EditorLinkOpenMode
-): boolean => editable && !isMobileViewport && (mode === "click" || mode === "modifier");
+): boolean => editable && !isMobileViewport && mode === "modifier";
 
 export const EDITOR_LINK_OPEN_MODE_STORAGE_KEY = "edgeever.editor.linkOpenMode";
 

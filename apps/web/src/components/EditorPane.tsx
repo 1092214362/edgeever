@@ -4161,9 +4161,7 @@ const RichEditorPane = ({
 
       {noteLinkHintPosition && (
         <NoteLinkInteractionHint
-          label={editorLinkOpenMode === "modifier"
-            ? t("noteLinkPicker.openHint", { modifier: noteLinkModifier })
-            : t("noteLinkPicker.clickOpenHint", { modifier: noteLinkModifier })}
+          label={t("noteLinkPicker.openHint", { modifier: noteLinkModifier })}
           position={noteLinkHintPosition}
         />
       )}
