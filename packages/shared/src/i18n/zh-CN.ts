@@ -1035,7 +1035,7 @@ export const zhCN = {
     empty: "没有找到可引用的笔记",
     loading: "正在搜索笔记...",
     close: "关闭引用笔记",
-    openHint: "按住 {{modifier}} 并点击可打开链接",
+    openHint: "按住 {{modifier}} 点击链接即可打开。如需改为单击打开，请前往个人中心 → 常规设置关闭此选项",
   },
   mobileNotebookPicker: {
     title: "切换笔记本",

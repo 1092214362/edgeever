@@ -1035,7 +1035,7 @@ export const enUS = {
     empty: "No notes found",
     loading: "Searching notes...",
     close: "Close note picker",
-    openHint: "Hold {{modifier}} and click to open the link",
+    openHint: "Hold {{modifier}} and click to open the link. To open links with a single click, turn this option off in Profile → General",
   },
   mobileNotebookPicker: {
     title: "Switch notebook",
