@@ -330,8 +330,20 @@ const confirmSessionLost = async (): Promise<boolean> => {
   return unauthorizedConfirmPromise;
 };
 
-const notifyUnauthorized = async (isDesktop: boolean) => {
+const notifyUnauthorized = async (isDesktop: boolean, rejectedDesktopSessionToken?: string) => {
   if (isDesktop && desktopSessionRejected) return;
+
+  // A desktop API request authenticates with one explicit bearer token. A 401
+  // therefore rejects that exact credential and does not need a second
+  // /auth/session request. Compare against the current token first so a late
+  // response from an older request cannot clear a freshly logged-in session.
+  if (isDesktop && rejectedDesktopSessionToken) {
+    if (getDesktopSessionToken() !== rejectedDesktopSessionToken) return;
+    clearCachedDesktopSession();
+    desktopSessionRejected = true;
+    window.dispatchEvent(new CustomEvent("edgeever:unauthorized"));
+    return;
+  }
 
   const sessionLost = await confirmSessionLost();
   if (!sessionLost) return;
@@ -385,7 +397,7 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
     };
 
     if (response.status === 401 && path !== "/api/v1/auth/login") {
-      void notifyUnauthorized(isDesktop);
+      void notifyUnauthorized(isDesktop, sessionToken);
     }
 
     throw new ApiRequestError(

@@ -317,6 +317,46 @@ describe("desktop instance setup", () => {
     });
   });
 
+  test("does not clear a replacement session when an older desktop token is rejected late", async () => {
+    events.length = 0;
+    storage.set(DESKTOP_API_BASE_URL_STORAGE_KEY, "https://notes.example.com");
+    await cacheDesktopSession({
+      authRequired: true,
+      authenticated: true,
+      demoMode: false,
+      sessionToken: "stale-session-token",
+      user: { id: "user-1", username: "admin", displayName: null, role: "owner" },
+    });
+
+    let releaseRequest;
+    globalThis.fetch = async () => {
+      await new Promise((resolve) => {
+        releaseRequest = resolve;
+      });
+      return new Response(JSON.stringify({ error: { code: "unauthorized", message: "Authentication required" } }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const staleRequest = api.syncBootstrap({ limit: 200 });
+    await Promise.resolve();
+    await cacheDesktopSession({
+      authRequired: true,
+      authenticated: true,
+      demoMode: false,
+      sessionToken: "current-session-token",
+      user: { id: "user-1", username: "admin", displayName: "Owner", role: "owner" },
+    });
+    releaseRequest();
+
+    await expect(staleRequest).rejects.toMatchObject({ status: 401 });
+    await Promise.resolve();
+    expect(secureSessionToken).toBe("current-session-token");
+    expect(getCachedDesktopSession()).toMatchObject({ authenticated: true, user: { id: "user-1" } });
+    expect(events).toEqual([]);
+  });
+
   test("preserves Cloudflare response diagnostics for login failures", async () => {
     globalThis.fetch = async () => new Response("<html>challenge</html>", {
       status: 403,
