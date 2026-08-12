@@ -22,8 +22,8 @@ import {
   getAiSettings,
   getDefaultAiModelId,
   loadDefaultAiModel,
+  normalizeAiGenerationText,
   normalizeAiBaseUrl,
-  parseAiGenerationResult,
   resolvePrimaryAiCredentialEncryptionKey,
   streamAiGeneration,
   testAiModel,
@@ -504,15 +504,14 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
             const send = (event: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
             send({ type: "start" });
             try {
-              let submittedContent = false;
+              let generatedContent = "";
               for await (const part of result.stream) {
                 if (part.type === "error") throw part.error;
-                if (part.type !== "tool-call" || part.toolName !== "submitNoteResult") continue;
-                if (submittedContent) throw new Error("The AI submitted more than one note result.");
-                send({ type: "text-delta", text: parseAiGenerationResult(part.input).contentMarkdown });
-                submittedContent = true;
+                if (part.type === "text-delta") generatedContent += part.text;
               }
-              if (!submittedContent) throw new Error("The AI did not submit a note result.");
+              const contentMarkdown = normalizeAiGenerationText(generatedContent);
+              if (!contentMarkdown) throw new Error("The AI did not return a note result.");
+              send({ type: "text-delta", text: contentMarkdown });
               const [usage, finishReason] = await Promise.all([result.usage, result.finishReason]);
               send({
                 type: "finish",

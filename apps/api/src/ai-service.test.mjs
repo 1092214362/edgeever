@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import {
@@ -6,6 +7,7 @@ import {
   buildAiGenerationPrompt,
   discoverAiModels,
   mapAiProviderConfig,
+  normalizeAiGenerationText,
   normalizeAiBaseUrl,
   resolveAiGenerationSystemInstruction,
   decryptAiCredential,
@@ -58,30 +60,36 @@ describe("AI model service", () => {
     ].join("\n\n"));
   });
 
-  test("uses a schema-validated result tool instead of exposing model wrappers", async () => {
+  test("streams plain text without forcing tool choice for thinking-model compatibility", async () => {
+    let request;
     const result = streamAiGeneration({
       model: new MockLanguageModelV4({
-        doStream: async () => ({
-          stream: simulateReadableStream({
-            chunks: [
-              {
-                type: "tool-call",
-                toolCallId: "call-1",
-                toolName: "submitNoteResult",
-                input: '{"contentMarkdown":"*在线模式下*"}',
-              },
-              {
-                type: "finish",
-                finishReason: { unified: "tool-calls", raw: undefined },
-                logprobs: undefined,
-                usage: {
-                  inputTokens: { total: 12, noCache: 12, cacheRead: undefined, cacheWrite: undefined },
-                  outputTokens: { total: 8, text: 8, reasoning: undefined },
+        doStream: async (options) => {
+          request = options;
+          return {
+            stream: simulateReadableStream({
+              chunks: [
+                { type: "text-start", id: "text-1" },
+                {
+                  type: "text-delta",
+                  id: "text-1",
+                  delta: "*在线",
                 },
-              },
-            ],
-          }),
-        }),
+                { type: "text-delta", id: "text-1", delta: "模式下*" },
+                { type: "text-end", id: "text-1" },
+                {
+                  type: "finish",
+                  finishReason: { unified: "stop", raw: undefined },
+                  logprobs: undefined,
+                  usage: {
+                    inputTokens: { total: 12, noCache: 12, cacheRead: undefined, cacheWrite: undefined },
+                    outputTokens: { total: 8, text: 8, reasoning: undefined },
+                  },
+                },
+              ],
+            }),
+          };
+        },
       }),
       action: "improve-writing",
       title: "富文本测试",
@@ -90,13 +98,56 @@ describe("AI model service", () => {
 
     let submittedContent = "";
     for await (const part of result.stream) {
-      if (part.type === "tool-call" && part.toolName === "submitNoteResult") {
-        submittedContent = part.input.contentMarkdown;
-      }
+      if (part.type === "text-delta") submittedContent += part.text;
     }
 
     expect(submittedContent).toBe("*在线模式下*");
-    expect(await result.finishReason).toBe("tool-calls");
+    expect(request.tools).toBeUndefined();
+    expect(request.toolChoice).not.toMatchObject({ type: "tool" });
+    expect(await result.finishReason).toBe("stop");
+  });
+
+  test("omits tools and tool_choice from the OpenAI-compatible request body", async () => {
+    const requests = [];
+    const model = createOpenAICompatible({
+      name: "deepseek-compatible-test",
+      baseURL: "https://api.example.com/v1",
+      apiKey: "test-key",
+      fetch: async (_url, init) => {
+        requests.push(JSON.parse(String(init?.body)));
+        return new Response([
+          'data: {"id":"chunk-1","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","content":"兼容结果"},"finish_reason":null}]}',
+          'data: {"id":"chunk-2","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+          "data: [DONE]",
+          "",
+        ].join("\n\n"), {
+          headers: { "content-type": "text/event-stream" },
+        });
+      },
+    })("deepseek-v4-flash");
+    const result = streamAiGeneration({
+      model,
+      action: "summarize",
+      title: "测试",
+      contentMarkdown: "正文",
+    });
+
+    let output = "";
+    for await (const part of result.stream) {
+      if (part.type === "text-delta") output += part.text;
+    }
+
+    expect(output).toBe("兼容结果");
+    expect(requests).toHaveLength(1);
+    expect(requests[0].tools).toBeUndefined();
+    expect(requests[0].tool_choice).toBeUndefined();
+  });
+
+  test("removes only whole-response Markdown wrappers", () => {
+    expect(normalizeAiGenerationText("```markdown\n# 标题\n\n正文\n```"))
+      .toBe("# 标题\n\n正文");
+    expect(normalizeAiGenerationText("```ts\nconst ready = true;\n```"))
+      .toBe("```ts\nconst ready = true;\n```");
   });
 
   test("normalizes only trailing separators from a custom Base URL", () => {
