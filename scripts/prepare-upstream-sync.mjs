@@ -2,7 +2,11 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const protectedWorkflowPath = ".github/workflows";
+const protectedUpdaterPaths = [
+  ".github/workflows",
+  "scripts/prepare-upstream-sync.mjs",
+  "scripts/upstream-sync-plan.mjs",
+];
 
 function runGit(arguments_, { allowFailure = false, cwd = process.cwd() } = {}) {
   try {
@@ -35,40 +39,34 @@ function resolveCommit(cwd, revision) {
   return commit;
 }
 
-function restoreProtectedWorkflows(cwd, baseCommit) {
-  const workflowsExist = runGit(
-    ["cat-file", "-e", `${baseCommit}:${protectedWorkflowPath}`],
-    { allowFailure: true, cwd },
-  );
+function restoreProtectedUpdater(cwd, baseCommit) {
+  for (const path of protectedUpdaterPaths) {
+    const pathExists = runGit(["cat-file", "-e", `${baseCommit}:${path}`], {
+      allowFailure: true,
+      cwd,
+    });
 
-  if (workflowsExist.status === 0) {
-    runGit(
-      [
-        "restore",
-        `--source=${baseCommit}`,
-        "--staged",
-        "--worktree",
-        "--",
-        protectedWorkflowPath,
-      ],
-      { cwd },
-    );
-    return;
+    if (pathExists.status === 0) {
+      runGit(
+        ["restore", `--source=${baseCommit}`, "--staged", "--worktree", "--", path],
+        { cwd },
+      );
+    } else {
+      runGit(["rm", "-r", "-f", "--ignore-unmatch", "--", path], { cwd });
+    }
   }
-
-  runGit(["rm", "-r", "-f", "--ignore-unmatch", "--", protectedWorkflowPath], { cwd });
 }
 
-function requireNoWorkflowChanges(cwd, baseCommit) {
+function requireNoUpdaterChanges(cwd, baseCommit) {
   const result = runGit(
-    ["diff", "--cached", "--quiet", baseCommit, "--", protectedWorkflowPath],
+    ["diff", "--cached", "--quiet", baseCommit, "--", ...protectedUpdaterPaths],
     { allowFailure: true, cwd },
   );
   if (result.status === 1) {
-    throw new Error(`${protectedWorkflowPath} must remain unchanged in deployment forks`);
+    throw new Error("The downstream updater layer must remain unchanged in deployment forks");
   }
   if (result.status !== 0) {
-    throw new Error(`Could not verify the protected workflow tree (git diff exited ${result.status})`);
+    throw new Error(`Could not verify the protected updater layer (git diff exited ${result.status})`);
   }
 }
 
@@ -87,7 +85,7 @@ function requirePreparedChanges(cwd, baseCommit) {
 
 function prepareSnapshot(cwd, baseCommit, targetCommit) {
   runGit(["read-tree", "--reset", "-u", targetCommit], { cwd });
-  restoreProtectedWorkflows(cwd, baseCommit);
+  restoreProtectedUpdater(cwd, baseCommit);
 
   const managedTreeMatches = runGit(
     [
@@ -98,6 +96,8 @@ function prepareSnapshot(cwd, baseCommit, targetCommit) {
       "--",
       ".",
       ":(exclude).github/workflows/**",
+      ":(exclude)scripts/prepare-upstream-sync.mjs",
+      ":(exclude)scripts/upstream-sync-plan.mjs",
     ],
     { allowFailure: true, cwd },
   );
@@ -178,7 +178,7 @@ function prepareCustomizedMerge(cwd, baseCommit, targetCommit) {
       );
     }
 
-    restoreProtectedWorkflows(cwd, baseCommit);
+    restoreProtectedUpdater(cwd, baseCommit);
     const unresolved = runGit(["diff", "--name-only", "--diff-filter=U"], { cwd })
       .stdout.trim()
       .split("\n")
@@ -227,7 +227,7 @@ export function prepareUpstreamSync({
     prepareCustomizedMerge(cwd, baseCommit, targetCommit);
   }
 
-  requireNoWorkflowChanges(cwd, baseCommit);
+  requireNoUpdaterChanges(cwd, baseCommit);
   requirePreparedChanges(cwd, baseCommit);
 
   return { alignMode, baseCommit, targetCommit };
@@ -244,7 +244,7 @@ function runCli() {
     targetRevision: process.env.EDGE_SYNC_TARGET_COMMIT,
   });
   process.stdout.write(
-    `[ok] prepared ${result.alignMode} update ${result.baseCommit.slice(0, 12)} -> ${result.targetCommit.slice(0, 12)} without changing ${protectedWorkflowPath}\n`,
+    `[ok] prepared ${result.alignMode} update ${result.baseCommit.slice(0, 12)} -> ${result.targetCommit.slice(0, 12)} without changing the downstream updater layer\n`,
   );
 }
 

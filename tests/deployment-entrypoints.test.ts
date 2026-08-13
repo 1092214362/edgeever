@@ -317,7 +317,9 @@ describe("Cloudflare deployment entrypoints", () => {
     expect(workflow).not.toContain("git reset --hard");
     expect(workflow).toContain("scripts/prepare-upstream-sync.mjs");
     expect(workflow).toContain("':(exclude).github/workflows/**'");
-    expect(workflow).toContain("Refusing to publish an update that changes downstream");
+    expect(workflow).toContain("planner_path");
+    expect(workflow).toContain('if [ "${align_mode}" = "reset" ]');
+    expect(workflow).toContain("Refusing to publish an update that changes the downstream updater");
     expect(workflow).toContain("content_matches_target");
     expect(workflow).toContain("already_on_target");
     expect(workflow).toContain("fork_mode=mirror");
@@ -435,6 +437,16 @@ describe("Cloudflare deployment entrypoints", () => {
         ".github/workflows/sync-edgeever-upstream.yml",
         "name: downstream base\n",
       );
+      writeFixtureFile(
+        workingDirectory,
+        "scripts/prepare-upstream-sync.mjs",
+        "// downstream prepare helper\n",
+      );
+      writeFixtureFile(
+        workingDirectory,
+        "scripts/upstream-sync-plan.mjs",
+        "// downstream planner\n",
+      );
       runFixtureGit(workingDirectory, "add", ".");
       runFixtureGit(workingDirectory, "commit", "-m", "base");
 
@@ -450,6 +462,16 @@ describe("Cloudflare deployment entrypoints", () => {
         workingDirectory,
         ".github/workflows/windows-test-signing.yml",
         "name: official only\n",
+      );
+      writeFixtureFile(
+        workingDirectory,
+        "scripts/prepare-upstream-sync.mjs",
+        "// upstream prepare helper\n",
+      );
+      writeFixtureFile(
+        workingDirectory,
+        "scripts/upstream-sync-plan.mjs",
+        "// upstream planner\n",
       );
       rmSync(resolve(workingDirectory, "removed.txt"));
       runFixtureGit(workingDirectory, "add", "-A");
@@ -478,6 +500,14 @@ describe("Cloudflare deployment entrypoints", () => {
         workingDirectory,
         ".github/workflows/sync-edgeever-upstream.yml",
       ), "utf8")).toBe("name: downstream updater\n");
+      expect(readFileSync(resolve(
+        workingDirectory,
+        "scripts/prepare-upstream-sync.mjs",
+      ), "utf8")).toBe("// downstream prepare helper\n");
+      expect(readFileSync(resolve(
+        workingDirectory,
+        "scripts/upstream-sync-plan.mjs",
+      ), "utf8")).toBe("// downstream planner\n");
       expect(readdirSync(resolve(workingDirectory, ".github/workflows"))).toEqual([
         "sync-edgeever-upstream.yml",
       ]);
@@ -488,6 +518,8 @@ describe("Cloudflare deployment entrypoints", () => {
         "--quiet",
         "--",
         ".github/workflows",
+        "scripts/prepare-upstream-sync.mjs",
+        "scripts/upstream-sync-plan.mjs",
       )).toBe(0);
 
       runFixtureGit(workingDirectory, "commit", "-m", "sync upstream product");
@@ -504,6 +536,8 @@ describe("Cloudflare deployment entrypoints", () => {
         "--",
         ".",
         ":(exclude).github/workflows/**",
+        ":(exclude)scripts/prepare-upstream-sync.mjs",
+        ":(exclude)scripts/upstream-sync-plan.mjs",
       )).toBe(0);
       expect(fixtureGitStatus(
         workingDirectory,
@@ -513,6 +547,8 @@ describe("Cloudflare deployment entrypoints", () => {
         "HEAD",
         "--",
         ".github/workflows",
+        "scripts/prepare-upstream-sync.mjs",
+        "scripts/upstream-sync-plan.mjs",
       )).toBe(0);
     } finally {
       rmSync(workingDirectory, { force: true, recursive: true });

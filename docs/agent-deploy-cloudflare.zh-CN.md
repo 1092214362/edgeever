@@ -14,7 +14,7 @@
 2. **启用工作流**
    - 在 Fork 仓库的 **Actions** 标签页中，启用 **Update deployed EdgeEver** 自动更新工作流（公共 Fork 上定时任务默认关闭，必须手动启用）。
    - 普通 Fork 默认作为部署镜像，无需配置任何更新变量：工作流会把所选上游 Release 的产品代码快照应用到 `main`，再触发 Cloudflare。
-   - 更新器会完整保留 Fork 自己的 `.github/workflows/**` 目录。官方打包、签名、测试与 Release 工作流继续通过 `tianma-if/edgeever` 仓库门禁限制执行，也不会被下游更新器改写。
+   - 更新器会把 Fork 自己的完整 `.github/workflows/**` 目录及两个更新辅助脚本作为稳定的本地引导层保留。官方打包、签名、测试与 Release 工作流继续通过 `tianma-if/edgeever` 仓库门禁限制执行，也不会被下游产品更新改写。
    - 只有明确维护了应用代码修改的 Fork，才应创建 Actions 仓库变量 `EDGE_EVER_PRESERVE_FORK_CHANGES=true`。启用后改为 merge，并由仓库所有者处理未来冲突；普通部署无需设置。
 
 3. **Cloudflare 项目导入**

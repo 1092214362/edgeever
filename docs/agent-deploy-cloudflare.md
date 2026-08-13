@@ -14,7 +14,7 @@ This document defines the standard operating specifications and conventions for 
 2. **Enable Workflow**
    - In the **Actions** tab of the Forked repository, enable the **Update deployed EdgeEver** automatic update workflow (required on public forks: scheduled workflows are disabled by default).
    - An ordinary Fork is a deployment mirror by default. No update variable is required: the workflow applies the selected upstream Release's product snapshot to `main` before triggering Cloudflare.
-   - The updater preserves the Fork's complete `.github/workflows/**` directory. Official packaging, signing, testing, and Release workflows remain guarded to `tianma-if/edgeever` and are never rewritten by the downstream updater.
+   - The updater preserves the Fork's complete `.github/workflows/**` directory and its two updater helper scripts as a stable local bootstrap layer. Official packaging, signing, testing, and Release workflows remain guarded to `tianma-if/edgeever` and are never rewritten by downstream product updates.
    - Only a Fork that intentionally maintains application-code changes should create the Actions repository variable `EDGE_EVER_PRESERVE_FORK_CHANGES=true`. This opts into merges and requires the owner to resolve future conflicts; it is not needed for normal deployments.
 
 3. **Cloudflare Project Import**
