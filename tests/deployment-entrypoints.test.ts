@@ -17,7 +17,9 @@ import {
 import { decideUpstreamSync } from "../scripts/upstream-sync-plan.mjs";
 
 const repositoryRoot = resolve(import.meta.dir, "..");
-const readRepositoryFile = (path: string) => readFileSync(resolve(repositoryRoot, path), "utf8");
+const normalizeLineEndings = (value: string) => value.replace(/\r\n/g, "\n");
+const readRepositoryFile = (path: string) =>
+  normalizeLineEndings(readFileSync(resolve(repositoryRoot, path), "utf8"));
 const extractTextPrompt = (document: string, sectionHeading: string) => {
   const sectionStart = document.indexOf(sectionHeading);
   if (sectionStart === -1) throw new Error(`Missing deployment section: ${sectionHeading}`);
@@ -53,6 +55,7 @@ const initializeSyncFixture = (cwd: string) => {
   runFixtureGit(cwd, "init", "-b", "main");
   runFixtureGit(cwd, "config", "user.name", "EdgeEver Test");
   runFixtureGit(cwd, "config", "user.email", "edgeever-test@example.com");
+  runFixtureGit(cwd, "config", "core.autocrlf", "false");
 };
 const prepareFixtureUpstreamSync = (
   cwd: string,
