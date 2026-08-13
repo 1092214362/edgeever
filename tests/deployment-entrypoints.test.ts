@@ -33,6 +33,51 @@ const extractSection = (document: string, sectionHeading: string) => {
 };
 const normalizeMarkdownCopy = (value: string) =>
   value.replace(/[`*]/g, "").replace(/\s+/g, " ").trim();
+const runFixtureGit = (cwd: string, ...args: string[]) => {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `git ${args.join(" ")} failed:\n${result.stdout.trim()}\n${result.stderr.trim()}`,
+    );
+  }
+};
+const fixtureGitStatus = (cwd: string, ...args: string[]) =>
+  spawnSync("git", args, { cwd, encoding: "utf8" }).status;
+const writeFixtureFile = (cwd: string, path: string, content: string) => {
+  const absolutePath = resolve(cwd, path);
+  mkdirSync(resolve(absolutePath, ".."), { recursive: true });
+  writeFileSync(absolutePath, content);
+};
+const initializeSyncFixture = (cwd: string) => {
+  runFixtureGit(cwd, "init", "-b", "main");
+  runFixtureGit(cwd, "config", "user.name", "EdgeEver Test");
+  runFixtureGit(cwd, "config", "user.email", "edgeever-test@example.com");
+};
+const prepareFixtureUpstreamSync = (
+  cwd: string,
+  alignMode: "merge" | "snapshot",
+  targetRevision: string,
+) => {
+  const result = spawnSync(
+    "node",
+    [resolve(repositoryRoot, "scripts/prepare-upstream-sync.mjs"), "prepare"],
+    {
+      cwd,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        EDGE_SYNC_ALIGN_MODE: alignMode,
+        EDGE_SYNC_BASE_COMMIT: "HEAD",
+        EDGE_SYNC_TARGET_COMMIT: targetRevision,
+      },
+    },
+  );
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`prepare-upstream-sync failed:\n${result.stdout}\n${result.stderr}`);
+  }
+};
 
 describe("Cloudflare deployment entrypoints", () => {
   test("all entrypoints converge on the common deployment pipeline", () => {
@@ -268,10 +313,11 @@ describe("Cloudflare deployment entrypoints", () => {
     expect(workflow).toContain(scripts.test);
     expect(workflow.match(/if: steps\.upstream\.outputs\.align_mode == 'merge'/g)).toHaveLength(2);
     expect(workflow).toContain("git push origin HEAD:main");
-    expect(workflow).toContain("git push --force-with-lease origin HEAD:main");
-    expect(workflow).toContain('if [ "${REASON}" = "behind_target" ]');
-    expect(workflow).toContain("mode=fast_forward");
-    expect(workflow).toContain("git reset --hard");
+    expect(workflow).not.toContain("git push --force-with-lease origin HEAD:main");
+    expect(workflow).not.toContain("git reset --hard");
+    expect(workflow).toContain("scripts/prepare-upstream-sync.mjs");
+    expect(workflow).toContain("':(exclude).github/workflows/**'");
+    expect(workflow).toContain("Refusing to publish an update that changes downstream");
     expect(workflow).toContain("content_matches_target");
     expect(workflow).toContain("already_on_target");
     expect(workflow).toContain("fork_mode=mirror");
@@ -316,14 +362,14 @@ describe("Cloudflare deployment entrypoints", () => {
         targetIsAncestorOfHead: false,
       }),
     ).toEqual({
-      alignMode: "reset",
+      alignMode: "snapshot",
       reason: "deploy_mirror_reset",
       republishOnly: false,
       updateRequired: true,
     });
   });
 
-  test("resets a deploy mirror that moved ahead of the stable release", () => {
+  test("snapshots a deploy mirror that moved ahead of the stable release", () => {
     expect(
       decideUpstreamSync({
         contentMatchesTarget: false,
@@ -334,7 +380,7 @@ describe("Cloudflare deployment entrypoints", () => {
         targetIsAncestorOfHead: true,
       }),
     ).toEqual({
-      alignMode: "reset",
+      alignMode: "snapshot",
       reason: "deploy_mirror_ahead",
       republishOnly: false,
       updateRequired: true,
@@ -375,6 +421,212 @@ describe("Cloudflare deployment entrypoints", () => {
       republishOnly: false,
       updateRequired: true,
     });
+  });
+
+  test("prepares a linear product snapshot without changing downstream workflows", () => {
+    const workingDirectory = mkdtempSync(resolve(tmpdir(), "edgeever-upstream-snapshot-"));
+
+    try {
+      initializeSyncFixture(workingDirectory);
+      writeFixtureFile(workingDirectory, "app.txt", "base\n");
+      writeFixtureFile(workingDirectory, "removed.txt", "remove me\n");
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+        "name: downstream base\n",
+      );
+      runFixtureGit(workingDirectory, "add", ".");
+      runFixtureGit(workingDirectory, "commit", "-m", "base");
+
+      runFixtureGit(workingDirectory, "checkout", "-b", "upstream");
+      writeFixtureFile(workingDirectory, "app.txt", "upstream target\n");
+      writeFixtureFile(workingDirectory, "added.txt", "added upstream\n");
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+        "name: upstream changed\n",
+      );
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/windows-test-signing.yml",
+        "name: official only\n",
+      );
+      rmSync(resolve(workingDirectory, "removed.txt"));
+      runFixtureGit(workingDirectory, "add", "-A");
+      runFixtureGit(workingDirectory, "commit", "-m", "upstream target");
+
+      runFixtureGit(workingDirectory, "checkout", "-b", "downstream", "main");
+      writeFixtureFile(workingDirectory, "app.txt", "stale downstream product\n");
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+        "name: downstream updater\n",
+      );
+      runFixtureGit(workingDirectory, "add", ".");
+      runFixtureGit(workingDirectory, "commit", "-m", "downstream state");
+      runFixtureGit(workingDirectory, "tag", "downstream-base");
+
+      prepareFixtureUpstreamSync(workingDirectory, "snapshot", "upstream");
+
+      expect(readFileSync(resolve(workingDirectory, "app.txt"), "utf8")).toBe(
+        "upstream target\n",
+      );
+      expect(readFileSync(resolve(workingDirectory, "added.txt"), "utf8")).toBe(
+        "added upstream\n",
+      );
+      expect(readFileSync(resolve(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+      ), "utf8")).toBe("name: downstream updater\n");
+      expect(readdirSync(resolve(workingDirectory, ".github/workflows"))).toEqual([
+        "sync-edgeever-upstream.yml",
+      ]);
+      expect(fixtureGitStatus(
+        workingDirectory,
+        "diff",
+        "--cached",
+        "--quiet",
+        "--",
+        ".github/workflows",
+      )).toBe(0);
+
+      runFixtureGit(workingDirectory, "commit", "-m", "sync upstream product");
+      expect(fixtureGitStatus(workingDirectory, "diff", "--quiet", "downstream-base", "HEAD^"))
+        .toBe(0);
+      expect(fixtureGitStatus(workingDirectory, "rev-parse", "--verify", "HEAD^2"))
+        .not.toBe(0);
+      expect(fixtureGitStatus(
+        workingDirectory,
+        "diff",
+        "--quiet",
+        "upstream",
+        "HEAD",
+        "--",
+        ".",
+        ":(exclude).github/workflows/**",
+      )).toBe(0);
+      expect(fixtureGitStatus(
+        workingDirectory,
+        "diff",
+        "--quiet",
+        "downstream-base",
+        "HEAD",
+        "--",
+        ".github/workflows",
+      )).toBe(0);
+    } finally {
+      rmSync(workingDirectory, { force: true, recursive: true });
+    }
+  });
+
+  test("flattens customized merges and preserves their downstream workflows", () => {
+    const workingDirectory = mkdtempSync(resolve(tmpdir(), "edgeever-upstream-merge-"));
+
+    try {
+      initializeSyncFixture(workingDirectory);
+      writeFixtureFile(workingDirectory, "upstream.txt", "base\n");
+      writeFixtureFile(workingDirectory, "custom.txt", "base\n");
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+        "name: base\n",
+      );
+      runFixtureGit(workingDirectory, "add", ".");
+      runFixtureGit(workingDirectory, "commit", "-m", "base");
+
+      runFixtureGit(workingDirectory, "checkout", "-b", "upstream");
+      writeFixtureFile(workingDirectory, "upstream.txt", "upstream target\n");
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+        "name: upstream workflow\n",
+      );
+      runFixtureGit(workingDirectory, "add", ".");
+      runFixtureGit(workingDirectory, "commit", "-m", "upstream target");
+      runFixtureGit(workingDirectory, "tag", "upstream-v1");
+
+      runFixtureGit(workingDirectory, "checkout", "-b", "downstream", "main");
+      writeFixtureFile(workingDirectory, "custom.txt", "downstream customization\n");
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+        "name: downstream updater\n",
+      );
+      runFixtureGit(workingDirectory, "add", ".");
+      runFixtureGit(workingDirectory, "commit", "-m", "customized downstream");
+      runFixtureGit(workingDirectory, "tag", "downstream-base");
+
+      prepareFixtureUpstreamSync(workingDirectory, "merge", "upstream-v1");
+
+      expect(readFileSync(resolve(workingDirectory, "upstream.txt"), "utf8")).toBe(
+        "upstream target\n",
+      );
+      expect(readFileSync(resolve(workingDirectory, "custom.txt"), "utf8")).toBe(
+        "downstream customization\n",
+      );
+      expect(readFileSync(resolve(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+      ), "utf8")).toBe("name: downstream updater\n");
+
+      runFixtureGit(
+        workingDirectory,
+        "commit",
+        "-m",
+        "sync customized fork",
+        "-m",
+        "EdgeEver-Upstream-Commit: upstream-v1",
+      );
+      expect(fixtureGitStatus(workingDirectory, "diff", "--quiet", "downstream-base", "HEAD^"))
+        .toBe(0);
+      expect(fixtureGitStatus(workingDirectory, "rev-parse", "--verify", "HEAD^2"))
+        .not.toBe(0);
+      expect(fixtureGitStatus(
+        workingDirectory,
+        "diff",
+        "--quiet",
+        "downstream-base",
+        "HEAD",
+        "--",
+        ".github/workflows",
+      )).toBe(0);
+
+      runFixtureGit(workingDirectory, "checkout", "upstream");
+      writeFixtureFile(workingDirectory, "upstream.txt", "upstream target v2\n");
+      writeFixtureFile(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+        "name: upstream workflow v2\n",
+      );
+      runFixtureGit(workingDirectory, "add", ".");
+      runFixtureGit(workingDirectory, "commit", "-m", "upstream target v2");
+      runFixtureGit(workingDirectory, "tag", "upstream-v2");
+      runFixtureGit(workingDirectory, "checkout", "downstream");
+      prepareFixtureUpstreamSync(workingDirectory, "merge", "upstream-v2");
+
+      expect(readFileSync(resolve(workingDirectory, "upstream.txt"), "utf8")).toBe(
+        "upstream target v2\n",
+      );
+      expect(readFileSync(resolve(workingDirectory, "custom.txt"), "utf8")).toBe(
+        "downstream customization\n",
+      );
+      expect(readFileSync(resolve(
+        workingDirectory,
+        ".github/workflows/sync-edgeever-upstream.yml",
+      ), "utf8")).toBe("name: downstream updater\n");
+      runFixtureGit(
+        workingDirectory,
+        "commit",
+        "-m",
+        "sync customized fork v2",
+        "-m",
+        "EdgeEver-Upstream-Commit: upstream-v2",
+      );
+      expect(fixtureGitStatus(workingDirectory, "rev-parse", "--verify", "HEAD^2"))
+        .not.toBe(0);
+    } finally {
+      rmSync(workingDirectory, { force: true, recursive: true });
+    }
   });
 
   test("public deployment documentation exposes only Fork and Agent paths", () => {

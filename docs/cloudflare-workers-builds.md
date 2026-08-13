@@ -18,10 +18,12 @@ Configure `EDGE_EVER_AUTH_PASSWORD` under the Worker's **Settings -> Variables a
 - **Update deployed EdgeEver** keeps a deployment Fork as an upstream **deploy mirror**:
   - Default channel `stable` tracks the latest formal Release tag.
   - Set the GitHub Repository Variable `EDGE_EVER_UPDATE_CHANNEL=edge` to follow upstream `main`.
-  - Read-only forks (no app code changes) **reset** onto the target when behind; customized forks **merge** and fail closed on conflicts.
+  - Read-only forks (no app code changes) apply the target's product snapshot in a new linear commit; customized forks merge product changes and fail closed on conflicts.
+  - The complete downstream `.github/workflows/**` directory is preserved. Official packaging, signing, testing, and Release workflows are not part of automatic product updates, so `GITHUB_TOKEN` never needs permission to rewrite Actions workflows.
   - Every run writes a job **Summary** with channel, target version, decision reason, and whether a push happened. A green run that says *Already on upstream target* is success, not a silent failure.
   - Prefer this workflow over GitHub **Sync fork**. Sync fork follows upstream `main` history and can make the next stable run a deliberate no-op.
 - Optional: repository secret `EDGE_EVER_CLOUDFLARE_DEPLOY_HOOK_URL` triggers a Cloudflare Deploy Hook after a successful push (useful when the Git integration misses a push).
 - Optional: re-run the workflow with **force_redeploy** to push an empty commit when Git is already current but Cloudflare needs another build.
 - Build failure: inspect the Worker **Deployments** log and confirm the Deployment commit SHA matches Fork `main`.
 - Scheduled update never runs: on a public Fork, enable **Update deployed EdgeEver** under **Actions** (scheduled workflows are disabled by default on forks, and may pause after long inactivity).
+- Update push is rejected with `without workflows permission`: the Fork still has an older updater. Use GitHub **Sync fork** once with the repository owner's permission, then re-run **Update deployed EdgeEver**. Routine product updates do not require **Sync fork** after that bootstrap.

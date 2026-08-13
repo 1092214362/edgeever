@@ -107,5 +107,6 @@ You can also pick `stable` / `edge` when manually running the workflow.
   2. Run it once with **Run workflow**. Open the job **Summary**: it states the upstream target version and whether the fork was updated, already aligned, or failed.
   3. A green run with *Already on upstream target* means Git already matches that channel — not a broken skip. If the live site is still old, check Cloudflare **Deployments** commit SHA, or re-run with **force_redeploy**.
   4. Prefer this workflow over GitHub **Sync fork** for day-to-day upgrades.
+  5. If an old updater fails with `without workflows permission`, use **Sync fork** once as the repository owner, then re-run **Update deployed EdgeEver**. The current updater preserves `.github/workflows/**`, so later product updates do not hit this permission boundary.
 - **Push succeeded but site unchanged**: Confirm Workers Builds ran for the new `main` SHA. Optionally add repository secret `EDGE_EVER_CLOUDFLARE_DEPLOY_HOOK_URL` so the workflow can call a Deploy Hook after publish.
 - **Reset or Manual Recovery**: See the [Cloudflare Manual Deployment Guide](manual-deploy.md).

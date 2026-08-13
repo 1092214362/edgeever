@@ -107,5 +107,6 @@ EDGE_EVER_UPDATE_CHANNEL=edge
   2. 手动 **Run workflow** 一次，打开 Job **Summary**：会写明上游目标版本，以及本次是「已更新」「已对齐」还是失败。
   3. 若绿色成功且 Summary 为 *Already on upstream target* / 已对齐，表示 Git 已是该通道目标版本，不是静默故障。若网站仍旧，请对照 Cloudflare **Deployments** 的 commit SHA，或勾选 **force_redeploy** 再跑一次。
   4. 日常升级请优先用本工作流，而不是 GitHub **Sync fork**。
+  5. 若旧版更新器报错 `without workflows permission`，请使用仓库所有者身份执行一次 **Sync fork**，然后重新运行 **Update deployed EdgeEver**。新版更新器会保留 `.github/workflows/**`，后续产品更新不会再触发这项权限限制。
 - **Git 已 push 但网站没变**：确认 Workers Builds 是否针对新的 `main` SHA 构建。可选：添加仓库 Secret `EDGE_EVER_CLOUDFLARE_DEPLOY_HOOK_URL`，让工作流在 publish 后调用 Deploy Hook。
 - **需要重置或手动恢复部署**：请参阅 [手动部署指南](manual-deploy.zh-CN.md)。
