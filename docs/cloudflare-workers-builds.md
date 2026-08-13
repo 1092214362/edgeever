@@ -10,6 +10,8 @@ Authorization:
 2. If the Agent integration needs a Cloudflare API token, use a User API Token limited to the target account.
 3. Configure the deployment API token in Cloudflare under **Worker -> Settings -> Builds -> API token**.
 
+Configure `EDGE_EVER_AUTH_PASSWORD` under the Worker's **Settings -> Variables and Secrets** as a runtime Secret; do not copy the password into Builds variables. `deploy:cloudflare-builds` reuses that Secret and verifies its presence after deployment.
+
 ## Updates and troubleshooting
 
 - A push to `main` builds, applies D1 migrations, deploys, and verifies EdgeEver.

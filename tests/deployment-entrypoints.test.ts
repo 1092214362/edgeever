@@ -48,7 +48,9 @@ describe("Cloudflare deployment entrypoints", () => {
     expect(scripts["deploy:ci"]).toBe(
       "bun run db:migrate:remote && bun run deploy:worker && bun run deploy:verify",
     );
-    expect(scripts["deploy:cloudflare-builds"]).toBe("bun run deploy:ci");
+    expect(scripts["deploy:cloudflare-builds"]).toBe(
+      "EDGE_EVER_USE_EXISTING_AUTH_SECRET=true bun run deploy:ci",
+    );
   });
 
   test("online deployment declares the required authentication Secret", () => {
@@ -57,6 +59,11 @@ describe("Cloudflare deployment entrypoints", () => {
 
     const packageJson = JSON.parse(readRepositoryFile("package.json"));
     expect(packageJson.cloudflare.bindings.EDGE_EVER_AUTH_PASSWORD.description).toBeTruthy();
+
+    const englishGuide = readRepositoryFile("docs/deploy-cloudflare-button.md");
+    const chineseGuide = readRepositoryFile("docs/deploy-cloudflare-button.zh-CN.md");
+    expect(englishGuide).toContain("Worker runtime Secret, not a Workers Builds variable");
+    expect(chineseGuide).toContain("Worker 运行时 Secret，不是 Workers Builds 构建变量");
   });
 
   test("online deployment resolves the D1 id without editing the repository config", () => {

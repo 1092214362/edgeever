@@ -10,6 +10,8 @@
 2. 如果 Agent 集成需要 Cloudflare API Token，使用限制到目标账号的 User API Token。
 3. 部署 API Token 在 Cloudflare **Worker -> Settings -> Builds -> API token** 中配置。
 
+`EDGE_EVER_AUTH_PASSWORD` 应配置在 Worker 的 **Settings -> Variables and Secrets** 中，作为运行时 Secret；不要把密码复制到 Builds 的构建变量。`deploy:cloudflare-builds` 会复用该 Secret，并在部署后验证它是否存在。
+
 ## 更新与排错
 
 - `main` 推送会自动构建、执行 D1 migration、部署并验证。

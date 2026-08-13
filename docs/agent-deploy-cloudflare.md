@@ -25,6 +25,7 @@ This document defines the standard operating specifications and conventions for 
    - **R2 Bucket Binding**: Binding name `RESOURCES`, associated with a globally unique R2 Bucket.
    - **Admin username**: Configure `EDGE_EVER_AUTH_USERNAME`; it defaults to `admin` and can be replaced with a custom username.
    - **Worker Secret**: Add secret `EDGE_EVER_AUTH_PASSWORD` for initial admin password.
+   - Keep this password only as a Worker runtime Secret; do not copy it into Workers Builds variables. The standard deploy entrypoint reuses and verifies the existing Secret.
 
 5. **Configure Workers Builds Commands**
    - In the Cloudflare project build settings, set the standard commands:

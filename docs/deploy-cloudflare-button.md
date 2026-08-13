@@ -54,6 +54,8 @@ Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/):
 
 > `EDGE_EVER_AUTH_USERNAME` is prefilled with `admin`. Most users can keep this value. Advanced users can replace it with a custom administrator username; the configured username is required at login.
 
+> `EDGE_EVER_AUTH_PASSWORD` is a Worker runtime Secret, not a Workers Builds variable. The standard deploy command reuses and verifies this Secret; do not duplicate the password in build variables.
+
 ---
 
 ### Step 4: Set Build Commands & Start Build

@@ -82,7 +82,7 @@
     "deploy:manual": "export EDGE_EVER_DEPLOYMENT_TRIGGER=manual EDGE_EVER_DEPLOYMENT_METHOD=local_cli && bun run deploy:doctor && bun run build:cloudflare && bun run deploy:ci",
     "deploy:ci": "bun run db:migrate:remote && bun run deploy:worker && bun run deploy:verify",
     "deploy:worker": "bun scripts/run-wrangler.mjs deploy",
-    "deploy:cloudflare-builds": "bun run deploy:ci",
+    "deploy:cloudflare-builds": "EDGE_EVER_USE_EXISTING_AUTH_SECRET=true bun run deploy:ci",
     "deploy:verify": "bun scripts/verify-deployment.mjs",
     "demo:sync": "bun scripts/sync-demo.mjs",
     "deploy:builds:setup": "bun scripts/cloudflare-workers-builds.mjs setup",

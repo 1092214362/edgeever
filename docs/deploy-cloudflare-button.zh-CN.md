@@ -54,6 +54,8 @@
 
 > `EDGE_EVER_AUTH_USERNAME` 默认预填为 `admin`。普通用户可以直接使用这个值；如果希望使用其他管理员用户名，可在这里修改。请记住部署时填写的用户名，登录时需要同时输入用户名和密码。
 
+> `EDGE_EVER_AUTH_PASSWORD` 是 Worker 运行时 Secret，不是 Workers Builds 构建变量。标准部署命令会复用并验证这个 Secret；无需、也不应把密码重复填写到构建变量中。
+
 ---
 
 ### 步骤 4：设置构建命令并启动构建
