@@ -39,7 +39,7 @@ The public demo resets every day at 3:00 AM (China Standard Time) and restores s
 - **Open Data, No Vendor Lock-in**: Built on standard SQLite with complete REST API, MCP, and CLI access. Your knowledge is stored transparently and accessible anytime without being locked to a single app.
 - **Lossless ZIP Backup & Portability**: Export your complete library as a clean archive containing Markdown, Front Matter, nested folders, relative attachment links, and version histories for instant restoration anywhere.
 - **Native AI Agent Synergy**: Deep integration with Model Context Protocol (MCP) allows AI tools like Claude Code, Codex, and Antigravity to read, organize, and summarize your notes, or sync seamlessly with Notion and Feishu Bitable.
-- **Bring Your Own AI Models**: Add multiple OpenAI-compatible, Anthropic, or Gemini services with your own Base URLs and API keys—including aggregators such as OpenRouter—then attach multiple models to each service and choose the default model for note AI.
+- **Bring Your Own AI Models**: Add multiple OpenAI-compatible model services, third-party API relays, and model aggregation platforms.
 - **Unlimited Multi-Device Sync**: No commercial device caps or paywalls. Enjoy seamless synchronization across PC, tablet, and mobile via web, PWA, or browser.
 - **Classic Three-Pane Layout & Focus Mode**: Clean navigation featuring notebook trees, note lists, and an expansive editor, with a desktop focus mode to eliminate distractions.
 - **Unlimited Nested Notebooks**: Organize your knowledge with arbitrary folder depth.
@@ -205,7 +205,7 @@ With MCP, EdgeEver can also connect to tools such as Notion databases and Feishu
 
 ## Bring Your Own AI Models
 
-Open **Profile → AI Integrations** to add one or more OpenAI-compatible, Anthropic Messages, or Google Gemini services with your own Base URLs and API keys. Each service can contain multiple models: discover them from the provider's model-list endpoint or enter a model ID manually. This supports aggregators such as OpenRouter, where one Base URL exposes models from several vendors. A service-level switch temporarily makes all of its models unavailable, while the workspace default selects the model used for note AI.
+Open **Profile → AI Integrations** to add one or more OpenAI-compatible, Anthropic Messages, or Google Gemini services with your own Base URLs and API keys. Third-party API relays are also supported. Each service can contain multiple models: discover them from the provider's model-list endpoint or enter a model ID manually. A service-level switch temporarily makes all of its models unavailable, while the workspace default selects the model used for note AI.
 
 Note AI supports summarizing, extracting key points and tasks, rewriting, proofreading, translating, shortening, expanding, simplifying, changing tone, continuing a note, and custom instructions across Web, Android, and iOS. Editors on all three platforms can also run AI directly on selected text and replace only that selection. Results stream into a reviewable draft that you can retry, refine with a follow-up instruction, append, or explicitly accept as a replacement. Translation uses a language picker whose default follows the interface language: Chinese defaults to English, while English defaults to Simplified Chinese.
 
