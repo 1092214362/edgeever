@@ -675,14 +675,11 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       const next = resolveImageSources(parsed, props.baseUrl);
       // Do not focus while replacing content. Callers decide when the editor should
       // take focus and place the caret via focusEnd().
-      // This command synchronizes native-owned state (draft restore/template/new
-      // composer reset). Callers already own persistence for that state, so an
-      // emitted update would create a delayed stale write during screen teardown.
-      editor.commands.setContent(next, { emitUpdate: false });
+      editor.commands.setContent(next, { emitUpdate: !isViewer });
     } catch {
       // Ignore malformed payloads from the native bridge.
     }
-  }, [editor, props.baseUrl]);
+  }, [editor, isViewer, props.baseUrl]);
 
   const search = useCallback((query: DOMValue, requestedIndex: DOMValue) => {
     const normalizedQuery = typeof query === "string" ? query : "";
