@@ -201,6 +201,8 @@ Repository file: [docs/openapi.json](docs/openapi.json).
 
 Create an API token in **Profile** -> **MCP settings**, then give the token or full MCP configuration to your AI Agent. Once connected, the Agent can securely read, organize, and import notes within your account permissions. Repeating the same import will not create duplicate notes.
 
+The Remote MCP endpoint supports the stateless `2026-07-28` protocol while retaining the handshake-based 2025 revisions for existing clients.
+
 With MCP, EdgeEver can also connect to tools such as Notion databases and Feishu Bitable, turning scattered ideas, information, and materials from everyday notes into structured data that is easier to organize, search, and manage.
 
 ## Bring Your Own AI Models
