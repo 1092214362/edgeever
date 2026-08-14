@@ -65,7 +65,7 @@ EdgeEver 采用纯 Serverless 架构，完全运行在 Cloudflare 免费配额�
 
 ### 方案一：AI Agent 一键部署（推荐）
 
-将下方提示词直接复制发送给已配置 GitHub、Cloudflare MCP/插件或其他可用集成的 AI Agent（如 Codex, Claude, Cursor, Antigravity, OpenClaw, Hermes Agent 等）：
+将下方提示词直接复制发送给 AI Agent（如 Codex、Claude、Cursor、workbuddy、Antigravity、OpenClaw、Hermes Agent 等）。执行过程中，如需访问 GitHub 或 Cloudflare，请确认权限范围并按提示完成授权。
 
 ```text
 请在线完成 EdgeEver 部署：

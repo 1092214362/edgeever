@@ -697,6 +697,14 @@ describe("Cloudflare deployment entrypoints", () => {
     expect(siteDeploymentComponent).toContain('deploymentPrompts["zh-CN"]');
     expect(siteDeploymentComponent).toContain('manualDeploymentCopy["en-US"]');
     expect(siteDeploymentComponent).toContain('manualDeploymentCopy["zh-CN"]');
+    expect(siteDeploymentComponent).toContain("UnionPay");
+    expect(siteDeploymentComponent).toContain("银联（UnionPay）");
+    expect(siteDeploymentComponent).toContain("free storage allowance");
+    expect(siteDeploymentComponent).toContain("免费存储额度");
+    expect(siteDeploymentComponent).not.toContain("dual-currency credit card");
+    expect(siteDeploymentComponent).not.toContain("双币信用卡");
+    expect(siteDeploymentComponent).not.toContain("China Merchants Bank");
+    expect(siteDeploymentComponent).not.toContain("招商和浦发");
 
     for (const [locale, readme, heading, separator] of [
       ["en-US", englishReadme, "### Option B: Manual Online Deployment", ": "],

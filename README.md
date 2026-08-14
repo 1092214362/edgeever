@@ -65,7 +65,7 @@ You can deploy online using either of the following two options:
 
 ### Option A: Deploy with an AI Agent (Recommended)
 
-Copy this prompt into an AI Agent configured with GitHub and Cloudflare MCP servers, plugins, or other integrations (such as Codex, Claude, Cursor, Antigravity, OpenClaw, Hermes Agent, etc.):
+Copy the prompt below directly into an AI Agent (such as Codex, Claude, Cursor, workbuddy, Antigravity, OpenClaw, Hermes Agent, etc.). During execution, if access to GitHub or Cloudflare is required, review the requested permissions and follow the prompts to authorize access.
 
 ```text
 Deploy EdgeEver online:
