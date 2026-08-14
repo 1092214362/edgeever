@@ -91,7 +91,6 @@ import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
 import { EDITOR_CONTENT_MAX_WIDTH, EDITOR_CONTENT_MAX_WIDTH_COLLAPSED } from "@/lib/workspace-ui";
 import {
   countMemoCharacters,
-  createEdgeEverMathematics,
   docToMarkdown,
   MEMO_CONTENT_STYLE,
   markdownToDoc,
@@ -106,6 +105,7 @@ import {
   parseMemoLinkHref,
 } from "@edgeever/shared";
 import { DEFAULT_IMAGE_WIDTH_PERCENT } from "@edgeever/shared/image-display";
+import { createEdgeEverMathematics } from "@edgeever/shared/mathematics";
 import { codeBlockLowlight, EdgeEverCodeBlock } from "@/lib/code-block";
 import { compressImageForUpload } from "@/lib/image-compression";
 import { localDb, type MemoUpdateSyncPayload } from "@/lib/local-db";

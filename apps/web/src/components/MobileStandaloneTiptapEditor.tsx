@@ -8,7 +8,8 @@ import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { mergeAttributes } from "@tiptap/core";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
-import { createEdgeEverMathematics, createExcerpt, docToMarkdown, docToText, emptyDoc, getImageReferrerPolicy, MergeDivider, type MemoDetail, type MemoEditSession, type Notebook, type TiptapDoc } from "@edgeever/shared";
+import { createExcerpt, docToMarkdown, docToText, emptyDoc, getImageReferrerPolicy, MergeDivider, type MemoDetail, type MemoEditSession, type Notebook, type TiptapDoc } from "@edgeever/shared";
+import { createEdgeEverMathematics } from "@edgeever/shared/mathematics";
 import { getMobileEditorInputAttributes, getMobileEditorPlaceholder } from "@edgeever/shared/mobile-editor";
 import {
   MobileEditorFallback,
