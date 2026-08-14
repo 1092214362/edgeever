@@ -69,6 +69,7 @@
         "@vitejs/plugin-react": "latest",
         "autoprefixer": "latest",
         "concurrently": "latest",
+        "esbuild": "0.28.1",
         "fake-indexeddb": "^6.2.5",
         "postcss": "latest",
         "tailwindcss": "^3.4.17",
@@ -84,7 +85,7 @@
     },
     "apps/desktop": {
       "name": "@edgeever/desktop",
-      "version": "1.17.1",
+      "version": "1.23.0",
       "dependencies": {
         "electron-updater": "^6.6.2",
       },
@@ -95,7 +96,7 @@
     },
     "apps/extension": {
       "name": "@edgeever/extension",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@mozilla/readability": "^0.6.0",
         "turndown": "^7.2.4",
