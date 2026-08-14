@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey, type UseMutationResult } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import { File as ExpoFile } from "expo-file-system";
-import type { MemoFilterMode, MemoSortMode } from "@edgeever/client";
+import type { ListMemosResponse, MemoFilterMode, MemoSortMode } from "@edgeever/client";
 import {
   ActivityIndicator,
   BookOpen,
@@ -99,6 +99,7 @@ import {
   type MobileSyncQueueItem,
 } from "../lib/sync-queue";
 import { deleteMobileMemos } from "../lib/mobile-memo-delete";
+import { removeMobileMemosFromListCache } from "../lib/mobile-memo-list-cache";
 import {
   createMobileDataScope,
   getLocalMemo,
@@ -222,6 +223,7 @@ type RichEditingSession = {
   memo: MemoDetail;
 };
 type MobileMemoUpdateMutation = UseMutationResult<MemoDetail, Error, { memo: MemoDetail; payload: MobileMemoUpdatePayload }>;
+type MobileMemoListCacheSnapshot = Array<[QueryKey, InfiniteData<ListMemosResponse> | undefined]>;
 
 export const WorkspaceScreen = ({
   incomingShareError = null,
@@ -864,6 +866,30 @@ export const WorkspaceScreen = ({
     void writeMobileImageCompressionEnabled(enabled);
   };
 
+  const optimisticallyRemoveMemoIds = async (memoIds: string[]): Promise<MobileMemoListCacheSnapshot> => {
+    const queryKeys: QueryKey[] = [
+      ["mobile", "memos"],
+      ["mobile", "search"],
+    ];
+    await Promise.all(queryKeys.map((queryKey) => queryClient.cancelQueries({ queryKey })));
+    const snapshot = queryKeys.flatMap((queryKey) =>
+      queryClient.getQueriesData<InfiniteData<ListMemosResponse>>({ queryKey })
+    );
+    const memoIdSet = new Set(memoIds);
+    for (const queryKey of queryKeys) {
+      queryClient.setQueriesData<InfiniteData<ListMemosResponse>>({ queryKey }, (current) =>
+        removeMobileMemosFromListCache(current, memoIdSet)
+      );
+    }
+    return snapshot;
+  };
+
+  const restoreMemoListCache = (snapshot: MobileMemoListCacheSnapshot | undefined) => {
+    for (const [queryKey, data] of snapshot ?? []) {
+      queryClient.setQueryData(queryKey, data);
+    }
+  };
+
   const invalidateWorkspace = async () => {
     if (client) {
       await syncMobileLocalMirror(client, dataScope);
@@ -997,6 +1023,12 @@ export const WorkspaceScreen = ({
   };
 
   const deleteMemoMutation = useMutation({
+    onMutate: async ({ memo }) => {
+      const cacheSnapshot = await optimisticallyRemoveMemoIds([memo.id]);
+      const reopenMemoId = selectedMemoId === memo.id ? memo.id : null;
+      setSelectedMemoId(null);
+      return { cacheSnapshot, reopenMemoId };
+    },
     mutationFn: async ({ memo, permanent }: { memo: MemoDetail; permanent: boolean }) => {
       await deleteMobileMemos({
         client,
@@ -1013,7 +1045,11 @@ export const WorkspaceScreen = ({
       setRichEditingSession(null);
       setSelectedMemoId(null);
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      restoreMemoListCache(context?.cacheSnapshot);
+      if (context?.reopenMemoId) {
+        setSelectedMemoId(context.reopenMemoId);
+      }
       Alert.alert("删除失败", error instanceof Error ? error.message : "请检查网络后重试");
     },
   });
@@ -1083,6 +1119,13 @@ export const WorkspaceScreen = ({
   });
 
   const deleteMemosMutation = useMutation({
+    onMutate: async ({ memoIds }) => {
+      const cacheSnapshot = await optimisticallyRemoveMemoIds(memoIds);
+      const previousSelectionMode = selectionMode;
+      const previousSelectedMemoIds = new Set(selectedMemoIds);
+      clearSelection();
+      return { cacheSnapshot, previousSelectionMode, previousSelectedMemoIds };
+    },
     mutationFn: async ({ memoIds, permanent }: { memoIds: string[]; permanent: boolean }) => {
       const result = await deleteMobileMemos({
         client,
@@ -1098,7 +1141,10 @@ export const WorkspaceScreen = ({
       await invalidateWorkspace();
       clearSelection();
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      restoreMemoListCache(context?.cacheSnapshot);
+      setSelectionMode(context?.previousSelectionMode ?? false);
+      setSelectedMemoIds(context?.previousSelectedMemoIds ?? new Set());
       Alert.alert("删除失败", error instanceof Error ? error.message : "请检查网络后重试");
     },
   });
