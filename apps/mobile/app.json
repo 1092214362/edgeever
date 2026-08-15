@@ -3,7 +3,7 @@
     "name": "EdgeEver",
     "slug": "edgeever",
     "scheme": "edgeever",
-    "version": "1.24.2",
+    "version": "1.24.3",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -33,7 +33,7 @@
     },
     "android": {
       "package": "org.edgeever.mobile",
-      "versionCode": 114,
+      "versionCode": 115,
       "adaptiveIcon": {
         "backgroundColor": "#16A06E",
         "backgroundImage": "./assets/icon.png",
