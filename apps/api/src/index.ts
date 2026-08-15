@@ -1313,7 +1313,7 @@ const authenticateSessionToken = async (c: AppContext, token: string, touch: boo
 
   const workspace = row.workspace_id && row.role
     ? { workspaceId: row.workspace_id, role: row.role }
-    : await ensureUserWorkspace(c.env.storage.db, row.user_id, row.username);
+    : await ensureUserWorkspace(c.env.storage.db, row.user_id, row.username, c.req.header("accept-language"));
 
   return {
     kind: "user",

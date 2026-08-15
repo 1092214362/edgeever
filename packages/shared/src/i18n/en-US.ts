@@ -1,3 +1,5 @@
+import { memoTemplateSeedTranslations } from "../memo-template-seeds";
+
 // Shared by the PWA and native mobile clients.
 export const enUS = {
   common: {
@@ -1257,28 +1259,26 @@ export const enUS = {
   },
   templates: {
     title: "Template Center",
-    description: "Start notes instantly with preset structures or customize your reusable templates.",
-    create: "New Custom Template",
+    description: "Create, edit, and reuse your note templates.",
+    create: "New Template",
     useTemplate: "New note from template",
     useThisTemplate: "Use Template",
     previewTemplate: "Preview",
     previewTitle: "Template Preview",
     createDescription: "Create a reusable template from scratch.",
-    myTemplates: "My Custom Templates",
-    myTemplatesSubtitle: "Saved personal templates ready to reuse and edit anytime",
-    builtIn: "Recommended Templates",
-    builtInSubtitle: "Ready-to-use standard structures to jumpstart your writing",
-    savedDescription: "Custom template saved from a note.",
-    emptyMyTemplates: "No custom templates yet",
-    emptyMyTemplatesHint: "Click \"New Custom Template\" above or save any note as a template directly in the editor.",
+    myTemplates: "Templates",
+    myTemplatesSubtitle: "Every template belongs to this workspace and can be edited or deleted",
+    savedDescription: "A reusable note template.",
+    emptyMyTemplates: "No templates yet",
+    emptyMyTemplatesHint: "Click \"New Template\" above or save any note as a template directly in the editor.",
     delete: "Delete template",
     deleteConfirmTitle: "Delete template \"{{name}}\"",
     deleteConfirmDescription: "Are you sure you want to delete this template? This operation cannot be undone.",
     saveAsTemplate: "Save as template",
-    saveAsTemplateSuccess: "Saved as custom template",
+    saveAsTemplateSuccess: "Saved as template",
     edit: "Edit template",
-    editTemplateTitle: "Edit Custom Template",
-    createTemplateTitle: "Create Custom Template",
+    editTemplateTitle: "Edit Template",
+    createTemplateTitle: "Create Template",
     name: "Template name",
     namePlaceholder: "e.g., Weekly Summary / Reading Card",
     descriptionField: "Template description",
@@ -1295,40 +1295,7 @@ export const enUS = {
     templateSaved: "Template saved",
     templateCreated: "Template created",
     unavailable: "Select an available notebook before creating a note.",
-    badgeBuiltIn: "Built-in",
-    badgeCustom: "Custom",
-    items: {
-      quickNote: {
-        title: "Quick Spark",
-        description: "Capture fleeting thoughts, ideas, links, and immediate action items.",
-        contentMarkdown: "## 💡 Fleeting Thoughts\n\n- \n\n## 📌 Context & Notes\n\n\n\n## 🚀 Next Actions\n\n- [ ] ",
-      },
-      meeting: {
-        title: "Meeting Minutes",
-        description: "Structured log for agenda, key decisions, and action items with owners.",
-        contentMarkdown: "# 📝 Meeting Minutes\n\n- **Time**:\n- **Host/Recorder**:\n- **Attendees**:\n\n---\n\n## 🎯 Goal\n\n- \n\n## 💬 Discussion & Decisions\n\n1. **[Topic 1]**\n   - Points:\n   - ✅ **Decision**:\n\n2. **[Topic 2]**\n   - Points:\n   - ✅ **Decision**:\n\n## 📋 Action Items\n\n- [ ] **[Owner]** Task description (Due: MM-DD)\n- [ ] **[Owner]** Task description (Due: MM-DD)\n",
-      },
-      weeklyReview: {
-        title: "Weekly Review & Status",
-        description: "Summarize weekly highlights, blockers, and next week's key priorities.",
-        contentMarkdown: "# 🗓️ Weekly Status Report\n\n## 🌟 Highlights\n\n- [x] **[Project/Feature]** Accomplishment details\n- [x] **[Project/Feature]** Accomplishment details\n\n## 🚧 Blockers & Risks\n\n- ⚠️ **Blocker**: Reason and required support\n\n## 🎯 Next Week Priorities\n\n- [ ] \n- [ ] \n- [ ] \n\n## 💡 Reflection & Insights\n\n- \n",
-      },
-      reading: {
-        title: "Reading Note Card",
-        description: "Extract key takeaways, quotes, reflections, and connected concepts.",
-        contentMarkdown: "# 📖 Reading Note Card\n\n- **Book/Article**:\n- **Author/Source**:\n- **Rating**: ⭐⭐⭐⭐⭐\n\n---\n\n## 💡 Key Takeaway\n\n> \n\n## ✍️ Highlights & Quotes\n\n> [Quote content]\n> —— *Original Source*\n\n## 🧠 Personal Reflections\n\n- \n\n## 🔗 Action & Practice\n\n- [ ] **Action Plan**:\n",
-      },
-      okr: {
-        title: "Goal & Task Breakdown",
-        description: "Define OKRs, Key Results, milestones, and task checklists.",
-        contentMarkdown: "# 🎯 Goal Breakdown\n\n- **Period**:\n- **Owner**:\n\n---\n\n## 📌 Objective\n\n> \n\n## 📈 Key Results\n\n- **KR 1**: Target metric -> Current progress\n- **KR 2**: Target metric -> Current progress\n\n## 🗓️ Milestones\n\n- [ ] **Phase 1 (Date)**: Target\n- [ ] **Phase 2 (Date)**: Target\n\n## 📋 Execution Checklist\n\n- [ ] \n- [ ] \n",
-      },
-      postMortem: {
-        title: "Problem & Post-mortem",
-        description: "Document incident symptoms, 5-Whys root cause, and preventive measures.",
-        contentMarkdown: "# 🔍 Post-mortem & Problem Investigation\n\n- **Occurred At**:\n- **Impact Scope**:\n- **Status**: Resolved / In-Progress\n\n---\n\n## 🚨 Symptoms & Impact\n\n\n\n## 🛠️ Investigation & Fix Steps\n\n1. \n2. \n\n## 🔬 Root Cause Analysis (5 Whys)\n\n- **Root Cause**:\n\n## 🛡️ Action Items & Prevention\n\n- [ ] **[Short-term]** \n- [ ] **[Long-term]** \n",
-      },
-    },
+    items: memoTemplateSeedTranslations("en-US"),
   },
   pwa: {
     checkingTitle: "New version found",
