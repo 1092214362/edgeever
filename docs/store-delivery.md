@@ -91,7 +91,10 @@ Play-signed universal APK, verifies the pinned app-signing certificate, and
 replaces the GitHub Release Android asset. This makes installations from
 Google Play and GitHub mutually updateable. The uploaded AAB is intentionally
 limited to `arm64-v8a`, so the Play-generated universal APK does not bundle
-unused 32-bit ARM or x86 native libraries.
+unused 32-bit ARM or x86 native libraries. Automatic Protection must be
+disabled for the release. The downloader fails closed when Play reports
+installer-locked artifacts, preventing a protected APK from being published
+for GitHub sideloading.
 
 Internal, Alpha, Beta, and Production profiles use a completed release on the
 selected track. The default command targets Production; use

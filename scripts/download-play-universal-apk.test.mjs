@@ -35,6 +35,17 @@ describe("Google Play universal APK selection", () => {
     );
   });
 
+  test("refuses an installer-locked universal APK when automatic protection is enabled", () => {
+    const signer = "ab".repeat(32);
+    expect(() => selectPlayUniversalApk({
+      generatedApks: [{
+        certificateSha256Hash: signer,
+        generatedUniversalApk: { downloadId: "protected-universal" },
+        unprotectedGeneratedSplitApks: [],
+      }],
+    }, signer)).toThrow("Automatic Protection is enabled");
+  });
+
   test("reports protected and unprotected generated APK variants", () => {
     const signer = "ab".repeat(32);
     expect(summarizePlayGeneratedApks({

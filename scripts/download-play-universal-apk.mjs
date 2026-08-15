@@ -59,8 +59,17 @@ export const selectPlayUniversalApk = (response, expectedSignerSha256) => {
   if (candidates.length !== 1) {
     throw new Error(`Expected one Play universal APK for signer ${expectedSigner}, found ${candidates.length}.`);
   }
+  const selected = candidates[0];
+  if (
+    Object.hasOwn(selected, "unprotectedGeneratedSplitApks") ||
+    Object.hasOwn(selected, "unprotectedGeneratedStandaloneApks")
+  ) {
+    throw new Error(
+      "Google Play Automatic Protection is enabled for this release; refusing to distribute its installer-locked universal APK.",
+    );
+  }
   return {
-    downloadId: candidates[0].generatedUniversalApk.downloadId,
+    downloadId: selected.generatedUniversalApk.downloadId,
     signerSha256: expectedSigner,
   };
 };
