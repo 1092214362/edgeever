@@ -176,6 +176,19 @@ const flattenStrings = (value: unknown, prefix = "", output = new Map<string, st
 };
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const createTranslationPair = (source: string, target: string): TranslationPair => {
+  const placeholders: string[] = [];
+  const patternSource = escapeRegExp(source).replace(/\\\{\\\{(\w+)\\\}\\\}/g, (_match, placeholder: string) => {
+    placeholders.push(placeholder);
+    return "(.+?)";
+  });
+  return {
+    source,
+    target,
+    pattern: placeholders.length > 0 ? new RegExp(`^${patternSource}$`) : undefined,
+    placeholders,
+  };
+};
 const zhStrings = flattenStrings(zhCN);
 const enStrings = flattenStrings(enUS);
 const translationPairs: TranslationPair[] = Array.from(zhStrings.entries())
@@ -184,26 +197,16 @@ const translationPairs: TranslationPair[] = Array.from(zhStrings.entries())
     if (!target || source === target) {
       return [];
     }
-    const placeholders: string[] = [];
-    const patternSource = escapeRegExp(source).replace(/\\\{\\\{(\w+)\\\}\\\}/g, (_match, placeholder: string) => {
-      placeholders.push(placeholder);
-      return "(.+?)";
-    });
-    return [{ source, target, pattern: placeholders.length > 0 ? new RegExp(`^${patternSource}$`) : undefined, placeholders }];
-  })
-  .sort((left, right) => right.source.length - left.source.length);
+    return [createTranslationPair(source, target)];
+  });
 const exactTranslations = new Map(translationPairs.filter((pair) => !pair.pattern).map((pair) => [pair.source, pair.target]));
-const templateTranslations = translationPairs.filter((pair) => pair.pattern);
 const mobileTemplateTranslations: TranslationPair[] = Array.from(mobileOnlyTranslations.entries())
   .filter(([source]) => source.includes("{{"))
-  .map(([source, target]) => {
-    const placeholders: string[] = [];
-    const patternSource = escapeRegExp(source).replace(/\\\{\\\{(\w+)\\\}\\\}/g, (_match, placeholder: string) => {
-      placeholders.push(placeholder);
-      return "(.+?)";
-    });
-    return { source, target, pattern: new RegExp(`^${patternSource}$`), placeholders };
-  });
+  .map(([source, target]) => createTranslationPair(source, target));
+const templateTranslations = [
+  ...mobileTemplateTranslations,
+  ...translationPairs.filter((pair) => pair.pattern),
+].sort((left, right) => right.source.length - left.source.length);
 
 const resolveSystemLocale = (): SupportedMobileLocale =>
   (Intl.DateTimeFormat().resolvedOptions().locale || "zh-CN").toLowerCase().startsWith("en") ? "en-US" : "zh-CN";
@@ -216,7 +219,7 @@ export const translateMobileText = (value: string, locale: SupportedMobileLocale
   if (exact) {
     return exact;
   }
-  for (const pair of [...mobileTemplateTranslations, ...templateTranslations]) {
+  for (const pair of templateTranslations) {
     const match = pair.pattern?.exec(value);
     if (!match) {
       continue;
