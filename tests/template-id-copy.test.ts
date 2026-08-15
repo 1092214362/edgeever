@@ -11,5 +11,6 @@ describe("copy note template ID", () => {
     expect(templatesPaneSource).toContain("copyTextToClipboard(template.id)");
     expect(templatesPaneSource).toContain('label={t("templates.copyId")}');
     expect(templatesPaneSource).toContain('"templates.idCopied"');
+    expect(templatesPaneSource).toContain("<ClipboardCopyNotice");
   });
 });
