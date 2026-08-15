@@ -538,7 +538,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
             output: "",
             error: props.locale === "en-US"
               ? "The selected prompt no longer exists. Choose another prompt."
-              : "所选提示词已不存在，请重新选择。",
+              : "所选指令已不存在，请重新选择。",
           };
         }
         return {
@@ -1329,7 +1329,7 @@ const MobileSelectionAiPanel = ({
     "simplify-language": english ? "Convert to X (Twitter) style" : "转为推特风格",
     "change-tone": english ? "Change tone" : "调整语气",
     "continue-writing": english ? "Continue writing" : "继续写作",
-    custom: english ? "Custom instruction" : "自定义要求",
+    custom: english ? "Custom prompt" : "自定义指令",
   };
   const languageLabels: Record<AiTargetLanguage, string> = {
     en: english ? "English" : "英语",
@@ -1402,7 +1402,7 @@ const MobileSelectionAiPanel = ({
       </header>
       <div className="edgeever-ai-panel-body">
         <label>
-          <span>{english ? "AI action" : "AI 操作"}</span>
+          <span>{english ? "Action" : "处理方式"}</span>
           <select
             disabled={panel.generating}
             onChange={(event) => selectPromptOrAction(event.target.value)}

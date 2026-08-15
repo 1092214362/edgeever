@@ -208,7 +208,7 @@ struct AiAssistantSheet: View {
 
     private var actionPicker: some View {
         pickerField(
-            env.preferences.t("AI 操作", en: "AI action"),
+            env.preferences.t("处理方式", en: "Action"),
             selection: selectedPrompt?.name ?? actionTitle(action)
         ) {
             if prompts.isEmpty {
@@ -411,7 +411,7 @@ struct AiAssistantSheet: View {
         case .changeTone: env.preferences.t("调整语气", en: "Change tone")
         case .translate: env.preferences.t("翻译", en: "Translate")
         case .continueWriting: env.preferences.t("继续写作", en: "Continue writing")
-        case .custom: env.preferences.t("自定义要求", en: "Custom instruction")
+        case .custom: env.preferences.t("自定义指令", en: "Custom prompt")
         }
     }
 
