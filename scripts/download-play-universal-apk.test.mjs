@@ -3,6 +3,7 @@ import {
   assertDownloadedApk,
   normalizePlayCertificateHash,
   selectPlayUniversalApk,
+  summarizePlayGeneratedApks,
 } from "./download-play-universal-apk.mjs";
 
 describe("Google Play universal APK selection", () => {
@@ -32,6 +33,26 @@ describe("Google Play universal APK selection", () => {
     expect(() => selectPlayUniversalApk({ generatedApks: [] }, "ab".repeat(32))).toThrow(
       "Expected one Play universal APK",
     );
+  });
+
+  test("reports protected and unprotected generated APK variants", () => {
+    const signer = "ab".repeat(32);
+    expect(summarizePlayGeneratedApks({
+      generatedApks: [{
+        certificateSha256Hash: signer,
+        generatedSplitApks: [{ downloadId: "protected-split" }],
+        generatedStandaloneApks: [{ downloadId: "protected-standalone", variantId: 1 }],
+        generatedUniversalApk: { downloadId: "protected-universal" },
+        unprotectedGeneratedSplitApks: [{ downloadId: "plain-split" }],
+        unprotectedGeneratedStandaloneApks: [{ downloadId: "plain-standalone", variantId: 2 }],
+      }],
+    }, signer)).toEqual({
+      protectedSplitCount: 1,
+      protectedStandaloneVariants: [1],
+      protectedUniversal: true,
+      unprotectedSplitCount: 1,
+      unprotectedStandaloneVariants: [2],
+    });
   });
 
   test("rejects empty or non-APK download responses", () => {
