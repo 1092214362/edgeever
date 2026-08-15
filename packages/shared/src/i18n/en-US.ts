@@ -74,8 +74,6 @@ export const enUS = {
     desktopChangeInstance: "Change instance URL",
     desktopInstanceUrlInvalid: "Enter a valid instance URL beginning with http:// or https://.",
     instanceUrlPlaceholder: "https://demo.edgeever.org",
-    instanceUrlHint: "Enter the full HTTPS URL, not just “demo”.",
-    usePublicDemo: "Use public demo instance",
   },
   nav: {
     mobileMain: "Mobile primary navigation",

@@ -74,8 +74,6 @@ export const zhCN = {
     desktopChangeInstance: "更换实例地址",
     desktopInstanceUrlInvalid: "请输入以 http:// 或 https:// 开头的有效实例地址。",
     instanceUrlPlaceholder: "https://demo.edgeever.org",
-    instanceUrlHint: "请填写完整 HTTPS 地址，不要只输入 demo。",
-    usePublicDemo: "填入公开演示实例",
   },
   nav: {
     mobileMain: "移动端主导航",
