@@ -57,7 +57,7 @@ describe("workspace provisioning", () => {
     expect(calls[0].sql).toContain("INSERT OR IGNORE INTO memo_templates");
     expect(calls[0].values).toContain("ws_new_template_quick-note");
     expect(calls[0].values).toContain("Quick Spark");
-    expect(calls.filter((call) => call.sql.includes("INSERT OR IGNORE INTO memo_templates"))).toHaveLength(6);
+    expect(calls.filter((call) => call.sql.includes("INSERT OR IGNORE INTO memo_templates"))).toHaveLength(5);
     expect(calls.some((call) => call.sql.includes("INSERT OR IGNORE INTO ai_prompt_templates"))).toBe(true);
   });
 });

@@ -7,8 +7,8 @@ export type MemoTemplateSeedTranslation = {
 };
 
 export type MemoTemplateSeed = {
-  key: "quick-note" | "meeting" | "weekly-review" | "reading" | "okr" | "post-mortem";
-  translationKey: "quickNote" | "meeting" | "weeklyReview" | "reading" | "okr" | "postMortem";
+  key: "quick-note" | "meeting" | "weekly-review" | "reading" | "okr";
+  translationKey: "quickNote" | "meeting" | "weeklyReview" | "reading" | "okr";
   tag: string;
   translations: Record<MemoTemplateSeedLocale, MemoTemplateSeedTranslation>;
 };
@@ -86,19 +86,6 @@ export const DEFAULT_MEMO_TEMPLATE_SEEDS: readonly MemoTemplateSeed[] = [
       title: "Goal & Task Breakdown",
       description: "Define OKRs, Key Results, milestones, and task checklists.",
       contentMarkdown: "# 🎯 Goal Breakdown\n\n- **Period**:\n- **Owner**:\n\n---\n\n## 📌 Objective\n\n> \n\n## 📈 Key Results\n\n- **KR 1**: Target metric -> Current progress\n- **KR 2**: Target metric -> Current progress\n\n## 🗓️ Milestones\n\n- [ ] **Phase 1 (Date)**: Target\n- [ ] **Phase 2 (Date)**: Target\n\n## 📋 Execution Checklist\n\n- [ ] \n- [ ] \n",
-    },
-  ),
-  seed(
-    { key: "post-mortem", translationKey: "postMortem", tag: "post-mortem" },
-    {
-      title: "问题排查与复盘",
-      description: "记录故障现象、根因分析 (5 Whys) 与防范机制。",
-      contentMarkdown: "# 🔍 问题排查与复盘 (Post-mortem)\n\n- **发生时间**：\n- **影响范围**：\n- **处理状态**：已解决 / 处理中\n\n---\n\n## 🚨 故障现象与影响\n\n\n\n## 🛠️ 排查过程与解决方案\n\n1. \n2. \n\n## 🔬 根因分析 (Root Cause / 5 Whys)\n\n- **根本原因**：\n\n## 🛡️ 预防措施 (Action Items)\n\n- [ ] **[短期规避]** \n- [ ] **[长期优化]** \n",
-    },
-    {
-      title: "Problem & Post-mortem",
-      description: "Document incident symptoms, 5-Whys root cause, and preventive measures.",
-      contentMarkdown: "# 🔍 Post-mortem & Problem Investigation\n\n- **Occurred At**:\n- **Impact Scope**:\n- **Status**: Resolved / In-Progress\n\n---\n\n## 🚨 Symptoms & Impact\n\n\n\n## 🛠️ Investigation & Fix Steps\n\n1. \n2. \n\n## 🔬 Root Cause Analysis (5 Whys)\n\n- **Root Cause**:\n\n## 🛡️ Action Items & Prevention\n\n- [ ] **[Short-term]** \n- [ ] **[Long-term]** \n",
     },
   ),
 ];
