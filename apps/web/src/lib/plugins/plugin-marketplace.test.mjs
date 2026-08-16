@@ -5,6 +5,8 @@ import { sha256Hex } from "./github-plugin-distribution.ts";
 describe("bundled plugin marketplace", () => {
   test("keeps verified checksums aligned with bundled extension files", async () => {
     const registry = parseMarketplaceRegistry(await Bun.file(new URL("../../../public/extensions/registry.json", import.meta.url)).json());
+    expect(registry.entries.map((entry) => entry.id)).not.toContain("org.edgeever.examples.recent-notes");
+    expect(registry.entries.map((entry) => entry.id)).not.toContain("org.edgeever.themes.nord-emerald");
     for (const entry of registry.entries) {
       expect(entry.distribution.type).toBe("manifest");
       if (entry.distribution.type !== "manifest") continue;

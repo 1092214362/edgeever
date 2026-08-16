@@ -23,7 +23,7 @@ export const resolveWorkspaceRoute = (pathname: string, search: string): Workspa
   pathname,
   search,
   isSettings: pathname === WORKSPACE_SETTINGS_PATH,
-  isPlugins: pathname === WORKSPACE_PLUGINS_PATH,
+  isPlugins: pathname === WORKSPACE_PLUGINS_PATH || pathname.startsWith(`${WORKSPACE_PLUGINS_PATH}/`),
   isTemplates: pathname === WORKSPACE_TEMPLATES_PATH,
   isAiPrompts: pathname === WORKSPACE_AI_PROMPTS_PATH,
   isTrash: pathname === "/" && search === WORKSPACE_TRASH_SEARCH,

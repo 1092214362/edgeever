@@ -1,5 +1,6 @@
 import { parseExtensionManifest, type ExtensionManifest, type PluginManifest } from "@edgeever/plugin-api";
 import type { CachedPluginPackage } from "@/lib/plugins/plugin-package-store";
+import { api } from "@/lib/api";
 
 const GITHUB_API_VERSION = "2022-11-28";
 const MAX_MAIN_JS_BYTES = 5 * 1024 * 1024;
@@ -20,12 +21,14 @@ export interface GithubDownloadedExtension {
   checksums: Partial<CachedPluginPackage["checksums"]>;
 }
 
-type GithubRepositoryResponse = {
-  default_branch?: string;
-  html_url?: string;
-};
+export interface GithubRepositoryManifest {
+  manifest: ExtensionManifest;
+  manifestText: string;
+  manifestUrl: string;
+  repositoryUrl: string;
+}
 
-type GithubReleaseAsset = {
+export type GithubReleaseAsset = {
   id: number;
   name: string;
   size: number;
@@ -62,16 +65,6 @@ export const sha256Hex = async (value: string | ArrayBuffer) => {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
-const requestJson = async <T>(request: typeof fetch, url: string): Promise<T> => {
-  const response = await request(url, {
-    cache: "no-store",
-    credentials: "omit",
-    headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": GITHUB_API_VERSION },
-  });
-  if (!response.ok) throw new Error(`GitHub request failed with HTTP ${response.status}.`);
-  return response.json() as Promise<T>;
-};
-
 const findRelease = async (request: typeof fetch, coordinates: GithubRepositoryCoordinates, version: string) => {
   for (const tag of [version, `v${version}`]) {
     const response = await request(
@@ -97,15 +90,27 @@ const requireAsset = (release: GithubReleaseResponse, name: string) => {
   return asset;
 };
 
-const downloadAsset = async (request: typeof fetch, asset: GithubReleaseAsset, maximumBytes: number) => {
+type GithubAssetDownloader = (
+  coordinates: GithubRepositoryCoordinates,
+  asset: GithubReleaseAsset,
+) => Promise<ArrayBuffer>;
+
+const downloadGithubAssetThroughApi: GithubAssetDownloader = (coordinates, asset) =>
+  api.downloadGithubPluginAsset(
+    coordinates.owner,
+    coordinates.repository,
+    asset.id,
+    asset.name as "manifest.json" | "main.js" | "styles.css",
+  );
+
+const downloadAsset = async (
+  coordinates: GithubRepositoryCoordinates,
+  asset: GithubReleaseAsset,
+  maximumBytes: number,
+  download: GithubAssetDownloader,
+) => {
   if (asset.size > maximumBytes) throw new Error(`${asset.name} exceeds the allowed package size.`);
-  const response = await request(asset.url, {
-    credentials: "omit",
-    redirect: "follow",
-    headers: { Accept: "application/octet-stream", "X-GitHub-Api-Version": GITHUB_API_VERSION },
-  });
-  if (!response.ok) throw new Error(`GitHub asset ${asset.name} failed with HTTP ${response.status}.`);
-  const buffer = await response.arrayBuffer();
+  const buffer = await download(coordinates, asset);
   if (buffer.byteLength > maximumBytes) throw new Error(`${asset.name} exceeds the allowed package size.`);
   const checksum = await sha256Hex(buffer);
   if (asset.digest?.startsWith("sha256:") && asset.digest.slice(7).toLocaleLowerCase() !== checksum) {
@@ -114,10 +119,26 @@ const downloadAsset = async (request: typeof fetch, asset: GithubReleaseAsset, m
   return { buffer, checksum };
 };
 
+const canonicalize = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, canonicalize(entry)])
+  );
+};
+
+export const extensionManifestsEqual = (left: ExtensionManifest, right: ExtensionManifest) =>
+  JSON.stringify(canonicalize(left)) === JSON.stringify(canonicalize(right));
+
 const assertReleaseManifest = (repositoryManifest: ExtensionManifest, releaseManifest: ExtensionManifest) => {
   if (repositoryManifest.id !== releaseManifest.id) throw new Error("Release manifest plugin id does not match the repository manifest.");
   if (repositoryManifest.version !== releaseManifest.version) throw new Error("Release manifest version does not match the repository manifest.");
   if (repositoryManifest.type !== releaseManifest.type) throw new Error("Release manifest type does not match the repository manifest.");
+  if (!extensionManifestsEqual(repositoryManifest, releaseManifest)) {
+    throw new Error("Release manifest does not match the repository manifest.");
+  }
 };
 
 const assertBundledEntry = (manifest: PluginManifest) => {
@@ -125,21 +146,42 @@ const assertBundledEntry = (manifest: PluginManifest) => {
   if (entryPath !== "main.js") throw new Error("GitHub plugins must use ./main.js as the bundled entry.");
 };
 
-export const downloadGithubExtension = async (input: string, request: typeof fetch = window.fetch.bind(window)): Promise<GithubDownloadedExtension> => {
+export const loadGithubRepositoryManifest = async (
+  input: string,
+  request: typeof fetch = window.fetch.bind(window),
+): Promise<GithubRepositoryManifest> => {
   const coordinates = parseGithubRepositoryUrl(input);
   if (!coordinates) throw new Error("Enter a public GitHub repository URL such as https://github.com/owner/repository.");
-  const repository = await requestJson<GithubRepositoryResponse>(request, `https://api.github.com/repos/${coordinates.owner}/${coordinates.repository}`);
-  if (!repository.default_branch) throw new Error("GitHub did not return a default branch for this repository.");
-  const manifestUrl = `https://raw.githubusercontent.com/${coordinates.owner}/${coordinates.repository}/${encodeURIComponent(repository.default_branch)}/manifest.json`;
-  const manifestResponse = await request(manifestUrl, { cache: "no-store", credentials: "omit" });
+  const manifestUrl = `https://api.github.com/repos/${coordinates.owner}/${coordinates.repository}/contents/manifest.json`;
+  const manifestResponse = await request(manifestUrl, {
+    cache: "no-store",
+    credentials: "omit",
+    headers: { Accept: "application/vnd.github.raw+json", "X-GitHub-Api-Version": GITHUB_API_VERSION },
+  });
   if (!manifestResponse.ok) throw new Error(`Repository manifest request failed with HTTP ${manifestResponse.status}.`);
-  const repositoryManifestText = await manifestResponse.text();
-  const repositoryManifest = parseExtensionManifest(JSON.parse(repositoryManifestText) as unknown);
+  const manifestText = await manifestResponse.text();
+  return {
+    manifest: parseExtensionManifest(JSON.parse(manifestText) as unknown),
+    manifestText,
+    manifestUrl,
+    repositoryUrl: coordinates.repositoryUrl,
+  };
+};
+
+export const downloadGithubExtension = async (
+  input: string,
+  request: typeof fetch = window.fetch.bind(window),
+  downloadAssetBytes: GithubAssetDownloader = downloadGithubAssetThroughApi,
+): Promise<GithubDownloadedExtension> => {
+  const coordinates = parseGithubRepositoryUrl(input);
+  if (!coordinates) throw new Error("Enter a public GitHub repository URL such as https://github.com/owner/repository.");
+  const repository = await loadGithubRepositoryManifest(input, request);
+  const { manifest: repositoryManifest, manifestText: repositoryManifestText, manifestUrl } = repository;
   if (repositoryManifest.type === "theme") {
     return {
       manifest: repositoryManifest,
       manifestUrl,
-      repositoryUrl: repository.html_url ?? coordinates.repositoryUrl,
+      repositoryUrl: repository.repositoryUrl,
       releaseTag: null,
       pluginPackage: null,
       checksums: { manifestJson: await sha256Hex(repositoryManifestText) },
@@ -152,9 +194,9 @@ export const downloadGithubExtension = async (input: string, request: typeof fet
   const mainAsset = requireAsset(release, "main.js");
   const stylesAsset = release.assets.find((asset) => asset.name === "styles.css") ?? null;
   const [downloadedManifest, downloadedMain, downloadedStyles] = await Promise.all([
-    downloadAsset(request, manifestAsset, 256 * 1024),
-    downloadAsset(request, mainAsset, MAX_MAIN_JS_BYTES),
-    stylesAsset ? downloadAsset(request, stylesAsset, MAX_STYLES_CSS_BYTES) : Promise.resolve(null),
+    downloadAsset(coordinates, manifestAsset, 256 * 1024, downloadAssetBytes),
+    downloadAsset(coordinates, mainAsset, MAX_MAIN_JS_BYTES, downloadAssetBytes),
+    stylesAsset ? downloadAsset(coordinates, stylesAsset, MAX_STYLES_CSS_BYTES, downloadAssetBytes) : Promise.resolve(null),
   ]);
   const releaseManifest = parseExtensionManifest(JSON.parse(new TextDecoder().decode(downloadedManifest.buffer)) as unknown);
   assertReleaseManifest(repositoryManifest, releaseManifest);
@@ -164,7 +206,7 @@ export const downloadGithubExtension = async (input: string, request: typeof fet
   return {
     manifest: releaseManifest,
     manifestUrl: manifestAsset.browser_download_url,
-    repositoryUrl: repository.html_url ?? coordinates.repositoryUrl,
+    repositoryUrl: repository.repositoryUrl,
     releaseTag: release.tag_name,
     pluginPackage: {
       pluginId: releaseManifest.id,

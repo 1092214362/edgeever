@@ -20,7 +20,7 @@ import { markdownToDoc } from "@edgeever/shared";
 import type { EdgeEverRepository } from "@/lib/repository";
 import { WebPluginSecretStore, type PluginSecretStorage } from "@/lib/plugins/plugin-secret-store";
 import { WebPluginPackageStore, type CachedPluginPackage, type PluginPackageStorage } from "@/lib/plugins/plugin-package-store";
-import { downloadGithubExtension, parseGithubRepositoryUrl, sha256Hex } from "@/lib/plugins/github-plugin-distribution";
+import { downloadGithubExtension, extensionManifestsEqual, parseGithubRepositoryUrl, sha256Hex } from "@/lib/plugins/github-plugin-distribution";
 
 const INSTALLED_EXTENSIONS_STORAGE_KEY = "edgeever.extensions.installed.v1";
 const ACTIVE_THEME_STORAGE_KEY = "edgeever.extensions.active-theme.v1";
@@ -212,6 +212,12 @@ const isAllowedNetworkHost = (hostname: string, allowedHosts: string[]) =>
 
 const resolveManifestEntry = (manifestUrl: string, entry: string) => new URL(entry, manifestUrl).href;
 
+const assertConfirmedManifest = (confirmedManifest: ExtensionManifest | undefined, downloadedManifest: ExtensionManifest) => {
+  if (confirmedManifest && !extensionManifestsEqual(confirmedManifest, downloadedManifest)) {
+    throw new Error("The extension manifest changed after update confirmation. Review the update again.");
+  }
+};
+
 export class EdgeEverPluginHost {
   private readonly repository: EdgeEverRepository;
   private readonly scope: string;
@@ -272,8 +278,9 @@ export class EdgeEverPluginHost {
     return this.installFromManifestUrl(input);
   }
 
-  async installFromGithubRepository(input: string, marketplaceEntry?: MarketplaceEntry) {
+  async installFromGithubRepository(input: string, marketplaceEntry?: MarketplaceEntry, confirmedManifest?: ExtensionManifest) {
     const downloaded = await downloadGithubExtension(input);
+    assertConfirmedManifest(confirmedManifest, downloaded.manifest);
     if (marketplaceEntry) this.assertMarketplaceDownload(marketplaceEntry, downloaded.manifest, downloaded.checksums);
     if (downloaded.pluginPackage) await this.packageStorage.put(downloaded.pluginPackage);
     const wasActive = this.activePlugins.has(downloaded.manifest.id);
@@ -288,14 +295,14 @@ export class EdgeEverPluginHost {
     return installed;
   }
 
-  async installMarketplaceEntry(entry: MarketplaceEntry) {
+  async installMarketplaceEntry(entry: MarketplaceEntry, confirmedManifest?: ExtensionManifest) {
     if (entry.distribution.type === "github") {
-      return this.installFromGithubRepository(entry.distribution.repositoryUrl, entry);
+      return this.installFromGithubRepository(entry.distribution.repositoryUrl, entry, confirmedManifest);
     }
-    return this.installFromManifestUrl(entry.distribution.manifestUrl, entry);
+    return this.installFromManifestUrl(entry.distribution.manifestUrl, entry, confirmedManifest);
   }
 
-  async installFromManifestUrl(input: string, marketplaceEntry?: MarketplaceEntry) {
+  async installFromManifestUrl(input: string, marketplaceEntry?: MarketplaceEntry, confirmedManifest?: ExtensionManifest) {
     const manifestUrl = new URL(input, window.location.href);
     if (!["http:", "https:"].includes(manifestUrl.protocol)) {
       throw new Error("Extension manifests must use an HTTP or HTTPS URL.");
@@ -304,6 +311,7 @@ export class EdgeEverPluginHost {
     if (!response.ok) throw new Error(`Manifest request failed with HTTP ${response.status}.`);
     const manifestText = await response.text();
     const manifest = parseExtensionManifest(JSON.parse(manifestText) as unknown);
+    assertConfirmedManifest(confirmedManifest, manifest);
     let pluginPackage: CachedPluginPackage | null = null;
     if (manifest.type === "plugin") {
       const entryUrl = resolveManifestEntry(manifestUrl.href, manifest.entry);

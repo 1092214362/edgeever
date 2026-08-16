@@ -27,10 +27,7 @@ describe("GitHub plugin distribution", () => {
     const request = async (input) => {
       const url = String(input);
       calls.push(url);
-      if (url === "https://api.github.com/repos/example/edgeever-plugin") {
-        return Response.json({ default_branch: "main", html_url: "https://github.com/example/edgeever-plugin" });
-      }
-      if (url.includes("raw.githubusercontent.com")) return Response.json(manifest);
+      if (url.endsWith("/contents/manifest.json")) return Response.json(manifest);
       if (url.endsWith("/releases/tags/1.2.3")) return new Response(null, { status: 404 });
       if (url.endsWith("/releases/tags/v1.2.3")) {
         return Response.json({
@@ -42,30 +39,57 @@ describe("GitHub plugin distribution", () => {
           ],
         });
       }
-      if (url === "https://api.github.com/assets/1") return new Response(JSON.stringify(manifest));
-      if (url === "https://api.github.com/assets/2") return new Response("export default { activate() {} };");
       return new Response(null, { status: 500 });
     };
+    const downloadAsset = async (_coordinates, asset) => new TextEncoder().encode(
+      asset.id === 1 ? JSON.stringify(manifest) : "export default { activate() {} };",
+    ).buffer;
 
-    const downloaded = await downloadGithubExtension("https://github.com/example/edgeever-plugin", request);
+    const downloaded = await downloadGithubExtension("https://github.com/example/edgeever-plugin", request, downloadAsset);
 
     expect(downloaded.releaseTag).toBe("v1.2.3");
     expect(downloaded.pluginPackage?.pluginId).toBe("org.edgeever.github-test");
     expect(downloaded.pluginPackage?.mainJs).toContain("activate");
     expect(downloaded.checksums.mainJs).toHaveLength(64);
+    expect(calls).toContain("https://api.github.com/repos/example/edgeever-plugin/contents/manifest.json");
     expect(calls).toContain("https://api.github.com/repos/example/edgeever-plugin/releases/tags/1.2.3");
+    expect(calls).not.toContain("https://api.github.com/assets/1");
   });
 
   test("rejects a release without a bundled main.js asset", async () => {
     const request = async (input) => {
       const url = String(input);
-      if (url === "https://api.github.com/repos/example/edgeever-plugin") return Response.json({ default_branch: "main" });
-      if (url.includes("raw.githubusercontent.com")) return Response.json(manifest);
+      if (url.endsWith("/contents/manifest.json")) return Response.json(manifest);
       if (url.endsWith("/releases/tags/1.2.3")) {
         return Response.json({ tag_name: "1.2.3", draft: false, assets: [{ id: 1, name: "manifest.json", size: 512, url: "asset", browser_download_url: "asset" }] });
       }
       return new Response(null, { status: 404 });
     };
     await expect(downloadGithubExtension("https://github.com/example/edgeever-plugin", request)).rejects.toThrow("missing main.js");
+  });
+
+  test("rejects release permissions that differ from the repository manifest", async () => {
+    const request = async (input) => {
+      const url = String(input);
+      if (url.endsWith("/contents/manifest.json")) return Response.json(manifest);
+      if (url.endsWith("/releases/tags/1.2.3")) {
+        return Response.json({
+          tag_name: "1.2.3",
+          draft: false,
+          assets: [
+            { id: 1, name: "manifest.json", size: 512, url: "asset", browser_download_url: "manifest-asset" },
+            { id: 2, name: "main.js", size: 128, url: "asset", browser_download_url: "main-asset" },
+          ],
+        });
+      }
+      return new Response(null, { status: 404 });
+    };
+    const releaseManifest = { ...manifest, permissions: [...manifest.permissions, "network"], networkHosts: ["api.example.com"] };
+    const downloadAsset = async (_coordinates, asset) => new TextEncoder().encode(
+      asset.id === 1 ? JSON.stringify(releaseManifest) : "export default { activate() {} };",
+    ).buffer;
+
+    await expect(downloadGithubExtension("https://github.com/example/edgeever-plugin", request, downloadAsset))
+      .rejects.toThrow("does not match the repository manifest");
   });
 });

@@ -1,43 +1,5 @@
 {
   "registryVersion": "1",
   "updatedAt": "2026-08-16T00:00:00.000Z",
-  "entries": [
-    {
-      "id": "org.edgeever.examples.recent-notes",
-      "name": "Recent Notes Example",
-      "description": "Demonstrates note queries, editor selections, commands, notices, and a custom panel.",
-      "author": "EdgeEver",
-      "category": "Productivity",
-      "repositoryUrl": "https://github.com/tianma-if/edgeever",
-      "distribution": {
-        "type": "manifest",
-        "manifestUrl": "/extensions/recent-notes/manifest.json"
-      },
-      "verification": {
-        "version": "1.1.0",
-        "checksums": {
-          "manifestJson": "641f12a272b1beec7e86daae422788c57562a1416724176e1941f4c5145ec3b8",
-          "mainJs": "b73f7c868376914423dd67b11b76938bd1da3353409c19cc53d6c41a43926e50"
-        }
-      }
-    },
-    {
-      "id": "org.edgeever.themes.nord-emerald",
-      "name": "Nord Emerald",
-      "description": "A calm Nord-inspired EdgeEver theme using the public theme token API.",
-      "author": "EdgeEver",
-      "category": "Themes",
-      "repositoryUrl": "https://github.com/tianma-if/edgeever",
-      "distribution": {
-        "type": "manifest",
-        "manifestUrl": "/extensions/nord-emerald/manifest.json"
-      },
-      "verification": {
-        "version": "1.0.0",
-        "checksums": {
-          "manifestJson": "18db9fc441c291ad2774d5a6b3a1929832b382f62d0e5116a45e27bfd5b65f4a"
-        }
-      }
-    }
-  ]
+  "entries": []
 }

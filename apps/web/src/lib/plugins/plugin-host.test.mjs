@@ -173,4 +173,30 @@ describe("EdgeEverPluginHost", () => {
     expect(packages.has(manifest.id)).toBe(false);
     await host.dispose();
   });
+
+  test("rejects a manifest that changed after update confirmation", async () => {
+    const confirmedManifest = {
+      type: "theme",
+      id: "org.edgeever.changed-theme",
+      name: "Changed theme",
+      version: "2.0.0",
+      themeApiVersion: "1",
+      modes: ["light"],
+      light: { "color.background": "#ffffff" },
+    };
+    globalThis.window.fetch = async () => Response.json({
+      ...confirmedManifest,
+      light: { "color.background": "#000000" },
+    });
+    const host = new EdgeEverPluginHost({ repository, scope: "test" });
+
+    await expect(host.installFromManifestUrl(
+      "https://plugins.example/manifest.json",
+      undefined,
+      confirmedManifest,
+    )).rejects.toThrow("changed after update confirmation");
+
+    expect(host.getSnapshot().extensions).toHaveLength(0);
+    await host.dispose();
+  });
 });

@@ -1,5 +1,6 @@
 import { ChevronLeft, Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useParams } from "react-router";
 import * as m from "motion/react-m";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -16,6 +17,15 @@ export const PluginMarketplacePane = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { pluginId = null } = useParams<{ pluginId: string }>();
+  const close = () => {
+    if (pluginId) {
+      navigate("/plugins");
+      return;
+    }
+    onClose();
+  };
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50">
@@ -25,7 +35,7 @@ export const PluginMarketplacePane = ({
             size="icon"
             variant="ghost"
             aria-label={t("common.back")}
-            onClick={onClose}
+            onClick={close}
             className="h-9 w-9 rounded-lg hover:bg-slate-100"
           >
             <ChevronLeft className="h-5 w-5 text-slate-500" />
@@ -40,7 +50,12 @@ export const PluginMarketplacePane = ({
 
       <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:py-7">
         <m.div className="mx-auto w-full max-w-5xl" {...contentEnterMotion}>
-          <PluginManagerCard host={host} />
+          <PluginManagerCard
+            host={host}
+            selectedPluginId={pluginId}
+            onOpenPlugin={(id) => navigate(`/plugins/${encodeURIComponent(id)}`)}
+            onClosePlugin={() => navigate("/plugins")}
+          />
         </m.div>
       </main>
     </div>
