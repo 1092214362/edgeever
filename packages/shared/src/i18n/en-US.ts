@@ -758,6 +758,7 @@ export const enUS = {
     currentNotebook: "Current notebook",
     allNotebooks: "All notebooks",
     deletedMemos: "Deleted notes",
+    tagFilter: "Tag filter",
     allMemos: "All notes",
     memoCount: "{{count}} notes",
     deletedCount: "{{count}} deleted",

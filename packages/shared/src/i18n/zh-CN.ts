@@ -758,6 +758,7 @@ export const zhCN = {
     currentNotebook: "当前笔记本",
     allNotebooks: "所有笔记本",
     deletedMemos: "已删除笔记",
+    tagFilter: "标签筛选",
     allMemos: "全部笔记",
     memoCount: "{{count}} 条笔记",
     deletedCount: "{{count}} 条已删除",

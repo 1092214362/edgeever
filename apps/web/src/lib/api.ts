@@ -760,6 +760,7 @@ export const api = {
     notebookId?: string | null;
     includeDescendants?: boolean;
     q?: string;
+    tag?: string;
     trash?: boolean;
     sort?: MemoSortMode;
     filter?: MemoFilterMode;
@@ -778,6 +779,10 @@ export const api = {
 
     if (params.q?.trim()) {
       search.set("q", params.q.trim());
+    }
+
+    if (params.tag?.trim()) {
+      search.set("tag", params.tag.trim());
     }
 
     if (params.trash) {
