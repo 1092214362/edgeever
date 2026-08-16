@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { BadgeCheck, Boxes, Download, ExternalLink, PanelRightOpen, Play, Puzzle, RefreshCw, Store, Trash2 } from "lucide-react";
+import { BadgeCheck, BookOpen, Boxes, Download, ExternalLink, PanelRightOpen, Play, Puzzle, RefreshCw, Store, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,10 @@ import { GitHubMark } from "@/components/GitHubRepositoryLink";
 const permissionLabel = (permission: string) => permission.replace(":", " · ");
 
 export const PluginManagerCard = ({ host }: { host: EdgeEverPluginHost }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const developerDocsUrl = i18n.resolvedLanguage?.startsWith("zh")
+    ? "https://github.com/tianma-if/edgeever/blob/main/docs/plugin-development.zh-CN.md"
+    : "https://github.com/tianma-if/edgeever/blob/main/docs/plugin-development.md";
   const snapshot = useSyncExternalStore(host.subscribe, host.getSnapshot, host.getSnapshot);
   const [manifestUrl, setManifestUrl] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -61,10 +64,19 @@ export const PluginManagerCard = ({ host }: { host: EdgeEverPluginHost }) => {
   return (
     <Card className="w-full min-w-0 shadow-none">
       <CardHeader className="p-4 sm:p-5">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Puzzle className="h-4 w-4 text-emerald-700" />
-          {t("plugins.title")}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Puzzle className="h-4 w-4 text-emerald-700" />
+            {t("plugins.title")}
+          </CardTitle>
+          <Button asChild variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 px-2 text-slate-600">
+            <a href={developerDocsUrl} target="_blank" rel="noreferrer" aria-label={t("plugins.developerDocs")}>
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("plugins.developerDocs")}</span>
+              <ExternalLink className="hidden h-3.5 w-3.5 sm:block" />
+            </a>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="grid gap-4 p-4 pt-0 sm:px-5 sm:pb-5">
         <section className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">

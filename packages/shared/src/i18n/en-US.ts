@@ -260,6 +260,7 @@ export const enUS = {
   },
   plugins: {
     title: "Plugins and themes",
+    developerDocs: "Plugin development",
     manifestUrl: "Extension manifest URL",
     manifestPlaceholder: "https://example.com/edgeever-plugin/manifest.json",
     installSource: "GitHub repository or manifest URL",

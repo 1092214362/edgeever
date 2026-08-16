@@ -260,6 +260,7 @@ export const zhCN = {
   },
   plugins: {
     title: "插件与主题",
+    developerDocs: "插件开发文档",
     manifestUrl: "扩展 Manifest 地址",
     manifestPlaceholder: "https://example.com/edgeever-plugin/manifest.json",
     installSource: "GitHub 仓库或 Manifest 地址",
