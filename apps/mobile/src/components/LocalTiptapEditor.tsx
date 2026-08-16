@@ -60,7 +60,11 @@ import {
   isMobileImageUploadPlaceholderSource,
   stripMobileImageUploadPlaceholders,
 } from "../lib/mobile-image-upload-placeholder";
-import { getMobileAiSourceRange } from "../lib/mobile-ai-selection";
+import {
+  getMobileAiSourceRange,
+  resolveMobileAiSelectionTriggerPosition,
+  type MobileAiSelectionTriggerPosition,
+} from "../lib/mobile-ai-selection";
 import {
   MOBILE_NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY,
   createMobileNoteSearchHighlightPlugin,
@@ -526,6 +530,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   const onSearchResultRef = useRef(props.onSearchResult ?? ignoreSearchResult);
   const searchStateRef = useRef({ activeIndex: -1, query: "" });
   const [aiPanel, setAiPanel] = useState<MobileAiPanelState | null>(null);
+  const [aiSelectionTrigger, setAiSelectionTrigger] = useState<MobileAiSelectionTriggerPosition | null>(null);
   const [aiSelectionHint, setAiSelectionHint] = useState(false);
   const aiSelectionHintTimerRef = useRef<number | null>(null);
   const [aiUndoFingerprint, setAiUndoFingerprint] = useState<string | null>(null);
@@ -1110,9 +1115,52 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     }
 
     let scrollFrame = 0;
+    let triggerFrame = 0;
     let settledScrollTimer: number | null = null;
+    const scrollContainer = getEditorScrollContainer(editor);
+    const updateAiSelectionTrigger = () => {
+      if (!onAiRequestRef.current || editor.isDestroyed) {
+        setAiSelectionTrigger(null);
+        return;
+      }
+      const { empty, from, to } = editor.state.selection;
+      if (empty || from >= to || !editor.state.doc.textBetween(from, to, " ").trim()) {
+        setAiSelectionTrigger(null);
+        return;
+      }
+      const shell = editor.view.dom.closest<HTMLElement>(".edgeever-editor-shell");
+      if (!shell || !scrollContainer) {
+        setAiSelectionTrigger(null);
+        return;
+      }
+      try {
+        const shellRect = shell.getBoundingClientRect();
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const viewport = window.visualViewport;
+        const next = resolveMobileAiSelectionTriggerPosition({
+          selectionStart: editor.view.coordsAtPos(from),
+          selectionEnd: editor.view.coordsAtPos(to),
+          shell: shellRect,
+          visibleBounds: {
+            top: Math.max(containerRect.top, viewport?.offsetTop ?? containerRect.top),
+            bottom: Math.min(
+              containerRect.bottom,
+              viewport ? viewport.offsetTop + viewport.height : containerRect.bottom,
+            ),
+          },
+        });
+        setAiSelectionTrigger((current) => current?.left === next.left && current.top === next.top ? current : next);
+      } catch {
+        setAiSelectionTrigger(null);
+      }
+    };
+    const scheduleAiSelectionTriggerUpdate = () => {
+      window.cancelAnimationFrame(triggerFrame);
+      triggerFrame = window.requestAnimationFrame(updateAiSelectionTrigger);
+    };
     const ensureSelectionVisible = () => {
       updateEditorKeyboardInset(editor);
+      scheduleAiSelectionTriggerUpdate();
       window.cancelAnimationFrame(scrollFrame);
       scrollFrame = window.requestAnimationFrame(() => {
         if (!editor.isDestroyed && editor.isFocused) {
@@ -1134,6 +1182,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     };
 
     const handleSelectionUpdate = () => {
+      scheduleAiSelectionTriggerUpdate();
       if (editor.isFocused) {
         ensureSelectionVisible();
       }
@@ -1142,18 +1191,22 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     window.addEventListener("resize", ensureSelectionVisible);
     visualViewport?.addEventListener("resize", ensureSelectionVisible);
     visualViewport?.addEventListener("scroll", ensureSelectionVisible);
+    scrollContainer?.addEventListener("scroll", scheduleAiSelectionTriggerUpdate, { passive: true });
     editor.on("focus", ensureSelectionVisible);
     editor.on("selectionUpdate", handleSelectionUpdate);
     updateEditorKeyboardInset(editor);
+    scheduleAiSelectionTriggerUpdate();
 
     return () => {
       window.cancelAnimationFrame(scrollFrame);
+      window.cancelAnimationFrame(triggerFrame);
       if (settledScrollTimer !== null) {
         window.clearTimeout(settledScrollTimer);
       }
       window.removeEventListener("resize", ensureSelectionVisible);
       visualViewport?.removeEventListener("resize", ensureSelectionVisible);
       visualViewport?.removeEventListener("scroll", ensureSelectionVisible);
+      scrollContainer?.removeEventListener("scroll", scheduleAiSelectionTriggerUpdate);
       editor.off("focus", ensureSelectionVisible);
       editor.off("selectionUpdate", handleSelectionUpdate);
     };
@@ -1258,6 +1311,20 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
         </div>
       ) : null}
       <EditorContent className="edgeever-editor-scroll" editor={editor} />
+      {aiSelectionTrigger && !aiPanel ? (
+        <button
+          aria-label={props.locale === "en-US" ? "Use AI on selected text" : "用 AI 处理选中内容"}
+          className="edgeever-ai-selection-trigger"
+          onClick={requestOpenAiForSelection}
+          onMouseDown={(event) => event.preventDefault()}
+          onPointerDown={(event) => event.preventDefault()}
+          style={{ left: aiSelectionTrigger.left, top: aiSelectionTrigger.top }}
+          type="button"
+        >
+          <SparklesIcon />
+          <span>AI</span>
+        </button>
+      ) : null}
       {aiSelectionHint ? (
         <div aria-live="polite" className="edgeever-ai-selection-hint" role="status">
           {props.locale === "en-US" ? "Add some note content first." : "请先输入正文内容。"}
@@ -2558,6 +2625,11 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-editor-toolbar button:active, .edgeever-editor-toolbar button.is-active { border-color: ${theme === "dark" ? "#166534" : "#bbf7d0"}; background: ${theme === "dark" ? "#14532d" : "#ecfdf5"}; color: ${theme === "dark" ? "#86efac" : "#047857"}; }
   .edgeever-editor-toolbar button:disabled { opacity: 0.38; }
   .edgeever-editor-toolbar .edgeever-ai-toolbar-button { width: auto; gap: 4px; padding: 0 10px; border-color: ${theme === "dark" ? "#166534" : "#bbf7d0"}; background: ${theme === "dark" ? "#052e24" : "#ecfdf5"}; color: ${theme === "dark" ? "#6ee7b7" : "#047857"}; font-weight: 750; }
+  .edgeever-ai-selection-trigger { position: absolute; z-index: 18; display: inline-flex; min-width: 74px; min-height: 38px; align-items: center; justify-content: center; gap: 6px; padding: 0 13px; border: 1px solid ${theme === "dark" ? "#166534" : "#a7f3d0"}; border-radius: 999px; background: ${theme === "dark" ? "#052e24" : "#fff"}; color: ${theme === "dark" ? "#6ee7b7" : "#047857"}; box-shadow: 0 8px 24px rgb(2 44 34 / 20%); font-size: 14px; font-weight: 800; touch-action: manipulation; animation: edgeever-ai-selection-trigger-in 130ms ease-out; }
+  .edgeever-ai-selection-trigger:active { border-color: #16a06e; background: ${theme === "dark" ? "#0b3b2d" : "#ecfdf5"}; transform: scale(.97); }
+  .edgeever-ai-selection-trigger svg { width: 16px; height: 16px; }
+  @keyframes edgeever-ai-selection-trigger-in { from { opacity: 0; transform: translateY(4px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .edgeever-ai-selection-trigger { animation: none; } }
   .tiptap { min-height: 100%; max-width: 100%; min-width: 0; outline: none; }
   .edgeever-editor-scroll {
     --edgeever-keyboard-inset: 0px;
