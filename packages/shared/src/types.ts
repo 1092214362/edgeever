@@ -171,6 +171,15 @@ export type AiStreamEvent =
   | { type: "finish"; finishReason?: string; inputTokens?: number; outputTokens?: number }
   | { type: "error"; code: string; message: string };
 
+export type AiTagSuggestion = {
+  name: string;
+  existing: boolean;
+};
+
+export type AiTagSuggestionsResponse = {
+  suggestions: AiTagSuggestion[];
+};
+
 export type ApiToken = {
   id: string;
   name: string;

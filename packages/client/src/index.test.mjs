@@ -52,6 +52,33 @@ describe("EdgeEver client HTTP contract", () => {
     expect(headers.has("Content-Type")).toBe(false);
   });
 
+  test("sends unsaved note content to the AI tag suggestion endpoint", async () => {
+    let call;
+    const client = createEdgeEverClient({
+      fetch: async (input, init) => {
+        call = { input: String(input), init };
+        return jsonResponse({ suggestions: [{ name: "existing", existing: true }] });
+      },
+    });
+
+    const result = await client.suggestAiTags({
+      title: "Draft title",
+      contentMarkdown: "Draft body",
+      currentTags: ["current"],
+      locale: "en-US",
+    });
+
+    expect(call.input).toBe("/api/v1/ai/tag-suggestions");
+    expect(call.init.method).toBe("POST");
+    expect(JSON.parse(call.init.body)).toEqual({
+      title: "Draft title",
+      contentMarkdown: "Draft body",
+      currentTags: ["current"],
+      locale: "en-US",
+    });
+    expect(result.suggestions).toEqual([{ name: "existing", existing: true }]);
+  });
+
   test("preserves API error codes and invokes unauthorized handling", async () => {
     let unauthorized = 0;
     const client = createEdgeEverClient({

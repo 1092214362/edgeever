@@ -538,3 +538,16 @@ export const streamAiGeneration = async (input: AiGenerationRequest) => {
   const runtime = await loadAiRuntime();
   return runtime.streamAiText(buildAiGenerationRequest(input));
 };
+
+export const generateAiTagSuggestions = async (input: {
+  model: Awaited<ReturnType<typeof createAiModel>>;
+  title: string;
+  contentMarkdown: string;
+  currentTags: string[];
+  existingTags: string[];
+  locale?: string;
+  abortSignal?: AbortSignal;
+}) => {
+  const runtime = await loadAiRuntime();
+  return runtime.generateAiTagSuggestionNames(input);
+};

@@ -5,6 +5,8 @@ import {
   AiProviderConfigCreateSchema,
   AiProviderConfigUpdateSchema,
   AiProviderConnectionTestSchema,
+  AiTagSuggestionsRequestSchema,
+  normalizeTags,
   promptNeedsTargetLanguage,
   promptNeedsTone,
 } from "@edgeever/shared";
@@ -24,6 +26,7 @@ import {
   getAiSettings,
   getDefaultAiModelId,
   generateAiGeneration,
+  generateAiTagSuggestions,
   loadDefaultAiModel,
   normalizeAiGenerationText,
   normalizeAiBaseUrl,
@@ -35,10 +38,18 @@ import { createId, isoNow } from "./entity-utils";
 import { apiError, forbidden, notFound } from "./http-errors";
 import { getWorkspaceId, requireUser } from "./request-auth";
 import { encryptSecret } from "./secret-encryption";
+import { listTagSummaries } from "./tag-service";
 
 type AiRouteDependencies = {
   isDemoMode: (environment: Bindings) => boolean;
   testConnection?: (config: Parameters<typeof testAiModel>[0]) => Promise<{ text: string }>;
+  suggestTags?: (input: {
+    title: string;
+    contentMarkdown: string;
+    currentTags: string[];
+    existingTags: string[];
+    locale?: string;
+  }) => Promise<string[]>;
 };
 
 const providerErrorMessage = (error: unknown) => {
@@ -440,6 +451,51 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
         ),
       ]);
       return context.json(await readSettings(context, dependencies));
+    },
+  );
+
+  app.post(
+    "/api/v1/ai/tag-suggestions",
+    zValidator("json", AiTagSuggestionsRequestSchema),
+    async (context) => {
+      const denied = requireUser(context);
+      if (denied) return denied;
+      try {
+        const input = context.req.valid("json");
+        const workspaceId = getWorkspaceId(context);
+        const tagSummaries = await listTagSummaries(context.env.storage.db, workspaceId);
+        const allCanonicalTags = new Map(
+          tagSummaries.map((tag) => [tag.name.toLocaleLowerCase(), tag.name]),
+        );
+        const popularTags = [...tagSummaries]
+          .sort((left, right) => right.memoCount - left.memoCount || left.name.localeCompare(right.name))
+          .slice(0, 200)
+          .map((tag) => tag.name);
+        const existingTags = Array.from(new Set([
+          ...input.currentTags.map((tag) => allCanonicalTags.get(tag.toLocaleLowerCase()) ?? tag),
+          ...popularTags,
+        ]));
+        const rawSuggestions = dependencies.suggestTags
+          ? await dependencies.suggestTags({ ...input, existingTags })
+          : await generateAiTagSuggestions({
+            ...input,
+            existingTags,
+            model: await loadDefaultAiModel(context.env.storage.db, workspaceId, context.env),
+            abortSignal: context.req.raw.signal,
+          });
+        const canonicalTags = new Map(existingTags.map((tag) => [tag.toLocaleLowerCase(), tag]));
+        const suggestionNames = normalizeTags(
+          normalizeTags(rawSuggestions).map((name) => canonicalTags.get(name.toLocaleLowerCase()) ?? name),
+        ).slice(0, 7);
+        const suggestions = suggestionNames
+          .map((name) => {
+            const canonicalName = canonicalTags.get(name.toLocaleLowerCase());
+            return { name: canonicalName ?? name, existing: Boolean(canonicalName) };
+          });
+        return context.json({ suggestions });
+      } catch (error) {
+        return withAiError(context, error, "ai_tag_suggestions_failed");
+      }
     },
   );
 
