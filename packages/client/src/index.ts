@@ -32,6 +32,7 @@ import type {
   AiPromptTemplateCreateInput,
   AiPromptTemplateUpdateInput,
   AiStreamEvent,
+  AiTagSuggestionPromptUpdateInput,
   AiTagSuggestionsRequestInput,
   AiTagSuggestionsResponse,
 } from "@edgeever/shared";
@@ -246,7 +247,10 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
         body: JSON.stringify(payload),
       }),
 
-    getAiSettings: () => request<AiSettings>("/api/v1/ai/settings"),
+    getAiSettings: (locale?: string) => {
+      const search = locale ? `?locale=${encodeURIComponent(locale)}` : "";
+      return request<AiSettings>(`/api/v1/ai/settings${search}`);
+    },
 
     createAiProvider: (payload: AiProviderCreatePayload) =>
       request<AiSettings>("/api/v1/ai/providers", {
@@ -292,6 +296,12 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
       request<AiSettings>("/api/v1/ai/default-model", {
         method: "PUT",
         body: JSON.stringify({ modelConfigId }),
+      }),
+
+    updateAiTagSuggestionPrompt: (payload: AiTagSuggestionPromptUpdateInput, locale?: string) =>
+      request<AiSettings>(`/api/v1/ai/tag-suggestion-prompt${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
       }),
 
     listAiPrompts: (locale?: string) => {

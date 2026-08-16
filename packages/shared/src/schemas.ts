@@ -249,6 +249,10 @@ export const AiTagSuggestionsRequestSchema = z.object({
   }
 });
 
+export const AiTagSuggestionPromptUpdateSchema = z.object({
+  prompt: z.string().trim().min(1).max(4_000).nullable(),
+});
+
 export const AiPromptTemplateCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(200).optional(),
@@ -293,5 +297,6 @@ export type AiModelConfigCreateInput = z.infer<typeof AiModelConfigCreateSchema>
 export type AiDefaultModelUpdateInput = z.infer<typeof AiDefaultModelUpdateSchema>;
 export type AiGenerateInput = z.infer<typeof AiGenerateSchema>;
 export type AiTagSuggestionsRequestInput = z.infer<typeof AiTagSuggestionsRequestSchema>;
+export type AiTagSuggestionPromptUpdateInput = z.infer<typeof AiTagSuggestionPromptUpdateSchema>;
 export type AiPromptTemplateCreateInput = z.input<typeof AiPromptTemplateCreateSchema>;
 export type AiPromptTemplateUpdateInput = z.infer<typeof AiPromptTemplateUpdateSchema>;

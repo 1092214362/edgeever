@@ -29,6 +29,7 @@ import type {
   AiTargetLanguage,
   AiTone,
   AiStreamEvent,
+  AiTagSuggestionPromptUpdateInput,
   AiTagSuggestionsRequestInput,
   AiTagSuggestionsResponse,
   PublicMemoShare,
@@ -558,7 +559,10 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  getAiSettings: () => request<AiSettings>("/api/v1/ai/settings"),
+  getAiSettings: (locale?: string) => {
+    const search = locale ? `?locale=${encodeURIComponent(locale)}` : "";
+    return request<AiSettings>(`/api/v1/ai/settings${search}`);
+  },
 
   createAiProvider: (payload: AiProviderCreatePayload) =>
     request<AiSettings>("/api/v1/ai/providers", {
@@ -609,6 +613,12 @@ export const api = {
     request<AiSettings>("/api/v1/ai/default-model", {
       method: "PUT",
       body: JSON.stringify({ modelConfigId }),
+    }),
+
+  updateAiTagSuggestionPrompt: (payload: AiTagSuggestionPromptUpdateInput, locale?: string) =>
+    request<AiSettings>(`/api/v1/ai/tag-suggestion-prompt${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
     }),
 
   listAiPrompts: (locale?: string) => {

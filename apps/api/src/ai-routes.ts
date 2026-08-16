@@ -5,6 +5,7 @@ import {
   AiProviderConfigCreateSchema,
   AiProviderConfigUpdateSchema,
   AiProviderConnectionTestSchema,
+  AiTagSuggestionPromptUpdateSchema,
   AiTagSuggestionsRequestSchema,
   normalizeTags,
   promptNeedsTargetLanguage,
@@ -24,6 +25,7 @@ import {
   getAiModelConfig,
   getAiProviderConfig,
   getAiSettings,
+  getAiTagSuggestionPrompt,
   getDefaultAiModelId,
   generateAiGeneration,
   generateAiTagSuggestions,
@@ -66,6 +68,7 @@ const readSettings = (context: AppContext, dependencies: AiRouteDependencies) =>
   getWorkspaceId(context),
   encryptionConfigured(context),
   dependencies.isDemoMode(context.env),
+  context.req.query("locale"),
 );
 
 const denyMutation = (context: AppContext, dependencies: AiRouteDependencies) => {
@@ -454,6 +457,38 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
     },
   );
 
+  app.put(
+    "/api/v1/ai/tag-suggestion-prompt",
+    zValidator("json", AiTagSuggestionPromptUpdateSchema),
+    async (context) => {
+      const denied = denyMutation(context, dependencies);
+      if (denied) return denied;
+      const input = context.req.valid("json");
+      const workspaceId = getWorkspaceId(context);
+      const now = isoNow();
+      await context.env.storage.db.batch([
+        context.env.storage.db.prepare(
+          `INSERT INTO ai_workspace_settings (
+             workspace_id, tag_suggestion_prompt, created_at, updated_at
+           ) VALUES (?, ?, ?, ?)
+           ON CONFLICT(workspace_id) DO UPDATE SET
+             tag_suggestion_prompt = excluded.tag_suggestion_prompt,
+             updated_at = excluded.updated_at`,
+        ).bind(workspaceId, input.prompt, now, now),
+        auditStatement(
+          context.env.storage.db,
+          "user",
+          context.get("auth").actorId,
+          "workspace.ai_tag_suggestion_prompt.update",
+          "workspace",
+          workspaceId,
+          { customized: input.prompt !== null },
+        ),
+      ]);
+      return context.json(await readSettings(context, dependencies));
+    },
+  );
+
   app.post(
     "/api/v1/ai/tag-suggestions",
     zValidator("json", AiTagSuggestionsRequestSchema),
@@ -480,16 +515,19 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
           : await generateAiTagSuggestions({
             ...input,
             existingTags,
+            instruction: await getAiTagSuggestionPrompt(context.env.storage.db, workspaceId, input.locale),
             model: await loadDefaultAiModel(context.env.storage.db, workspaceId, context.env),
             abortSignal: context.req.raw.signal,
           });
-        const canonicalTags = new Map(existingTags.map((tag) => [tag.toLocaleLowerCase(), tag]));
+        const currentTagKeys = new Set(input.currentTags.map((tag) => tag.toLocaleLowerCase()));
         const suggestionNames = normalizeTags(
-          normalizeTags(rawSuggestions).map((name) => canonicalTags.get(name.toLocaleLowerCase()) ?? name),
+          normalizeTags(rawSuggestions)
+            .filter((name) => !currentTagKeys.has(name.toLocaleLowerCase()))
+            .map((name) => allCanonicalTags.get(name.toLocaleLowerCase()) ?? name),
         ).slice(0, 7);
         const suggestions = suggestionNames
           .map((name) => {
-            const canonicalName = canonicalTags.get(name.toLocaleLowerCase());
+            const canonicalName = allCanonicalTags.get(name.toLocaleLowerCase());
             return { name: canonicalName ?? name, existing: Boolean(canonicalName) };
           });
         return context.json({ suggestions });
