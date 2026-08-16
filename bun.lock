@@ -236,6 +236,7 @@
     },
   },
   "patchedDependencies": {
+    "expo-sharing@57.0.8": "patches/expo-sharing@57.0.8.patch",
     "mermaid@11.16.0": "patches/mermaid@11.16.0.patch",
   },
   "packages": {
