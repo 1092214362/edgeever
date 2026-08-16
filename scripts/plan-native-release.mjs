@@ -19,6 +19,7 @@ export const planNativeRelease = (platform, changedFiles) => {
     runtimeChangedFiles.every((file) =>
       file === "package.json" ||
       file === "bun.lock" ||
+      file.startsWith("apps/mobile/") ||
       file.startsWith("patches/expo-sharing@") ||
       file.startsWith("scripts/plan-native-release")
     );

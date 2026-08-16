@@ -34,6 +34,7 @@ describe("native release planning", () => {
     const changedFiles = [
       "package.json",
       "bun.lock",
+      "apps/mobile/app.json",
       "patches/expo-sharing@57.0.8.patch",
       "scripts/plan-native-release.mjs",
       "scripts/plan-native-release.test.mjs",
@@ -43,6 +44,7 @@ describe("native release planning", () => {
       rebuild: true,
       relevantChanges: [
         "bun.lock",
+        "apps/mobile/app.json",
         "patches/expo-sharing@57.0.8.patch",
       ],
     });
