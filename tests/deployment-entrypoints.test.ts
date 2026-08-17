@@ -314,7 +314,14 @@ describe("Cloudflare deployment entrypoints", () => {
       writeFileSync(
         resolve(wranglerBinDirectory, "wrangler.js"),
         [
-          'if (process.argv.includes("deploy")) {',
+          'if (process.argv.includes("deployments")) {',
+          '  process.stdout.write(JSON.stringify({ versions: [{ version_id: "legacy-version", percentage: 100 }] }));',
+          '} else if (process.argv.includes("versions")) {',
+          '  process.stdout.write(JSON.stringify({ resources: { bindings: [',
+          '    { name: "RESOURCES", type: "r2_bucket", bucket_name: "legacy-user-resources" },',
+          '    { name: "EDGE_EVER_AUTH_USERNAME", type: "plain_text", text: "legacy-owner" }',
+          '  ] } }));',
+          '} else if (process.argv.includes("deploy")) {',
           '  process.stdout.write("Uploaded edgeever\\nDeployed edgeever triggers (0.4 sec)\\n  https://edgeever.example.workers.dev\\nCurrent Version ID: version-1\\n");',
           "}",
           "",
@@ -342,6 +349,13 @@ describe("Cloudflare deployment entrypoints", () => {
         resolve(workingDirectory, ".wrangler.deployment-targets.json"),
         "utf8",
       ))).toEqual({ urls: ["https://edgeever.example.workers.dev"] });
+      const generatedConfig = readFileSync(
+        resolve(workingDirectory, ".wrangler.generated.toml"),
+        "utf8",
+      );
+      expect(generatedConfig).toContain('bucket_name = "legacy-user-resources"');
+      expect(generatedConfig).toContain('EDGE_EVER_R2_BUCKET_NAME = "legacy-user-resources"');
+      expect(generatedConfig).toContain('EDGE_EVER_AUTH_USERNAME = "legacy-owner"');
     } finally {
       rmSync(workingDirectory, { force: true, recursive: true });
     }

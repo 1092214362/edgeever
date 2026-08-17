@@ -27,6 +27,7 @@
    - **Worker Secret**：添加密钥 `EDGE_EVER_AUTH_PASSWORD`，值为初始管理员登录密码。
    - 该密码只配置为 Worker 运行时 Secret，不要复制到 Workers Builds 构建变量；标准部署入口会复用并验证已存在的 Secret。
    - 不要修改 `wrangler.toml`，也不要在控制台重复添加 binding。部署命令会根据标准资源名称生成 `DB` 与 `RESOURCES` binding。
+   - 对按旧版文档部署的已有 Worker，不要要求用户重命名或重新配置自定义 R2 存储桶。没有显式覆盖时，部署会自动保留线上 `RESOURCES` binding 与管理员用户名。
 
 5. **配置 Workers Builds 命令**
    - 在 Cloudflare 项目的构建设置中，填入以下标准命令：

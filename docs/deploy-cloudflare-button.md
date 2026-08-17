@@ -53,6 +53,8 @@ Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/):
 
 The repository's deployment command creates the `DB` and `RESOURCES` bindings from the standard resource names. Do not edit `wrangler.toml` or add duplicate bindings in the Dashboard.
 
+Existing deployments created from older instructions do not need to rename or migrate a custom R2 bucket. When no explicit Builds variable is set, the deploy command reads the live Worker's current `RESOURCES` binding and keeps using that bucket automatically.
+
 ---
 
 ### Step 4: Set Build Commands & Start Build
@@ -104,7 +106,7 @@ Ordinary deployments do not need these settings. To customize an instance, add n
 | `EDGE_EVER_WORKER_NAME` | Worker name |
 | `EDGE_EVER_D1_DATABASE_NAME` | D1 database name; its UUID is discovered automatically |
 | `EDGE_EVER_D1_DATABASE_ID` | Optional UUID fallback when discovery is unavailable |
-| `EDGE_EVER_R2_BUCKET_NAME` | Production R2 bucket name |
+| `EDGE_EVER_R2_BUCKET_NAME` | Optional explicit production R2 bucket override; upgrades otherwise reuse the live binding |
 | `EDGE_EVER_R2_PREVIEW_BUCKET_NAME` | Preview R2 bucket name |
 | `EDGE_EVER_WORKERS_DEV` | Enable or disable the `workers.dev` route |
 | `EDGE_EVER_CUSTOM_DOMAIN` / `EDGE_EVER_ROUTE_PATTERN` | Custom routing |

@@ -53,6 +53,8 @@
 
 仓库中的部署命令会根据标准资源名称生成 `DB` 与 `RESOURCES` binding。不要修改 `wrangler.toml`，也不要在控制台中重复添加 binding。
 
+按旧版文档创建过自定义 R2 存储桶的已有部署，不需要改名或迁移数据。未显式设置 Builds 变量时，部署命令会读取线上 Worker 当前的 `RESOURCES` binding，并自动继续使用原存储桶。
+
 ---
 
 ### 步骤 4：设置构建命令并启动构建
@@ -104,7 +106,7 @@ EDGE_EVER_UPDATE_CHANNEL=edge
 | `EDGE_EVER_WORKER_NAME` | Worker 名称 |
 | `EDGE_EVER_D1_DATABASE_NAME` | D1 数据库名称，UUID 会自动查询 |
 | `EDGE_EVER_D1_DATABASE_ID` | 自动查询不可用时的可选 UUID 兜底值 |
-| `EDGE_EVER_R2_BUCKET_NAME` | 生产环境 R2 存储桶名称 |
+| `EDGE_EVER_R2_BUCKET_NAME` | 可选的生产 R2 存储桶显式覆盖；升级时默认沿用线上 binding |
 | `EDGE_EVER_R2_PREVIEW_BUCKET_NAME` | 预览环境 R2 存储桶名称 |
 | `EDGE_EVER_WORKERS_DEV` | 启用或禁用 `workers.dev` 路由 |
 | `EDGE_EVER_CUSTOM_DOMAIN` / `EDGE_EVER_ROUTE_PATTERN` | 自定义路由 |

@@ -27,6 +27,7 @@ This document defines the standard operating specifications and conventions for 
    - **Worker Secret**: Add secret `EDGE_EVER_AUTH_PASSWORD` for initial admin password.
    - Keep this password only as a Worker runtime Secret; do not copy it into Workers Builds variables. The standard deploy entrypoint reuses and verifies the existing Secret.
    - Do not edit `wrangler.toml` or add duplicate bindings in the Dashboard. The deployment command generates the `DB` and `RESOURCES` bindings from these standard resource names.
+   - For an existing Worker deployed from older instructions, do not ask the user to rename or reconfigure a custom R2 bucket. With no explicit override, deployment automatically preserves the live `RESOURCES` binding and administrator username.
 
 5. **Configure Workers Builds Commands**
    - In the Cloudflare project build settings, set the standard commands:
