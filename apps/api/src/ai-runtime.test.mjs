@@ -32,9 +32,9 @@ describe("AI tag response parsing", () => {
       .toThrow("requested tag block");
   });
 
-  test("caps provider output before route-level normalization", () => {
+  test("caps provider output at three suggestions before route-level normalization", () => {
     expect(parseAiTagSuggestionNames(JSON.stringify({
       suggestions: ["1", "2", "3", "4", "5", "6", "7", "8"],
-    }))).toHaveLength(7);
+    }))).toEqual(["1", "2", "3"]);
   });
 });
