@@ -2,6 +2,22 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+export const PLACEHOLDER_D1_ID = "00000000-0000-0000-0000-000000000000";
+
+export const repositoryD1ConfigError = (config, usesRepositoryConfig) => {
+  if (!usesRepositoryConfig) return undefined;
+
+  const configuredId = config.match(/^database_id\s*=\s*"([^"]+)"/m)?.[1];
+  if (configuredId === PLACEHOLDER_D1_ID) return undefined;
+
+  return [
+    "Refusing to use an instance-specific D1 database id from the repository wrangler.toml.",
+    `Restore database_id to "${PLACEHOLDER_D1_ID}".`,
+    "Provide the real id through EDGE_EVER_D1_DATABASE_ID, let deployment resolve it by database name,",
+    "or point WRANGLER_CONFIG at an external configuration file.",
+  ].join(" ");
+};
+
 export const resolveWranglerCliPath = (cwd = resolve(".")) =>
   resolve(cwd, "node_modules", "wrangler", "bin", "wrangler.js");
 

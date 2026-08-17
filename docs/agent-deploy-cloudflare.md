@@ -36,7 +36,7 @@ This document defines the standard operating specifications and conventions for 
      Deploy command: bun run deploy:cloudflare-builds
      ```
 
-   - The deploy command automatically resolves the D1 UUID from the `edgeever` database name and writes it only to a temporary generated Wrangler configuration. Users do not need to edit `wrangler.toml` or copy a D1 ID into a build variable.
+   - The deploy command automatically resolves the D1 UUID from the `edgeever` database name and writes it only to a temporary generated Wrangler configuration. The tracked `wrangler.toml` must keep its all-zero `database_id` placeholder; deployment rejects an instance-specific ID committed there so a Fork cannot diverge on local infrastructure configuration.
    - Ensure the Workers Builds API token can read and edit D1. An advanced deployment that uses a differently named database must set the build variable `EDGE_EVER_D1_DATABASE_ID` explicitly.
 
 6. **Start Initial Build & Verify Service**

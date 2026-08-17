@@ -4,6 +4,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  writeSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -13,12 +14,13 @@ import {
   findD1DatabaseIdByName,
   normalizeD1MigrationSql,
   parseWranglerDeploymentUrls,
+  PLACEHOLDER_D1_ID,
+  repositoryD1ConfigError,
   runWranglerSync,
   shouldCaptureDeploymentTargets,
 } from "./wrangler-runner.mjs";
 import { writeWranglerNotice } from "./wrangler-output.mjs";
 
-const PLACEHOLDER_D1_ID = "00000000-0000-0000-0000-000000000000";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -72,7 +74,9 @@ if (requestedInstance !== undefined) {
   process.env.EDGE_EVER_INSTANCE = requestedInstance;
 }
 
-const baseConfigPath = resolve(process.env.WRANGLER_CONFIG ?? "wrangler.toml");
+const repositoryConfigPath = resolve("wrangler.toml");
+const baseConfigPath = resolve(process.env.WRANGLER_CONFIG ?? repositoryConfigPath);
+const usesRepositoryConfig = baseConfigPath === repositoryConfigPath;
 const baseConfigDirectory = dirname(baseConfigPath);
 const instance = process.env.EDGE_EVER_INSTANCE?.trim();
 const instanceKey = instance?.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase();
@@ -89,6 +93,12 @@ const generatedSecretsPath = resolve(
 const generatedLocalDevEnvPath = resolve(".env.wrangler.generated.local");
 let config = readFileSync(baseConfigPath, "utf8");
 let changed = false;
+
+const d1ConfigError = repositoryD1ConfigError(config, usesRepositoryConfig);
+if (d1ConfigError) {
+  writeSync(2, `${d1ConfigError}\n`);
+  process.exit(1);
+}
 
 const migrationCommand =
   wranglerArgs[0] === "d1"
@@ -306,7 +316,7 @@ if (isRemoteCommand && config.includes(`database_id = "${PLACEHOLDER_D1_ID}"`)) 
       instanceKey
         ? `Set EDGE_EVER_${instanceKey}_D1_DATABASE_ID or EDGE_EVER_D1_DATABASE_ID,`
         : "Set EDGE_EVER_D1_DATABASE_ID,",
-      "or replace the database_id placeholder in wrangler.toml / WRANGLER_CONFIG.",
+      "or point WRANGLER_CONFIG at an external configuration file with the required binding.",
     ].join(" "),
   );
   process.exit(1);

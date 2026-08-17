@@ -69,7 +69,7 @@ Deploy command: bun run deploy:cloudflare-builds
 
 Click **Save and Deploy** to trigger the initial build.
 
-The deploy command automatically looks up the D1 UUID by the `edgeever` database name. Do not edit `wrangler.toml` or manually copy the D1 ID. The Workers Builds API token must have D1 read/edit permission.
+The deploy command automatically looks up the D1 UUID by the `edgeever` database name. Keep the tracked `wrangler.toml` on its all-zero `database_id` placeholder; deployment rejects an instance-specific ID committed there. The Workers Builds API token must have D1 read/edit permission.
 
 After publishing, the CI deployment records the actual public target reported by Wrangler and requests its `/api/health` endpoint. The build fails if the live Worker is missing its `DB` binding, uses an unprepared D1 database, or does not return a healthy response.
 

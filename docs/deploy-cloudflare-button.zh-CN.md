@@ -69,7 +69,7 @@ Deploy command: bun run deploy:cloudflare-builds
 
 点击 **Save and Deploy** 启动首次构建部署。
 
-部署命令会根据 `edgeever` 数据库名称自动查询 D1 UUID。无需修改 `wrangler.toml`，也无需手工复制 D1 ID。Workers Builds API Token 必须具有 D1 读取和编辑权限。
+部署命令会根据 `edgeever` 数据库名称自动查询 D1 UUID。受版本控制的 `wrangler.toml` 必须保留全零 `database_id` 占位符；若把实例专属 ID 提交到该文件，部署会直接拒绝。Workers Builds API Token 必须具有 D1 读取和编辑权限。
 
 发布完成后，CI 部署会记录 Wrangler 返回的实际公网入口，并请求该入口的 `/api/health`。如果线上 Worker 缺少 `DB` binding、绑定了未初始化的 D1，或没有返回健康状态，构建会直接失败。
 

@@ -36,7 +36,7 @@
      Deploy command: bun run deploy:cloudflare-builds
      ```
 
-   - 部署命令会根据 `edgeever` 数据库名称自动查询 D1 UUID，并且只写入临时生成的 Wrangler 配置。用户无需修改 `wrangler.toml`，也无需手工把 D1 ID 复制到构建变量。
+   - 部署命令会根据 `edgeever` 数据库名称自动查询 D1 UUID，并且只写入临时生成的 Wrangler 配置。受版本控制的 `wrangler.toml` 必须保留全零 `database_id` 占位符；若把实例专属 ID 提交到该文件，部署会直接拒绝，避免 Fork 因本地基础设施配置产生分叉。
    - 请确保 Workers Builds API Token 具有 D1 读取和编辑权限。使用其他数据库名称的高级部署需要显式设置构建变量 `EDGE_EVER_D1_DATABASE_ID`。
 
 6. **启动首次构建与服务验证**
