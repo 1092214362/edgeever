@@ -469,8 +469,6 @@ struct MemoEditView: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "tag")
-                            .font(.system(size: 13, weight: .semibold))
                         Text(viewModel.tags.isEmpty
                              ? env.preferences.t("添加标签", en: "Add tags")
                              : viewModel.tags.map { "#\($0)" }.joined(separator: ", "))
@@ -496,7 +494,7 @@ struct MemoEditView: View {
                                 .controlSize(.small)
                                 .tint(AppTheme.accentStrong)
                         } else {
-                            Image(systemName: smartTagsAdded ? "checkmark" : "sparkles")
+                            Image(systemName: smartTagsAdded ? "checkmark" : "tag.badge.plus")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(AppTheme.accentStrong)
                         }

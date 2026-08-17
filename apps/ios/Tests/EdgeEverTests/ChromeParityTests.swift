@@ -102,6 +102,8 @@ final class ChromeParityTests: XCTestCase {
         XCTAssertTrue(src.contains("CreateMemoChrome.tags"), "missing tags field")
         XCTAssertTrue(src.contains("CreateMemoChrome.smartTags"), "missing one-tap smart tags control")
         XCTAssertTrue(src.contains("generateAndApplySmartTags"), "smart tags must generate and apply in one action")
+        XCTAssertTrue(src.contains("tag.badge.plus"), "smart tags must use the same tag-plus metaphor as web and Android")
+        XCTAssertFalse(src.contains("Image(systemName: \"tag\")"), "tags field must not repeat the tag icon beside the smart-tags control")
         XCTAssertFalse(src.contains("AI 推荐标签"), "tag picker must not retain the multi-step AI suggestion flow")
         XCTAssertTrue(src.contains("CreateMemoChrome.editorFrame"), "missing bordered editor")
         XCTAssertTrue(src.contains("TipTapWebView"), "editor wiring must remain")
