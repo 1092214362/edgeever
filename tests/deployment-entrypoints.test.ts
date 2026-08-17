@@ -15,7 +15,7 @@ import {
   manualDeploymentCopy,
 } from "../apps/site/src/deployment-prompts";
 import { decideUpstreamSync } from "../scripts/upstream-sync-plan.mjs";
-import { repositoryD1ConfigError } from "../scripts/wrangler-runner.mjs";
+import { repositoryWranglerConfigError } from "../scripts/wrangler-runner.mjs";
 
 const repositoryRoot = resolve(import.meta.dir, "..");
 const normalizeLineEndings = (value: string) => value.replace(/\r\n/g, "\n");
@@ -122,6 +122,17 @@ describe("Cloudflare deployment entrypoints", () => {
     expect(chineseGuide).toContain("Worker 运行时 Secret，不是 Workers Builds 构建变量");
   });
 
+  test("Workers Builds receives configuration but never the runtime password", () => {
+    const setup = readRepositoryFile("scripts/cloudflare-workers-builds.mjs");
+
+    expect(setup).toContain('"AUTH_USERNAME"');
+    expect(setup).toContain('"AUTH_LOGIN_WINDOW_SECONDS"');
+    expect(setup).not.toContain('"AUTH_PASSWORD",');
+    expect(setup).not.toContain('"AUTH_PASSWORD_HASH",');
+    expect(setup).not.toContain("Missing EDGE_EVER_AUTH_PASSWORD");
+    expect(setup).toContain("is_secret: false");
+  });
+
   test("online deployment resolves the D1 id without editing the repository config", () => {
     const runner = readRepositoryFile("scripts/run-wrangler.mjs");
     const wranglerConfig = readRepositoryFile("wrangler.toml");
@@ -133,32 +144,36 @@ describe("Cloudflare deployment entrypoints", () => {
     );
     expect(runner).toContain('"d1", "list", "--json"');
     expect(runner).toContain("findD1DatabaseIdByName");
-    expect(runner).toContain("repositoryD1ConfigError(config, usesRepositoryConfig)");
+    expect(runner).toContain("repositoryWranglerConfigError(config, usesRepositoryConfig)");
     expect(runner).not.toContain("replace the database_id placeholder");
     expect(englishAgentDoc).toContain("automatically resolves the D1 UUID");
     expect(chineseAgentDoc).toContain("自动查询 D1 UUID");
   });
 
-  test("rejects an instance-specific D1 id in the repository Wrangler config", () => {
-    const instanceConfig = [
-      'name = "edgeever"',
-      'database_name = "edgeever"',
-      'database_id = "11111111-1111-1111-1111-111111111111"',
-      "",
-    ].join("\n");
-    const placeholderConfig = instanceConfig.replace(
-      "11111111-1111-1111-1111-111111111111",
-      "00000000-0000-0000-0000-000000000000",
-    );
+  test("rejects instance-specific values in the repository Wrangler config", () => {
+    const repositoryConfig = readRepositoryFile("wrangler.toml");
+    const instanceConfigs = [
+      repositoryConfig.replace('name = "edgeever"', 'name = "my-notes"'),
+      repositoryConfig.replace("workers_dev = true", "workers_dev = false"),
+      repositoryConfig.replace('database_name = "edgeever"', 'database_name = "my-notes"'),
+      repositoryConfig.replace(
+        'database_id = "00000000-0000-0000-0000-000000000000"',
+        'database_id = "11111111-1111-1111-1111-111111111111"',
+      ),
+      repositoryConfig.replace('bucket_name = "edgeever-resources"', 'bucket_name = "my-notes"'),
+      repositoryConfig.replace('compatibility_date = "2026-06-26"', 'compatibility_date = "2026-08-17"'),
+      `${repositoryConfig}\n[vars]\nEDGE_EVER_AUTH_USERNAME = "owner"\n`,
+      `${repositoryConfig}\n[[routes]]\npattern = "notes.example.com"\ncustom_domain = true\n`,
+    ];
 
-    const error = repositoryD1ConfigError(instanceConfig, true);
-    expect(error).toContain(
-      "Refusing to use an instance-specific D1 database id from the repository wrangler.toml",
-    );
-    expect(error).toContain("EDGE_EVER_D1_DATABASE_ID");
-    expect(error).toContain("WRANGLER_CONFIG");
-    expect(repositoryD1ConfigError(placeholderConfig, true)).toBeUndefined();
-    expect(repositoryD1ConfigError(instanceConfig, false)).toBeUndefined();
+    for (const instanceConfig of instanceConfigs) {
+      const error = repositoryWranglerConfigError(instanceConfig, true);
+      expect(error).toContain("Refusing instance-specific setting");
+      expect(error).toContain("EDGE_EVER_*");
+      expect(error).toContain("WRANGLER_CONFIG");
+    }
+    expect(repositoryWranglerConfigError(repositoryConfig, true)).toBeUndefined();
+    expect(repositoryWranglerConfigError(instanceConfigs[0], false)).toBeUndefined();
   });
 
   test("keeps D1 resolver diagnostics out of Wrangler JSON stdout", () => {

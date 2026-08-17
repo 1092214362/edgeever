@@ -1,20 +1,45 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 export const PLACEHOLDER_D1_ID = "00000000-0000-0000-0000-000000000000";
 
-export const repositoryD1ConfigError = (config, usesRepositoryConfig) => {
+const REPOSITORY_WRANGLER_VALUES = {
+  name: "edgeever",
+  workers_dev: "true",
+  database_name: "edgeever",
+  database_id: PLACEHOLDER_D1_ID,
+  bucket_name: "edgeever-resources",
+  preview_bucket_name: "edgeever-resources-preview",
+};
+const REPOSITORY_WRANGLER_SHA256 = "d49ed530169a8597d2c17d5c6b99e03e371c8710124bbce4e526cf2b3a720f7a";
+
+const configValue = (config, key) => {
+  const match = config.match(new RegExp(`^${key}\\s*=\\s*(?:"([^"]*)"|(true|false))`, "m"));
+  return match?.[1] ?? match?.[2];
+};
+
+export const repositoryWranglerConfigError = (config, usesRepositoryConfig) => {
   if (!usesRepositoryConfig) return undefined;
 
-  const configuredId = config.match(/^database_id\s*=\s*"([^"]+)"/m)?.[1];
-  if (configuredId === PLACEHOLDER_D1_ID) return undefined;
+  const changedEntry = Object.entries(REPOSITORY_WRANGLER_VALUES)
+    .find(([key, expected]) => configValue(config, key) !== expected);
+  const instanceSection = ["[[routes]]", "[vars]", "[triggers]"]
+    .find((section) => config.includes(section));
+  const normalizedConfig = config.replace(/\r\n/g, "\n");
+  const repositoryConfigChanged = createHash("sha256")
+    .update(normalizedConfig)
+    .digest("hex") !== REPOSITORY_WRANGLER_SHA256;
+  if (!changedEntry && !instanceSection && !repositoryConfigChanged) return undefined;
+
+  const changedSetting = changedEntry?.[0] ?? instanceSection ?? "tracked file contents";
 
   return [
-    "Refusing to use an instance-specific D1 database id from the repository wrangler.toml.",
-    `Restore database_id to "${PLACEHOLDER_D1_ID}".`,
-    "Provide the real id through EDGE_EVER_D1_DATABASE_ID, let deployment resolve it by database name,",
-    "or point WRANGLER_CONFIG at an external configuration file.",
+    `Refusing instance-specific setting ${changedSetting} in the repository wrangler.toml.`,
+    "Restore the tracked file from upstream.",
+    "Provide deployment settings through EDGE_EVER_* Workers Builds variables,",
+    "or point WRANGLER_CONFIG at an external configuration file for an advanced deployment.",
   ].join(" ");
 };
 

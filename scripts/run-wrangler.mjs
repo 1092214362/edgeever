@@ -15,7 +15,7 @@ import {
   normalizeD1MigrationSql,
   parseWranglerDeploymentUrls,
   PLACEHOLDER_D1_ID,
-  repositoryD1ConfigError,
+  repositoryWranglerConfigError,
   runWranglerSync,
   shouldCaptureDeploymentTargets,
 } from "./wrangler-runner.mjs";
@@ -94,9 +94,9 @@ const generatedLocalDevEnvPath = resolve(".env.wrangler.generated.local");
 let config = readFileSync(baseConfigPath, "utf8");
 let changed = false;
 
-const d1ConfigError = repositoryD1ConfigError(config, usesRepositoryConfig);
-if (d1ConfigError) {
-  writeSync(2, `${d1ConfigError}\n`);
+const repositoryConfigError = repositoryWranglerConfigError(config, usesRepositoryConfig);
+if (repositoryConfigError) {
+  writeSync(2, `${repositoryConfigError}\n`);
   process.exit(1);
 }
 
