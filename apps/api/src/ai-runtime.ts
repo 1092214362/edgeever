@@ -29,7 +29,8 @@ export const generateAiText = (...args: Parameters<typeof generateText>) => gene
 
 export const streamAiText = (...args: Parameters<typeof streamText>) => streamText(...args);
 
-const findJsonValue = (text: string) => {
+const findJsonValues = (text: string) => {
+  const values: string[] = [];
   for (let start = 0; start < text.length; start += 1) {
     const opening = text[start];
     if (opening !== "{" && opening !== "[") continue;
@@ -52,11 +53,15 @@ const findJsonValue = (text: string) => {
       else if (character === "}" || character === "]") {
         const expected = character === "}" ? "{" : "[";
         if (stack.pop() !== expected) break;
-        if (stack.length === 0) return text.slice(start, index + 1);
+        if (stack.length === 0) {
+          values.push(text.slice(start, index + 1));
+          start = index;
+          break;
+        }
       }
     }
   }
-  return null;
+  return values;
 };
 
 const readSuggestionArray = (value: unknown): unknown[] | null => {
@@ -70,8 +75,8 @@ const readSuggestionArray = (value: unknown): unknown[] | null => {
 };
 
 export const parseAiTagSuggestionNames = (text: string) => {
-  const jsonText = findJsonValue(text.trim());
-  if (jsonText) {
+  const trimmedText = text.trim();
+  for (const jsonText of findJsonValues(trimmedText)) {
     try {
       const suggestions = readSuggestionArray(JSON.parse(jsonText));
       if (suggestions) {
@@ -90,10 +95,10 @@ export const parseAiTagSuggestionNames = (text: string) => {
           .slice(0, MAX_AI_TAG_SUGGESTIONS);
       }
     } catch {
-      // Some reasoning models emit prose containing braces before the requested block.
+      // Keep scanning because reasoning text can contain braces before the actual JSON.
     }
   }
-  const block = text.match(/<edgeever-tags>\s*([\s\S]*?)\s*<\/edgeever-tags>/i)?.[1];
+  const block = trimmedText.match(/<edgeever-tags>\s*([\s\S]*?)\s*<\/edgeever-tags>/i)?.[1];
   if (block !== undefined) {
     return block
       .split(/\r?\n/)
@@ -101,12 +106,30 @@ export const parseAiTagSuggestionNames = (text: string) => {
       .filter(Boolean)
       .slice(0, MAX_AI_TAG_SUGGESTIONS);
   }
-  const plainTagLines = text
+  if (/^(?:没有|无)(?:找到)?(?:合适|适合|可用|相关)?(?:的)?(?:新)?标签[。.!！]?$/.test(trimmedText)
+    || /^(?:no|none|no suitable|no relevant) tags?[.!]?$/i.test(trimmedText)) {
+    return [];
+  }
+  const plainTagLines = trimmedText
     .split(/\r?\n/)
     .map((line) => line.trim().replace(/^(?:[-*]\s+|\d+[.)]\s+|#)/, "").trim())
     .filter((line) => line.length > 0 && line.length <= 80)
-    .filter((line) => !/[。.!！?？:：]$/.test(line) && !/[,，{}<>]/.test(line));
+    .filter((line) => !/[。.!！?？:：]$/.test(line) && !/[,，、;；{}<>]/.test(line));
   if (plainTagLines.length > 0) return plainTagLines.slice(0, MAX_AI_TAG_SUGGESTIONS);
+  const delimitedTags = trimmedText
+    .replace(/^```(?:text|markdown)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .replace(/^(?:建议)?标签\s*[:：]\s*/i, "")
+    .split(/[\r\n,，、;；]+/)
+    .map((tag) => tag.trim().replace(/^#/, "").trim())
+    .filter(Boolean);
+  if (
+    delimitedTags.length > 0
+    && delimitedTags.length <= MAX_AI_TAG_SUGGESTIONS
+    && delimitedTags.every((tag) => tag.length <= 40 && !/[。.!！?？:{}<>]/.test(tag))
+  ) {
+    return delimitedTags;
+  }
   throw new Error("AI tag response did not contain the requested tag block.");
 };
 

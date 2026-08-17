@@ -33,9 +33,9 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Sun,
   Tag,
+  TagPlus,
   Trash2,
   UserRound,
   X,
@@ -1880,7 +1880,7 @@ const SmartTagButton = ({
         ? <ActivityIndicator color="#047857" size="small" />
         : status === "success"
           ? <Check color="#047857" size={17} />
-          : <Sparkles color="#047857" size={17} />}
+          : <TagPlus color="#047857" size={18} />}
     </Pressable>
   );
 };
@@ -2572,7 +2572,6 @@ const CreateMemoModal = ({
             <ChevronDown color="#64748b" size={14} />
           </Pressable>
           <Pressable accessibilityLabel="选择笔记标签" accessibilityRole="button" onPress={() => setTagPickerOpen(true)} style={styles.createMemoTagsButton}>
-            <Tag color="#64748b" size={15} />
             <Text numberOfLines={1} style={[styles.createMemoTagsInput, !tagsText && styles.createMemoTagsPlaceholder]}>
               {tagsText || "添加标签"}
             </Text>
@@ -3155,7 +3154,6 @@ const RichEditorModal = ({
                 <ChevronDown color="#64748b" size={14} />
               </Pressable>
               <Pressable accessibilityLabel="选择笔记标签" accessibilityRole="button" onPress={() => setTagPickerOpen(true)} style={[styles.createMemoTagsButton, styles.richStandaloneTagsInput]}>
-                <Tag color="#64748b" size={15} />
                 <Text numberOfLines={1} style={[styles.createMemoTagsInput, !tagsText && styles.createMemoTagsPlaceholder]}>
                   {tagsText || "添加标签"}
                 </Text>

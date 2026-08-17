@@ -25,8 +25,20 @@ describe("AI tag response parsing", () => {
     expect(parseAiTagSuggestionNames("日本轻小说")).toEqual(["日本轻小说"]);
   });
 
+  test("accepts concise delimited tags from models that ignore the requested block", () => {
+    expect(parseAiTagSuggestionNames("标签：军人婚姻、少数民族加分、政策公平"))
+      .toEqual(["军人婚姻", "少数民族加分", "政策公平"]);
+    expect(parseAiTagSuggestionNames("React, AI")).toEqual(["React", "AI"]);
+    expect(parseAiTagSuggestionNames("没有合适的标签。 ")).toEqual([]);
+  });
+
+  test("scans past reasoning braces to find a later suggestions object", () => {
+    expect(parseAiTagSuggestionNames('Reasoning {not json}. Result: {"tags":["React","AI"]}'))
+      .toEqual(["React", "AI"]);
+  });
+
   test("rejects prose instead of treating it as tag data", () => {
-    expect(() => parseAiTagSuggestionNames("React, AI"))
+    expect(() => parseAiTagSuggestionNames("This note discusses React, AI, and several implementation tradeoffs."))
       .toThrow("requested tag block");
     expect(() => parseAiTagSuggestionNames('{"answer":"React"}'))
       .toThrow("requested tag block");
