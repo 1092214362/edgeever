@@ -76,6 +76,8 @@ describe("Docker release contract", () => {
     expect(workflow.match(/github\.repository == 'tianma-if\/edgeever'/g)?.length).toBeGreaterThanOrEqual(2);
     expect(workflow).toContain("release_tag");
     expect(workflow).toContain("contents: write\n      packages: write");
+    expect(workflow).toContain('gh release view "${RELEASE_TAG}"');
+    expect(workflow).not.toContain('releases/tags/${RELEASE_TAG}');
     expect(workflow).toContain("docker logout ghcr.io");
     expect(workflow).toContain("docker buildx imagetools inspect");
   });

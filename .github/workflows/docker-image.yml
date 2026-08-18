@@ -125,14 +125,14 @@ jobs:
               echo "release_tag must match vX.Y.Z" >&2
               exit 1
             fi
-            release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
-            if [[ "$(jq -r '.draft' <<<"${release_json}")" != "true" ]] || [[ "$(jq -r '.prerelease' <<<"${release_json}")" != "false" ]]; then
+            release_json="$(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json isDraft,isPrerelease,targetCommitish)"
+            if [[ "$(jq -r '.isDraft' <<<"${release_json}")" != "true" ]] || [[ "$(jq -r '.isPrerelease' <<<"${release_json}")" != "false" ]]; then
               echo "${RELEASE_TAG} must identify a non-prerelease Draft release" >&2
               exit 1
             fi
             version="${RELEASE_TAG#v}"
             expected_version="$(jq -r '.version' package.json)"
-            target_commitish="$(jq -r '.target_commitish' <<<"${release_json}")"
+            target_commitish="$(jq -r '.targetCommitish' <<<"${release_json}")"
             if [[ "${version}" != "${expected_version}" ]] || [[ "${target_commitish}" != "${GITHUB_SHA}" ]]; then
               echo "Draft tag, package version, target commit, and workflow commit must match" >&2
               exit 1
