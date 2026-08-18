@@ -75,6 +75,7 @@ describe("Docker release contract", () => {
     const workflow = readProjectFile(".github/workflows/docker-image.yml");
     expect(workflow.match(/github\.repository == 'tianma-if\/edgeever'/g)?.length).toBeGreaterThanOrEqual(2);
     expect(workflow).toContain("release_tag");
+    expect(workflow).toContain("contents: write\n      packages: write");
     expect(workflow).toContain("docker logout ghcr.io");
     expect(workflow).toContain("docker buildx imagetools inspect");
   });
