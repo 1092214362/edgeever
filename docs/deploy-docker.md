@@ -31,14 +31,8 @@ storage are ready.
 
 ### Image registry
 
-Compose uses the canonical GitHub Container Registry image by default:
-
-```text
-ghcr.io/tianma-if/edgeever
-```
-
-Users in mainland China can select the public Tencent Cloud TCR mirror without
-editing `compose.yaml`:
+The default image is `ghcr.io/tianma-if/edgeever`. Users in mainland China can
+switch to Tencent Cloud TCR:
 
 ```sh
 export EDGE_EVER_IMAGE=ccr.ccs.tencentyun.com/edgeever/edgeever
@@ -47,11 +41,8 @@ docker compose pull
 docker compose up -d
 ```
 
-The TCR mirror requires no `docker login`. Its `v1.33.0` and `latest` tags are
-the same multi-platform OCI image as GHCR, with the same digest and support for
-both `linux/amd64` and `linux/arm64`. Keep `EDGE_EVER_VERSION` pinned to an
-explicit tag in production. Switching registries does not change or migrate
-the `/data` volume.
+The public TCR image requires no `docker login` and supports `linux/amd64` and
+`linux/arm64`. Pin `EDGE_EVER_VERSION` to a release tag in production.
 
 Compose creates one named volume. Everything that must survive a container
 replacement is under `/data`:

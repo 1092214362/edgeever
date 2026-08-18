@@ -27,13 +27,7 @@ docker compose ps
 
 ### 镜像地址
 
-Compose 默认使用 GitHub Container Registry 中的主镜像：
-
-```text
-ghcr.io/tianma-if/edgeever
-```
-
-中国大陆用户可以直接选择腾讯云 TCR 公共镜像，无需修改 `compose.yaml`：
+默认镜像为 `ghcr.io/tianma-if/edgeever`。中国大陆用户可以切换到腾讯云 TCR：
 
 ```sh
 export EDGE_EVER_IMAGE=ccr.ccs.tencentyun.com/edgeever/edgeever
@@ -42,10 +36,8 @@ docker compose pull
 docker compose up -d
 ```
 
-腾讯云镜像无需执行 `docker login`。其中的 `v1.33.0` 与 `latest` 和 GHCR 是同一
-份多平台 OCI 镜像，digest 一致，同时支持 `linux/amd64` 与 `linux/arm64`。
-生产环境仍应通过 `EDGE_EVER_VERSION` 固定正式版本标签。切换镜像地址不会修改
-或迁移 `/data` 卷。
+腾讯云公共镜像无需执行 `docker login`，支持 `linux/amd64` 与 `linux/arm64`。
+生产环境应通过 `EDGE_EVER_VERSION` 固定正式版本标签。
 
 Compose 会创建一个命名卷。所有需要在容器替换后保留的数据都位于 `/data`：
 
