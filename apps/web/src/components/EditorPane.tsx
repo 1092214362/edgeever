@@ -126,6 +126,7 @@ import {
   EDITOR_LOCAL_SAVE_DELAY_MS,
   getEditableMemoTitle,
   getNotebookMoveOptions,
+  type EditorContentAlignment,
   type MemoDocumentActionRequest,
 } from "@/lib/app-helpers";
 import { copyEditorToWeChat, copyMarkdownToWeChat } from "@/lib/wechat-copy";
@@ -604,6 +605,7 @@ type EditorPaneProps = {
   repository: EdgeEverRepository;
   desktopFocusMode: boolean;
   onToggleDesktopFocusMode: () => void;
+  editorContentAlignment: EditorContentAlignment;
   mobileDefaultEditMemoId: string | null;
   preserveUnsavedContentFromMemoId?: string | null;
   saveBlocked?: boolean;
@@ -670,6 +672,7 @@ const RichEditorPane = ({
   repository,
   desktopFocusMode,
   onToggleDesktopFocusMode,
+  editorContentAlignment,
   mobileDefaultEditMemoId,
   preserveUnsavedContentFromMemoId: _preserveUnsavedContentFromMemoId,
   saveBlocked: _saveBlocked = false,
@@ -4118,7 +4121,9 @@ const RichEditorPane = ({
               : "min-h-full items-start px-6 py-6 sm:px-10",
             desktopFocusMode
               ? "mx-auto w-full max-w-[1400px] justify-center"
-              : "w-full justify-center"
+              : editorContentAlignment === "center"
+                ? "w-full justify-center"
+                : "w-full justify-start"
           )}
         >
           <div

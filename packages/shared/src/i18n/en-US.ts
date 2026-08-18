@@ -204,6 +204,12 @@ export const enUS = {
     mermaidThemeDescription: "Choose the visual theme for diagrams in notes.",
     editorThemeTitle: "Editor theme",
     editorThemeDescription: "Choose a writing style for the note editor. Saved in this browser.",
+    editorContentAlignmentTitle: "Note content layout",
+    editorContentAlignmentDescription: "Choose how note content is displayed across all notes on desktop. Saved in this browser.",
+    editorContentAlignments: {
+      center: "Optimize readability (centered)",
+      start: "Align left",
+    },
     editorThemes: {
       default: "System default",
       "minimal-emerald": "Minimal Emerald",
@@ -695,6 +701,7 @@ export const enUS = {
       titleAsc: "Title A-Z",
     },
     notebookSort: {
+      custom: "Custom",
       nameAsc: "Name",
       memoCountDesc: "Note count",
       updatedDesc: "Updated date",
