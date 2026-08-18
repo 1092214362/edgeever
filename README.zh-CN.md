@@ -5,12 +5,12 @@
 
 简体中文 | [English](README.md)
 
-> **EdgeEver：无需服务器、0 费用、开源且原生支持 AI 的自托管「印象笔记」替代方案。**
+> **EdgeEver：开源、原生支持 AI、可自由部署的自托管「印象笔记」替代方案。**
 
 EdgeEver 是一款现代化的开源笔记工作区。它为你找回经典印象笔记的三栏高效体验，同时具备完全开放的数据架构与原生 AI Agent 联动能力，让个人知识沉淀更轻量、更自由。
 
 > 💡 **终身免服务器，100% 免费**
-> EdgeEver 采用纯 Serverless（无服务器）架构。自部署时**无需购买云服务器**，也**无需配置复杂的 Docker 或 SSL 证书**。免费运行于 Cloudflare 配额之内，个人日常使用 **100% 免费，零费用、零运维**。
+> EdgeEver 可以免费运行在 Cloudflare 配额内，无需购买或维护服务器；希望使用 VPS、NAS 或家庭服务器的用户，也可以通过 Docker 部署同一套应用。
 
 > ⭐ 如果 EdgeEver 对你有帮助，欢迎点个 Star。你的支持会帮助更多人发现这个项目。
 
@@ -35,7 +35,7 @@ EdgeEver 是一款现代化的开源笔记工作区。它为你找回经典印�
 
 ## 功能
 
-- **零服务器、零运维、真正免费**：基于 Cloudflare Serverless 架构，彻底告别服务器租用与运维烦恼。免费配额可轻松容纳 15 万条笔记与 5 万张图片，全球节点带来秒开体验。
+- **自由选择部署方式**：同一套应用既可免费运行于 Cloudflare Serverless，也可通过 Docker 部署到 VPS、NAS 或家庭服务器，无需维护产品代码分支。
 - **数据开放，不设围墙**：基于标准 SQLite 存储，提供 REST API、MCP 与 CLI 接口。数据随时可读可导，不再担心被任何特定平台绑定。
 - **无损 ZIP 打包与无缝迁移**：一键打包导出包含 Markdown、Front Matter、嵌套目录及附件的完整档案，同时保留历史版本与结构化数据，方便在不同实例间完整还原。
 - **原生 AI Agent 智脑联动**：内置 MCP（Model Context Protocol）协议，支持 Claude Code、Codex、Antigravity 等 AI 助手直接读取与整理笔记，也可与 Notion Database、飞书多维表格轻松打通。
@@ -59,9 +59,9 @@ EdgeEver 是一款现代化的开源笔记工作区。它为你找回经典印�
 
 ## 部署
 
-EdgeEver 采用纯 Serverless 架构，完全运行在 Cloudflare 免费配额内，**无需购买服务器/VPS，也无需配置 Docker 或 SSL 证书**。
+Cloudflare 是推荐的零服务器部署方式；希望使用 VPS、NAS 或家庭服务器的用户也可以选择 Docker，两种运行时共用同一套应用和 migration。
 
-您可以选择以下两种方式之一在线部署：
+Cloudflare 在线部署可以选择以下两种方式之一：
 
 ### 方案一：AI Agent 一键部署（推荐）
 
@@ -91,6 +91,16 @@ EdgeEver 采用纯 Serverless 架构，完全运行在 Cloudflare 免费配额�
 5. **启动构建与验证**：使用默认构建配置启动首次构建，部署完成后访问 `/api/health` 确认返回 `200` 即可开始使用。
 
 > 📖 包含具体参数与构建命令的详细步骤，请查看 [在线部署完整文档](docs/deploy-cloudflare-button.zh-CN.md)。
+
+### 方案三：在 VPS 或 NAS 上使用 Docker
+
+```sh
+export EDGE_EVER_VERSION=vX.Y.Z
+export EDGE_EVER_AUTH_PASSWORD='请替换为足够长的随机密码'
+docker compose up -d
+```
+
+Docker 将 SQLite 与本地附件统一持久化到 `/data` 卷，也支持 S3 兼容附件存储。HTTPS、Secret、NAS 权限、备份与升级说明请查看 [Docker 部署文档](docs/deploy-docker.zh-CN.md)。
 
 ---
 
@@ -148,7 +158,7 @@ macOS App 可从 [GitHub Releases](https://github.com/tianma-if/edgeever/release
 - iOS App：`apps/ios` 中的原生 SwiftUI（iOS 17+），内置 TipTap EditorBundle、GRDB 本地镜像/outbox，界面与 Android 壳层对齐。
 - 原生桌面端：Electron + Rust sidecar，兼顾跨平台一致体验与高性能本地数据服务；基于 SQLite 支持离线编辑、联网后增量同步与本地备份。
 - 网页裁剪：Manifest V3、Mozilla Readability、Turndown，支持 Chrome、Microsoft Edge 与 Firefox。
-- 后端：Cloudflare Workers、Hono、Zod、D1、R2，提供 REST API、OpenAPI 与 Remote MCP。
+- 后端：一套基于 Hono/Zod 的业务应用，提供 REST API、OpenAPI 与 Remote MCP；Cloudflare 使用 Workers/D1/R2，Docker 使用 Bun/SQLite/本地文件或 S3。
 
 ## 快速开始
 
@@ -172,7 +182,7 @@ packages/shared   共享类型、Zod schema、TipTap / Markdown 内容转换
 crates/desktop-sidecar
                    Rust sidecar，负责本地 SQLite、离线数据、备份与资源服务
 scripts           Wrangler 封装、密码 hash、CLI、MCP stdio bridge、Evernote ENEX 导入
-migrations        D1 数据库迁移
+migrations        D1/SQLite 共用、只增不改的数据库 migration
 docs              OpenAPI schema、架构、迁移与部署文档
 .github/workflows Web、移动端、iOS、桌面端打包、部署与 Release 的 CI
 wrangler.toml     Cloudflare Workers、Assets、D1、R2 配置
@@ -242,9 +252,9 @@ Cloudflare Worker 侧执行图片处理会消耗计算/图片处理额度，因�
 - **Memos 笔记的迁入**：请参考 [docs/memos-migration-guide.md](docs/memos-migration-guide.md)
 - **Notion 笔记的迁入**：请参考 [docs/notion-migration-guide.md](docs/notion-migration-guide.md)
 
-## Docker 部署规划
+## Docker 部署
 
-> 🐳 面向 VPS、NAS 和家庭服务器的 Docker 私有化部署已纳入规划，但当前还不是正式支持的发行方式。现在已经提供用于适配器开发的实验性 Bun 运行入口，支持 SQLite + 本地文件或 S3 兼容存储；PostgreSQL 目前仍只预留契约。详见[自托管与 Docker 架构预留](docs/self-hosting-architecture.zh-CN.md)。
+Docker 与 Cloudflare 共用同一套前端、API 路由、业务服务、鉴权、MCP 实现和 migration。容器使用 SQLite，并支持本地文件或 S3 兼容附件存储，提供 `amd64` 与 `arm64` 镜像。详见[使用 Docker 部署 EdgeEver](docs/deploy-docker.zh-CN.md)和[自托管与 Docker 架构](docs/self-hosting-architecture.zh-CN.md)。
 
 ## 致谢
 
