@@ -59,7 +59,7 @@ The public demo resets every day at 3:00 AM (China Standard Time) and restores s
 
 ## Deployment
 
-Cloudflare is the recommended zero-server deployment. Docker is available for users who prefer a VPS, NAS, or home server; both runtimes share the same application and migrations.
+Cloudflare is the recommended zero-server deployment. Docker is available for users who prefer a VPS, NAS, or home server.
 
 For Cloudflare, choose either of the following online deployment options:
 
@@ -92,6 +92,8 @@ Complete setup in 5 simple web steps:
 
 > 📖 For full step-by-step instructions and configuration details, see the [Online Deployment Guide](docs/deploy-cloudflare-button.md).
 
+> 💡 **Cloudflare R2 Activation**: Although Cloudflare R2 offers a generous [free storage allowance](https://developers.cloudflare.com/r2/pricing/#free-tier) that note-taking workloads are unlikely to ever exceed, you must first activate an R2 subscription and add a payment method. Cloudflare [officially supports](https://developers.cloudflare.com/billing/get-started/update-billing-info/#supported-payment-methods) UnionPay, Visa, Mastercard, and other cards, as well as PayPal, Apple Pay, Google Pay, and other payment methods.
+
 ### Option C: Docker on a VPS or NAS
 
 For a VPS or NAS outside mainland China, use the GitHub-hosted installer and
@@ -114,8 +116,6 @@ start EdgeEver with Docker Compose.
 See the [Docker deployment guide](docs/deploy-docker.md) for manual deployment and configuration.
 
 ---
-
-> 💡 **Deployment Tip (Cloudflare R2 Billing)**: Although Cloudflare R2 offers a generous [free storage allowance](https://developers.cloudflare.com/r2/pricing/#free-tier) that note-taking workloads are unlikely to ever exceed, you must first activate an R2 subscription and add a payment method. Cloudflare [officially supports](https://developers.cloudflare.com/billing/get-started/update-billing-info/#supported-payment-methods) UnionPay, Visa, Mastercard, and other cards, as well as PayPal, Apple Pay, Google Pay, and other payment methods.
 
 ## Multi-Account Login
 
