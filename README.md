@@ -110,8 +110,8 @@ Tencent TCR image for faster, more reliable downloads:
 curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
 ```
 
-Both commands pull the latest image, generate an administrator password, and
-start EdgeEver with Docker Compose.
+Both commands pull the latest image, generate an administrator password, start
+EdgeEver with Docker Compose, and schedule daily automatic updates.
 
 See the [Docker deployment guide](docs/deploy-docker.md) for manual deployment and configuration.
 

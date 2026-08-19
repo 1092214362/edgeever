@@ -23,6 +23,14 @@ curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/i
 检查通过。中国大陆命令从腾讯云 COS 获取脚本与 Compose 配置，并从腾讯云 TCR
 拉取镜像。再次执行同一命令即可升级，已有密码和 `/data` 卷保持不变。
 
+默认情况下，脚本会通过当前用户的 crontab 设置每日自动更新，于服务器本地时间
+04:17 执行 `~/edgeever/update.sh`。更新程序会刷新 Compose 配置、拉取已配置的
+镜像标签、按需重建服务并验证容器健康状态，运行记录追加到
+`~/edgeever/update.log`。默认的 `latest` 标签会自动获得新版本；通过 `--version`
+指定的版本保持固定。使用 `--no-auto-update` 或
+`EDGE_EVER_AUTO_UPDATE=false` 可关闭自动更新。如果系统没有 `crontab`，安装脚本
+会保留 `update.sh`，并提示通过 NAS 的任务计划程序执行。
+
 海外服务器可去掉 `--mirror tcr` 使用 GHCR。按需使用 `--version vX.Y.Z`、
 `--port PORT` 或 `--install-dir DIR`；执行以下命令可查看全部参数：
 

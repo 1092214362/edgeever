@@ -33,6 +33,16 @@ command again to upgrade without replacing the password or `/data` volume. The
 mainland command downloads the installer and Compose configuration from Tencent
 COS and pulls the image from Tencent TCR.
 
+By default, the installer schedules `~/edgeever/update.sh` with the current
+user's crontab at 04:17 server time every day. The updater refreshes the Compose
+configuration, pulls the configured image tag, restarts the service when needed,
+and verifies container health. Output is appended to `~/edgeever/update.log`.
+The default `latest` tag receives new releases automatically; a version supplied
+with `--version` remains pinned. Use `--no-auto-update` or
+`EDGE_EVER_AUTO_UPDATE=false` to disable the schedule. If `crontab` is unavailable,
+the installer keeps `update.sh` and prints instructions for adding it to the NAS
+task scheduler.
+
 Use `--version vX.Y.Z`, `--port PORT`, or `--install-dir DIR` when needed. Run
 `curl -fsSL https://edgeever.org/install.sh | bash -s -- --help` for all options.
 

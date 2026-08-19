@@ -109,8 +109,8 @@ curl -fsSL https://edgeever.org/install.sh | bash
 curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
 ```
 
-两种方式都会自动拉取最新镜像、生成管理员密码，并使用 Docker Compose 启动
-EdgeEver。手动部署与配置说明见 [Docker 部署文档](docs/deploy-docker.zh-CN.md)。
+两种方式都会自动拉取最新镜像、生成管理员密码、使用 Docker Compose 启动
+EdgeEver，并设置每日自动更新。手动部署与配置说明见 [Docker 部署文档](docs/deploy-docker.zh-CN.md)。
 
 ---
 
