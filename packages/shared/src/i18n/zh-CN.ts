@@ -688,6 +688,14 @@ export const zhCN = {
         label: "替换文本",
         description: "在当前笔记中打开替换。",
       },
+      saveAndSync: {
+        label: "保存并同步",
+        description: "立即保存当前笔记，并同步等待中的本地更改。",
+      },
+      toggleEditorMode: {
+        label: "切换编辑模式",
+        description: "在 Markdown 源码与富文本编辑模式之间切换。",
+      },
     },
   },
   options: {
