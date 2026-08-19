@@ -176,6 +176,7 @@ import {
   createNoteSearchHighlightPlugin,
   formatNoteSearchMatchLabel,
   getNextSearchMatchIndex,
+  getSearchNavigationIdentity,
   getSearchMatchesFromDocument,
   NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY,
   type NoteSearchMatch,
@@ -872,6 +873,7 @@ const RichEditorPane = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const noteSearchInputRef = useRef<HTMLInputElement | null>(null);
   const noteReplaceInputRef = useRef<HTMLInputElement | null>(null);
+  const noteSearchAutoSelectionRef = useRef<{ editor: Editor; identity: string } | null>(null);
   const markdownTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const openExternalLinkDialogRef = useRef<() => void>(() => undefined);
   const hydratingRef = useRef(false);
@@ -1582,7 +1584,7 @@ const RichEditorPane = ({
   );
 
   const selectNoteSearchMatch = useCallback(
-    (index: number, matches = noteSearchMatches) => {
+    (index: number, matches: NoteSearchMatch[]) => {
       const match = matches[index];
 
       if (!isEditorReady(editor) || !match) {
@@ -1621,7 +1623,7 @@ const RichEditorPane = ({
         }
       });
     },
-    [editor, noteSearchMatches]
+    [editor]
   );
 
   useEffect(() => {
@@ -1641,7 +1643,7 @@ const RichEditorPane = ({
         editor.unregisterPlugin(NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY);
       }
     };
-  }, [contentSearchQuery, editor, noteSearchIndex, noteSearchMatches, noteSearchOpen, noteSearchQuery]);
+  }, [contentSearchQuery, editor, noteSearchIndex, noteSearchOpen, noteSearchQuery]);
 
   const focusNoteSearchInput = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -1698,11 +1700,11 @@ const RichEditorPane = ({
 
       setNoteSearchIndex((current) => {
         const next = getNextSearchMatchIndex(current, direction, noteSearchMatches.length);
-        selectNoteSearchMatch(next);
+        selectNoteSearchMatch(next, noteSearchMatches);
         return next;
       });
     },
-    [noteSearchMatches.length, selectNoteSearchMatch]
+    [noteSearchMatches, selectNoteSearchMatch]
   );
 
   useEffect(() => {
@@ -1722,14 +1724,35 @@ const RichEditorPane = ({
   }, [openNoteReplace, replaceFocusToken]);
 
   useEffect(() => {
+    if (!isEditorReady(editor)) {
+      return;
+    }
+
+    const source = noteSearchOpen ? "note" : "content";
+    const query = noteSearchOpen ? noteSearchQuery : contentSearchQuery;
+    const matches = noteSearchOpen ? noteSearchMatches : contentSearchMatches;
+    const identity = getSearchNavigationIdentity(memo?.id ?? null, source, query);
+    const previousSelection = noteSearchAutoSelectionRef.current;
+
+    // Match positions change after every document edit. Only a new search,
+    // note, or search source should move the editor selection automatically.
+    if (previousSelection?.editor === editor && previousSelection.identity === identity) {
+      return;
+    }
+
+    noteSearchAutoSelectionRef.current = { editor, identity };
     setNoteSearchIndex(0);
 
-    if (noteSearchOpen && noteSearchMatches[0]) {
-      selectNoteSearchMatch(0, noteSearchMatches);
-    } else if (!noteSearchOpen && contentSearchMatches[0]) {
-      selectNoteSearchMatch(0, contentSearchMatches);
+    if (matches[0]) {
+      selectNoteSearchMatch(0, matches);
     }
-  }, [contentSearchMatches, noteSearchMatches, noteSearchOpen, selectNoteSearchMatch]);
+  }, [contentSearchMatches, contentSearchQuery, editor, memo?.id, noteSearchMatches, noteSearchOpen, noteSearchQuery, selectNoteSearchMatch]);
+
+  useEffect(() => {
+    setNoteSearchIndex((current) => noteSearchMatches.length === 0
+      ? 0
+      : Math.min(current, noteSearchMatches.length - 1));
+  }, [noteSearchMatches.length]);
 
   const replaceAllNoteSearchMatches = useCallback(() => {
     if (!isEditorReady(editor) || effectiveReadOnly || noteSearchMatches.length === 0) {
