@@ -133,7 +133,6 @@ import { copyEditorToWeChat, copyMarkdownToWeChat } from "@/lib/wechat-copy";
 import { ThemeBlock } from "./ThemeBlock";
 import { SystemInfoDialog } from "./SystemInfoDialog";
 import { fetchLatestRelease, isVersionOutdated } from "@/lib/version-check";
-import { RELEASE_STATUS_EVENT } from "@/lib/release-notice";
 import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
 import { downloadNoteHtmlFile, getHtmlImageEmbedNoticeKind } from "@/lib/note-html-export";
@@ -851,12 +850,7 @@ const RichEditorPane = ({
     void fetchLatestRelease(controller.signal)
       .then((release) => setUpdateAvailable(isVersionOutdated(__EDGEEVER_APP_VERSION__, release.version)))
       .catch(() => undefined);
-    const handleReleaseStatus = () => setUpdateAvailable(true);
-    window.addEventListener(RELEASE_STATUS_EVENT, handleReleaseStatus);
-    return () => {
-      controller.abort();
-      window.removeEventListener(RELEASE_STATUS_EVENT, handleReleaseStatus);
-    };
+    return () => controller.abort();
   }, []);
   const effectiveReadOnly = readOnly || (isMobileViewport && !mobileEditingActive);
   const useMobilePlainTextEditor = isMobileViewport && mobileEditingActive && !readOnly;
