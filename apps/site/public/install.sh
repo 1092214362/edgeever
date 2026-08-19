@@ -39,6 +39,69 @@ step() {
   log "STEP $1/6" "$2"
 }
 
+print_storage_diagnostics() {
+  local container_id container_user mount_info mount_type mount_name mount_source probe_output
+  container_id="$("${compose[@]}" ps -q edgeever 2>/dev/null || true)"
+  container_user=""
+  mount_info=""
+
+  if [[ -n "$container_id" ]]; then
+    container_user="$(docker inspect --format '{{.Config.User}}' "$container_id" 2>/dev/null || true)"
+    mount_info="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Type}}|{{.Name}}|{{.Source}}{{end}}{{end}}' "$container_id" 2>/dev/null || true)"
+  fi
+
+  log INFO "Persistent storage diagnostics:"
+  log INFO "Container user: ${container_user:-unknown} (EdgeEver expects UID/GID 1000:1000)"
+  if [[ -n "$mount_info" ]]; then
+    IFS='|' read -r mount_type mount_name mount_source <<< "$mount_info"
+    log INFO "/data mount: type=${mount_type:-unknown}, source=${mount_source:-unknown}${mount_name:+, volume=$mount_name}"
+  else
+    mount_type=""
+    mount_name=""
+    mount_source=""
+    log WARN "Could not identify the /data mount; inspect it with: docker inspect $container_id"
+  fi
+
+  if probe_output="$("${compose[@]}" run --rm --no-deps --entrypoint /bin/sh edgeever -c '
+probe="/data/.edgeever-write-test-$$"
+if (umask 077 && : > "$probe" && rm -f "$probe"); then
+  exit 0
+fi
+printf "EDGEEVER_DATA_WRITE_FAILED\n" >&2
+printf "Runtime identity: " >&2
+id >&2 || true
+printf "Data directory: " >&2
+ls -ldn /data >&2 || true
+exit 73
+' 2>&1)"; then
+    log INFO "/data write test: passed"
+    return 0
+  fi
+
+  if [[ "$probe_output" != *"EDGEEVER_DATA_WRITE_FAILED"* ]]; then
+    log WARN "/data write test: unavailable (the diagnostic container could not run)"
+    [[ -z "$probe_output" ]] || printf '%s\n' "$probe_output" | sed 's/^/  /' >&2
+    return 0
+  fi
+
+  log ERROR "/data write test: failed"
+  printf '%s\n' "$probe_output" | sed '/^EDGEEVER_DATA_WRITE_FAILED$/d; s/^/  /' >&2
+  if [[ "$mount_type" == "bind" && -n "$mount_source" ]]; then
+    log INFO "The NAS/host directory must be writable by UID/GID 1000:1000. Suggested repair:"
+    printf '  sudo chown -R 1000:1000 -- %q\n' "$mount_source" >&2
+    printf '  sudo chmod -R u+rwX -- %q\n' "$mount_source" >&2
+    log INFO "If the NAS uses ACL permissions, grant UID 1000 read/write access in its control panel too."
+  elif [[ "$mount_type" == "volume" ]]; then
+    log INFO "The Docker volume must be writable by UID/GID 1000:1000. Suggested repair:"
+    printf '  cd %q\n' "$install_dir" >&2
+    printf "  docker compose --project-name %q run --rm --no-deps --user 0 --entrypoint /bin/sh edgeever -c 'chown -R 1000:1000 /data'\n" "$project_name" >&2
+  else
+    log INFO "Check the Compose /data mount and grant UID/GID 1000:1000 read/write access."
+    printf '  cd %q\n' "$install_dir" >&2
+    printf '  docker compose --project-name %q config\n' "$project_name" >&2
+  fi
+}
+
 usage() {
   cat <<'EOF'
 Install or upgrade EdgeEver with Docker Compose.
@@ -75,6 +138,7 @@ print_diagnostics() {
     "${compose[@]}" ps -a >&2 || true
     log INFO "Recent container logs:"
     "${compose[@]}" logs --tail 80 edgeever >&2 || true
+    print_storage_diagnostics || true
     log INFO "Troubleshooting commands:"
     printf '  cd %q\n' "$install_dir" >&2
     printf '  docker compose --project-name %q --env-file .env --file compose.yaml ps -a\n' "$project_name" >&2
@@ -342,6 +406,67 @@ log() {
   printf '[%s] [EdgeEver update] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
 }
 
+print_storage_diagnostics() {
+  local container_id container_user mount_info mount_type mount_name mount_source probe_output
+  container_id="$("${compose[@]}" ps -q edgeever 2>/dev/null || true)"
+  container_user=""
+  mount_info=""
+
+  if [[ -n "$container_id" ]]; then
+    container_user="$("$docker_command" inspect --format '{{.Config.User}}' "$container_id" 2>/dev/null || true)"
+    mount_info="$("$docker_command" inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Type}}|{{.Name}}|{{.Source}}{{end}}{{end}}' "$container_id" 2>/dev/null || true)"
+  fi
+
+  log "Persistent storage diagnostics:"
+  log "Container user: ${container_user:-unknown} (EdgeEver expects UID/GID 1000:1000)."
+  if [[ -n "$mount_info" ]]; then
+    IFS='|' read -r mount_type mount_name mount_source <<< "$mount_info"
+    log "/data mount: type=${mount_type:-unknown}, source=${mount_source:-unknown}${mount_name:+, volume=$mount_name}."
+  else
+    mount_type=""
+    mount_name=""
+    mount_source=""
+    log "Could not identify the /data mount."
+  fi
+
+  if probe_output="$("${compose[@]}" run --rm --no-deps --entrypoint /bin/sh edgeever -c '
+probe="/data/.edgeever-write-test-$$"
+if (umask 077 && : > "$probe" && rm -f "$probe"); then
+  exit 0
+fi
+printf "EDGEEVER_DATA_WRITE_FAILED\n" >&2
+printf "Runtime identity: " >&2
+id >&2 || true
+printf "Data directory: " >&2
+ls -ldn /data >&2 || true
+exit 73
+' 2>&1)"; then
+    log "/data write test: passed."
+    return 0
+  fi
+
+  if [[ "$probe_output" != *"EDGEEVER_DATA_WRITE_FAILED"* ]]; then
+    log "/data write test: unavailable (the diagnostic container could not run)."
+    [[ -z "$probe_output" ]] || printf '%s\n' "$probe_output" | sed 's/^/  /'
+    return 0
+  fi
+
+  log "/data write test: failed."
+  printf '%s\n' "$probe_output" | sed '/^EDGEEVER_DATA_WRITE_FAILED$/d; s/^/  /'
+  if [[ "$mount_type" == "bind" && -n "$mount_source" ]]; then
+    log "Grant the NAS/host directory to UID/GID 1000:1000:"
+    printf '  sudo chown -R 1000:1000 -- %q\n' "$mount_source"
+    printf '  sudo chmod -R u+rwX -- %q\n' "$mount_source"
+    log "For NAS ACLs, also grant UID 1000 read/write access in the control panel."
+  elif [[ "$mount_type" == "volume" ]]; then
+    log "Repair the Docker volume ownership:"
+    printf '  cd %q\n' "$install_dir"
+    printf "  %q compose --project-name %q run --rm --no-deps --user 0 --entrypoint /bin/sh edgeever -c 'chown -R 1000:1000 /data'\n" "$docker_command" "$project_name"
+  else
+    log "Inspect the Compose /data mount and grant UID/GID 1000:1000 read/write access."
+  fi
+}
+
 on_error() {
   local exit_code=$?
   local line_number="${BASH_LINENO[0]}"
@@ -350,6 +475,7 @@ on_error() {
   if declare -p compose >/dev/null 2>&1; then
     "${compose[@]}" ps -a || true
     "${compose[@]}" logs --tail 80 edgeever || true
+    print_storage_diagnostics || true
   fi
   exit "$exit_code"
 }

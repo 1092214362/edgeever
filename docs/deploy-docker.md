@@ -88,6 +88,11 @@ replacement is under `/data`:
 The image runs as the non-root `bun` user (UID/GID `1000`). If a NAS requires
 a host bind mount instead of the named volume, create the directory first and
 grant UID/GID `1000` read/write access.
+When an installation or automatic update fails, the script performs a real
+write test against `/data` and reports the mount type, source, container user,
+and directory state. If permissions are the cause, it prints a repair command
+tailored to a Docker named volume or NAS bind mount; it never changes existing
+data permissions automatically.
 
 ## Configuration
 
