@@ -181,6 +181,7 @@ import {
   NOTE_SEARCH_HIGHLIGHT_PLUGIN_KEY,
   type NoteSearchMatch,
 } from "./editor/note-search";
+import { getEditorScrollProgress, restoreEditorScrollProgress } from "./editor/editor-mode-scroll";
 import { useEditorSaveStatus } from "./editor/useEditorSaveStatus";
 import { resolveEditorDraftState } from "./editor/editor-draft-state";
 import type { EdgeEverPluginHost, PluginEditorAdapter } from "@/lib/plugins/plugin-host";
@@ -883,6 +884,22 @@ const RichEditorPane = ({
   const editingMemoIdRef = useRef<string | null>(memo?.id ?? null);
   const imageCompressionEnabledRef = useRef(imageCompressionEnabled);
   const resourceMenuHideTimerRef = useRef<number | null>(null);
+
+  const restoreScrollAfterModeChange = useCallback((targetMode: "markdown" | "rich", progress: number) => {
+    const restore = (attempt: number) => {
+      const target = targetMode === "markdown"
+        ? markdownTextAreaRef.current
+        : editorScrollContainerRef.current;
+
+      if (restoreEditorScrollProgress(target, progress) || attempt >= 2) {
+        return;
+      }
+
+      window.requestAnimationFrame(() => restore(attempt + 1));
+    };
+
+    window.requestAnimationFrame(() => restore(0));
+  }, []);
 
   useEffect(() => {
     const handleMemoIdRemapped = (event: Event) => {
@@ -2364,10 +2381,15 @@ const RichEditorPane = ({
       return;
     }
 
+    const scrollProgress = getEditorScrollProgress(
+      isMarkdownMode ? markdownTextAreaRef.current : editorScrollContainerRef.current,
+    );
+
     if (isMarkdownMode) {
       hydratingRef.current = true;
       editor.commands.setContent(markdownToDoc(markdownSource));
       setIsMarkdownMode(false);
+      restoreScrollAfterModeChange("rich", scrollProgress);
       window.setTimeout(() => {
         hydratingRef.current = false;
       }, 0);
@@ -2376,7 +2398,8 @@ const RichEditorPane = ({
 
     setMarkdownSource(docToMarkdown(editor.getJSON() as TiptapDoc));
     setIsMarkdownMode(true);
-  }, [editor, effectiveReadOnly, isMarkdownMode, markdownSource]);
+    restoreScrollAfterModeChange("markdown", scrollProgress);
+  }, [editor, effectiveReadOnly, isMarkdownMode, markdownSource, restoreScrollAfterModeChange]);
 
   const handleMarkdownSourceChange = useCallback((value: string) => {
     setMarkdownSource(value);
