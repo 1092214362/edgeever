@@ -1405,7 +1405,7 @@ export const enUS = {
     closeNotice: "Close update notice",
     sidebarInstall: "Download Desktop Client",
     sidebarInstallTitle: "Download the EdgeEver Desktop Client",
-    sidebarInstallAvailability: "Mac available · Windows coming soon",
+    sidebarInstallAvailability: "Mac/iOS/Android available · Windows soon",
     sidebarClipper: "Install Web Clipper",
     sidebarClipperTitle: "Install the EdgeEver Web Clipper",
     iosPrompt: {

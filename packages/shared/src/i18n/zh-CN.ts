@@ -1405,7 +1405,7 @@ export const zhCN = {
     closeNotice: "关闭更新通知",
     sidebarInstall: "下载桌面客户端",
     sidebarInstallTitle: "下载 EdgeEver 桌面客户端",
-    sidebarInstallAvailability: "Mac 可用 · Windows 敬请期待",
+    sidebarInstallAvailability: "Mac/iOS/安卓可用 · Windows 敬请期待",
     sidebarClipper: "安装浏览器剪藏插件",
     sidebarClipperTitle: "安装 EdgeEver 浏览器剪藏插件",
     iosPrompt: {
