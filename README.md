@@ -95,12 +95,16 @@ Complete setup in 5 simple web steps:
 ### Option C: Docker on a VPS or NAS
 
 ```sh
-export EDGE_EVER_VERSION=vX.Y.Z
-export EDGE_EVER_AUTH_PASSWORD='replace-with-a-long-random-password'
-docker compose up -d
+curl -fsSL https://edgeever.org/install.sh | bash
 ```
 
-Docker persists SQLite and local attachments in `/data` and supports S3-compatible storage. Users in mainland China can select the Tencent Cloud mirror with `EDGE_EVER_IMAGE=ccr.ccs.tencentyun.com/edgeever/edgeever`. See the [Docker deployment guide](docs/deploy-docker.md) for details.
+The script pulls the latest image, generates an administrator password, and starts EdgeEver with Docker Compose. Users in mainland China can use the Tencent COS and TCR mirrors:
+
+```sh
+curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
+```
+
+See the [Docker deployment guide](docs/deploy-docker.md) for manual deployment and configuration.
 
 ---
 

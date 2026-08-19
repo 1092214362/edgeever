@@ -13,7 +13,30 @@ Cloudflare uses Workers with D1 and R2.
 - A reverse proxy with HTTPS when the instance is reachable outside a trusted
   local network.
 
-## Start with Compose
+## One-command install
+
+With Docker Compose v2 already installed:
+
+```sh
+curl -fsSL https://edgeever.org/install.sh | bash
+```
+
+Use Tencent Cloud TCR in mainland China:
+
+```sh
+curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
+```
+
+The installer creates `~/edgeever`, generates an administrator password, pulls
+`latest`, starts the container, and waits for it to become healthy. Run the same
+command again to upgrade without replacing the password or `/data` volume. The
+mainland command downloads the installer and Compose configuration from Tencent
+COS and pulls the image from Tencent TCR.
+
+Use `--version vX.Y.Z`, `--port PORT`, or `--install-dir DIR` when needed. Run
+`curl -fsSL https://edgeever.org/install.sh | bash -s -- --help` for all options.
+
+## Manual Compose
 
 Download `compose.yaml`, choose the release you want to run, and provide a
 strong instance password:

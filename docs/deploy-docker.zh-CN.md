@@ -11,7 +11,26 @@ Cloudflare 使用 Workers + D1 + R2。
 - `amd64` 或 `arm64` Linux 主机。
 - 实例离开可信局域网时，必须使用带 HTTPS 的反向代理。
 
-## 使用 Compose 启动
+## 一键安装
+
+已安装 Docker Compose v2 的主机可直接执行：
+
+```sh
+curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
+```
+
+脚本会创建 `~/edgeever`、生成管理员密码、拉取 `latest`、启动容器并等待健康
+检查通过。中国大陆命令从腾讯云 COS 获取脚本与 Compose 配置，并从腾讯云 TCR
+拉取镜像。再次执行同一命令即可升级，已有密码和 `/data` 卷保持不变。
+
+海外服务器可去掉 `--mirror tcr` 使用 GHCR。按需使用 `--version vX.Y.Z`、
+`--port PORT` 或 `--install-dir DIR`；执行以下命令可查看全部参数：
+
+```sh
+curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --help
+```
+
+## 手动使用 Compose
 
 下载 `compose.yaml`，选择要运行的正式版本，并设置高强度实例密码：
 
