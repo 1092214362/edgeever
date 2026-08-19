@@ -159,6 +159,7 @@ import { useStandaloneMobileEditor } from "@/hooks/useStandaloneMobileEditor";
 import { statusSettleMotion } from "@/lib/motion";
 import {
   getRichTextAiSelectionContext,
+  getRichTextAiReplacementRange,
   getRichTextAiSelectionReplacement,
   normalizeAiSelectionReplacement,
 } from "@/lib/ai-selection-replacement";
@@ -1940,7 +1941,7 @@ const RichEditorPane = ({
   const applyAiDraft = useCallback((draft: string, mode: "append" | "replace") => {
     if (mode === "replace" && aiSelection) {
       const replacementDraft = normalizeAiSelectionReplacement(draft);
-      if (!replacementDraft) return;
+      if (!replacementDraft) return false;
 
       if (aiSelection.kind === "plain") {
         const source = getMobilePlainTextValue();
@@ -1962,17 +1963,24 @@ const RichEditorPane = ({
         });
       } else if (aiSelection.kind === "rich" && isEditorReady(editor)) {
         const maxPos = editor.state.doc.content.size;
-        const from = Math.max(1, Math.min(aiSelection.from, maxPos));
-        const to = Math.max(from, Math.min(aiSelection.to, maxPos));
-        editor.chain().focus().insertContentAt(
-          { from, to },
-          getRichTextAiSelectionReplacement(replacementDraft, aiSelection.isInline),
-        ).run();
+        const { from, to } = getRichTextAiReplacementRange(aiSelection.from, aiSelection.to, maxPos);
+        try {
+          const applied = editor.commands.insertContentAt(
+            { from, to },
+            getRichTextAiSelectionReplacement(replacementDraft, aiSelection.isInline),
+          );
+          if (!applied) return false;
+          editor.commands.focus();
+        } catch {
+          return false;
+        }
+      } else {
+        return false;
       }
       markDirty();
       setAiSelection(null);
       setAiAssistantOpen(false);
-      return;
+      return true;
     }
 
     const current = getCurrentMarkdownForAi();
@@ -1986,11 +1994,18 @@ const RichEditorPane = ({
     } else if (useMarkdownSourceEditor) {
       setMarkdownSource(next);
     } else if (isEditorReady(editor)) {
-      editor.commands.setContent(markdownToDoc(next));
+      try {
+        if (!editor.commands.setContent(markdownToDoc(next))) return false;
+      } catch {
+        return false;
+      }
+    } else {
+      return false;
     }
     markDirty();
     setAiSelection(null);
     setAiAssistantOpen(false);
+    return true;
   }, [aiSelection, editor, getCurrentMarkdownForAi, getMobilePlainTextValue, markDirty, markdownSource, persistCurrentDraft, tagsText, title, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   const getCurrentContentJson = useCallback((): TiptapDoc | null => {

@@ -539,6 +539,7 @@ export const zhCN = {
     append: "追加到笔记",
     replace: "替换笔记",
     replaceSelection: "接受并替换选中内容",
+    applyFailed: "无法应用生成结果。请重新选择内容后再试。",
     configure: "请先在“我的 → AI 集成”中配置 AI 模型。",
   },
   accountInfo: {

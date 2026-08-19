@@ -539,6 +539,7 @@ export const enUS = {
     append: "Append to note",
     replace: "Replace note",
     replaceSelection: "Accept and replace selection",
+    applyFailed: "Could not apply the generated result. Select the content again and retry.",
     configure: "Configure an AI model in Me → AI Integrations first.",
   },
   accountInfo: {
