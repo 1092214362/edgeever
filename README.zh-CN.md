@@ -1,16 +1,11 @@
-<h1 align="center">
-  <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver Logo" width="40" align="absmiddle" />
-  EdgeEver&nbsp;&nbsp;<sub>开源、原生支持 AI、可自由部署的自托管「印象笔记」替代方案。</sub>
-</h1>
+# EdgeEver
 
-<p align="center">
-  简体中文 · <a href="README.md">English</a>
-</p>
+[![GitHub Stars](https://img.shields.io/github/stars/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/network/members)
 
-<p align="center">
-  <a href="https://github.com/tianma-if/edgeever/stargazers"><img src="https://img.shields.io/github/stars/tianma-if/edgeever?style=social" alt="GitHub Stars" /></a>
-  <a href="https://github.com/tianma-if/edgeever/network/members"><img src="https://img.shields.io/github/forks/tianma-if/edgeever?style=social" alt="GitHub Forks" /></a>
-</p>
+简体中文 | [English](README.md)
+
+> **EdgeEver：开源、原生支持 AI、可自由部署的自托管「印象笔记」替代方案。**
 
 EdgeEver 是一款现代化的开源笔记工作区。它为你找回经典印象笔记的三栏高效体验，同时具备完全开放的数据架构与原生 AI Agent 联动能力，让个人知识沉淀更轻量、更自由。
 

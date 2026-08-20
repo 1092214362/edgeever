@@ -1,16 +1,11 @@
-<h1 align="center">
-  <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver logo" width="40" align="absmiddle" />
-  EdgeEver&nbsp;&nbsp;<sub>An open-source, AI-native, and portable self-hosted Evernote alternative.</sub>
-</h1>
+# EdgeEver
 
-<p align="center">
-  <a href="README.zh-CN.md">简体中文</a> · English
-</p>
+[![GitHub Stars](https://img.shields.io/github/stars/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/tianma-if/edgeever?style=social)](https://github.com/tianma-if/edgeever/network/members)
 
-<p align="center">
-  <a href="https://github.com/tianma-if/edgeever/stargazers"><img src="https://img.shields.io/github/stars/tianma-if/edgeever?style=social" alt="GitHub Stars" /></a>
-  <a href="https://github.com/tianma-if/edgeever/network/members"><img src="https://img.shields.io/github/forks/tianma-if/edgeever?style=social" alt="GitHub Forks" /></a>
-</p>
+[简体中文](README.zh-CN.md) | English
+
+> **EdgeEver: An open-source, AI-native, and portable self-hosted Evernote alternative.**
 
 EdgeEver is a modern, open-source notes workspace built for effortless knowledge management. It revives the beloved Evernote-style three-pane layout while offering an open data architecture and seamless AI Agent integration for complete ownership and smart productivity.
 
