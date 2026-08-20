@@ -1,11 +1,7 @@
 <h1 align="center">
-  <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver logo" width="48" align="absmiddle" />
-  EdgeEver
+  <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver logo" width="40" align="absmiddle" />
+  EdgeEver&nbsp;&nbsp;<sub>An open-source, AI-native, and portable self-hosted Evernote alternative.</sub>
 </h1>
-
-<p align="center">
-  <strong>An open-source, AI-native, and portable self-hosted Evernote alternative.</strong>
-</p>
 
 <p align="center">
   <a href="README.zh-CN.md">简体中文</a> · English

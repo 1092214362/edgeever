@@ -1,11 +1,7 @@
 <h1 align="center">
-  <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver Logo" width="48" align="absmiddle" />
-  EdgeEver
+  <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver Logo" width="40" align="absmiddle" />
+  EdgeEver&nbsp;&nbsp;<sub>开源、原生支持 AI、可自由部署的自托管「印象笔记」替代方案。</sub>
 </h1>
-
-<p align="center">
-  <strong>开源、原生支持 AI、可自由部署的自托管「印象笔记」替代方案。</strong>
-</p>
 
 <p align="center">
   简体中文 · <a href="README.md">English</a>
