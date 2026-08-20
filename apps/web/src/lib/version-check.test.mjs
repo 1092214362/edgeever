@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { findDesktopReleaseVersion, isVersionOutdated } from "./version-check";
+import { findDesktopReleaseVersion, getReleaseTagForVersion, isVersionOutdated } from "./version-check";
 
 describe("platform release version checks", () => {
   test("derives the installed desktop version from the DMG asset", () => {
@@ -30,4 +30,11 @@ describe("platform release version checks", () => {
     expect(isVersionOutdated("1.6.50-beta.10", "1.6.50")).toBe(true);
     expect(isVersionOutdated("1.6.50", "1.6.50-beta.10")).toBe(false);
   });
+
+  test("maps deployed builds back to their formal release tag", () => {
+    expect(getReleaseTagForVersion("1.34.1+18")).toBe("v1.34.1");
+    expect(getReleaseTagForVersion("v1.35.0-beta.2+4")).toBe("v1.35.0-beta.2");
+    expect(getReleaseTagForVersion("local")).toBeNull();
+  });
+
 });

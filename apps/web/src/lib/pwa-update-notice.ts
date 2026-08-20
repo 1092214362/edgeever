@@ -1,12 +1,12 @@
 export const PWA_UPDATE_NOTICE_EVENT = "edgeever:pwa-update-notice";
+export const DEPLOYED_UPDATE_SEEN_EVENT = "edgeever:deployed-update-seen";
 
-const PWA_BUILD_ID_KEY = "edgeever:pwa-build-id";
-const PWA_UPDATE_RELOADED_AT_KEY = "edgeever:pwa-update-reloaded-at";
+const DEPLOYED_RELEASE_ID_KEY = "edgeever:deployed-release-id:v1";
+const DEPLOYED_SEEN_RELEASE_ID_KEY = "edgeever:deployed-seen-release-id:v1";
 
-export type PwaUpdateNoticeKind = "checking" | "updated" | "reload-required";
+export type PwaUpdateNoticeKind = "checking" | "reload-required";
 
 export type PwaUpdateNoticeDetail = {
-  buildLabel?: string;
   kind: PwaUpdateNoticeKind;
 };
 
@@ -16,38 +16,38 @@ export const emitPwaUpdateNotice = (detail: PwaUpdateNoticeDetail) => {
   window.dispatchEvent(new CustomEvent<PwaUpdateNoticeDetail>(PWA_UPDATE_NOTICE_EVENT, { detail }));
 };
 
-export const markPwaUpdateReloadPending = () => {
+export const hasUnseenDeployedUpdate = (currentReleaseId: string) => {
   try {
-    window.sessionStorage.setItem(PWA_UPDATE_RELOADED_AT_KEY, String(Date.now()));
+    const previousReleaseId = window.localStorage.getItem(DEPLOYED_RELEASE_ID_KEY);
+    const seenReleaseId = window.localStorage.getItem(DEPLOYED_SEEN_RELEASE_ID_KEY);
+
+    if (!previousReleaseId) {
+      window.localStorage.setItem(DEPLOYED_RELEASE_ID_KEY, currentReleaseId);
+      window.localStorage.setItem(DEPLOYED_SEEN_RELEASE_ID_KEY, currentReleaseId);
+      return false;
+    }
+
+    if (previousReleaseId !== currentReleaseId) {
+      window.localStorage.setItem(DEPLOYED_RELEASE_ID_KEY, currentReleaseId);
+    }
+
+    if (!seenReleaseId) {
+      window.localStorage.setItem(DEPLOYED_SEEN_RELEASE_ID_KEY, previousReleaseId);
+      return previousReleaseId !== currentReleaseId;
+    }
+
+    return seenReleaseId !== currentReleaseId;
+  } catch {
+    return false;
+  }
+};
+
+export const markDeployedUpdateSeen = (currentReleaseId: string) => {
+  try {
+    window.localStorage.setItem(DEPLOYED_RELEASE_ID_KEY, currentReleaseId);
+    window.localStorage.setItem(DEPLOYED_SEEN_RELEASE_ID_KEY, currentReleaseId);
   } catch {
     // Storage can be unavailable in restricted browsing modes.
   }
-};
-
-export const consumePwaUpdateReloadPending = () => {
-  try {
-    const value = window.sessionStorage.getItem(PWA_UPDATE_RELOADED_AT_KEY);
-    window.sessionStorage.removeItem(PWA_UPDATE_RELOADED_AT_KEY);
-    return Boolean(value);
-  } catch {
-    return false;
-  }
-};
-
-export const consumePwaBuildUpdate = (
-  currentBuildId: string,
-  { notifyWhenMissingBaseline = false }: { notifyWhenMissingBaseline?: boolean } = {}
-) => {
-  try {
-    const previousBuildId = window.localStorage.getItem(PWA_BUILD_ID_KEY);
-    window.localStorage.setItem(PWA_BUILD_ID_KEY, currentBuildId);
-
-    if (!previousBuildId) {
-      return notifyWhenMissingBaseline;
-    }
-
-    return previousBuildId !== currentBuildId;
-  } catch {
-    return false;
-  }
+  window.dispatchEvent(new Event(DEPLOYED_UPDATE_SEEN_EVENT));
 };

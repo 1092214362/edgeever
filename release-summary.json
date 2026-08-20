@@ -1,0 +1,11 @@
+{
+  "version": "1.34.1",
+  "changes": {
+    "en-US": [
+      "Clarify automatic and manual update paths for Cloudflare, Docker, and desktop users, and warn against using GitHub Sync fork."
+    ],
+    "zh-CN": [
+      "明确 Cloudflare、Docker 与桌面端的自动及手动更新方式，并提醒用户不要使用 GitHub Sync fork。"
+    ]
+  }
+}

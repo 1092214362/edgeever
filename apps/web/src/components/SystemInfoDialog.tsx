@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { useDeployedUpdateNotice } from "@/hooks/useDeployedUpdateNotice";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +13,11 @@ import { SystemInfoPanel } from "./settings/SystemInfoPanel";
 
 export const SystemInfoDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) => {
   const { t } = useTranslation();
+  const { markSeen } = useDeployedUpdateNotice();
+
+  useEffect(() => {
+    if (open) markSeen();
+  }, [markSeen, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

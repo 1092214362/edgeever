@@ -360,6 +360,14 @@ export const buildReleaseNotes = ({
   "",
 ].join("\n");
 
+export const buildReleaseSummary = ({ version, changesEn, changesZh }) => ({
+  version,
+  changes: {
+    "en-US": [...changesEn],
+    "zh-CN": [...changesZh],
+  },
+});
+
 export const reusedAssetMatches = (previousAssets, currentAssets, name) => {
   const previous = previousAssets.find((asset) => asset.name === name);
   const current = currentAssets.find((asset) => asset.name === name);
@@ -492,11 +500,16 @@ const assertReleasePreconditions = ({ repository, previousTag }) => {
   }
 };
 
-const updateReleaseVersions = ({ nextVersion, desktopRebuild, mobileRebuild }) => {
-  const changedPaths = ["package.json"];
+const updateReleaseVersions = ({ nextVersion, desktopRebuild, mobileRebuild, changesEn, changesZh }) => {
+  const changedPaths = ["package.json", "release-summary.json"];
   const rootPackage = readJson("package.json");
   rootPackage.version = nextVersion;
   writeJson("package.json", rootPackage);
+  writeJson("release-summary.json", buildReleaseSummary({
+    version: nextVersion,
+    changesEn,
+    changesZh,
+  }));
 
   if (desktopRebuild) {
     const desktopPackage = readJson("apps/desktop/package.json");
@@ -919,6 +932,8 @@ const releaseMain = async (options) => {
       nextVersion: releaseVersion,
       desktopRebuild: desktopPlan.rebuild,
       mobileRebuild: mobilePlan.rebuild,
+      changesEn: options.changesEn,
+      changesZh: options.changesZh,
     });
     run("git", ["add", ...versionPaths]);
     run("git", ["diff", "--cached", "--check"]);
