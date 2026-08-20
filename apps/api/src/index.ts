@@ -1949,8 +1949,8 @@ const searchMemoSummaries = async (
   }
 
   for (const tag of tags) {
-    filters.push("EXISTS (SELECT 1 FROM json_each(m.tags_json) WHERE json_each.value = ?)");
-    binds.push(tag);
+    filters.push("EXISTS (SELECT 1 FROM memo_tags mt WHERE mt.memo_id = m.id AND mt.workspace_id = ? AND mt.name = ?)");
+    binds.push(options.workspaceId, tag);
   }
 
   if (options.createdAfter) {
@@ -3789,9 +3789,10 @@ const getWorkspaceStats = async (db: D1Database, workspaceId: string) => {
     db.prepare(`SELECT COUNT(*) AS count FROM notebooks WHERE workspace_id = ? AND is_deleted = 0`).bind(workspaceId).first<{ count: number }>(),
     db
       .prepare(
-        `SELECT COUNT(DISTINCT json_each.value) AS count
-         FROM memos m, json_each(m.tags_json)
-         WHERE m.workspace_id = ? AND m.is_deleted = 0 AND trim(json_each.value) <> ''`
+        `SELECT COUNT(DISTINCT mt.name) AS count
+         FROM memo_tags mt
+         INNER JOIN memos m ON m.id = mt.memo_id AND m.workspace_id = mt.workspace_id
+         WHERE mt.workspace_id = ? AND m.is_deleted = 0`
       )
       .bind(workspaceId).first<{ count: number }>(),
     db

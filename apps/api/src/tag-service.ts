@@ -34,11 +34,11 @@ const getMemoRowsByTag = async (db: DatabaseAdapter, workspaceId: string, tag: s
        WHERE m.workspace_id = ? AND m.is_deleted = 0
          AND EXISTS (
            SELECT 1
-           FROM json_each(m.tags_json)
-           WHERE json_each.value = ?
+           FROM memo_tags mt
+           WHERE mt.memo_id = m.id AND mt.workspace_id = ? AND mt.name = ?
          )`
     )
-    .bind(workspaceId, tag)
+    .bind(workspaceId, workspaceId, tag)
     .all<MemoTagUpdateRow>();
 
   return rows.results;
@@ -55,14 +55,14 @@ const replaceTag = (currentTags: string[], oldTag: string, nextTag: string | nul
 export const listTagSummaries = async (db: DatabaseAdapter, workspaceId: string): Promise<TagSummary[]> => {
   const rows = await db
     .prepare(
-      `SELECT json_each.value AS name,
+      `SELECT mt.name AS name,
               COUNT(DISTINCT m.id) AS memo_count,
               MAX(m.updated_at) AS updated_at
-       FROM memos m, json_each(m.tags_json)
-       WHERE m.workspace_id = ? AND m.is_deleted = 0
-         AND trim(json_each.value) <> ''
-       GROUP BY json_each.value
-       ORDER BY lower(json_each.value) ASC`
+       FROM memo_tags mt
+       INNER JOIN memos m ON m.id = mt.memo_id AND m.workspace_id = mt.workspace_id
+       WHERE mt.workspace_id = ? AND m.is_deleted = 0
+       GROUP BY mt.name
+       ORDER BY mt.normalized_name ASC, mt.name ASC`
     )
     .bind(workspaceId)
     .all<TagSummaryRow>();
