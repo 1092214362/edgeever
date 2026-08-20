@@ -44,6 +44,7 @@ COPY --from=build /app/apps/api ./apps/api
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/docs/openapi.json ./docs/openapi.json
+COPY --from=build /app/release-summary.json ./release-summary.json
 COPY migrations ./migrations
 COPY scripts/self-hosted-config.mjs scripts/self-hosted-secrets.mjs scripts/self-hosted-server.mjs ./scripts/
 COPY package.json ./package.json
