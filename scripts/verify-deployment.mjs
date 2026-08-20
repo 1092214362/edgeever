@@ -14,6 +14,8 @@ export const REQUIRED_TABLES = [
   "memo_shares",
   "memo_import_sources",
   "mobile_sync_changes",
+  "memo_search_documents",
+  "maintenance_leases",
   "ai_provider_configs",
   "ai_models",
   "ai_workspace_settings",

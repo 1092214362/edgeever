@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CircleCheck, Copy, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { useDeployedUpdateNotice } from "@/hooks/useDeployedUpdateNotice";
 import { detectWebClientKind } from "@/lib/client-environment";
 import { cn } from "@/lib/utils";
 import { getReleaseTagForVersion, resolveLocalizedReleaseChanges } from "@/lib/version-check";
@@ -69,11 +70,11 @@ export const getWebSystemInfoItems = (t: (key: string) => string, language: stri
 export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
   const { t, i18n } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const { release } = useDeployedUpdateNotice();
   const infoItems = useMemo(() => getWebSystemInfoItems(t, i18n.language), [i18n.language, t]);
-  const isDesktopClient = window.edgeeverDesktop?.isAvailable === true;
-  const releaseTag = getReleaseTagForVersion(__EDGEEVER_APP_VERSION__);
+  const releaseTag = release ? getReleaseTagForVersion(release.version) : null;
   const releaseHighlights = resolveLocalizedReleaseChanges(
-    __EDGEEVER_RELEASE_SUMMARY__.changes,
+    release?.changes ?? {},
     i18n.resolvedLanguage ?? i18n.language
   );
   const releaseUrl = releaseTag
@@ -94,11 +95,11 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
           {copied ? t("common.copied") : t("systemInfo.copy")}
         </Button>
       </div>
-      {active && !isDesktopClient ? (
+      {active && release ? (
         <div className="flex items-start gap-2 rounded-md border border-emerald-200 border-l-2 border-l-emerald-500 bg-emerald-50/40 px-3 py-2 text-slate-800" role="status">
           <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
           <div className="min-w-0 flex-1 text-xs leading-5">
-            <div className="font-semibold">{t("systemInfo.deployedUpdateTitle", { version: releaseTag?.replace(/^v/, "") ?? __EDGEEVER_APP_VERSION__ })}</div>
+            <div className="font-semibold">{t("systemInfo.deployedUpdateTitle", { version: releaseTag?.replace(/^v/, "") ?? release.version })}</div>
             {releaseHighlights.length > 0 ? (
               <ul className="mt-1 list-disc space-y-0.5 pl-4 text-slate-600">
                 {releaseHighlights.map((highlight) => <li key={highlight}>{highlight}</li>)}

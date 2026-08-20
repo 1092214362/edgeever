@@ -28,4 +28,11 @@ describe("deployed update notice", () => {
     markDeployedUpdateSeen("v1.1.0");
     expect(hasUnseenDeployedUpdate("v1.1.0")).toBe(false);
   });
+
+  test("tracks each connected instance independently", () => {
+    expect(hasUnseenDeployedUpdate("v1.0.0", "https://first.example.com")).toBe(false);
+    expect(hasUnseenDeployedUpdate("v2.0.0", "https://second.example.com")).toBe(false);
+    expect(hasUnseenDeployedUpdate("v1.1.0", "https://first.example.com")).toBe(true);
+    expect(hasUnseenDeployedUpdate("v2.0.0", "https://second.example.com")).toBe(false);
+  });
 });

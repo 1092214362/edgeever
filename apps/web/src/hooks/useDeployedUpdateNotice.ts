@@ -1,52 +1,51 @@
-import { useSyncExternalStore } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useSyncExternalStore } from "react";
 import {
   DEPLOYED_UPDATE_SEEN_EVENT,
   hasUnseenDeployedUpdate,
   markDeployedUpdateSeen,
 } from "@/lib/pwa-update-notice";
+import { api, getConfiguredDesktopApiBaseUrl, type InstanceRelease } from "@/lib/api";
 import { getReleaseTagForVersion } from "@/lib/version-check";
 
 const isDesktopClient = () => window.edgeeverDesktop?.isAvailable === true;
-const deployedReleaseId = getReleaseTagForVersion(__EDGEEVER_APP_VERSION__) ?? __EDGEEVER_APP_VERSION__;
-
-let cachedUnseen: boolean | null = null;
-const subscribers = new Set<() => void>();
-
-const readUnseen = () => {
-  if (isDesktopClient()) return false;
-  cachedUnseen ??= hasUnseenDeployedUpdate(deployedReleaseId);
-  return cachedUnseen;
-};
-
-const syncUnseen = () => {
-  const nextUnseen = isDesktopClient() ? false : hasUnseenDeployedUpdate(deployedReleaseId);
-  if (cachedUnseen === nextUnseen) return;
-  cachedUnseen = nextUnseen;
-  for (const notify of subscribers) notify();
+const bundledRelease: InstanceRelease = {
+  version: __EDGEEVER_RELEASE_SUMMARY__.version,
+  changes: __EDGEEVER_RELEASE_SUMMARY__.changes,
 };
 
 const subscribe = (notify: () => void) => {
-  subscribers.add(notify);
-  if (subscribers.size === 1) {
-    window.addEventListener(DEPLOYED_UPDATE_SEEN_EVENT, syncUnseen);
-    window.addEventListener("storage", syncUnseen);
-  }
+  window.addEventListener(DEPLOYED_UPDATE_SEEN_EVENT, notify);
+  window.addEventListener("storage", notify);
   return () => {
-    subscribers.delete(notify);
-    if (subscribers.size === 0) {
-      window.removeEventListener(DEPLOYED_UPDATE_SEEN_EVENT, syncUnseen);
-      window.removeEventListener("storage", syncUnseen);
-    }
+    window.removeEventListener(DEPLOYED_UPDATE_SEEN_EVENT, notify);
+    window.removeEventListener("storage", notify);
   };
 };
 
-const markSeen = () => {
-  if (isDesktopClient()) return;
-  markDeployedUpdateSeen(deployedReleaseId);
-  syncUnseen();
-};
-
 export const useDeployedUpdateNotice = () => {
+  const desktopClient = isDesktopClient();
+  const instanceUrl = desktopClient ? getConfiguredDesktopApiBaseUrl() : "";
+  const releaseQuery = useQuery({
+    queryKey: ["instance-release", instanceUrl],
+    queryFn: () => api.getInstanceRelease(),
+    enabled: desktopClient && Boolean(instanceUrl),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+  const release = desktopClient ? releaseQuery.data ?? null : bundledRelease;
+  const releaseId = release
+    ? getReleaseTagForVersion(release.version) ?? release.version
+    : null;
+  const releaseScope = desktopClient ? instanceUrl : undefined;
+  const readUnseen = useCallback(
+    () => releaseId ? hasUnseenDeployedUpdate(releaseId, releaseScope) : false,
+    [releaseId, releaseScope],
+  );
   const unseen = useSyncExternalStore(subscribe, readUnseen, () => false);
-  return { markSeen, unseen };
+  const markSeen = useCallback(() => {
+    if (releaseId) markDeployedUpdateSeen(releaseId, releaseScope);
+  }, [releaseId, releaseScope]);
+
+  return { markSeen, release, unseen };
 };

@@ -3,6 +3,7 @@ import type { AuditActor } from "./api-context";
 import { AppError } from "./app-error";
 import { auditStatement } from "./audit";
 import { isoNow, parseJsonArray } from "./entity-utils";
+import { upsertMemoSearchDocumentStatement } from "./memo-search-index";
 import type { DatabaseAdapter, PreparedStatementAdapter } from "./storage-contract";
 
 type TagSummaryRow = {
@@ -102,10 +103,7 @@ export const updateTagAcrossMemos = async (
            WHERE id = ? AND workspace_id = ? AND is_deleted = 0`
         )
         .bind(JSON.stringify(nextTags), actorLabel, now, row.id, workspaceId),
-      db.prepare(`DELETE FROM memos_fts WHERE memo_id = ?`).bind(row.id),
-      db
-        .prepare(`INSERT INTO memos_fts (memo_id, title, content_text, tags) VALUES (?, ?, ?, ?)`)
-        .bind(row.id, row.title, row.content_text, nextTags.join(" ")),
+      upsertMemoSearchDocumentStatement(db, row.id, row.title, row.content_text, nextTags.join(" ")),
       auditStatement(db, actor.actorType, actor.actorId, normalizedNext ? "tag.rename" : "tag.delete", "memo", row.id, {
         from: normalizedOld,
         to: normalizedNext,
@@ -210,10 +208,13 @@ export const updateTagsForMemos = async (
            WHERE id = ? AND workspace_id = ? AND is_deleted = 0`
         )
         .bind(JSON.stringify(change.nextTags), input.actorLabel, now, change.memoId, input.workspaceId),
-      db.prepare(`DELETE FROM memos_fts WHERE memo_id = ?`).bind(change.memoId),
-      db
-        .prepare(`INSERT INTO memos_fts (memo_id, title, content_text, tags) VALUES (?, ?, ?, ?)`)
-        .bind(change.memoId, change.title, change.contentText, change.nextTags.join(" ")),
+      upsertMemoSearchDocumentStatement(
+        db,
+        change.memoId,
+        change.title,
+        change.contentText,
+        change.nextTags.join(" "),
+      ),
       auditStatement(
         db,
         input.actor.actorType,
