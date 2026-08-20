@@ -29,6 +29,27 @@ export const getReleaseTagForVersion = (version: string) => {
   return match ? `v${match[1]}` : null;
 };
 
+const normalizeLocale = (locale: string) => locale.trim().replaceAll("_", "-").toLowerCase();
+
+export const resolveLocalizedReleaseChanges = (
+  changes: Record<string, readonly string[]>,
+  language: string,
+  fallbackLanguage = "en-US"
+) => {
+  const locales = Object.keys(changes);
+  const normalizedLanguage = normalizeLocale(language);
+  const exactLocale = locales.find((locale) => normalizeLocale(locale) === normalizedLanguage);
+  if (exactLocale) return changes[exactLocale];
+
+  const baseLanguage = normalizedLanguage.split("-")[0];
+  const relatedLocale = locales.find((locale) => normalizeLocale(locale).split("-")[0] === baseLanguage);
+  if (relatedLocale) return changes[relatedLocale];
+
+  const normalizedFallback = normalizeLocale(fallbackLanguage);
+  const fallbackLocale = locales.find((locale) => normalizeLocale(locale) === normalizedFallback);
+  return fallbackLocale ? changes[fallbackLocale] : [];
+};
+
 export const isVersionOutdated = (currentVersion: string, latestVersion: string) => {
   const current = parseVersion(currentVersion);
   const latest = parseVersion(latestVersion);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { findDesktopReleaseVersion, getReleaseTagForVersion, isVersionOutdated } from "./version-check";
+import { findDesktopReleaseVersion, getReleaseTagForVersion, isVersionOutdated, resolveLocalizedReleaseChanges } from "./version-check";
 
 describe("platform release version checks", () => {
   test("derives the installed desktop version from the DMG asset", () => {
@@ -35,6 +35,20 @@ describe("platform release version checks", () => {
     expect(getReleaseTagForVersion("1.34.1+18")).toBe("v1.34.1");
     expect(getReleaseTagForVersion("v1.35.0-beta.2+4")).toBe("v1.35.0-beta.2");
     expect(getReleaseTagForVersion("local")).toBeNull();
+  });
+
+  test("selects exact and related locales before falling back to English", () => {
+    const changes = {
+      "en-US": ["English"],
+      "ja-JP": ["日本語"],
+      "pt-BR": ["Português"],
+      "zh-CN": ["中文"],
+    };
+
+    expect(resolveLocalizedReleaseChanges(changes, "ja-JP")).toEqual(["日本語"]);
+    expect(resolveLocalizedReleaseChanges(changes, "pt_PT")).toEqual(["Português"]);
+    expect(resolveLocalizedReleaseChanges(changes, "zh-Hans")).toEqual(["中文"]);
+    expect(resolveLocalizedReleaseChanges(changes, "de-DE")).toEqual(["English"]);
   });
 
 });

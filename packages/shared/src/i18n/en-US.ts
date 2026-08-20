@@ -581,7 +581,7 @@ export const enUS = {
     browserMode: "Browser",
     unknown: "Unknown",
     copy: "Copy info",
-    deployedUpdateTitle: "What's new in v{{version}}",
+    deployedUpdateTitle: "v{{version}} was automatically updated",
     releaseNotesUnavailable: "This build does not include an update summary. You can view the full Release notes.",
     viewReleaseNotes: "Full notes",
     desktopUpdateDownloading: "Downloading update…",

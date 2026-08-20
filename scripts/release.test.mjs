@@ -39,6 +39,8 @@ describe("release automation", () => {
         "Run checks in parallel.",
         "--change-zh",
         "并行运行检查。",
+        "--change-locale",
+        "ja-JP:チェックを並列実行します。",
         "--change-commit",
         "abc1234",
       ]),
@@ -48,6 +50,7 @@ describe("release automation", () => {
       labels: ["enhancement"],
       changesEn: ["Run checks in parallel."],
       changesZh: ["并行运行检查。"],
+      localizedChanges: { "ja-JP": ["チェックを並列実行します。"] },
       changeCommits: ["abc1234"],
     });
   });
@@ -183,11 +186,13 @@ describe("release automation", () => {
       version: "1.6.55",
       changesEn: ["Improve the release flow."],
       changesZh: ["优化发布流程。"],
+      localizedChanges: { "ja-JP": ["リリースフローを改善します。"] },
     })).toEqual({
       version: "1.6.55",
       changes: {
         "en-US": ["Improve the release flow."],
         "zh-CN": ["优化发布流程。"],
+        "ja-JP": ["リリースフローを改善します。"],
       },
     });
   });

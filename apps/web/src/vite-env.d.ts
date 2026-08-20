@@ -7,10 +7,7 @@ declare const __EDGEEVER_APP_VERSION__: string;
 declare const __EDGEEVER_RELEASED_AT__: string;
 declare const __EDGEEVER_RELEASE_SUMMARY__: {
   version: string;
-  changes: {
-    "en-US": string[];
-    "zh-CN": string[];
-  };
+  changes: Record<string, string[]>;
 };
 declare const __EDGEEVER_DEPLOYMENT_TRIGGER__: string;
 declare const __EDGEEVER_DEPLOYMENT_METHOD__: string;

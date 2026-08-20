@@ -22,18 +22,25 @@ const readReleaseSummary = (packageVersion: string) => {
   const summaryPath = fileURLToPath(new URL("../../release-summary.json", import.meta.url));
   const summary = JSON.parse(readFileSync(summaryPath, "utf8")) as {
     version?: unknown;
-    changes?: { "en-US"?: unknown; "zh-CN"?: unknown };
+    changes?: unknown;
   };
+  const localizedChanges = summary.changes && typeof summary.changes === "object" && !Array.isArray(summary.changes)
+    ? Object.entries(summary.changes)
+    : [];
   if (
     summary.version !== packageVersion ||
-    !Array.isArray(summary.changes?.["en-US"]) ||
-    !summary.changes["en-US"].every((item) => typeof item === "string" && item.trim()) ||
-    !Array.isArray(summary.changes?.["zh-CN"]) ||
-    !summary.changes["zh-CN"].every((item) => typeof item === "string" && item.trim())
+    localizedChanges.length === 0 ||
+    !localizedChanges.every(([locale, changes]) =>
+      /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale) &&
+      Array.isArray(changes) &&
+      changes.length > 0 &&
+      changes.every((item) => typeof item === "string" && item.trim())
+    ) ||
+    !localizedChanges.some(([locale]) => locale.toLowerCase() === "en-us")
   ) {
-    throw new Error(`release-summary.json must contain bilingual changes for package version ${packageVersion}.`);
+    throw new Error(`release-summary.json must contain valid localized changes and an en-US fallback for package version ${packageVersion}.`);
   }
-  return summary as { version: string; changes: { "en-US": string[]; "zh-CN": string[] } };
+  return summary as { version: string; changes: Record<string, string[]> };
 };
 
 const readGitCommit = () => {

@@ -70,6 +70,7 @@ Options:
   --label <label>            Required Issue label; may be repeated
   --change-en <text>         Required English release bullet; may be repeated
   --change-zh <text>         Required Chinese release bullet; may be repeated
+  --change-locale <tag:text> Optional localized bullet; repeat once per change and locale
   --change-commit <sha,...>  Commits covered by the corresponding bilingual bullet
   --ignore-commit <sha:why>  Explicitly exclude a non-user-facing commit; may be repeated
   --skip-install             Do not install the final DMG after publication
@@ -85,6 +86,7 @@ export const parseReleaseArgs = (argv) => {
     labels: [],
     changesEn: [],
     changesZh: [],
+    localizedChanges: [],
     changeCommits: [],
     ignoredCommits: [],
     skipInstall: false,
@@ -99,6 +101,7 @@ export const parseReleaseArgs = (argv) => {
     ["--label", "labels"],
     ["--change-en", "changesEn"],
     ["--change-zh", "changesZh"],
+    ["--change-locale", "localizedChanges"],
     ["--change-commit", "changeCommits"],
     ["--ignore-commit", "ignoredCommits"],
   ]);
@@ -158,6 +161,25 @@ export const parseReleaseArgs = (argv) => {
   if (options.changesEn.length !== options.changeCommits.length) {
     throw new Error("Each bilingual change requires one corresponding --change-commit value.");
   }
+  const localizedChanges = {};
+  for (const value of options.localizedChanges) {
+    const separator = value.indexOf(":");
+    const locale = separator === -1 ? "" : value.slice(0, separator).trim();
+    const change = separator === -1 ? "" : value.slice(separator + 1).trim();
+    if (!/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale) || !change) {
+      throw new Error('--change-locale must use "<locale>:<user-facing change>".');
+    }
+    if (["en-us", "zh-cn"].includes(locale.toLowerCase())) {
+      throw new Error("Use --change-en and --change-zh for en-US and zh-CN release changes.");
+    }
+    (localizedChanges[locale] ??= []).push(change);
+  }
+  for (const [locale, changes] of Object.entries(localizedChanges)) {
+    if (changes.length !== options.changesEn.length) {
+      throw new Error(`--change-locale ${locale} must provide one translation for every release change.`);
+    }
+  }
+  options.localizedChanges = localizedChanges;
   return options;
 };
 
@@ -360,11 +382,12 @@ export const buildReleaseNotes = ({
   "",
 ].join("\n");
 
-export const buildReleaseSummary = ({ version, changesEn, changesZh }) => ({
+export const buildReleaseSummary = ({ version, changesEn, changesZh, localizedChanges = {} }) => ({
   version,
   changes: {
     "en-US": [...changesEn],
     "zh-CN": [...changesZh],
+    ...Object.fromEntries(Object.entries(localizedChanges).map(([locale, changes]) => [locale, [...changes]])),
   },
 });
 
@@ -500,7 +523,7 @@ const assertReleasePreconditions = ({ repository, previousTag }) => {
   }
 };
 
-const updateReleaseVersions = ({ nextVersion, desktopRebuild, mobileRebuild, changesEn, changesZh }) => {
+const updateReleaseVersions = ({ nextVersion, desktopRebuild, mobileRebuild, changesEn, changesZh, localizedChanges }) => {
   const changedPaths = ["package.json", "release-summary.json"];
   const rootPackage = readJson("package.json");
   rootPackage.version = nextVersion;
@@ -509,6 +532,7 @@ const updateReleaseVersions = ({ nextVersion, desktopRebuild, mobileRebuild, cha
     version: nextVersion,
     changesEn,
     changesZh,
+    localizedChanges,
   }));
 
   if (desktopRebuild) {
@@ -892,6 +916,7 @@ const releaseMain = async (options) => {
     console.log(buildReleaseNotes({
       changesEn: options.changesEn,
       changesZh: options.changesZh,
+      localizedChanges: options.localizedChanges,
       issueNumber: 0,
     }));
     return;

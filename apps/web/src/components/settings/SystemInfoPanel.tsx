@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { Copy, ExternalLink, Sparkles } from "lucide-react";
+import { CircleCheck, Copy, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { detectWebClientKind } from "@/lib/client-environment";
 import { cn } from "@/lib/utils";
-import { getReleaseTagForVersion } from "@/lib/version-check";
+import { getReleaseTagForVersion, resolveLocalizedReleaseChanges } from "@/lib/version-check";
 import { copyTextToClipboard } from "./settings-utils";
 
 export type SystemInfoItem = { label: string; value: string };
@@ -72,9 +72,10 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
   const infoItems = useMemo(() => getWebSystemInfoItems(t, i18n.language), [i18n.language, t]);
   const isDesktopClient = window.edgeeverDesktop?.isAvailable === true;
   const releaseTag = getReleaseTagForVersion(__EDGEEVER_APP_VERSION__);
-  const releaseHighlights = i18n.language.toLowerCase().startsWith("zh")
-    ? __EDGEEVER_RELEASE_SUMMARY__.changes["zh-CN"]
-    : __EDGEEVER_RELEASE_SUMMARY__.changes["en-US"];
+  const releaseHighlights = resolveLocalizedReleaseChanges(
+    __EDGEEVER_RELEASE_SUMMARY__.changes,
+    i18n.resolvedLanguage ?? i18n.language
+  );
   const releaseUrl = releaseTag
     ? `https://github.com/tianma-if/edgeever/releases/tag/${encodeURIComponent(releaseTag)}`
     : "https://github.com/tianma-if/edgeever/releases/latest";
@@ -95,7 +96,7 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
       </div>
       {active && !isDesktopClient ? (
         <div className="flex items-start gap-2 rounded-md border border-emerald-200 border-l-2 border-l-emerald-500 bg-emerald-50/40 px-3 py-2 text-slate-800" role="status">
-          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
           <div className="min-w-0 flex-1 text-xs leading-5">
             <div className="font-semibold">{t("systemInfo.deployedUpdateTitle", { version: releaseTag?.replace(/^v/, "") ?? __EDGEEVER_APP_VERSION__ })}</div>
             {releaseHighlights.length > 0 ? (

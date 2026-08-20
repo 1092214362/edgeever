@@ -581,7 +581,7 @@ export const zhCN = {
     browserMode: "浏览器",
     unknown: "未知",
     copy: "复制信息",
-    deployedUpdateTitle: "v{{version}} 更新内容",
+    deployedUpdateTitle: "v{{version}} 已自动更新",
     releaseNotesUnavailable: "本次构建未包含更新摘要，可查看完整 Release 说明。",
     viewReleaseNotes: "完整说明",
     desktopUpdateDownloading: "正在下载更新…",
