@@ -5,7 +5,6 @@ import { useDeployedUpdateNotice } from "@/hooks/useDeployedUpdateNotice";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -24,7 +23,6 @@ export const SystemInfoDialog = ({ open, onOpenChange }: { open: boolean; onOpen
       <DialogContent className="max-h-[min(720px,calc(100dvh-2rem))] max-w-2xl overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="pr-8">
           <DialogTitle>{t("systemInfo.title")}</DialogTitle>
-          <DialogDescription>{t("systemInfo.description")}</DialogDescription>
         </DialogHeader>
         <SystemInfoPanel />
         <div className="flex justify-end">

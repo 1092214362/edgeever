@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CircleCheck, Copy, ExternalLink } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useDeployedUpdateNotice } from "@/hooks/useDeployedUpdateNotice";
 import { detectWebClientKind } from "@/lib/client-environment";
@@ -107,6 +107,21 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
             ) : (
               <div className="mt-1 text-slate-500">{t("systemInfo.releaseNotesUnavailable")}</div>
             )}
+            <p className="mt-2 border-t border-emerald-100/70 pt-1.5 text-[10px] leading-4 text-slate-400">
+              <Trans
+                i18nKey="systemInfo.clientUpdatesNote"
+                components={{
+                  releases: (
+                    <a
+                      className="text-slate-500 underline underline-offset-2 hover:text-emerald-700"
+                      href="https://github.com/tianma-if/edgeever/releases"
+                      target="_blank"
+                      rel="noreferrer"
+                    />
+                  ),
+                }}
+              />
+            </p>
           </div>
           <a className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700 underline underline-offset-2 hover:text-emerald-900" href={releaseUrl} target="_blank" rel="noreferrer">
             {t("systemInfo.viewReleaseNotes")} <ExternalLink className="h-3 w-3" />
