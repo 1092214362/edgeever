@@ -1,15 +1,15 @@
 {
-  "version": "1.35.0",
+  "version": "1.35.1",
   "changes": {
     "en-US": [
-      "Show localized deployment release summaries with clearer automatic-update status and guidance.",
-      "Reduce background database writes and sync polling while improving search and tag indexing, keeping larger notebooks responsive and up to date.",
-      "Keep attachment actions readable and easy to use in narrower layouts."
+      "Automatically recover Web, PWA, and macOS note mirrors after a server database reset while preserving unsynced desktop drafts.",
+      "Improve code-block editing: the first Select All stays inside the current block, and code input no longer applies autocorrect or spellcheck.",
+      "Show the configured editor-mode shortcut in the toolbar tooltip."
     ],
     "zh-CN": [
-      "展示本地化的部署版本更新摘要，并提供更清晰的自动更新状态与操作指引。",
-      "减少后台数据库写入与同步轮询，并改进搜索和标签索引，让较大的笔记库保持流畅和及时更新。",
-      "优化窄屏布局下的附件操作栏，使操作保持清晰易用。"
+      "服务端数据库重置后，Web、PWA 与 macOS 会自动恢复笔记镜像，并保留桌面端尚未同步的草稿。",
+      "改进代码块编辑：首次全选仅选择当前代码块，并关闭代码输入的自动纠正与拼写检查。",
+      "在编辑器工具栏提示中显示已配置的编辑模式切换快捷键。"
     ]
   }
 }
