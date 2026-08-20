@@ -28,6 +28,7 @@ COPY apps/api apps/api
 COPY apps/web apps/web
 COPY packages packages
 COPY docs docs
+COPY release-summary.json release-summary.json
 COPY tsconfig.json tailwind.config.ts ./
 RUN bun run build:web
 
