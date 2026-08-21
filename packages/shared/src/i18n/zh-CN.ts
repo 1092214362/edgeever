@@ -1086,6 +1086,19 @@ export const zhCN = {
     publicUnavailable: "这篇分享笔记不可用",
     publicUnavailableHint: "链接可能无效、已被分享者撤销，或原笔记已经删除。",
   },
+  slashMenu: {
+    menu: "插入功能菜单",
+    empty: "没有匹配的功能。",
+    close: "关闭菜单",
+    groups: {
+      suggested: "建议",
+      basic: "基本区块",
+      insert: "插入",
+    },
+    items: {
+      ai: "用 AI 处理",
+    },
+  },
   editorToolbar: {
     toolbar: "编辑器工具栏",
     paragraph: "正文",

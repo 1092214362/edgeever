@@ -79,6 +79,11 @@ import { EditorToolbar } from "./EditorToolbar";
 import { EditorOutline } from "./EditorOutline";
 import { EditorTagPicker } from "./EditorTagPicker";
 import { useAiBubbleMenu } from "./editor/useAiBubbleMenu";
+import {
+  createSlashCommandExtension,
+  type SlashCommandActions,
+  type SlashCommandLabels,
+} from "./editor/SlashCommandMenu";
 import { WeChatIcon } from "./WeChatIcon";
 import { ThemeToggle } from "./ThemeToggle";
 import { useEditorTheme } from "./ThemeProvider";
@@ -874,6 +879,72 @@ const RichEditorPane = ({
   const noteSearchAutoSelectionRef = useRef<{ editor: Editor; identity: string } | null>(null);
   const markdownTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const openExternalLinkDialogRef = useRef<() => void>(() => undefined);
+  const slashCommandLabelsRef = useRef<SlashCommandLabels>({
+    menu: "",
+    empty: "",
+    close: "",
+    groups: { suggested: "", basic: "", insert: "" },
+    items: {
+      ai: "",
+      paragraph: "",
+      "heading-1": "",
+      "heading-2": "",
+      "heading-3": "",
+      "bullet-list": "",
+      "ordered-list": "",
+      "task-list": "",
+      blockquote: "",
+      "code-block": "",
+      divider: "",
+      table: "",
+      attachment: "",
+      "note-link": "",
+      "external-link": "",
+    },
+  });
+  slashCommandLabelsRef.current = {
+    menu: t("slashMenu.menu"),
+    empty: t("slashMenu.empty"),
+    close: t("slashMenu.close"),
+    groups: {
+      suggested: t("slashMenu.groups.suggested"),
+      basic: t("slashMenu.groups.basic"),
+      insert: t("slashMenu.groups.insert"),
+    },
+    items: {
+      ai: t("slashMenu.items.ai"),
+      paragraph: t("editorToolbar.paragraph"),
+      "heading-1": t("editorToolbar.heading1"),
+      "heading-2": t("editorToolbar.heading2"),
+      "heading-3": t("editorToolbar.heading3"),
+      "bullet-list": t("editorToolbar.bulletList"),
+      "ordered-list": t("editorToolbar.orderedList"),
+      "task-list": t("editorToolbar.taskList"),
+      blockquote: t("editorToolbar.quote"),
+      "code-block": t("editorToolbar.codeBlock"),
+      divider: t("editorToolbar.horizontalRule"),
+      table: t("editorToolbar.table"),
+      attachment: t("editorToolbar.attachment"),
+      "note-link": t("editorToolbar.noteLink"),
+      "external-link": t("editorToolbar.externalLink"),
+    },
+  };
+  const slashCommandActionsRef = useRef<SlashCommandActions | null>(null);
+  if (!slashCommandActionsRef.current) {
+    slashCommandActionsRef.current = {
+      openAi: () => openAiAssistantRef.current(),
+      openAttachmentPicker: () => fileInputRef.current?.click(),
+      openExternalLinkPicker: () => openExternalLinkDialogRef.current(),
+      openNoteLinkPicker: () => setNoteLinkPickerOpen(true),
+    };
+  }
+  const slashCommandExtensionRef = useRef<ReturnType<typeof createSlashCommandExtension> | null>(null);
+  if (!slashCommandExtensionRef.current) {
+    slashCommandExtensionRef.current = createSlashCommandExtension({
+      actions: slashCommandActionsRef.current,
+      getLabels: () => slashCommandLabelsRef.current,
+    });
+  }
   const hydratingRef = useRef(false);
   const hydratedMemoIdRef = useRef<string | null>(null);
   /** Last content source applied to the editor — used to skip redundant setContent. */
@@ -1124,6 +1195,7 @@ const RichEditorPane = ({
       Placeholder.configure({
         placeholder: t("editor.placeholder"),
       }),
+      slashCommandExtensionRef.current,
     ],
     content: memo
       ? resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown)

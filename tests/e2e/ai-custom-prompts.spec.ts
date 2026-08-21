@@ -147,6 +147,36 @@ test.describe("AI custom prompts", () => {
     await expect(composer).toBeVisible();
   });
 
+  test("opens the function menu from a bare slash and runs its AI command", async ({ page }) => {
+    const memo = await createMemo(page, `e2e-slash-menu-${Date.now()}`, "斜杠菜单测试");
+    await ensureAuthenticatedPage(page);
+    await page.getByRole("button", { name: new RegExp(notebookName) }).click();
+    await page.locator(`[data-memo-id="${memo.id}"]`).locator("button").first().click();
+    const editor = page.locator(".ProseMirror[contenteditable='true']");
+    await expect(editor).toBeVisible();
+
+    await editor.click();
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/");
+    const slashMenu = page.getByLabel("插入功能菜单");
+    await expect(slashMenu).toBeVisible();
+    await expect(slashMenu.getByText("基本区块", { exact: true })).toBeVisible();
+    await expect(slashMenu.getByText("标题 1", { exact: true })).toBeVisible();
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(slashMenu).toBeHidden();
+    await expect(editor).not.toContainText("/");
+
+    await page.keyboard.type("/");
+    await expect(slashMenu).toBeVisible();
+    await slashMenu.getByText("用 AI 处理", { exact: true }).click();
+    await expect(slashMenu).toBeHidden();
+    await expect(editor).not.toContainText("/");
+    await expect(page.getByRole("dialog", { name: "AI 笔记助手" })).toBeVisible();
+  });
+
   test("sends temporary files with one AI request", async ({ page }) => {
     const memo = await createMemo(page, `e2e-ai-attachment-${Date.now()}`, "请结合附件处理。 ");
     let submittedBody: Record<string, unknown> | null = null;

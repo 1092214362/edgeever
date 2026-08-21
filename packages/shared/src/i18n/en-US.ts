@@ -1086,6 +1086,19 @@ export const enUS = {
     publicUnavailable: "This shared note is unavailable",
     publicUnavailableHint: "The link may be invalid, the owner may have revoked it, or the note may have been deleted.",
   },
+  slashMenu: {
+    menu: "Insert menu",
+    empty: "No matching commands.",
+    close: "Close menu",
+    groups: {
+      suggested: "Suggested",
+      basic: "Basic blocks",
+      insert: "Insert",
+    },
+    items: {
+      ai: "Ask AI",
+    },
+  },
   editorToolbar: {
     toolbar: "Editor toolbar",
     paragraph: "Body",
