@@ -1104,8 +1104,6 @@ export const enUS = {
     mermaidSource: "Mermaid source",
     mermaidShowSource: "Show Mermaid source",
     mermaidHideSource: "Hide Mermaid source",
-    mermaidUseStandardLayout: "Switch to standard layout",
-    mermaidUseOrthogonalLayout: "Switch to orthogonal layout",
     mermaidOpenViewer: "Open Mermaid diagram viewer",
     mermaidViewer: "Mermaid diagram viewer",
     mermaidZoomIn: "Zoom in diagram",

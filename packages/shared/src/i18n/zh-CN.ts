@@ -1104,8 +1104,6 @@ export const zhCN = {
     mermaidSource: "Mermaid 源码",
     mermaidShowSource: "显示 Mermaid 源码",
     mermaidHideSource: "隐藏 Mermaid 源码",
-    mermaidUseStandardLayout: "切换到标准布局",
-    mermaidUseOrthogonalLayout: "切换到正交布局",
     mermaidOpenViewer: "放大查看 Mermaid 图表",
     mermaidViewer: "Mermaid 图表查看器",
     mermaidZoomIn: "放大图表",
