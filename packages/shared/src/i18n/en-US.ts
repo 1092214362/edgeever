@@ -943,7 +943,7 @@ export const enUS = {
       deleteDescription: "The attachment will be permanently removed from storage and this note. This cannot be undone.",
       failed: "The attachment action failed. Try again.",
     },
-    placeholder: "Start writing...",
+    placeholder: "Press Space for AI, or type / for commands",
     noteBodyAria: "Note body",
     markdownSourceAria: "Markdown source",
     loading: "Loading",

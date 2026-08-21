@@ -943,7 +943,7 @@ export const zhCN = {
       deleteDescription: "附件会从存储空间和当前笔记中永久删除，此操作无法撤销。",
       failed: "附件操作失败，请重试。",
     },
-    placeholder: "开始记录...",
+    placeholder: "按 Space 使用 AI，输入 / 浏览命令",
     noteBodyAria: "笔记正文",
     markdownSourceAria: "Markdown 源码",
     loading: "加载中",

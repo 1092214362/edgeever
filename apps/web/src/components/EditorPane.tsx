@@ -144,7 +144,7 @@ import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
 import { downloadNoteHtmlFile, getHtmlImageEmbedNoticeKind } from "@/lib/note-html-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
-import { getAiSlashCommandStart, saveAndSyncEditor } from "@/lib/editor-shortcuts";
+import { getAiSlashCommandStart, saveAndSyncEditor, shouldOpenAiFromSpace } from "@/lib/editor-shortcuts";
 import { isBrowserOffline } from "@/lib/network-status";
 import {
   EDITOR_LINK_OPEN_MODE_CHANGED_EVENT,
@@ -1206,6 +1206,25 @@ const RichEditorPane = ({
         class: "prose prose-slate max-w-none focus:outline-none min-h-[300px] px-4 py-3 sm:px-7",
       },
       handleKeyDown: (view, event) => {
+        const { selection } = view.state;
+        const currentNode = selection.$from.parent;
+        if (shouldOpenAiFromSpace({
+          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
+          isComposing: event.isComposing,
+          isEmptyParagraph: currentNode.type.name === "paragraph" && currentNode.content.size === 0,
+          key: event.key,
+          keyCode: event.keyCode,
+          metaKey: event.metaKey,
+          repeat: event.repeat,
+          selectionEmpty: selection.empty,
+          shiftKey: event.shiftKey,
+        })) {
+          event.preventDefault();
+          window.requestAnimationFrame(() => openAiAssistantRef.current());
+          return true;
+        }
+
         const shortcutKey = event.key.toLowerCase();
         if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && shortcutKey === "k") {
           event.preventDefault();
@@ -1222,7 +1241,7 @@ const RichEditorPane = ({
           return false;
         }
 
-        const { from, to } = view.state.selection;
+        const { from, to } = selection;
         if (from === to) {
           return false;
         }

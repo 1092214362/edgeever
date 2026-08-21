@@ -183,6 +183,33 @@ test.describe("AI custom prompts", () => {
     await expect(assistant).toBeVisible();
   });
 
+  test("opens AI from Space in an empty block without hijacking normal spaces", async ({ page }) => {
+    const memo = await createMemo(page, `e2e-ai-space-${Date.now()}`, "空格入口测试");
+    await ensureAuthenticatedPage(page);
+    await page.getByRole("button", { name: new RegExp(notebookName) }).click();
+    await page.locator(`[data-memo-id="${memo.id}"]`).locator("button").first().click();
+    const editor = page.locator(".ProseMirror[contenteditable='true']");
+    await expect(editor).toBeVisible();
+
+    await editor.click();
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    const emptyParagraph = editor.locator("p").last();
+    await expect(emptyParagraph).toHaveClass(/is-empty/);
+    await expect(emptyParagraph).toHaveAttribute("data-placeholder", "按 Space 使用 AI，输入 / 浏览命令");
+
+    await page.keyboard.press("Space");
+    const assistant = page.getByRole("dialog", { name: "AI 笔记助手" });
+    await expect(assistant).toBeVisible();
+    await expect(emptyParagraph).toBeEmpty();
+
+    await assistant.getByRole("button", { name: "关闭" }).click();
+    await emptyParagraph.click();
+    await page.keyboard.type("正常 输入");
+    await expect(assistant).toBeHidden();
+    await expect(emptyParagraph).toHaveText("正常 输入");
+  });
+
   test("sends temporary files with one AI request", async ({ page }) => {
     const memo = await createMemo(page, `e2e-ai-attachment-${Date.now()}`, "请结合附件处理。 ");
     let submittedBody: Record<string, unknown> | null = null;
