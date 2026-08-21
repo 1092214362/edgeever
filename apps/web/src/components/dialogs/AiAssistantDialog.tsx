@@ -117,6 +117,7 @@ export const AiAssistantDialog = ({
   const instructionRef = useRef<HTMLTextAreaElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentReadIdRef = useRef(0);
+  const customInstructionEditedRef = useRef(false);
   const lastRequestRef = useRef<Parameters<typeof api.streamAiGeneration>[0] | null>(null);
   const assignPanelRef = useCallback((node: HTMLElement | null) => {
     panelRef.current = node;
@@ -168,12 +169,15 @@ export const AiAssistantDialog = ({
     setAttachmentError(null);
     setIsReadingAttachments(false);
     setInitializedForOpen(false);
+    customInstructionEditedRef.current = false;
     lastRequestRef.current = null;
   }, [defaultAction, defaultTargetLanguage, hasSelection, open]);
 
   useEffect(() => {
     if (!open || initializedForOpen || promptsQuery.isLoading) return;
-    if (customInstruction.trim()) {
+    if (customInstructionEditedRef.current || customInstruction.trim()) {
+      setSelectedPromptId(null);
+      setAction("custom");
       setInitializedForOpen(true);
       return;
     }
@@ -220,6 +224,7 @@ export const AiAssistantDialog = ({
   };
 
   const handleActionChange = (value: string) => {
+    customInstructionEditedRef.current = false;
     if (value === FREEFORM_VALUE) {
       setAction("custom");
       setSelectedPromptId(null);
@@ -270,18 +275,27 @@ export const AiAssistantDialog = ({
     }
   };
 
-  const generate = () => runGeneration(buildAiAssistantRequest({
-    action: effectiveActionKey,
-    contentMarkdown: sourceMarkdown,
-    customInstruction,
-    locale: i18n.resolvedLanguage,
-    parameterKind: selectedPrompt ? effectiveParameterKind : undefined,
-    promptId: selectedPrompt?.id,
-    targetLanguage,
-    title,
-    tone,
-    attachments: attachments.map(({ byteLength: _byteLength, ...attachment }) => attachment),
-  }));
+  const generate = () => {
+    const currentInstruction = instructionRef.current?.value ?? customInstruction;
+    if (!selectedPrompt && effectiveActionKey === "custom" && !currentInstruction.trim()) {
+      setError(t("aiAssistant.customInstructionRequired"));
+      instructionRef.current?.focus();
+      return;
+    }
+
+    return runGeneration(buildAiAssistantRequest({
+      action: effectiveActionKey,
+      contentMarkdown: sourceMarkdown,
+      customInstruction: currentInstruction,
+      locale: i18n.resolvedLanguage,
+      parameterKind: selectedPrompt ? effectiveParameterKind : undefined,
+      promptId: selectedPrompt?.id,
+      targetLanguage,
+      title,
+      tone,
+      attachments: attachments.map(({ byteLength: _byteLength, ...attachment }) => attachment),
+    }));
+  };
 
   const addAttachments = async (files: File[]) => {
     if (!files.length) return;
@@ -366,11 +380,7 @@ export const AiAssistantDialog = ({
   const isFreeformCustom = !selectedPromptId && action === "custom";
   const canSaveAsPrompt = isFreeformCustom && customInstruction.trim().length > 0;
   const generateDisabled = isGenerating
-    || isReadingAttachments
-    || (isFreeformCustom && !customInstruction.trim())
-    || (!isFreeformCustom && !selectedPromptId)
-    || (promptNeedsTargetLanguage(effectiveParameterKind) && !targetLanguage)
-    || (promptNeedsTone(effectiveParameterKind) && !tone);
+    || isReadingAttachments;
 
   const panelStyle = useMemo<CSSProperties>(() => {
     const viewportWidth = typeof window === "undefined" ? 1024 : window.innerWidth;
@@ -538,11 +548,17 @@ export const AiAssistantDialog = ({
                   className="min-h-24 resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/15"
                   value={customInstruction}
                   onChange={(event) => {
-                    if (selectedPromptId) {
-                      setSelectedPromptId(null);
-                      setAction("custom");
-                    }
+                    customInstructionEditedRef.current = true;
+                    setSelectedPromptId(null);
+                    setAction("custom");
                     setCustomInstruction(event.target.value);
+                    clearResult();
+                  }}
+                  onCompositionEnd={(event) => {
+                    customInstructionEditedRef.current = true;
+                    setSelectedPromptId(null);
+                    setAction("custom");
+                    setCustomInstruction(event.currentTarget.value);
                     clearResult();
                   }}
                   placeholder={t("aiAssistant.customInstructionPlaceholder")}

@@ -517,6 +517,7 @@ export const enUS = {
     },
     customInstruction: "Tell AI what to do",
     customInstructionPlaceholder: "For example: Rewrite this as a concise, friendly email and preserve every date.",
+    customInstructionRequired: "Enter an instruction for AI.",
     addAttachment: "Add files",
     attachments: "Attached files",
     removeAttachment: "Remove {{name}}",

@@ -517,6 +517,7 @@ export const zhCN = {
     },
     customInstruction: "告诉 AI 你想怎么处理",
     customInstructionPlaceholder: "例如：改写成一封简洁、友好的邮件，并保留所有日期。",
+    customInstructionRequired: "请输入你希望 AI 执行的指令。",
     addAttachment: "添加文件",
     attachments: "已添加文件",
     removeAttachment: "移除 {{name}}",

@@ -23,8 +23,13 @@ const ensureAuthenticatedPage = async (page: Page) => {
   await expect(page.getByRole("button", { name: "个人中心", exact: true })).toBeVisible({ timeout: 20_000 });
 };
 
-const mockAiGeneration = async (page: Page, replacement: string) => {
+const mockAiGeneration = async (
+  page: Page,
+  replacement: string,
+  onRequest?: (body: Record<string, unknown>) => void,
+) => {
   await page.route("**/api/v1/ai/generate", async (route) => {
+    onRequest?.(route.request().postDataJSON() as Record<string, unknown>);
     await route.fulfill({
       status: 200,
       contentType: "text/event-stream; charset=utf-8",
@@ -313,6 +318,35 @@ test.describe("AI custom prompts", () => {
         mediaType: "text/plain",
         base64Data: Buffer.from("temporary context", "utf8").toString("base64"),
       }],
+    });
+  });
+
+  test("keeps a Chinese custom instruction usable while prompts initialize", async ({ page }) => {
+    const memo = await createMemo(page, `e2e-ai-ime-${Date.now()}`, "中文输入状态测试");
+    let submittedBody: Record<string, unknown> | null = null;
+    await page.route("**/api/v1/ai/prompts*", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    });
+    await mockAiGeneration(page, "宋词结果", (body) => {
+      submittedBody = body;
+    });
+    await ensureAuthenticatedPage(page);
+    await page.getByRole("button", { name: new RegExp(notebookName) }).click();
+    await page.locator(`[data-memo-id="${memo.id}"]`).locator("button").first().click();
+    await page.getByRole("button", { name: "打开 AI 写作助手", exact: true }).click();
+
+    const dialog = page.getByRole("dialog", { name: "AI 笔记助手" });
+    const textarea = dialog.locator("textarea");
+    await textarea.fill("写个宋词");
+    const generateButton = dialog.getByRole("button", { name: "生成", exact: true });
+    await expect(generateButton).toBeEnabled();
+    await generateButton.click();
+
+    await expect(dialog.getByText("宋词结果", { exact: true })).toBeVisible();
+    expect(submittedBody).toMatchObject({
+      action: "custom",
+      instruction: "写个宋词",
     });
   });
 
