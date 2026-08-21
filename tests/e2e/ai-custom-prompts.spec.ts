@@ -27,9 +27,11 @@ const mockAiGeneration = async (
   page: Page,
   replacement: string,
   onRequest?: (body: Record<string, unknown>) => void,
+  delayMs = 0,
 ) => {
   await page.route("**/api/v1/ai/generate", async (route) => {
     onRequest?.(route.request().postDataJSON() as Record<string, unknown>);
+    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
     await route.fulfill({
       status: 200,
       contentType: "text/event-stream; charset=utf-8",
@@ -338,13 +340,15 @@ test.describe("AI custom prompts", () => {
   test("keeps a Chinese custom instruction usable while prompts initialize", async ({ page }) => {
     const memo = await createMemo(page, `e2e-ai-ime-${Date.now()}`, "中文输入状态测试");
     let submittedBody: Record<string, unknown> | null = null;
+    let generationRequestCount = 0;
     await page.route("**/api/v1/ai/prompts*", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 800));
       await route.continue();
     });
     await mockAiGeneration(page, "宋词结果", (body) => {
+      generationRequestCount += 1;
       submittedBody = body;
-    });
+    }, 300);
     await ensureAuthenticatedPage(page);
     await page.getByRole("button", { name: new RegExp(notebookName) }).click();
     await page.locator(`[data-memo-id="${memo.id}"]`).locator("button").first().click();
@@ -355,12 +359,31 @@ test.describe("AI custom prompts", () => {
     await textarea.fill("写个宋词");
     const generateButton = dialog.getByRole("button", { name: "生成", exact: true });
     await expect(generateButton).toBeEnabled();
-    await generateButton.click();
+    await expect(generateButton.locator("kbd")).toHaveText("Enter");
+
+    await textarea.press("Shift+Enter");
+    await textarea.pressSequentially("不要参考原笔记");
+    await expect(textarea).toHaveValue("写个宋词\n不要参考原笔记");
+
+    await textarea.evaluate((element) => {
+      element.dispatchEvent(new KeyboardEvent("keydown", {
+        bubbles: true,
+        isComposing: true,
+        key: "Enter",
+      }));
+    });
+    expect(submittedBody).toBeNull();
+
+    await textarea.press("Enter");
+    await expect.poll(() => generationRequestCount).toBe(1);
+    await textarea.press("Enter");
+    await page.waitForTimeout(50);
+    expect(generationRequestCount).toBe(1);
 
     await expect(dialog.getByText("宋词结果", { exact: true })).toBeVisible();
     expect(submittedBody).toMatchObject({
       action: "custom",
-      instruction: "写个宋词",
+      instruction: "写个宋词\n不要参考原笔记",
     });
   });
 

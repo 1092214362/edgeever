@@ -491,7 +491,11 @@ export const AiAssistantDialog = ({
                     </Button>
                   ) : (
                     <Button type="button" variant="solid" className="h-10 min-w-0 w-full gap-1.5 whitespace-nowrap px-3 text-sm font-semibold" disabled={generateDisabled} onClick={() => void generate()}>
-                      <Sparkles className="h-4 w-4 shrink-0" />{t("aiAssistant.generate")}
+                      <Sparkles className="h-4 w-4 shrink-0" />
+                      {t("aiAssistant.generate")}
+                      <kbd aria-hidden="true" className="ml-0.5 rounded border border-emerald-300/60 bg-emerald-600/35 px-1 py-0.5 text-[10px] font-medium leading-none text-emerald-50">
+                        Enter
+                      </kbd>
                     </Button>
                   )}
                 </div>
@@ -561,6 +565,19 @@ export const AiAssistantDialog = ({
                     setAction("custom");
                     setCustomInstruction(event.currentTarget.value);
                     clearResult();
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key !== "Enter"
+                      || event.shiftKey
+                      || event.nativeEvent.isComposing
+                      || isGenerating
+                      || isReadingAttachments
+                    ) {
+                      return;
+                    }
+                    event.preventDefault();
+                    void generate();
                   }}
                   placeholder={t("aiAssistant.customInstructionPlaceholder")}
                   maxLength={2_000}
