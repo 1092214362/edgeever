@@ -182,7 +182,21 @@ test.describe("AI custom prompts", () => {
     const assistant = page.getByRole("dialog", { name: "AI 笔记助手" });
     await expect(assistant).toBeVisible();
     const customInstructionButton = assistant.getByRole("button", { name: "自定义指令", exact: true });
+    const actionSelect = assistant.getByRole("combobox", { name: "处理方式" });
+    const generateButton = assistant.getByRole("button", { name: "生成", exact: true });
     await expect(customInstructionButton).toBeVisible();
+    const [actionSelectBox, customInstructionBox, generateBox] = await Promise.all([
+      actionSelect.boundingBox(),
+      customInstructionButton.boundingBox(),
+      generateButton.boundingBox(),
+    ]);
+    expect(actionSelectBox).not.toBeNull();
+    expect(customInstructionBox).not.toBeNull();
+    expect(generateBox).not.toBeNull();
+    expect(customInstructionBox!.width).toBeGreaterThanOrEqual(120);
+    expect(generateBox!.width).toBeGreaterThanOrEqual(104);
+    expect(actionSelectBox!.width / customInstructionBox!.width).toBeLessThan(2.5);
+    expect(customInstructionBox!.width / generateBox!.width).toBeLessThan(1.25);
     const customInstructionLineCount = await customInstructionButton.evaluate((element) => {
       const textNode = Array.from(element.childNodes)
         .find((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
@@ -409,6 +423,7 @@ test.describe("AI custom prompts", () => {
   });
 
   test("inserts generated content at the caret captured when AI opens", async ({ page }) => {
+    await page.setViewportSize({ width: 1180, height: 720 });
     const memo = await createMemo(
       page,
       `e2e-ai-caret-insert-${Date.now()}`,
@@ -428,7 +443,23 @@ test.describe("AI custom prompts", () => {
     const dialog = page.getByRole("dialog", { name: "AI 笔记助手" });
     await dialog.getByRole("button", { name: "生成", exact: true }).click();
     await expect(dialog.getByText("AI 插入段落", { exact: true })).toBeVisible();
-    await dialog.getByRole("button", { name: "追加到笔记", exact: true }).click();
+    const copyButton = dialog.getByRole("button", { name: "复制结果", exact: true });
+    const appendButton = dialog.getByRole("button", { name: "追加到笔记", exact: true });
+    await expect(copyButton).toBeVisible();
+    await expect(appendButton).toBeVisible();
+    const [dialogBox, copyButtonBox, appendButtonBox] = await Promise.all([
+      dialog.boundingBox(),
+      copyButton.boundingBox(),
+      appendButton.boundingBox(),
+    ]);
+    expect(dialogBox).not.toBeNull();
+    expect(copyButtonBox).not.toBeNull();
+    expect(appendButtonBox).not.toBeNull();
+    expect(copyButtonBox!.y).toBeGreaterThanOrEqual(dialogBox!.y);
+    expect(copyButtonBox!.y + copyButtonBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height);
+    expect(appendButtonBox!.y).toBeGreaterThanOrEqual(dialogBox!.y);
+    expect(appendButtonBox!.y + appendButtonBox!.height).toBeLessThanOrEqual(dialogBox!.y + dialogBox!.height);
+    await appendButton.click();
     await expect(dialog).toBeHidden();
     await expect.poll(() => editor.locator(":scope > p").allTextContents()).toEqual([
       "第一段",
