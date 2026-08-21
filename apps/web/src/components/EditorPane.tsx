@@ -145,6 +145,10 @@ import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
 import { downloadNoteHtmlFile, getHtmlImageEmbedNoticeKind } from "@/lib/note-html-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
 import { getAiSlashCommandStart, saveAndSyncEditor, shouldOpenAiFromSpace } from "@/lib/editor-shortcuts";
+import {
+  AI_SPACE_SHORTCUT_CHANGED_EVENT,
+  readAiSpaceShortcutPreference,
+} from "@/lib/ai-space-shortcut-preference";
 import { isBrowserOffline } from "@/lib/network-status";
 import {
   EDITOR_LINK_OPEN_MODE_CHANGED_EVENT,
@@ -159,6 +163,7 @@ import {
   insertMarkdownSnippet,
   isAttachmentLinkHref,
 } from "@/lib/editor-external-link";
+import { insertAiDraftAtTextCursor } from "@/lib/ai-draft-insertion";
 import { processFilesSequentially } from "@/lib/file-batch";
 import { MEMO_ID_REMAPPED_EVENT, MEMO_SYNC_ACKNOWLEDGED_EVENT } from "@/lib/sync-events";
 import { useStandaloneMobileEditor } from "@/hooks/useStandaloneMobileEditor";
@@ -253,6 +258,11 @@ type AiSelectionContext = {
   to: number;
   contentMarkdown: string;
   isInline: boolean;
+};
+
+type AiInsertionTarget = {
+  kind: "markdown" | "plain" | "rich";
+  position: number;
 };
 
 const getAttachmentLinkFromEventTarget = (target: EventTarget | null) =>
@@ -753,6 +763,7 @@ const RichEditorPane = ({
   const [aiAssistantAnchor, setAiAssistantAnchor] = useState<AiAssistantAnchor>({ left: 24, placement: "below", top: 96 });
   const aiBubbleMenu = useAiBubbleMenu(aiAssistantOpen);
   const [aiSelection, setAiSelection] = useState<AiSelectionContext | null>(null);
+  const [aiInsertionTarget, setAiInsertionTarget] = useState<AiInsertionTarget | null>(null);
   const [systemInfoOpen, setSystemInfoOpen] = useState(false);
   const { unseen: deployedUpdateUnseen } = useDeployedUpdateNotice();
   const [mobileNotebookSheetOpen, setMobileNotebookSheetOpen] = useState(false);
@@ -866,6 +877,7 @@ const RichEditorPane = ({
   const editSessionRef = useRef<MemoEditSession | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const openAiAssistantRef = useRef<() => void>(() => undefined);
+  const aiSpaceShortcutEnabledRef = useRef(readAiSpaceShortcutPreference());
   const editorScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const mobileTextAreaRef = useRef<MobilePlainTextElement | null>(null);
   const mobileDraftTimerRef = useRef<number | null>(null);
@@ -1193,7 +1205,9 @@ const RichEditorPane = ({
         table: { renderWrapper: true },
       }),
       Placeholder.configure({
-        placeholder: t("editor.placeholder"),
+        placeholder: () => aiSpaceShortcutEnabledRef.current
+          ? t("editor.placeholder")
+          : t("editor.placeholderCommands"),
       }),
       slashCommandExtensionRef.current,
     ],
@@ -1203,12 +1217,12 @@ const RichEditorPane = ({
     editable: Boolean(memo && !effectiveReadOnly && hydratedEditorMemoId === memo.id),
     editorProps: {
       attributes: {
-        class: "prose prose-slate max-w-none focus:outline-none min-h-[300px] px-4 py-3 sm:px-7",
+        class: "edgeever-note-rich-editor prose prose-slate max-w-none focus:outline-none min-h-[300px] px-4 py-3 sm:px-7",
       },
       handleKeyDown: (view, event) => {
         const { selection } = view.state;
         const currentNode = selection.$from.parent;
-        if (shouldOpenAiFromSpace({
+        if (aiSpaceShortcutEnabledRef.current && shouldOpenAiFromSpace({
           altKey: event.altKey,
           ctrlKey: event.ctrlKey,
           isComposing: event.isComposing,
@@ -1335,6 +1349,26 @@ const RichEditorPane = ({
     // transaction and restore another memo's entire document.
     memo?.id,
   ]);
+
+  useEffect(() => {
+    const syncPreference = (event?: Event) => {
+      const detail = event && event.type === AI_SPACE_SHORTCUT_CHANGED_EVENT
+        ? (event as CustomEvent<boolean>).detail
+        : undefined;
+      aiSpaceShortcutEnabledRef.current = typeof detail === "boolean"
+        ? detail
+        : readAiSpaceShortcutPreference();
+      if (isEditorReady(editor)) {
+        editor.view.dispatch(editor.state.tr);
+      }
+    };
+    window.addEventListener(AI_SPACE_SHORTCUT_CHANGED_EVENT, syncPreference);
+    window.addEventListener("storage", syncPreference);
+    return () => {
+      window.removeEventListener(AI_SPACE_SHORTCUT_CHANGED_EVENT, syncPreference);
+      window.removeEventListener("storage", syncPreference);
+    };
+  }, [editor]);
 
   const insertMemoLink = useCallback((target: MemoSummary) => {
     if (!isEditorReady(editor) || effectiveReadOnly || target.id === memo?.id) {
@@ -2014,20 +2048,24 @@ const RichEditorPane = ({
 
   const openAiAssistant = useCallback(() => {
     let selection: AiSelectionContext | null = null;
+    let insertionTarget: AiInsertionTarget | null = null;
 
     if (useMobilePlainTextEditor) {
       const source = getMobilePlainTextValue();
       const plainTextElement = mobileTextAreaRef.current;
       const from = plainTextElement instanceof HTMLTextAreaElement ? plainTextElement.selectionStart : 0;
       const to = plainTextElement instanceof HTMLTextAreaElement ? plainTextElement.selectionEnd : from;
+      insertionTarget = { kind: "plain", position: to };
       const contentMarkdown = source.slice(from, to).trim();
       if (to > from && contentMarkdown) selection = { kind: "plain", from, to, contentMarkdown };
     } else if (useMarkdownSourceEditor) {
       const from = markdownTextAreaRef.current?.selectionStart ?? 0;
       const to = markdownTextAreaRef.current?.selectionEnd ?? from;
+      insertionTarget = { kind: "markdown", position: to };
       const contentMarkdown = markdownSource.slice(from, to).trim();
       if (to > from && contentMarkdown) selection = { kind: "markdown", from, to, contentMarkdown };
     } else if (isEditorReady(editor)) {
+      insertionTarget = { kind: "rich", position: editor.state.selection.head };
       const richSelection = getRichTextAiSelectionContext(editor.state.doc, editor.state.selection);
       if (richSelection) selection = { kind: "rich", ...richSelection };
     }
@@ -2061,6 +2099,7 @@ const RichEditorPane = ({
 
     setAiAssistantAnchor(anchor);
     setAiSelection(selection);
+    setAiInsertionTarget(insertionTarget);
     setAiAssistantOpen(true);
   }, [editor, getMobilePlainTextValue, markdownSource, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
@@ -2070,7 +2109,10 @@ const RichEditorPane = ({
 
   const handleAiAssistantOpenChange = useCallback((nextOpen: boolean) => {
     setAiAssistantOpen(nextOpen);
-    if (!nextOpen) setAiSelection(null);
+    if (!nextOpen) {
+      setAiSelection(null);
+      setAiInsertionTarget(null);
+    }
   }, []);
 
   const applyAiDraft = useCallback((draft: string, mode: "append" | "replace") => {
@@ -2114,6 +2156,52 @@ const RichEditorPane = ({
       }
       markDirty();
       setAiSelection(null);
+      setAiInsertionTarget(null);
+      setAiAssistantOpen(false);
+      return true;
+    }
+
+    if (mode === "append" && aiInsertionTarget) {
+      const insertionDraft = draft.trim();
+      if (!insertionDraft) return false;
+
+      if (aiInsertionTarget.kind === "plain") {
+        const source = getMobilePlainTextValue();
+        const { next, caret } = insertAiDraftAtTextCursor(source, insertionDraft, aiInsertionTarget.position);
+        setMobilePlainText(next);
+        setMobilePlainTextElementValue(mobileTextAreaRef.current, next);
+        persistCurrentDraft(title, tagsText, next);
+        window.requestAnimationFrame(() => {
+          const plainTextElement = mobileTextAreaRef.current;
+          plainTextElement?.focus();
+          if (plainTextElement instanceof HTMLTextAreaElement) plainTextElement.setSelectionRange(caret, caret);
+        });
+      } else if (aiInsertionTarget.kind === "markdown") {
+        const { next, caret } = insertAiDraftAtTextCursor(markdownSource, insertionDraft, aiInsertionTarget.position);
+        setMarkdownSource(next);
+        window.requestAnimationFrame(() => {
+          markdownTextAreaRef.current?.focus();
+          markdownTextAreaRef.current?.setSelectionRange(caret, caret);
+        });
+      } else if (isEditorReady(editor)) {
+        const position = Math.max(0, Math.min(aiInsertionTarget.position, editor.state.doc.content.size));
+        try {
+          const applied = editor.commands.insertContentAt(
+            position,
+            getRichTextAiSelectionReplacement(insertionDraft, false),
+          );
+          if (!applied) return false;
+          editor.commands.focus();
+        } catch {
+          return false;
+        }
+      } else {
+        return false;
+      }
+
+      markDirty();
+      setAiSelection(null);
+      setAiInsertionTarget(null);
       setAiAssistantOpen(false);
       return true;
     }
@@ -2139,9 +2227,10 @@ const RichEditorPane = ({
     }
     markDirty();
     setAiSelection(null);
+    setAiInsertionTarget(null);
     setAiAssistantOpen(false);
     return true;
-  }, [aiSelection, editor, getCurrentMarkdownForAi, getMobilePlainTextValue, markDirty, markdownSource, persistCurrentDraft, tagsText, title, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+  }, [aiInsertionTarget, aiSelection, editor, getCurrentMarkdownForAi, getMobilePlainTextValue, markDirty, markdownSource, persistCurrentDraft, tagsText, title, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   const getCurrentContentJson = useCallback((): TiptapDoc | null => {
     if (useMobilePlainTextEditor) {

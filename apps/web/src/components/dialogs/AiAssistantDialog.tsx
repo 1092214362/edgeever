@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookmarkPlus, Check, Copy, FileText, Library, Loader2, Paperclip, PenLine, RefreshCw, Sparkles, Square, Trash2, X } from "lucide-react";
@@ -111,12 +111,17 @@ export const AiAssistantDialog = ({
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isReadingAttachments, setIsReadingAttachments] = useState(false);
   const [initializedForOpen, setInitializedForOpen] = useState(false);
+  const [panelElement, setPanelElement] = useState<HTMLElement | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const instructionRef = useRef<HTMLTextAreaElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentReadIdRef = useRef(0);
   const lastRequestRef = useRef<Parameters<typeof api.streamAiGeneration>[0] | null>(null);
+  const assignPanelRef = useCallback((node: HTMLElement | null) => {
+    panelRef.current = node;
+    setPanelElement(node);
+  }, []);
 
   const promptsQuery = useQuery({
     queryKey: ["ai-prompts", i18n.resolvedLanguage],
@@ -384,7 +389,7 @@ export const AiAssistantDialog = ({
     <>
       {open && typeof document !== "undefined" ? createPortal(
         <section
-          ref={panelRef}
+          ref={assignPanelRef}
           aria-label={t("aiAssistant.title")}
           className="fixed z-[70] max-h-[70dvh] w-[min(36rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-slate-950/5"
           role="dialog"
@@ -432,12 +437,18 @@ export const AiAssistantDialog = ({
                   </button>
                 ) : null}
               </div>
-              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <Select value={selectValue} onValueChange={handleActionChange}>
-                  <SelectTrigger aria-label={t("aiAssistant.actionLabel")} className="h-10 w-full min-w-0 sm:col-span-2">
+                  <SelectTrigger aria-label={t("aiAssistant.actionLabel")} className="h-10 w-full min-w-0">
                     <SelectValue placeholder={t("aiAssistant.actionLabel")} />
                   </SelectTrigger>
-                  <SelectContent data-edgeever-ai-assistant-layer="true">
+                  <SelectContent
+                    className="z-[80] max-h-[min(20rem,var(--radix-select-content-available-height))]"
+                    collisionBoundary={panelElement}
+                    collisionPadding={8}
+                    sideOffset={6}
+                    data-edgeever-ai-assistant-layer="true"
+                  >
                     {prompts.length ? (
                       <SelectGroup>
                         <SelectLabel>{t("aiAssistant.myPrompts")}</SelectLabel>
@@ -453,23 +464,23 @@ export const AiAssistantDialog = ({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <div className="grid min-w-0 grid-cols-2 gap-2">
+                <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-[auto_auto]">
                   <Button
                     type="button"
                     variant={!selectedPromptId && action === "custom" ? "solid" : "outline"}
-                    className="h-10 min-w-0 w-full gap-1 px-2 text-xs font-normal text-slate-600"
+                    className="h-10 min-w-0 w-full gap-1 whitespace-nowrap px-3 text-xs font-normal text-slate-600"
                     onClick={() => handleActionChange(FREEFORM_VALUE)}
                   >
-                    <PenLine className="h-3.5 w-3.5" />
+                    <PenLine className="h-3.5 w-3.5 shrink-0" />
                     {t("aiAssistant.useCustom")}
                   </Button>
                   {isGenerating ? (
-                    <Button type="button" variant="solid" className="h-10 min-w-0 w-full gap-1.5 px-2 text-sm font-semibold" onClick={() => controllerRef.current?.abort()}>
-                      <Square className="h-3.5 w-3.5" />{t("aiAssistant.stop")}
+                    <Button type="button" variant="solid" className="h-10 min-w-0 w-full gap-1.5 whitespace-nowrap px-3 text-sm font-semibold" onClick={() => controllerRef.current?.abort()}>
+                      <Square className="h-3.5 w-3.5 shrink-0" />{t("aiAssistant.stop")}
                     </Button>
                   ) : (
-                    <Button type="button" variant="solid" className="h-10 min-w-0 w-full gap-1.5 px-2 text-sm font-semibold" disabled={generateDisabled} onClick={() => void generate()}>
-                      <Sparkles className="h-4 w-4" />{t("aiAssistant.generate")}
+                    <Button type="button" variant="solid" className="h-10 min-w-0 w-full gap-1.5 whitespace-nowrap px-3 text-sm font-semibold" disabled={generateDisabled} onClick={() => void generate()}>
+                      <Sparkles className="h-4 w-4 shrink-0" />{t("aiAssistant.generate")}
                     </Button>
                   )}
                 </div>
@@ -485,7 +496,13 @@ export const AiAssistantDialog = ({
                   <SelectTrigger aria-label={t("aiAssistant.targetLanguage")} className="h-10">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent data-edgeever-ai-assistant-layer="true">
+                  <SelectContent
+                    className="z-[80] max-h-[min(20rem,var(--radix-select-content-available-height))]"
+                    collisionBoundary={panelElement}
+                    collisionPadding={8}
+                    sideOffset={6}
+                    data-edgeever-ai-assistant-layer="true"
+                  >
                     {targetLanguages.map((language) => (
                       <SelectItem key={language} value={language}>{t(`aiAssistant.targetLanguages.${language}`)}</SelectItem>
                     ))}
@@ -501,7 +518,13 @@ export const AiAssistantDialog = ({
                   clearResult();
                 }}>
                   <SelectTrigger aria-label={t("aiAssistant.tone")} className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent data-edgeever-ai-assistant-layer="true">
+                  <SelectContent
+                    className="z-[80] max-h-[min(20rem,var(--radix-select-content-available-height))]"
+                    collisionBoundary={panelElement}
+                    collisionPadding={8}
+                    sideOffset={6}
+                    data-edgeever-ai-assistant-layer="true"
+                  >
                     {aiTones.map((item) => <SelectItem key={item} value={item}>{t(`aiAssistant.tones.${item}`)}</SelectItem>)}
                   </SelectContent>
                 </Select>

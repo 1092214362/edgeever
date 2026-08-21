@@ -176,8 +176,35 @@ test.describe("AI custom prompts", () => {
     await expect(editor).not.toContainText("/");
     const assistant = page.getByRole("dialog", { name: "AI 笔记助手" });
     await expect(assistant).toBeVisible();
+    const customInstructionButton = assistant.getByRole("button", { name: "自定义指令", exact: true });
+    await expect(customInstructionButton).toBeVisible();
+    const customInstructionLineCount = await customInstructionButton.evaluate((element) => {
+      const textNode = Array.from(element.childNodes)
+        .find((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
+      if (!textNode) return 0;
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      return range.getClientRects().length;
+    });
+    expect(customInstructionLineCount).toBe(1);
     await assistant.getByRole("combobox", { name: "处理方式" }).click();
     await expect(assistant).toBeVisible();
+    const actionListbox = page.getByRole("listbox");
+    await expect(actionListbox).toBeVisible();
+    const [assistantBox, listboxBox] = await Promise.all([
+      assistant.boundingBox(),
+      actionListbox.boundingBox(),
+    ]);
+    expect(assistantBox).not.toBeNull();
+    expect(listboxBox).not.toBeNull();
+    expect(listboxBox!.y).toBeGreaterThanOrEqual(assistantBox!.y - 1);
+    expect(listboxBox!.y + listboxBox!.height)
+      .toBeLessThanOrEqual(assistantBox!.y + assistantBox!.height + 1);
+    const [listboxZIndex, assistantZIndex] = await Promise.all([
+      actionListbox.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
+      assistant.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
+    ]);
+    expect(listboxZIndex).toBeGreaterThan(assistantZIndex);
     await expect(page.getByRole("option", { name: "自定义指令", exact: true })).toBeVisible();
     await page.getByRole("option", { name: "自定义指令", exact: true }).click();
     await expect(assistant).toBeVisible();
@@ -197,6 +224,17 @@ test.describe("AI custom prompts", () => {
     const emptyParagraph = editor.locator("p").last();
     await expect(emptyParagraph).toHaveClass(/is-empty/);
     await expect(emptyParagraph).toHaveAttribute("data-placeholder", "按 Space 使用 AI，输入 / 浏览命令");
+    const renderedPlaceholder = await emptyParagraph.evaluate((element) => {
+      const style = getComputedStyle(element, "::before");
+      return {
+        content: style.content,
+        display: style.display,
+        visibility: style.visibility,
+      };
+    });
+    expect(renderedPlaceholder.content).toContain("按 Space 使用 AI，输入 / 浏览命令");
+    expect(renderedPlaceholder.display).not.toBe("none");
+    expect(renderedPlaceholder.visibility).not.toBe("hidden");
 
     await page.keyboard.press("Space");
     const assistant = page.getByRole("dialog", { name: "AI 笔记助手" });
@@ -208,6 +246,36 @@ test.describe("AI custom prompts", () => {
     await page.keyboard.type("正常 输入");
     await expect(assistant).toBeHidden();
     await expect(emptyParagraph).toHaveText("正常 输入");
+  });
+
+  test("can disable the empty-block Space shortcut from editor preferences", async ({ page }) => {
+    const memo = await createMemo(page, `e2e-ai-space-setting-${Date.now()}`, "空格开关测试");
+    await ensureAuthenticatedPage(page);
+    await page.getByRole("button", { name: new RegExp(notebookName) }).click();
+    await page.locator(`[data-memo-id="${memo.id}"]`).locator("button").first().click();
+    await expect(page.locator(".ProseMirror[contenteditable='true']")).toBeVisible();
+
+    await page.getByRole("button", { name: "个人中心", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "我的", exact: true })).toBeVisible();
+    const shortcutSwitch = page.getByRole("switch", { name: "空白段落按 Space 是否唤起 AI" });
+    await expect(shortcutSwitch).toBeChecked();
+    await shortcutSwitch.click();
+    await expect(shortcutSwitch).not.toBeChecked();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("edgeever.editor.aiSpaceShortcutEnabled")))
+      .toBe("false");
+
+    await page.getByRole("button", { name: "返回上一页", exact: true }).click();
+    const editor = page.locator(".ProseMirror[contenteditable='true']");
+    await expect(editor).toBeVisible();
+    await editor.click();
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    const emptyParagraph = editor.locator("p").last();
+    await expect(emptyParagraph).toHaveAttribute("data-placeholder", "输入 / 浏览命令");
+
+    await page.keyboard.press("Space");
+    await expect(page.getByRole("dialog", { name: "AI 笔记助手" })).toBeHidden();
+    await expect.poll(() => emptyParagraph.evaluate((element) => element.textContent)).toBe(" ");
   });
 
   test("sends temporary files with one AI request", async ({ page }) => {
@@ -304,6 +372,36 @@ test.describe("AI custom prompts", () => {
     await dialog.getByRole("button", { name: "追加到笔记", exact: true }).click();
     await expect(dialog).toBeHidden();
     await expect(page.locator(".ProseMirror[contenteditable='true']")).toContainText("接口联调完成（张三）");
+  });
+
+  test("inserts generated content at the caret captured when AI opens", async ({ page }) => {
+    const memo = await createMemo(
+      page,
+      `e2e-ai-caret-insert-${Date.now()}`,
+      ["第一段", "", "第二段", "", "第三段"].join("\n"),
+    );
+    await mockAiGeneration(page, "AI 插入段落");
+    await ensureAuthenticatedPage(page);
+    await page.getByRole("button", { name: new RegExp(notebookName) }).click();
+    await page.locator(`[data-memo-id="${memo.id}"]`).locator("button").first().click();
+
+    const editor = page.locator(".ProseMirror[contenteditable='true']");
+    await expect(editor).toBeVisible();
+    await editor.locator(":scope > p").nth(1).click();
+    await page.keyboard.press("End");
+    await page.getByRole("button", { name: "打开 AI 写作助手", exact: true }).click();
+
+    const dialog = page.getByRole("dialog", { name: "AI 笔记助手" });
+    await dialog.getByRole("button", { name: "生成", exact: true }).click();
+    await expect(dialog.getByText("AI 插入段落", { exact: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "追加到笔记", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(() => editor.locator(":scope > p").allTextContents()).toEqual([
+      "第一段",
+      "第二段",
+      "AI 插入段落",
+      "第三段",
+    ]);
   });
 
   test("updates and deletes a custom prompt from settings", async ({ page, request }) => {
