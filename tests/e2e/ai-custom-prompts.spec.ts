@@ -174,7 +174,13 @@ test.describe("AI custom prompts", () => {
     await slashMenu.getByText("用 AI 处理", { exact: true }).click();
     await expect(slashMenu).toBeHidden();
     await expect(editor).not.toContainText("/");
-    await expect(page.getByRole("dialog", { name: "AI 笔记助手" })).toBeVisible();
+    const assistant = page.getByRole("dialog", { name: "AI 笔记助手" });
+    await expect(assistant).toBeVisible();
+    await assistant.getByRole("combobox", { name: "处理方式" }).click();
+    await expect(assistant).toBeVisible();
+    await expect(page.getByRole("option", { name: "自定义指令", exact: true })).toBeVisible();
+    await page.getByRole("option", { name: "自定义指令", exact: true }).click();
+    await expect(assistant).toBeVisible();
   });
 
   test("sends temporary files with one AI request", async ({ page }) => {

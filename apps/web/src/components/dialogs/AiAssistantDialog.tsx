@@ -49,6 +49,13 @@ import { cn } from "@/lib/utils";
 
 const FREEFORM_VALUE = "custom";
 const PROMPT_VALUE_PREFIX = "prompt:";
+const AI_ASSISTANT_LAYER_SELECTOR = '[data-edgeever-ai-assistant-layer="true"]';
+
+export const isAiAssistantPointerTarget = (target: EventTarget | null, panel: HTMLElement | null) => {
+  if (!(target instanceof Node)) return false;
+  if (panel?.contains(target)) return true;
+  return target instanceof Element && Boolean(target.closest(AI_ASSISTANT_LAYER_SELECTOR));
+};
 
 const promptSelectValue = (id: string) => `${PROMPT_VALUE_PREFIX}${id}`;
 
@@ -182,9 +189,7 @@ export const AiAssistantDialog = ({
     if (!open) return;
     const frame = window.requestAnimationFrame(() => instructionRef.current?.focus());
     const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node) || panelRef.current?.contains(target)) return;
-      if (target instanceof Element && target.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return;
+      if (isAiAssistantPointerTarget(event.target, panelRef.current)) return;
       onOpenChange(false);
     };
     window.addEventListener("pointerdown", handlePointerDown);
@@ -432,7 +437,7 @@ export const AiAssistantDialog = ({
                   <SelectTrigger aria-label={t("aiAssistant.actionLabel")} className="h-10 w-full min-w-0 sm:col-span-2">
                     <SelectValue placeholder={t("aiAssistant.actionLabel")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent data-edgeever-ai-assistant-layer="true">
                     {prompts.length ? (
                       <SelectGroup>
                         <SelectLabel>{t("aiAssistant.myPrompts")}</SelectLabel>
@@ -480,7 +485,7 @@ export const AiAssistantDialog = ({
                   <SelectTrigger aria-label={t("aiAssistant.targetLanguage")} className="h-10">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent data-edgeever-ai-assistant-layer="true">
                     {targetLanguages.map((language) => (
                       <SelectItem key={language} value={language}>{t(`aiAssistant.targetLanguages.${language}`)}</SelectItem>
                     ))}
@@ -496,7 +501,7 @@ export const AiAssistantDialog = ({
                   clearResult();
                 }}>
                   <SelectTrigger aria-label={t("aiAssistant.tone")} className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent data-edgeever-ai-assistant-layer="true">
                     {aiTones.map((item) => <SelectItem key={item} value={item}>{t(`aiAssistant.tones.${item}`)}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -659,7 +664,7 @@ export const AiAssistantDialog = ({
           createPromptMutation.reset();
         }
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" data-edgeever-ai-assistant-layer="true">
           <form
             className="grid gap-4"
             onSubmit={(event: FormEvent) => {
