@@ -359,7 +359,7 @@ test.describe("AI custom prompts", () => {
     await textarea.fill("写个宋词");
     const generateButton = dialog.getByRole("button", { name: "生成", exact: true });
     await expect(generateButton).toBeEnabled();
-    await expect(generateButton.locator("kbd")).toHaveText("Enter");
+    await expect(generateButton.locator("kbd")).toHaveText("↵");
 
     await textarea.press("Shift+Enter");
     await textarea.pressSequentially("不要参考原笔记");
