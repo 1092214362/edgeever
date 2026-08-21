@@ -514,6 +514,17 @@ export const enUS = {
     },
     customInstruction: "Tell AI what to do",
     customInstructionPlaceholder: "For example: Rewrite this as a concise, friendly email and preserve every date.",
+    addAttachment: "Add files",
+    attachments: "Attached files",
+    removeAttachment: "Remove {{name}}",
+    attachmentHint: "Up to 4 images, PDFs, or text files. Files are used only for this AI request.",
+    attachmentErrors: {
+      count: "You can attach up to 4 files.",
+      fileTooLarge: "That file is too large. Text files can be up to 256 KB; images and PDFs up to 4 MB.",
+      totalTooLarge: "Attachments can be up to 8 MB in total.",
+      unsupported: "That file type is not supported. Choose an image, PDF, TXT, Markdown, CSV, or JSON file.",
+      readFailed: "The file could not be read. Try choosing it again.",
+    },
     saveAsPrompt: "Save as prompt",
     saveAsPromptTitle: "Save as prompt",
     updatePrompt: "Update this prompt",
@@ -694,6 +705,10 @@ export const enUS = {
       focusReplace: {
         label: "Replace text",
         description: "Open replace in the current note.",
+      },
+      openAiAssistant: {
+        label: "Open AI assistant",
+        description: "Open the inline AI composer at the current selection or cursor.",
       },
       saveAndSync: {
         label: "Save and sync",

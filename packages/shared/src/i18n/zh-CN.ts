@@ -514,6 +514,17 @@ export const zhCN = {
     },
     customInstruction: "告诉 AI 你想怎么处理",
     customInstructionPlaceholder: "例如：改写成一封简洁、友好的邮件，并保留所有日期。",
+    addAttachment: "添加文件",
+    attachments: "已添加文件",
+    removeAttachment: "移除 {{name}}",
+    attachmentHint: "最多添加 4 个图片、PDF 或文本文件；文件仅用于本次 AI 请求。",
+    attachmentErrors: {
+      count: "最多只能添加 4 个文件。",
+      fileTooLarge: "文件过大。文本文件最大 256 KB，图片和 PDF 最大 4 MB。",
+      totalTooLarge: "所有附件合计不能超过 8 MB。",
+      unsupported: "暂不支持该文件类型，请选择图片、PDF、TXT、Markdown、CSV 或 JSON 文件。",
+      readFailed: "无法读取该文件，请重新选择。",
+    },
     saveAsPrompt: "保存为指令",
     saveAsPromptTitle: "保存为指令",
     updatePrompt: "更新此指令",
@@ -694,6 +705,10 @@ export const zhCN = {
       focusReplace: {
         label: "替换文本",
         description: "在当前笔记中打开替换。",
+      },
+      openAiAssistant: {
+        label: "打开 AI 助手",
+        description: "在当前选区或光标位置打开内联 AI 输入框。",
       },
       saveAndSync: {
         label: "保存并同步",
