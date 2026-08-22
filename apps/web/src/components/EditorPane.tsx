@@ -84,6 +84,10 @@ import {
   type SlashCommandActions,
   type SlashCommandLabels,
 } from "./editor/SlashCommandMenu";
+import {
+  createNoteLinkSuggestionExtension,
+  type NoteLinkSuggestionLabels,
+} from "./editor/NoteLinkSuggestion";
 import { WeChatIcon } from "./WeChatIcon";
 import { ThemeToggle } from "./ThemeToggle";
 import { useEditorTheme } from "./ThemeProvider";
@@ -957,6 +961,29 @@ const RichEditorPane = ({
       getLabels: () => slashCommandLabelsRef.current,
     });
   }
+  const noteLinkSuggestionLabelsRef = useRef<NoteLinkSuggestionLabels>({
+    menu: "",
+    empty: "",
+    close: "",
+    untitled: "",
+  });
+  noteLinkSuggestionLabelsRef.current = {
+    menu: t("noteLinkPicker.title"),
+    empty: t("noteLinkPicker.empty"),
+    close: t("noteLinkPicker.close"),
+    untitled: t("common.untitledMemo"),
+  };
+  const noteLinkSuggestionExtensionRef = useRef<ReturnType<typeof createNoteLinkSuggestionExtension> | null>(null);
+  if (!noteLinkSuggestionExtensionRef.current) {
+    noteLinkSuggestionExtensionRef.current = createNoteLinkSuggestionExtension({
+      getCurrentMemoId: () => memoRef.current?.id ?? null,
+      getLabels: () => noteLinkSuggestionLabelsRef.current,
+      searchMemos: async (query) => {
+        const result = await repository.listMemos({ q: query, limit: 20 });
+        return result.memos;
+      },
+    });
+  }
   const hydratingRef = useRef(false);
   const hydratedMemoIdRef = useRef<string | null>(null);
   /** Last content source applied to the editor — used to skip redundant setContent. */
@@ -1210,6 +1237,7 @@ const RichEditorPane = ({
           : t("editor.placeholderCommands"),
       }),
       slashCommandExtensionRef.current,
+      noteLinkSuggestionExtensionRef.current,
     ],
     content: memo
       ? resolveMemoContentDoc(memo.contentJson, memo.contentMarkdown)
