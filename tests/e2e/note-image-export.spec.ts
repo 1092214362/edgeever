@@ -54,6 +54,7 @@ test("downloads a long note as one non-blank PNG or JPEG from the share dialog",
     const dialog = page.getByRole("dialog", { name: /分享为图片|Share as image/ });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("img", { name: /笔记分享图片预览|Note image share preview/ })).toBeVisible({ timeout: 20_000 });
+    await expect(dialog.getByRole("checkbox", { name: /EdgeEver 品牌标识|EdgeEver branding/ })).toBeChecked();
 
     const pngDownloadPromise = page.waitForEvent("download");
     await dialog.getByRole("button", { name: /下载图片|Download image/ }).click();

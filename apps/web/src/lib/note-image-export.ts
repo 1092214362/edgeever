@@ -10,6 +10,7 @@ export type NoteImageBackground = "mint" | "slate" | "warm";
 
 export type DownloadNoteImageOptions = NoteHtmlExportMeta & {
   bodyHtml: string;
+  branding?: boolean;
   fallbackTitle: string;
   format: NoteImageFormat;
   background?: NoteImageBackground;
@@ -19,8 +20,10 @@ export type DownloadNoteImageOptions = NoteHtmlExportMeta & {
 export type PreparedNoteImage = {
   blob: Blob;
   filename: string;
+  height: number;
   images: HtmlImageEmbedResult;
   mimeType: "image/jpeg" | "image/png";
+  width: number;
 };
 
 export const NOTE_IMAGE_EXPORT_WIDTH = 768;
@@ -32,6 +35,16 @@ const NOTE_IMAGE_BACKGROUND_COLORS: Record<NoteImageBackground, string> = {
   slate: "#f8fafc",
   warm: "#fffbeb",
 };
+const NOTE_IMAGE_SHARE_STYLES = `
+  .edgeever-image-share { padding: 40px 28px 32px; }
+  .edgeever-image-share .edgeever-html-document { border-radius: 16px; padding: 40px 36px 32px; }
+  .edgeever-image-share .edgeever-html-title { margin-bottom: 14px; font-size: 36px; letter-spacing: -0.02em; line-height: 1.24; }
+  .edgeever-image-share .edgeever-html-meta { margin-bottom: 28px; padding-bottom: 18px; }
+  .edgeever-image-share .edgeever-html-content { font-size: 17px; line-height: 1.82; }
+  .edgeever-image-share .edgeever-image-brand { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 13px; font-weight: 650; letter-spacing: 0.01em; }
+  .edgeever-image-share .edgeever-image-brand-mark { width: 9px; height: 9px; border-radius: 3px; background: #16a06e; }
+  .edgeever-image-share .edgeever-image-brand-name { color: #07130b; font-weight: 760; }
+`;
 
 export const buildImageExportBasename = (title: string, fallback: string) => {
   const sanitized = title
@@ -88,11 +101,12 @@ const renderImage = async (source: HTMLElement, format: NoteImageFormat, backgro
     skipFonts: true,
     width: NOTE_IMAGE_EXPORT_WIDTH,
   });
-  return canvasToImageBlob(canvas, format);
+  return { blob: await canvasToImageBlob(canvas, format), height: canvas.height, width: canvas.width };
 };
 
 export const createNoteImage = async ({
   bodyHtml,
+  branding = false,
   title,
   notebook,
   tags,
@@ -112,7 +126,7 @@ export const createNoteImage = async ({
     "pointer-events:none",
   ].join(";");
   const style = document.createElement("style");
-  style.textContent = styles;
+  style.textContent = `${styles}\n${NOTE_IMAGE_SHARE_STYLES}`;
   host.appendChild(style);
   host.insertAdjacentHTML("beforeend", buildNoteHtmlContentMarkup({
     title,
@@ -122,6 +136,13 @@ export const createNoteImage = async ({
     bodyHtml: prepared.bodyHtml,
   }));
   const source = host.lastElementChild as HTMLElement;
+  source.classList.add("edgeever-image-share");
+  if (branding) {
+    const footer = document.createElement("footer");
+    footer.className = "edgeever-image-brand";
+    footer.innerHTML = '<span class="edgeever-image-brand-mark"></span><span>Made with <span class="edgeever-image-brand-name">EdgeEver</span></span>';
+    source.querySelector(".edgeever-html-document")?.appendChild(footer);
+  }
   source.style.width = `${NOTE_IMAGE_EXPORT_WIDTH}px`;
   source.style.maxWidth = "none";
   source.style.margin = "0";
@@ -129,15 +150,17 @@ export const createNoteImage = async ({
   document.body.appendChild(host);
 
   try {
-    const blob = await renderImage(source, format, NOTE_IMAGE_BACKGROUND_COLORS[background]);
+    const image = await renderImage(source, format, NOTE_IMAGE_BACKGROUND_COLORS[background]);
     const basename = buildImageExportBasename(title, fallbackTitle);
     const extension = format === "jpeg" ? "jpg" : "png";
     const filename = `${basename}.${extension}`;
     return {
-      blob,
+      blob: image.blob,
       filename,
+      height: image.height,
       images: prepared.images,
       mimeType: format === "jpeg" ? "image/jpeg" : "image/png",
+      width: image.width,
     };
   } finally {
     host.remove();

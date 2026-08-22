@@ -24,6 +24,7 @@ struct MemoDetailView: View {
     @State private var imageShareNotebook = true
     @State private var imageShareTags = true
     @State private var imageShareUpdatedAt = true
+    @State private var imageShareBranding = true
     @State private var error: String?
     @State private var conflictItem: OutboxItem?
     @State private var outboxStatus: OutboxStatus?
@@ -141,6 +142,7 @@ struct MemoDetailView: View {
                         Toggle(env.preferences.t("笔记本", en: "Notebook"), isOn: $imageShareNotebook)
                         Toggle(env.preferences.t("标签", en: "Tags"), isOn: $imageShareTags)
                         Toggle(env.preferences.t("更新时间", en: "Updated time"), isOn: $imageShareUpdatedAt)
+                        Toggle(env.preferences.t("EdgeEver 品牌标识", en: "EdgeEver branding"), isOn: $imageShareBranding)
                     }
                     Section(env.preferences.t("图片格式", en: "Image format")) {
                         Picker(env.preferences.t("图片格式", en: "Image format"), selection: $imageShareFormat) {
@@ -166,7 +168,8 @@ struct MemoDetailView: View {
                                 background: imageShareBackground,
                                 showNotebook: imageShareNotebook,
                                 showTags: imageShareTags,
-                                showUpdatedAt: imageShareUpdatedAt
+                                showUpdatedAt: imageShareUpdatedAt,
+                                showBranding: imageShareBranding
                             )
                         }
                         .disabled(imageExporting || !bodyReady || memo == nil)
@@ -923,7 +926,8 @@ struct MemoDetailView: View {
         background: String = "slate",
         showNotebook: Bool = true,
         showTags: Bool = true,
-        showUpdatedAt: Bool = true
+        showUpdatedAt: Bool = true,
+        showBranding: Bool = false
     ) {
         guard !imageExporting, bodyReady else { return }
         let requestId = UUID().uuidString
@@ -939,6 +943,7 @@ struct MemoDetailView: View {
             "tags": showTags ? memo.tags : [],
             "updatedAt": showUpdatedAt ? memo.updatedAt : "",
             "background": background,
+            "branding": showBranding,
         ])
     }
 

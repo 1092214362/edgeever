@@ -161,13 +161,15 @@ type ImageExportRequest = {
   tags?: string[];
   updatedAt?: string;
   background?: "mint" | "slate" | "warm";
+  branding?: boolean;
 };
 
 const IMAGE_EXPORT_LIGHT_STYLES = `
-  .edgeever-image-document { width: ${IMAGE_EXPORT_WIDTH}px; padding: 32px 20px 48px; background: #f8fafc; color: #172033; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  .edgeever-image-card { min-height: 1px; padding: 32px 28px 40px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #172033; }
-  .edgeever-image-title { margin: 0 0 12px; color: #0f172a; font-size: 32px; font-weight: 760; line-height: 1.2; overflow-wrap: anywhere; }
-  .edgeever-image-meta { margin: 0 0 24px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .edgeever-image-document { width: ${IMAGE_EXPORT_WIDTH}px; padding: 40px 28px 32px; background: #f8fafc; color: #172033; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .edgeever-image-card { min-height: 1px; padding: 40px 36px 32px; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; color: #172033; }
+  .edgeever-image-title { margin: 0 0 14px; color: #0f172a; font-size: 36px; font-weight: 760; letter-spacing: -0.02em; line-height: 1.24; overflow-wrap: anywhere; }
+  .edgeever-image-meta { margin: 0 0 28px; padding-bottom: 18px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .edgeever-image-content { font-size: 17px; line-height: 1.82; }
   .edgeever-image-content, .edgeever-image-content .tiptap { min-height: 0 !important; height: auto !important; overflow: visible !important; background: #fff !important; color: #172033 !important; }
   .edgeever-image-content h1, .edgeever-image-content h2, .edgeever-image-content h3 { color: #0f172a !important; }
   .edgeever-image-content pre { background: #f1f5f9 !important; color: #172033 !important; }
@@ -175,6 +177,9 @@ const IMAGE_EXPORT_LIGHT_STYLES = `
   .edgeever-image-content blockquote { color: #475569 !important; border-color: #94a3b8 !important; }
   .edgeever-image-content table, .edgeever-image-content th, .edgeever-image-content td { border-color: #cbd5e1 !important; color: #172033 !important; }
   .edgeever-image-content th { background: #f8fafc !important; }
+  .edgeever-image-brand { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px; color: #64748b; font-size: 13px; font-weight: 650; letter-spacing: 0.01em; }
+  .edgeever-image-brand-mark { width: 9px; height: 9px; border-radius: 3px; background: #16a06e; }
+  .edgeever-image-brand-name { color: #07130b; font-weight: 760; }
 `;
 
 const sanitizeImageExportBasename = (title: string, fallback: string) => {
@@ -1126,6 +1131,12 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       });
       content.appendChild(editorClone);
       card.appendChild(content);
+      if (request.branding) {
+        const footer = document.createElement("footer");
+        footer.className = "edgeever-image-brand";
+        footer.innerHTML = '<span class="edgeever-image-brand-mark"></span><span>Made with <span class="edgeever-image-brand-name">EdgeEver</span></span>';
+        card.appendChild(footer);
+      }
       documentRoot.appendChild(card);
       host.append(style, documentRoot);
       document.body.appendChild(host);

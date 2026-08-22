@@ -1033,6 +1033,7 @@ export const enUS = {
         notebook: "Notebook",
         tags: "Tags",
         updatedAt: "Updated time",
+        branding: "EdgeEver branding",
       },
       format: "Image format",
       pngHint: "best for text",
@@ -1040,6 +1041,7 @@ export const enUS = {
       share: "Share image",
       download: "Download image",
       action: "Share as image",
+      longImageWarning: "This image is very long. Some social platforms may compress it; keep the downloaded original for best quality.",
     },
     htmlExport: {
       error: "Could not export the note as HTML.",

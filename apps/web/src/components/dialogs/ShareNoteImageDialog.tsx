@@ -40,6 +40,7 @@ export const ShareNoteImageDialog = ({
   const [showNotebook, setShowNotebook] = useState(true);
   const [showTags, setShowTags] = useState(true);
   const [showUpdatedAt, setShowUpdatedAt] = useState(true);
+  const [showBranding, setShowBranding] = useState(true);
   const [prepared, setPrepared] = useState<PreparedNoteImage | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [error, setError] = useState(false);
@@ -52,6 +53,7 @@ export const ShareNoteImageDialog = ({
     setShowNotebook(true);
     setShowTags(true);
     setShowUpdatedAt(true);
+    setShowBranding(true);
   }, [open, source.title]);
 
   useEffect(() => {
@@ -63,6 +65,7 @@ export const ShareNoteImageDialog = ({
       void createNoteImage({
         ...source,
         background,
+        branding: showBranding,
         format,
         notebook: showNotebook ? source.notebook : "",
         tags: showTags ? source.tags : [],
@@ -79,7 +82,7 @@ export const ShareNoteImageDialog = ({
       });
     }, 180);
     return () => window.clearTimeout(timer);
-  }, [background, format, open, showNotebook, showTags, showUpdatedAt, source]);
+  }, [background, format, open, showBranding, showNotebook, showTags, showUpdatedAt, source]);
 
   useEffect(() => () => {
     generationRef.current += 1;
@@ -175,6 +178,7 @@ export const ShareNoteImageDialog = ({
                 ["notebook", showNotebook, setShowNotebook],
                 ["tags", showTags, setShowTags],
                 ["updatedAt", showUpdatedAt, setShowUpdatedAt],
+                ["branding", showBranding, setShowBranding],
               ] as const).map(([key, checked, setChecked]) => (
                 <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
                   <Checkbox checked={checked} onCheckedChange={(value) => setChecked(value === true)} />
@@ -199,6 +203,11 @@ export const ShareNoteImageDialog = ({
             {noticeKind !== "none" ? (
               <p className="text-xs leading-5 text-amber-700">
                 {t(noticeKind === "partial" ? "editor.imageExport.imageEmbedPartial" : "editor.imageExport.imageEmbedFailed", prepared?.images)}
+              </p>
+            ) : null}
+            {prepared && prepared.height > 12_000 ? (
+              <p className="text-xs leading-5 text-amber-700">
+                {t("editor.imageShare.longImageWarning")}
               </p>
             ) : null}
           </div>

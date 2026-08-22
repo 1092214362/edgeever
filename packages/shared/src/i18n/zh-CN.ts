@@ -1031,6 +1031,7 @@ export const zhCN = {
         notebook: "笔记本",
         tags: "标签",
         updatedAt: "更新时间",
+        branding: "EdgeEver 品牌标识",
       },
       format: "图片格式",
       pngHint: "文字更清晰",
@@ -1038,6 +1039,7 @@ export const zhCN = {
       share: "分享图片",
       download: "下载图片",
       action: "分享为图片",
+      longImageWarning: "图片较长，部分社交平台可能会压缩画质；建议保留下载的原图。",
     },
     htmlExport: {
       error: "导出 HTML 失败。",

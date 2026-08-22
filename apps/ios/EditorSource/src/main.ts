@@ -143,6 +143,7 @@ type ImageExportRequest = {
   tags?: string[];
   updatedAt?: string;
   background?: "mint" | "slate" | "warm";
+  branding?: boolean;
 };
 let mode: "viewer" | "editor" = "viewer";
 let locale = "zh-CN";
@@ -1115,6 +1116,12 @@ async function exportNoteImage(request: ImageExportRequest) {
   });
   content.appendChild(editorClone);
   card.appendChild(content);
+  if (request.branding) {
+    const footer = document.createElement("footer");
+    footer.className = "edgeever-image-brand";
+    footer.innerHTML = '<span class="edgeever-image-brand-mark"></span><span>Made with <span class="edgeever-image-brand-name">EdgeEver</span></span>';
+    card.appendChild(footer);
+  }
   documentRoot.appendChild(card);
   host.appendChild(documentRoot);
   document.body.appendChild(host);

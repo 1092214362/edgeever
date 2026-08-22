@@ -426,6 +426,7 @@ export const MemoDetailModal = ({
   const [imageShareNotebook, setImageShareNotebook] = useState(true);
   const [imageShareTags, setImageShareTags] = useState(true);
   const [imageShareUpdatedAt, setImageShareUpdatedAt] = useState(true);
+  const [imageShareBranding, setImageShareBranding] = useState(true);
   const viewerRef = useRef<LocalTiptapEditorRef>(null);
   const imageExportRequestRef = useRef<string | null>(null);
   const imageExportChunksRef = useRef<string[]>([]);
@@ -667,6 +668,7 @@ export const MemoDetailModal = ({
       showNotebook?: boolean;
       showTags?: boolean;
       showUpdatedAt?: boolean;
+      showBranding?: boolean;
     } = {},
   ) => {
     if (!memo || !viewerReady || isExportingImage) return;
@@ -683,6 +685,7 @@ export const MemoDetailModal = ({
       tags: options.showTags === false ? [] : memo.tags,
       updatedAt: options.showUpdatedAt === false ? "" : new Date(memo.updatedAt).toLocaleString(resolvedLocale),
       background: options.background ?? "slate",
+      branding: options.showBranding ?? false,
     })));
   }, [isExportingImage, memo, notebookName, resolvedLocale, viewerReady]);
 
@@ -1037,6 +1040,7 @@ export const MemoDetailModal = ({
                 ["笔记本", imageShareNotebook, setImageShareNotebook],
                 ["标签", imageShareTags, setImageShareTags],
                 ["更新时间", imageShareUpdatedAt, setImageShareUpdatedAt],
+                ["EdgeEver 品牌标识", imageShareBranding, setImageShareBranding],
               ] as const).map(([label, selected, setSelected]) => (
                 <Pressable key={label} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => setSelected(!selected)} style={imageShareStyles.optionRow}>
                   <Text style={imageShareStyles.optionLabel}>{label}</Text>
@@ -1061,6 +1065,7 @@ export const MemoDetailModal = ({
                     showNotebook: imageShareNotebook,
                     showTags: imageShareTags,
                     showUpdatedAt: imageShareUpdatedAt,
+                    showBranding: imageShareBranding,
                   });
                 }}
                 style={[imageShareStyles.shareButton, isExportingImage && styles.buttonDisabled]}
