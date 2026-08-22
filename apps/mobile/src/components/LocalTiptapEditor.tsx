@@ -1151,6 +1151,10 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
           if (image.complete) return;
           try { await image.decode(); } catch { /* Export the readable remainder. */ }
         }));
+        const exportedImages = Array.from(
+          documentRoot.querySelectorAll<HTMLImageElement>(".edgeever-card-body img"),
+        );
+        const failedImages = exportedImages.filter((image) => !image.complete || image.naturalWidth === 0).length;
         const totalHeight = Math.max(1, Math.ceil(documentRoot.getBoundingClientRect().height));
         const backgroundColor = NOTE_IMAGE_BACKGROUND_COLORS[resolvedTheme] || themeCfg.canvasBg;
 
@@ -1180,7 +1184,15 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
         for (let offset = 0; offset < base64.length; offset += IMAGE_EXPORT_CHUNK_SIZE) {
           await notify({ type: "chunk", chunk: base64.slice(offset, offset + IMAGE_EXPORT_CHUNK_SIZE) });
         }
-        await notify({ type: "complete", filename, mimeType });
+        await notify({
+          type: "complete",
+          filename,
+          mimeType,
+          width: canvas.width,
+          height: canvas.height,
+          totalImages: exportedImages.length,
+          failedImages,
+        });
       } catch (error) {
         await notify({ type: "error", message: error instanceof Error ? error.message : "Image export failed" });
       } finally {

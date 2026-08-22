@@ -83,7 +83,16 @@ type BridgeMessage =
   | { type: "pickImage" }
   | { type: "searchResult"; count: number; index: number }
   | { type: "imageExportChunk"; requestId: string; chunk: string }
-  | { type: "imageExportComplete"; requestId: string; filename: string; mimeType: string }
+  | {
+      type: "imageExportComplete";
+      requestId: string;
+      filename: string;
+      mimeType: string;
+      width: number;
+      height: number;
+      totalImages: number;
+      failedImages: number;
+    }
   | { type: "imageExportError"; requestId: string; message: string }
   | { type: "activeFlags"; flags: number }
   | { type: "log"; message: string }
@@ -1161,6 +1170,10 @@ async function exportNoteImage(request: ImageExportRequest) {
       if (image.complete) return;
       try { await image.decode(); } catch { /* Export the readable remainder. */ }
     }));
+    const exportedImages = Array.from(
+      documentRoot.querySelectorAll<HTMLImageElement>(".edgeever-card-body img"),
+    );
+    const failedImages = exportedImages.filter((image) => !image.complete || image.naturalWidth === 0).length;
     const totalHeight = Math.max(1, Math.ceil(documentRoot.getBoundingClientRect().height));
     const backgroundColor = NOTE_IMAGE_BACKGROUND_COLORS[resolvedTheme] || themeCfg.canvasBg;
 
@@ -1190,7 +1203,16 @@ async function exportNoteImage(request: ImageExportRequest) {
       post({ type: "imageExportChunk", requestId: request.requestId, chunk: base64.slice(offset, offset + IMAGE_EXPORT_CHUNK_SIZE) });
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    post({ type: "imageExportComplete", requestId: request.requestId, filename, mimeType });
+    post({
+      type: "imageExportComplete",
+      requestId: request.requestId,
+      filename,
+      mimeType,
+      width: canvas.width,
+      height: canvas.height,
+      totalImages: exportedImages.length,
+      failedImages,
+    });
   } catch (error) {
     post({ type: "imageExportError", requestId: request.requestId, message: error instanceof Error ? error.message : "Image export failed" });
   } finally {

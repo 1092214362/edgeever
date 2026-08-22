@@ -7,7 +7,7 @@ import {
   type NoteImageCardWidth,
 } from "@edgeever/shared/note-image-card";
 import * as Clipboard from "expo-clipboard";
-import { Image as RNImage, Platform, StyleSheet, Text as RNText, View, type ImageStyle, type StyleProp, type TextStyle } from "react-native";
+import { Image as RNImage, Platform, ScrollView, StyleSheet, Text as RNText, View, type ImageStyle, type StyleProp, type TextStyle } from "react-native";
 import { Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
@@ -45,8 +45,28 @@ const RESOURCE_DATA_URL_CACHE_LIMIT = 32;
 
 type MobileImageExportEvent =
   | { type: "chunk"; requestId: string; chunk: string }
-  | { type: "complete"; requestId: string; filename: string; mimeType: string }
+  | {
+      type: "complete";
+      requestId: string;
+      filename: string;
+      mimeType: string;
+      width?: number;
+      height?: number;
+      totalImages?: number;
+      failedImages?: number;
+    }
   | { type: "error"; requestId: string; message?: string };
+
+type MobilePreparedNoteImage = {
+  base64: string;
+  failedImages: number;
+  filename: string;
+  height: number;
+  mimeType: string;
+  totalImages: number;
+  uri: string;
+  width: number;
+};
 
 const decodeBase64Chunks = (chunks: string[]) => {
   const parts = chunks.map((chunk) => {
@@ -453,12 +473,16 @@ export const MemoDetailModal = ({
   const [imageShareFormat, setImageShareFormat] = useState<"jpeg" | "png">("png");
   const [imageShareTheme, setImageShareTheme] = useState<NoteImageTheme>("slate");
   const [imageShareFontStyle, setImageShareFontStyle] = useState<NoteImageFontStyle>("serif");
+  const [imageShareFontSize, setImageShareFontSize] = useState<NoteImageFontSize>("lg");
+  const [imageShareCardWidth, setImageShareCardWidth] = useState<NoteImageCardWidth>("standard");
   const [imageShareTitle, setImageShareTitle] = useState(true);
   const [imageShareNotebook, setImageShareNotebook] = useState(false);
   const [imageShareTags, setImageShareTags] = useState(false);
   const [imageShareUpdatedAt, setImageShareUpdatedAt] = useState(true);
   const [imageShareBranding, setImageShareBranding] = useState(true);
+  const [preparedNoteImage, setPreparedNoteImage] = useState<MobilePreparedNoteImage | null>(null);
   const viewerRef = useRef<LocalTiptapEditorRef>(null);
+  const imageExportIntentRef = useRef<"preview" | "share">("share");
   const imageExportRequestRef = useRef<string | null>(null);
   const imageExportChunksRef = useRef<string[]>([]);
   const resourceDataUrlCacheRef = useRef(new Map<string, Promise<string | null>>());
@@ -673,13 +697,28 @@ export const MemoDetailModal = ({
       const file = new File(directory, event.filename);
       if (file.exists) file.delete();
       file.create({ overwrite: true, intermediates: true });
+      const base64 = imageExportChunksRef.current.join("");
       file.write(decodeBase64Chunks(imageExportChunksRef.current));
-      const Sharing = await import("expo-sharing");
-      if (!(await Sharing.isAvailableAsync())) throw new Error(resolvedLocale === "en-US" ? "Sharing is unavailable on this device." : "当前设备无法打开系统分享面板。");
-      await Sharing.shareAsync(file.uri, {
-        dialogTitle: event.filename,
+      const prepared: MobilePreparedNoteImage = {
+        base64,
+        failedImages: event.failedImages ?? 0,
+        filename: event.filename,
+        height: event.height ?? 0,
         mimeType: event.mimeType,
-      });
+        totalImages: event.totalImages ?? 0,
+        uri: file.uri,
+        width: event.width ?? 0,
+      };
+      if (imageExportIntentRef.current === "preview") {
+        setPreparedNoteImage(prepared);
+      } else {
+        const Sharing = await import("expo-sharing");
+        if (!(await Sharing.isAvailableAsync())) throw new Error(resolvedLocale === "en-US" ? "Sharing is unavailable on this device." : "当前设备无法打开系统分享面板。");
+        await Sharing.shareAsync(file.uri, {
+          dialogTitle: event.filename,
+          mimeType: event.mimeType,
+        });
+      }
     } catch (error) {
       Alert.alert(
         resolvedLocale === "en-US" ? "Image export failed" : "导出笔记图片失败",
@@ -704,12 +743,14 @@ export const MemoDetailModal = ({
       showTags?: boolean;
       showUpdatedAt?: boolean;
       showBranding?: boolean;
+      intent?: "preview" | "share";
     } = {},
   ) => {
     if (!memo || !viewerReady || isExportingImage) return;
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     imageExportRequestRef.current = requestId;
     imageExportChunksRef.current = [];
+    imageExportIntentRef.current = options.intent ?? "share";
     setIsExportingImage(true);
     safeDomCall(() => viewerRef.current?.exportImage(JSON.stringify({
       requestId,
@@ -730,6 +771,50 @@ export const MemoDetailModal = ({
       branding: options.showBranding ?? true,
     })));
   }, [isExportingImage, memo, notebookName, resolvedLocale, viewerReady]);
+
+  const sharePreparedNoteImage = useCallback(async (prepared: MobilePreparedNoteImage) => {
+    try {
+      const Sharing = await import("expo-sharing");
+      if (!(await Sharing.isAvailableAsync())) throw new Error(resolvedLocale === "en-US" ? "Sharing is unavailable on this device." : "当前设备无法打开系统分享面板。");
+      await Sharing.shareAsync(prepared.uri, { dialogTitle: prepared.filename, mimeType: prepared.mimeType });
+    } catch (shareError) {
+      Alert.alert(
+        resolvedLocale === "en-US" ? "Share failed" : "分享失败",
+        shareError instanceof Error ? shareError.message : (resolvedLocale === "en-US" ? "Try again later." : "请稍后重试。")
+      );
+    }
+  }, [resolvedLocale]);
+
+  const copyPreparedNoteImage = useCallback(async (prepared: MobilePreparedNoteImage) => {
+    try {
+      await Clipboard.setImageAsync(prepared.base64);
+      Alert.alert(resolvedLocale === "en-US" ? "Copied" : "复制成功", resolvedLocale === "en-US" ? "The image is on your clipboard." : "图片已复制到剪贴板。");
+    } catch {
+      Alert.alert(resolvedLocale === "en-US" ? "Copy failed" : "复制失败", resolvedLocale === "en-US" ? "Try saving the image instead." : "请尝试保存图片。" );
+    }
+  }, [resolvedLocale]);
+
+  const savePreparedNoteImage = useCallback(async (prepared: MobilePreparedNoteImage) => {
+    try {
+      const FileSystem = await import("expo-file-system/legacy");
+      const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+      if (!permission.granted) return;
+      const destination = await FileSystem.StorageAccessFramework.createFileAsync(
+        permission.directoryUri,
+        prepared.filename,
+        prepared.mimeType
+      );
+      await FileSystem.StorageAccessFramework.writeAsStringAsync(destination, prepared.base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      Alert.alert(resolvedLocale === "en-US" ? "Saved" : "保存成功", prepared.filename);
+    } catch (saveError) {
+      Alert.alert(
+        resolvedLocale === "en-US" ? "Save failed" : "保存失败",
+        saveError instanceof Error ? saveError.message : (resolvedLocale === "en-US" ? "Try again later." : "请稍后重试。")
+      );
+    }
+  }, [resolvedLocale]);
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} presentationStyle="fullScreen" visible={visible}>
@@ -1007,36 +1092,40 @@ export const MemoDetailModal = ({
             <Pressable onPress={() => setActionsOpen(false)} style={styles.actionSheetBackdrop}>
               <Pressable style={styles.actionSheet}>
                 <View style={styles.actionSheetHandle} />
-                <Text style={styles.actionSheetTitle}>笔记操作</Text>
+                <Text style={styles.actionSheetTitle}>{resolvedLocale === "en-US" ? "Note actions" : "笔记操作"}</Text>
                 {!memo.isDeleted ? (
                   <DetailActionSheetItem
                     icon={<Sparkles color="#16A06E" size={18} />}
-                    label="AI 笔记助手"
+                    label={resolvedLocale === "en-US" ? "AI note assistant" : "AI 笔记助手"}
                     onPress={() => closeActionsAndRun(() => setAiAssistantOpen(true))}
                   />
                 ) : null}
                 <DetailActionSheetItem
                   disabled={!canCopyMemoId}
                   icon={<Copy color="#0f172a" size={18} />}
-                  label={canCopyMemoId ? "复制笔记 ID" : "同步后可复制笔记 ID"}
+                  label={canCopyMemoId
+                    ? (resolvedLocale === "en-US" ? "Copy note ID" : "复制笔记 ID")
+                    : (resolvedLocale === "en-US" ? "Copy note ID after sync" : "同步后可复制笔记 ID")}
                   onPress={() => closeActionsAndRun(() => void copyMemoId())}
                 />
                 <DetailActionSheetItem
                   disabled={isExportingImage || !viewerReady}
                   icon={isExportingImage ? <ActivityIndicator color="#16A06E" size="small" /> : <Share2 color="#0f172a" size={18} />}
-                  label={isExportingImage ? "正在生成分享图片" : "分享为图片"}
+                  label={isExportingImage
+                    ? (resolvedLocale === "en-US" ? "Generating share image" : "正在生成分享图片")
+                    : (resolvedLocale === "en-US" ? "Share as image" : "分享为图片")}
                   onPress={() => closeActionsAndRun(() => setImageShareOptionsOpen(true))}
                 />
                 <DetailActionSheetItem
                   disabled={isExportingImage || !viewerReady}
                   icon={<Download color="#0f172a" size={18} />}
-                  label="高级导出 PNG"
+                  label={resolvedLocale === "en-US" ? "Advanced export PNG" : "高级导出 PNG"}
                   onPress={() => closeActionsAndRun(() => exportMemoImage("png"))}
                 />
                 <DetailActionSheetItem
                   disabled={isExportingImage || !viewerReady}
                   icon={<Download color="#0f172a" size={18} />}
-                  label="高级导出 JPEG"
+                  label={resolvedLocale === "en-US" ? "Advanced export JPEG" : "高级导出 JPEG"}
                   onPress={() => closeActionsAndRun(() => exportMemoImage("jpeg"))}
                 />
                 {memo.isDeleted ? (
@@ -1059,6 +1148,7 @@ export const MemoDetailModal = ({
             <Pressable style={[styles.actionSheet, imageShareStyles.sheetContainer]}>
               <View style={styles.actionSheetHandle} />
               <Text style={styles.actionSheetTitle}>{resolvedLocale === "en-US" ? "Share as image" : "分享为图片"}</Text>
+              <ScrollView contentContainerStyle={imageShareStyles.optionsContent} showsVerticalScrollIndicator={false} style={imageShareStyles.optionsScroll}>
 
               <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Theme" : "主题风格"}</Text>
               <View style={imageShareStyles.themeGrid}>
@@ -1083,6 +1173,32 @@ export const MemoDetailModal = ({
                     </Pressable>
                   );
                 })}
+              </View>
+
+              <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Font size" : "字号大小"}</Text>
+              <View style={imageShareStyles.choiceRow}>
+                {([
+                  ["sm", resolvedLocale === "en-US" ? "Compact" : "紧凑"],
+                  ["md", resolvedLocale === "en-US" ? "Standard" : "标准"],
+                  ["lg", resolvedLocale === "en-US" ? "Comfortable" : "舒适"],
+                ] as const).map(([value, label]) => (
+                  <Pressable key={value} accessibilityRole="button" onPress={() => setImageShareFontSize(value)} style={[imageShareStyles.choice, imageShareFontSize === value && imageShareStyles.choiceActive]}>
+                    <Text style={[imageShareStyles.choiceText, imageShareFontSize === value && imageShareStyles.choiceTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Card width" : "卡片宽度"}</Text>
+              <View style={imageShareStyles.choiceRow}>
+                {([
+                  ["compact", resolvedLocale === "en-US" ? "Compact" : "紧凑"],
+                  ["standard", resolvedLocale === "en-US" ? "Standard" : "标准"],
+                  ["wide", resolvedLocale === "en-US" ? "Wide" : "宽屏"],
+                ] as const).map(([value, label]) => (
+                  <Pressable key={value} accessibilityRole="button" onPress={() => setImageShareCardWidth(value)} style={[imageShareStyles.choice, imageShareCardWidth === value && imageShareStyles.choiceActive]}>
+                    <Text style={[imageShareStyles.choiceText, imageShareCardWidth === value && imageShareStyles.choiceTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
               </View>
 
               <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Typography" : "字体风格"}</Text>
@@ -1141,22 +1257,80 @@ export const MemoDetailModal = ({
                   exportMemoImage(imageShareFormat, {
                     theme: imageShareTheme,
                     fontStyle: imageShareFontStyle,
+                    fontSize: imageShareFontSize,
+                    cardWidth: imageShareCardWidth,
                     showTitle: imageShareTitle,
                     showNotebook: imageShareNotebook,
                     showTags: imageShareTags,
                     showUpdatedAt: imageShareUpdatedAt,
                     showBranding: imageShareBranding,
+                    intent: "preview",
                   });
                 }}
                 style={[imageShareStyles.shareButton, isExportingImage && styles.buttonDisabled]}
               >
                 <Share2 color="#ffffff" size={18} />
                 <Text style={imageShareStyles.shareButtonText}>
-                  {resolvedLocale === "en-US" ? "Generate & Share" : "生成并分享"}
+                  {resolvedLocale === "en-US" ? "Generate preview" : "生成预览"}
                 </Text>
               </Pressable>
+              </ScrollView>
             </Pressable>
           </Pressable>
+        </Modal>
+        <Modal animationType="slide" onRequestClose={() => setPreparedNoteImage(null)} presentationStyle="fullScreen" visible={Boolean(preparedNoteImage)}>
+          <SafeAreaView style={imageShareStyles.previewSafeArea}>
+            <View style={imageShareStyles.previewHeader}>
+              <Text style={imageShareStyles.previewTitle}>{resolvedLocale === "en-US" ? "Image preview" : "图片预览"}</Text>
+              <Pressable accessibilityLabel={resolvedLocale === "en-US" ? "Close preview" : "关闭预览"} accessibilityRole="button" onPress={() => setPreparedNoteImage(null)} style={imageShareStyles.previewCloseButton}>
+                <X color="#0f172a" size={22} />
+              </Pressable>
+            </View>
+            {preparedNoteImage ? (
+              <>
+                <ScrollView contentContainerStyle={imageShareStyles.previewScrollContent} style={imageShareStyles.previewScroll}>
+                  <RNImage
+                    resizeMode="contain"
+                    source={{ uri: preparedNoteImage.uri }}
+                    style={[
+                      imageShareStyles.previewImage,
+                      preparedNoteImage.width > 0 && preparedNoteImage.height > 0
+                        ? { aspectRatio: preparedNoteImage.width / preparedNoteImage.height }
+                        : null,
+                    ]}
+                  />
+                  {preparedNoteImage.failedImages > 0 ? (
+                    <Text style={imageShareStyles.previewWarning}>
+                      {resolvedLocale === "en-US"
+                        ? `${preparedNoteImage.failedImages} of ${preparedNoteImage.totalImages} note image(s) could not be included.`
+                        : `笔记中的 ${preparedNoteImage.totalImages} 张图片有 ${preparedNoteImage.failedImages} 张未能包含。`}
+                    </Text>
+                  ) : null}
+                  {preparedNoteImage.height > 12_000 ? (
+                    <Text style={imageShareStyles.previewWarning}>
+                      {resolvedLocale === "en-US"
+                        ? "This is a long image. Some social apps may reduce its quality; keep the saved original."
+                        : "图片较长，部分社交平台可能会压缩画质；建议保留保存的原图。"}
+                    </Text>
+                  ) : null}
+                </ScrollView>
+                <View style={imageShareStyles.previewActions}>
+                  <Pressable accessibilityRole="button" onPress={() => void copyPreparedNoteImage(preparedNoteImage)} style={imageShareStyles.previewSecondaryButton}>
+                    <Copy color="#0f172a" size={18} />
+                    <Text style={imageShareStyles.previewSecondaryButtonText}>{resolvedLocale === "en-US" ? "Copy" : "复制图片"}</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" onPress={() => void savePreparedNoteImage(preparedNoteImage)} style={imageShareStyles.previewSecondaryButton}>
+                    <Download color="#0f172a" size={18} />
+                    <Text style={imageShareStyles.previewSecondaryButtonText}>{resolvedLocale === "en-US" ? "Save" : "保存图片"}</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" onPress={() => void sharePreparedNoteImage(preparedNoteImage)} style={imageShareStyles.previewPrimaryButton}>
+                    <Share2 color="#ffffff" size={18} />
+                    <Text style={imageShareStyles.previewPrimaryButtonText}>{resolvedLocale === "en-US" ? "Share" : "系统分享"}</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
+          </SafeAreaView>
         </Modal>
         {memo && !memo.isDeleted ? (
           <MobileAiAssistantModal
@@ -1228,6 +1402,12 @@ const imageShareStyles = StyleSheet.create({
   sheetContainer: {
     maxHeight: "85%",
     paddingBottom: 24,
+  },
+  optionsContent: {
+    paddingBottom: 4,
+  },
+  optionsScroll: {
+    flexShrink: 1,
   },
   themeGrid: {
     flexDirection: "row",
@@ -1337,6 +1517,92 @@ const imageShareStyles = StyleSheet.create({
   shareButtonText: {
     color: "#ffffff",
     fontSize: 15,
+    fontWeight: "800",
+  },
+  previewSafeArea: {
+    backgroundColor: "#f1f5f9",
+    flex: 1,
+  },
+  previewHeader: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderBottomColor: "#e2e8f0",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 52,
+    paddingHorizontal: 16,
+  },
+  previewTitle: {
+    color: "#0f172a",
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  previewCloseButton: {
+    alignItems: "center",
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  previewScroll: {
+    flex: 1,
+  },
+  previewScrollContent: {
+    padding: 16,
+  },
+  previewImage: {
+    alignSelf: "stretch",
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    minHeight: 240,
+    width: "100%",
+  },
+  previewWarning: {
+    backgroundColor: "#fffbeb",
+    borderRadius: 8,
+    color: "#a16207",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 12,
+    padding: 10,
+  },
+  previewActions: {
+    backgroundColor: "#ffffff",
+    borderTopColor: "#e2e8f0",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    padding: 12,
+  },
+  previewSecondaryButton: {
+    alignItems: "center",
+    borderColor: "#cbd5e1",
+    borderRadius: 9,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  previewSecondaryButtonText: {
+    color: "#0f172a",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  previewPrimaryButton: {
+    alignItems: "center",
+    backgroundColor: "#16A06E",
+    borderRadius: 9,
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  previewPrimaryButtonText: {
+    color: "#ffffff",
+    fontSize: 13,
     fontWeight: "800",
   },
 });

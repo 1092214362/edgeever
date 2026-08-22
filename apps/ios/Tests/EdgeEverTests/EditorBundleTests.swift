@@ -44,6 +44,10 @@ final class EditorBundleTests: XCTestCase {
             html.contains("imageExportComplete") && html.contains("imageExportChunk"),
             "large image exports must cross the native bridge in bounded chunks"
         )
+        XCTAssertTrue(
+            html.contains("failedImages") && html.contains("totalImages"),
+            "image export completion must report note-image failures for preview feedback"
+        )
     }
 
     /// Caret must not be forced to document end on every content set / keystroke path.
