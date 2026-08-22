@@ -36,7 +36,6 @@ import {
   Info,
   FileDown,
   FileCode2,
-  ImageDown,
   Printer,
   Link2,
   Share2,
@@ -151,7 +150,7 @@ import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
 import { downloadNoteHtmlFile, getHtmlImageEmbedNoticeKind } from "@/lib/note-html-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
-import { downloadNoteImage, type NoteImageFormat } from "@/lib/note-image-export";
+import type { NoteImageFormat } from "@/lib/note-image-export";
 import { getAiSlashCommandStart, saveAndSyncEditor, shouldOpenAiFromSpace } from "@/lib/editor-shortcuts";
 import {
   AI_SPACE_SHORTCUT_CHANGED_EVENT,
@@ -2898,34 +2897,6 @@ const RichEditorPane = ({
     useMobilePlainTextEditor,
   ]);
 
-  const imageExportInProgressRef = useRef(false);
-  const handleExportImage = useCallback(async (format: NoteImageFormat) => {
-    const options = buildImageExportOptions(format);
-    if (!options) return;
-    if (imageExportInProgressRef.current) {
-      window.alert(t("editor.imageExport.inProgress"));
-      return;
-    }
-
-    imageExportInProgressRef.current = true;
-    try {
-      const result = await downloadNoteImage(options);
-      const noticeKind = getHtmlImageEmbedNoticeKind(result.images);
-      if (noticeKind === "partial") {
-        window.alert(t("editor.imageExport.imageEmbedPartial", result.images));
-      } else if (noticeKind === "failed-all") {
-        window.alert(t("editor.imageExport.imageEmbedFailed", result.images));
-      }
-    } catch {
-      window.alert(t("editor.imageExport.error"));
-    } finally {
-      imageExportInProgressRef.current = false;
-    }
-  }, [
-    buildImageExportOptions,
-    t,
-  ]);
-
   const handleOpenImageShare = useCallback(() => {
     const options = buildImageExportOptions("png");
     if (!options) return;
@@ -2987,12 +2958,6 @@ const RichEditorPane = ({
       case "share-image":
         handleOpenImageShare();
         break;
-      case "export-png":
-        void handleExportImage("png");
-        break;
-      case "export-jpeg":
-        void handleExportImage("jpeg");
-        break;
       case "save-as-template":
         handleSaveAsTemplate();
         break;
@@ -3001,7 +2966,6 @@ const RichEditorPane = ({
     documentActionRequest,
     editor,
     handleExportHtml,
-    handleExportImage,
     handleExportMarkdown,
     handleExportPdf,
     handleOpenImageShare,
@@ -4320,20 +4284,6 @@ const RichEditorPane = ({
                 >
                   <Share2 className="h-4 w-4 text-slate-500" />
                   {t("editor.imageShare.action")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
-                  onClick={() => void handleExportImage("png")}
-                >
-                  <ImageDown className="h-4 w-4 text-slate-500" />
-                  {t("editor.exportPng")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
-                  onClick={() => void handleExportImage("jpeg")}
-                >
-                  <ImageDown className="h-4 w-4 text-slate-500" />
-                  {t("editor.exportJpeg")}
                 </DropdownMenuItem>
                 {readOnly ? (
                   <>

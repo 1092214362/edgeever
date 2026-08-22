@@ -36,8 +36,6 @@ export type MemoDocumentAction =
   | "export-html"
   | "export-pdf"
   | "share-image"
-  | "export-png"
-  | "export-jpeg"
   | "save-as-template";
 export type MemoDocumentActionRequest = {
   id: number;

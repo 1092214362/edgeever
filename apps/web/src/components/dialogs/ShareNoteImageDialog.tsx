@@ -94,20 +94,20 @@ export const ShareNoteImageDialog = ({
   );
   const noticeKind = prepared ? getHtmlImageEmbedNoticeKind(prepared.images) : "none";
 
-  const complete = async () => {
+  const share = async () => {
     if (!prepared || !shareFile) return;
-    if (canUseSystemShare) {
-      try {
-        await navigator.share({ files: [shareFile], title: source.title });
-        onOpenChange(false);
-      } catch (shareError) {
-        if (shareError instanceof DOMException && shareError.name === "AbortError") return;
-        setError(true);
-      }
-      return;
+    try {
+      await navigator.share({ files: [shareFile], title: source.title });
+      onOpenChange(false);
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+      setError(true);
     }
+  };
+
+  const download = () => {
+    if (!prepared) return;
     downloadPreparedNoteImage(prepared);
-    onOpenChange(false);
   };
 
   return (
@@ -206,10 +206,16 @@ export const ShareNoteImageDialog = ({
 
         <DialogFooter className="border-t border-slate-200 px-5 py-4">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-          <Button variant="solid" disabled={!prepared} onClick={() => void complete()}>
-            {canUseSystemShare ? <Share2 className="h-4 w-4" /> : <Download className="h-4 w-4" />}
-            {t(canUseSystemShare ? "editor.imageShare.share" : "editor.imageShare.download")}
+          <Button variant={canUseSystemShare ? "outline" : "solid"} disabled={!prepared} onClick={download}>
+            <Download className="h-4 w-4" />
+            {t("editor.imageShare.download")}
           </Button>
+          {canUseSystemShare ? (
+            <Button variant="solid" disabled={!prepared} onClick={() => void share()}>
+              <Share2 className="h-4 w-4" />
+              {t("editor.imageShare.share")}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Download, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Download } from "@playwright/test";
 import sharp from "sharp";
 
 const E2E_USERNAME = process.env.EDGE_EVER_E2E_USERNAME || "admin";
@@ -11,13 +11,6 @@ const login = async (request: APIRequestContext) => {
   expect(response.ok(), `login failed: ${response.status()} ${await response.text()}`).toBe(true);
 };
 
-const downloadImage = async (page: Page, format: "JPEG" | "PNG") => {
-  await page.getByRole("button", { name: /笔记更多操作|More note actions/ }).click();
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("menuitem", { name: new RegExp(`导出 ${format}|Export ${format}`, "i") }).click();
-  return downloadPromise;
-};
-
 const inspectDownload = async (download: Download) => {
   const path = await download.path();
   expect(path).not.toBeNull();
@@ -28,7 +21,7 @@ const inspectDownload = async (download: Download) => {
   return { metadata, statistics, topLeft: Array.from(pixels.slice(0, info.channels)) };
 };
 
-test("exports a long note as one non-blank PNG and JPEG", async ({ page, request }) => {
+test("downloads a long note as one non-blank PNG or JPEG from the share dialog", async ({ page, request }) => {
   test.setTimeout(90_000);
   await login(request);
   const notebooksResponse = await request.get("/api/v1/notebooks");
@@ -54,23 +47,26 @@ test("exports a long note as one non-blank PNG and JPEG", async ({ page, request
     await page.locator(`[data-memo-id="${memoId}"]`).locator("button").first().click();
     await expect(page.locator(".ProseMirror")).toContainText("Visible export content 80");
 
-    for (const format of ["PNG", "JPEG"] as const) {
-      const download = await downloadImage(page, format);
-      expect(download.suggestedFilename()).toMatch(format === "PNG" ? /\.png$/i : /\.jpg$/i);
-      expect(download.suggestedFilename()).not.toMatch(/\.zip$/i);
-
-      const { metadata, statistics } = await inspectDownload(download);
-      expect(metadata.format).toBe(format === "PNG" ? "png" : "jpeg");
-      expect(metadata.width).toBeGreaterThan(700);
-      expect(metadata.height).toBeGreaterThan(4_800);
-      expect(statistics.channels.some((channel) => channel.stdev > 5)).toBe(true);
-    }
-
     await page.getByRole("button", { name: /笔记更多操作|More note actions/ }).click();
+    await expect(page.getByRole("menuitem", { name: /导出 PNG|Export PNG/ })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: /导出 JPEG|Export JPEG/ })).toHaveCount(0);
     await page.getByRole("menuitem", { name: /分享为图片|Share as image/ }).click();
     const dialog = page.getByRole("dialog", { name: /分享为图片|Share as image/ });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("img", { name: /笔记分享图片预览|Note image share preview/ })).toBeVisible({ timeout: 20_000 });
+
+    const pngDownloadPromise = page.waitForEvent("download");
+    await dialog.getByRole("button", { name: /下载图片|Download image/ }).click();
+    const pngDownload = await pngDownloadPromise;
+    expect(pngDownload.suggestedFilename()).toMatch(/\.png$/i);
+    expect(pngDownload.suggestedFilename()).not.toMatch(/\.zip$/i);
+    const pngImage = await inspectDownload(pngDownload);
+    expect(pngImage.metadata.format).toBe("png");
+    expect(pngImage.metadata.width).toBeGreaterThan(700);
+    expect(pngImage.metadata.height).toBeGreaterThan(4_800);
+    expect(pngImage.statistics.channels.some((channel) => channel.stdev > 5)).toBe(true);
+    await expect(dialog).toBeVisible();
+
     await dialog.getByRole("button", { name: /薄荷|Mint/ }).click();
     await dialog.getByRole("checkbox", { name: /笔记本|Notebook/ }).click();
     await dialog.getByRole("combobox").click();
