@@ -1103,6 +1103,9 @@ export const enUS = {
     },
     items: {
       ai: "Ask AI",
+      currentDate: "Current date",
+      currentTime: "Current time",
+      currentDateTime: "Current date and time",
     },
   },
   editorToolbar: {

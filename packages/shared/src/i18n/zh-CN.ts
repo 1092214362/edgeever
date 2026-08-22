@@ -1103,6 +1103,9 @@ export const zhCN = {
     },
     items: {
       ai: "用 AI 处理",
+      currentDate: "当前日期",
+      currentTime: "当前时间",
+      currentDateTime: "当前日期和时间",
     },
   },
   editorToolbar: {
