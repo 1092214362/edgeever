@@ -39,6 +39,7 @@ import {
   ImageDown,
   Printer,
   Link2,
+  Share2,
   Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { memoShareQueryKey, ShareMemoDialog } from "./dialogs/ShareMemoDialog";
+import { ShareNoteImageDialog, type ShareNoteImageSource } from "./dialogs/ShareNoteImageDialog";
 import { AiAssistantDialog, type AiAssistantAnchor } from "./dialogs/AiAssistantDialog";
 import { api } from "@/lib/api";
 import { isDesktopResourceRuntime, stageDesktopResource, toDesktopResourceUrl } from "@/lib/desktop-resources";
@@ -766,6 +768,8 @@ const RichEditorPane = ({
   const [imagePreview, setImagePreview] = useState<ImagePreviewRequestDetail | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [imageShareOpen, setImageShareOpen] = useState(false);
+  const [imageShareSource, setImageShareSource] = useState<ShareNoteImageSource | null>(null);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [aiAssistantAnchor, setAiAssistantAnchor] = useState<AiAssistantAnchor>({ left: 24, placement: "below", top: 96 });
   const aiBubbleMenu = useAiBubbleMenu(aiAssistantOpen);
@@ -2861,44 +2865,24 @@ const RichEditorPane = ({
     useMobilePlainTextEditor,
   ]);
 
-  const imageExportInProgressRef = useRef(false);
-  const handleExportImage = useCallback(async (format: NoteImageFormat) => {
+  const buildImageExportOptions = useCallback((format: NoteImageFormat) => {
     if (!isEditorReady(editor) || !memo) return;
-    if (imageExportInProgressRef.current) {
-      window.alert(t("editor.imageExport.inProgress"));
-      return;
-    }
-
-    imageExportInProgressRef.current = true;
     const currentDocument = useMobilePlainTextEditor
       ? markdownToDoc(getMobilePlainTextValue())
       : useMarkdownSourceEditor
         ? markdownToDoc(markdownSource)
         : editor.getJSON() as TiptapDoc;
-
-    try {
-      const result = await downloadNoteImage({
-        bodyHtml: serializeNoteDocumentForPrint(editor, currentDocument),
-        title: title.trim() || t("common.untitledMemo"),
-        notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
-        tags: parseTagsText(tagsText),
-        updatedAt: formatDateTime(memo.updatedAt),
-        language: i18n.resolvedLanguage ?? i18n.language,
-        fallbackTitle: t("common.untitledMemo"),
-        format,
-        styles: NOTE_HTML_FULL_STYLES,
-      });
-      const noticeKind = getHtmlImageEmbedNoticeKind(result.images);
-      if (noticeKind === "partial") {
-        window.alert(t("editor.imageExport.imageEmbedPartial", result.images));
-      } else if (noticeKind === "failed-all") {
-        window.alert(t("editor.imageExport.imageEmbedFailed", result.images));
-      }
-    } catch {
-      window.alert(t("editor.imageExport.error"));
-    } finally {
-      imageExportInProgressRef.current = false;
-    }
+    return {
+      bodyHtml: serializeNoteDocumentForPrint(editor, currentDocument),
+      title: title.trim() || t("common.untitledMemo"),
+      notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
+      tags: parseTagsText(tagsText),
+      updatedAt: formatDateTime(memo.updatedAt),
+      language: i18n.resolvedLanguage ?? i18n.language,
+      fallbackTitle: t("common.untitledMemo"),
+      format,
+      styles: NOTE_HTML_FULL_STYLES,
+    };
   }, [
     editor,
     getMobilePlainTextValue,
@@ -2913,6 +2897,42 @@ const RichEditorPane = ({
     useMarkdownSourceEditor,
     useMobilePlainTextEditor,
   ]);
+
+  const imageExportInProgressRef = useRef(false);
+  const handleExportImage = useCallback(async (format: NoteImageFormat) => {
+    const options = buildImageExportOptions(format);
+    if (!options) return;
+    if (imageExportInProgressRef.current) {
+      window.alert(t("editor.imageExport.inProgress"));
+      return;
+    }
+
+    imageExportInProgressRef.current = true;
+    try {
+      const result = await downloadNoteImage(options);
+      const noticeKind = getHtmlImageEmbedNoticeKind(result.images);
+      if (noticeKind === "partial") {
+        window.alert(t("editor.imageExport.imageEmbedPartial", result.images));
+      } else if (noticeKind === "failed-all") {
+        window.alert(t("editor.imageExport.imageEmbedFailed", result.images));
+      }
+    } catch {
+      window.alert(t("editor.imageExport.error"));
+    } finally {
+      imageExportInProgressRef.current = false;
+    }
+  }, [
+    buildImageExportOptions,
+    t,
+  ]);
+
+  const handleOpenImageShare = useCallback(() => {
+    const options = buildImageExportOptions("png");
+    if (!options) return;
+    const { format: _format, ...source } = options;
+    setImageShareSource(source);
+    setImageShareOpen(true);
+  }, [buildImageExportOptions]);
 
   const handleSaveAsTemplate = useCallback(() => {
     if (!memo) {
@@ -2964,6 +2984,9 @@ const RichEditorPane = ({
       case "export-pdf":
         handleExportPdf(documentActionRequest.printWindow);
         break;
+      case "share-image":
+        handleOpenImageShare();
+        break;
       case "export-png":
         void handleExportImage("png");
         break;
@@ -2981,6 +3004,7 @@ const RichEditorPane = ({
     handleExportImage,
     handleExportMarkdown,
     handleExportPdf,
+    handleOpenImageShare,
     handleSaveAsTemplate,
     hydratedEditorMemoId,
     memo,
@@ -4292,6 +4316,13 @@ const RichEditorPane = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={handleOpenImageShare}
+                >
+                  <Share2 className="h-4 w-4 text-slate-500" />
+                  {t("editor.imageShare.action")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
                   onClick={() => void handleExportImage("png")}
                 >
                   <ImageDown className="h-4 w-4 text-slate-500" />
@@ -5002,6 +5033,14 @@ const RichEditorPane = ({
       />
 
       <ShareMemoDialog memoId={memo.id} open={shareOpen} onOpenChange={setShareOpen} />
+
+      {imageShareSource && (
+        <ShareNoteImageDialog
+          open={imageShareOpen}
+          source={imageShareSource}
+          onOpenChange={setImageShareOpen}
+        />
+      )}
 
       {mobileNotebookSheetOpen && (
         <MobileNotebookSelectSheet

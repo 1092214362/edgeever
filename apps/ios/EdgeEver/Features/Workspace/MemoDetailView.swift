@@ -18,6 +18,12 @@ struct MemoDetailView: View {
     @State private var imageExportMessage: MemoImageExportMessage?
     @State private var imageExporting = false
     @State private var imageExportBuffer = MemoImageExportBuffer()
+    @State private var imageShareOptionsOpen = false
+    @State private var imageShareFormat = "png"
+    @State private var imageShareBackground = "slate"
+    @State private var imageShareNotebook = true
+    @State private var imageShareTags = true
+    @State private var imageShareUpdatedAt = true
     @State private var error: String?
     @State private var conflictItem: OutboxItem?
     @State private var outboxStatus: OutboxStatus?
@@ -120,6 +126,54 @@ struct MemoDetailView: View {
                 imageExportSharePayload = nil
             }
         }
+        .sheet(isPresented: $imageShareOptionsOpen) {
+            NavigationStack {
+                Form {
+                    Section(env.preferences.t("背景", en: "Background")) {
+                        Picker(env.preferences.t("背景", en: "Background"), selection: $imageShareBackground) {
+                            Text(env.preferences.t("简洁", en: "Clean")).tag("slate")
+                            Text(env.preferences.t("薄荷", en: "Mint")).tag("mint")
+                            Text(env.preferences.t("暖色", en: "Warm")).tag("warm")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    Section(env.preferences.t("笔记信息", en: "Note information")) {
+                        Toggle(env.preferences.t("笔记本", en: "Notebook"), isOn: $imageShareNotebook)
+                        Toggle(env.preferences.t("标签", en: "Tags"), isOn: $imageShareTags)
+                        Toggle(env.preferences.t("更新时间", en: "Updated time"), isOn: $imageShareUpdatedAt)
+                    }
+                    Section(env.preferences.t("图片格式", en: "Image format")) {
+                        Picker(env.preferences.t("图片格式", en: "Image format"), selection: $imageShareFormat) {
+                            Text(env.preferences.t("PNG · 文字更清晰", en: "PNG · Best for text")).tag("png")
+                            Text(env.preferences.t("JPEG · 文件更小", en: "JPEG · Smaller file")).tag("jpeg")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+                .navigationTitle(env.preferences.t("分享为图片", en: "Share as image"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(env.preferences.t("取消", en: "Cancel")) { imageShareOptionsOpen = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(env.preferences.t("生成并分享", en: "Generate & Share")) {
+                            guard let memo else { return }
+                            imageShareOptionsOpen = false
+                            exportMemoImage(
+                                memo,
+                                format: imageShareFormat,
+                                background: imageShareBackground,
+                                showNotebook: imageShareNotebook,
+                                showTags: imageShareTags,
+                                showUpdatedAt: imageShareUpdatedAt
+                            )
+                        }
+                        .disabled(imageExporting || !bodyReady || memo == nil)
+                    }
+                }
+            }
+        }
         .alert(item: $imageExportMessage) { message in
             Alert(
                 title: Text(message.title),
@@ -184,8 +238,12 @@ struct MemoDetailView: View {
                 Button(
                     imageExporting
                         ? env.preferences.t("正在导出图片…", en: "Exporting image…")
-                        : env.preferences.t("导出 PNG", en: "Export PNG")
+                        : env.preferences.t("分享为图片", en: "Share as image")
                 ) {
+                    imageShareOptionsOpen = true
+                }
+                .disabled(imageExporting || !bodyReady)
+                Button(env.preferences.t("高级导出 PNG", en: "Advanced export PNG")) {
                     exportMemoImage(memo, format: "png")
                 }
                 .disabled(imageExporting || !bodyReady)
@@ -859,7 +917,14 @@ struct MemoDetailView: View {
         }
     }
 
-    private func exportMemoImage(_ memo: MemoDetail, format: String) {
+    private func exportMemoImage(
+        _ memo: MemoDetail,
+        format: String,
+        background: String = "slate",
+        showNotebook: Bool = true,
+        showTags: Bool = true,
+        showUpdatedAt: Bool = true
+    ) {
         guard !imageExporting, bodyReady else { return }
         let requestId = UUID().uuidString
         imageExportBuffer.start(requestId: requestId)
@@ -870,9 +935,10 @@ struct MemoDetailView: View {
             "format": format,
             "title": title?.isEmpty == false ? title! : env.preferences.t("无标题笔记", en: "Untitled note"),
             "fallbackTitle": env.preferences.t("无标题笔记", en: "Untitled note"),
-            "notebook": notebookName(for: memo),
-            "tags": memo.tags,
-            "updatedAt": memo.updatedAt,
+            "notebook": showNotebook ? notebookName(for: memo) : "",
+            "tags": showTags ? memo.tags : [],
+            "updatedAt": showUpdatedAt ? memo.updatedAt : "",
+            "background": background,
         ])
     }
 

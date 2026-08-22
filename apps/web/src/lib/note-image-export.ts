@@ -6,23 +6,32 @@ import {
 } from "@/lib/note-html-export";
 
 export type NoteImageFormat = "jpeg" | "png";
+export type NoteImageBackground = "mint" | "slate" | "warm";
 
 export type DownloadNoteImageOptions = NoteHtmlExportMeta & {
   bodyHtml: string;
   fallbackTitle: string;
   format: NoteImageFormat;
+  background?: NoteImageBackground;
   styles: string;
 };
 
-export type DownloadNoteImageResult = {
+export type PreparedNoteImage = {
+  blob: Blob;
   filename: string;
   images: HtmlImageEmbedResult;
+  mimeType: "image/jpeg" | "image/png";
 };
 
 export const NOTE_IMAGE_EXPORT_WIDTH = 768;
 export const NOTE_IMAGE_EXPORT_PIXEL_RATIO = 1.5;
 
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+const NOTE_IMAGE_BACKGROUND_COLORS: Record<NoteImageBackground, string> = {
+  mint: "#ecfdf5",
+  slate: "#f8fafc",
+  warm: "#fffbeb",
+};
 
 export const buildImageExportBasename = (title: string, fallback: string) => {
   const sanitized = title
@@ -44,7 +53,7 @@ const canvasToImageBlob = (canvas: HTMLCanvasElement, format: NoteImageFormat) =
     );
   });
 
-const downloadBlob = (blob: Blob, filename: string) => {
+export const downloadPreparedNoteImage = ({ blob, filename }: Pick<PreparedNoteImage, "blob" | "filename">) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -67,12 +76,12 @@ const waitForImages = async (root: HTMLElement) => {
   }));
 };
 
-const renderImage = async (source: HTMLElement, format: NoteImageFormat) => {
+const renderImage = async (source: HTMLElement, format: NoteImageFormat, backgroundColor: string) => {
   await document.fonts?.ready;
   await waitForImages(source);
   const totalHeight = Math.max(1, Math.ceil(source.getBoundingClientRect().height));
   const canvas = await toCanvas(source, {
-    backgroundColor: "#f8fafc",
+    backgroundColor,
     cacheBust: false,
     height: totalHeight,
     pixelRatio: NOTE_IMAGE_EXPORT_PIXEL_RATIO,
@@ -82,7 +91,7 @@ const renderImage = async (source: HTMLElement, format: NoteImageFormat) => {
   return canvasToImageBlob(canvas, format);
 };
 
-export const downloadNoteImage = async ({
+export const createNoteImage = async ({
   bodyHtml,
   title,
   notebook,
@@ -90,8 +99,9 @@ export const downloadNoteImage = async ({
   updatedAt,
   fallbackTitle,
   format,
+  background = "slate",
   styles,
-}: DownloadNoteImageOptions): Promise<DownloadNoteImageResult> => {
+}: DownloadNoteImageOptions): Promise<PreparedNoteImage> => {
   const prepared = await prepareNoteBodyHtmlForExport(bodyHtml);
   const host = document.createElement("div");
   host.style.cssText = [
@@ -115,17 +125,27 @@ export const downloadNoteImage = async ({
   source.style.width = `${NOTE_IMAGE_EXPORT_WIDTH}px`;
   source.style.maxWidth = "none";
   source.style.margin = "0";
+  source.style.backgroundColor = NOTE_IMAGE_BACKGROUND_COLORS[background];
   document.body.appendChild(host);
 
   try {
-    const image = await renderImage(source, format);
+    const blob = await renderImage(source, format, NOTE_IMAGE_BACKGROUND_COLORS[background]);
     const basename = buildImageExportBasename(title, fallbackTitle);
     const extension = format === "jpeg" ? "jpg" : "png";
     const filename = `${basename}.${extension}`;
-    downloadBlob(image, filename);
-
-    return { filename, images: prepared.images };
+    return {
+      blob,
+      filename,
+      images: prepared.images,
+      mimeType: format === "jpeg" ? "image/jpeg" : "image/png",
+    };
   } finally {
     host.remove();
   }
+};
+
+export const downloadNoteImage = async (options: DownloadNoteImageOptions) => {
+  const prepared = await createNoteImage(options);
+  downloadPreparedNoteImage(prepared);
+  return prepared;
 };

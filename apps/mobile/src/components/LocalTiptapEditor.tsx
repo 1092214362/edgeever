@@ -160,6 +160,7 @@ type ImageExportRequest = {
   notebook?: string;
   tags?: string[];
   updatedAt?: string;
+  background?: "mint" | "slate" | "warm";
 };
 
 const IMAGE_EXPORT_LIGHT_STYLES = `
@@ -1136,8 +1137,14 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
           try { await image.decode(); } catch { /* Export the readable remainder. */ }
         }));
         const totalHeight = Math.max(1, Math.ceil(documentRoot.getBoundingClientRect().height));
+        const backgroundColor = {
+          mint: "#ecfdf5",
+          slate: "#f8fafc",
+          warm: "#fffbeb",
+        }[request.background ?? "slate"];
+        documentRoot.style.backgroundColor = backgroundColor;
         const canvas = await toCanvas(documentRoot, {
-          backgroundColor: "#f8fafc",
+          backgroundColor,
           height: totalHeight,
           pixelRatio: IMAGE_EXPORT_PIXEL_RATIO,
           skipFonts: true,

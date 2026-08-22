@@ -35,6 +35,7 @@ export type MemoDocumentAction =
   | "export-markdown"
   | "export-html"
   | "export-pdf"
+  | "share-image"
   | "export-png"
   | "export-jpeg"
   | "save-as-template";

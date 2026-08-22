@@ -1015,6 +1015,30 @@ export const zhCN = {
       imageEmbedPartial: "图片已导出，但笔记中的 {{total}} 张图片有 {{failed}} 张未能包含。",
       imageEmbedFailed: "图片已导出，但笔记中的 {{total}} 张图片均未能包含。",
     },
+    imageShare: {
+      title: "分享为图片",
+      description: "预览完整长图，并选择图片中包含的笔记信息。",
+      previewAlt: "笔记分享图片预览",
+      generating: "正在生成预览…",
+      background: "背景",
+      backgrounds: {
+        slate: "简洁",
+        mint: "薄荷",
+        warm: "暖色",
+      },
+      metadata: "笔记信息",
+      fields: {
+        notebook: "笔记本",
+        tags: "标签",
+        updatedAt: "更新时间",
+      },
+      format: "图片格式",
+      pngHint: "文字更清晰",
+      jpegHint: "文件更小",
+      share: "分享图片",
+      download: "下载图片",
+      action: "分享为图片",
+    },
     htmlExport: {
       error: "导出 HTML 失败。",
       imageEmbedPartial:

@@ -1017,6 +1017,30 @@ export const enUS = {
       imageEmbedFailed:
         "Image exported, but none of the {{total}} note images could be included.",
     },
+    imageShare: {
+      title: "Share as image",
+      description: "Preview the complete long image and choose what information to include.",
+      previewAlt: "Note image share preview",
+      generating: "Generating preview…",
+      background: "Background",
+      backgrounds: {
+        slate: "Clean",
+        mint: "Mint",
+        warm: "Warm",
+      },
+      metadata: "Note information",
+      fields: {
+        notebook: "Notebook",
+        tags: "Tags",
+        updatedAt: "Updated time",
+      },
+      format: "Image format",
+      pngHint: "best for text",
+      jpegHint: "smaller file",
+      share: "Share image",
+      download: "Download image",
+      action: "Share as image",
+    },
     htmlExport: {
       error: "Could not export the note as HTML.",
       imageEmbedPartial:
