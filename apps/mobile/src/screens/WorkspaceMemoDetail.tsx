@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_MEMO_TITLE, resolveMemoContentDoc, type MemoDetail, type TiptapDoc } from "@edgeever/shared";
+import {
+  type NoteImageTheme,
+  type NoteImageFontStyle,
+  type NoteImageFontSize,
+  type NoteImageCardWidth,
+} from "@edgeever/shared/note-image-card";
 import * as Clipboard from "expo-clipboard";
 import { Image as RNImage, Platform, StyleSheet, Text as RNText, View, type ImageStyle, type StyleProp, type TextStyle } from "react-native";
 import { Modal } from "react-native";
@@ -157,6 +163,29 @@ const loadAuthenticatedSvg = (source: AuthenticatedImageSource) => {
   authenticatedSvgCache.set(cacheKey, pending);
   return pending;
 };
+
+const MOBILE_THEME_OPTIONS: Array<{
+  id: NoteImageTheme;
+  labelZh: string;
+  labelEn: string;
+  previewBg: string;
+  dotColor: string;
+}> = [
+  { id: "slate", labelZh: "经典浅色", labelEn: "Light", previewBg: "#f8fafc", dotColor: "#16a06e" },
+  { id: "aurora", labelZh: "极光渐变", labelEn: "Aurora", previewBg: "#a7f3d0", dotColor: "#0d9488" },
+  { id: "sunset", labelZh: "暮色晚霞", labelEn: "Sunset", previewBg: "#fde68a", dotColor: "#ea580c" },
+  { id: "midnight", labelZh: "暗夜曜石", labelEn: "Midnight", previewBg: "#090d16", dotColor: "#34d399" },
+  { id: "mint", labelZh: "薄荷", labelEn: "Mint", previewBg: "#ecfdf5", dotColor: "#059669" },
+  { id: "lavender", labelZh: "紫雾流光", labelEn: "Lavender", previewBg: "#f5f3ff", dotColor: "#7c3aed" },
+  { id: "notepad", labelZh: "经典便签", labelEn: "Notepad", previewBg: "#fbf7ee", dotColor: "#c2410c" },
+  { id: "xuan", labelZh: "水墨宣纸", labelEn: "Rice Paper", previewBg: "#f7f6f2", dotColor: "#b91c1c" },
+];
+
+const MOBILE_FONT_OPTIONS: Array<{ id: NoteImageFontStyle; labelZh: string; labelEn: string }> = [
+  { id: "serif", labelZh: "文艺衬线", labelEn: "Serif" },
+  { id: "sans", labelZh: "现代无衬线", labelEn: "Sans" },
+  { id: "mono", labelZh: "极客等宽", labelEn: "Mono" },
+];
 
 const AuthenticatedResourceImage = ({
   alt,
@@ -422,9 +451,11 @@ export const MemoDetailModal = ({
   const [isExportingImage, setIsExportingImage] = useState(false);
   const [imageShareOptionsOpen, setImageShareOptionsOpen] = useState(false);
   const [imageShareFormat, setImageShareFormat] = useState<"jpeg" | "png">("png");
-  const [imageShareBackground, setImageShareBackground] = useState<"mint" | "slate" | "warm">("slate");
-  const [imageShareNotebook, setImageShareNotebook] = useState(true);
-  const [imageShareTags, setImageShareTags] = useState(true);
+  const [imageShareTheme, setImageShareTheme] = useState<NoteImageTheme>("slate");
+  const [imageShareFontStyle, setImageShareFontStyle] = useState<NoteImageFontStyle>("serif");
+  const [imageShareTitle, setImageShareTitle] = useState(true);
+  const [imageShareNotebook, setImageShareNotebook] = useState(false);
+  const [imageShareTags, setImageShareTags] = useState(false);
   const [imageShareUpdatedAt, setImageShareUpdatedAt] = useState(true);
   const [imageShareBranding, setImageShareBranding] = useState(true);
   const viewerRef = useRef<LocalTiptapEditorRef>(null);
@@ -664,7 +695,11 @@ export const MemoDetailModal = ({
   const exportMemoImage = useCallback((
     format: "jpeg" | "png",
     options: {
-      background?: "mint" | "slate" | "warm";
+      theme?: NoteImageTheme;
+      fontStyle?: NoteImageFontStyle;
+      fontSize?: NoteImageFontSize;
+      cardWidth?: NoteImageCardWidth;
+      showTitle?: boolean;
       showNotebook?: boolean;
       showTags?: boolean;
       showUpdatedAt?: boolean;
@@ -684,8 +719,15 @@ export const MemoDetailModal = ({
       notebook: options.showNotebook === false ? "" : notebookName,
       tags: options.showTags === false ? [] : memo.tags,
       updatedAt: options.showUpdatedAt === false ? "" : new Date(memo.updatedAt).toLocaleString(resolvedLocale),
-      background: options.background ?? "slate",
-      branding: options.showBranding ?? false,
+      theme: options.theme ?? "slate",
+      fontStyle: options.fontStyle ?? "serif",
+      fontSize: options.fontSize ?? "lg",
+      cardWidth: options.cardWidth ?? "standard",
+      showTitle: options.showTitle ?? true,
+      showNotebook: options.showNotebook ?? false,
+      showTags: options.showTags ?? false,
+      showUpdatedAt: options.showUpdatedAt ?? true,
+      branding: options.showBranding ?? true,
     })));
   }, [isExportingImage, memo, notebookName, resolvedLocale, viewerReady]);
 
@@ -1014,54 +1056,92 @@ export const MemoDetailModal = ({
         ) : null}
         <Modal animationType="fade" onRequestClose={() => setImageShareOptionsOpen(false)} transparent visible={imageShareOptionsOpen}>
           <Pressable onPress={() => setImageShareOptionsOpen(false)} style={styles.actionSheetBackdrop}>
-            <Pressable style={styles.actionSheet}>
+            <Pressable style={[styles.actionSheet, imageShareStyles.sheetContainer]}>
               <View style={styles.actionSheetHandle} />
-              <Text style={styles.actionSheetTitle}>分享为图片</Text>
-              <Text style={imageShareStyles.description}>生成一张完整长图，并通过系统分享面板发送。</Text>
-              <Text style={styles.actionSheetSectionTitle}>背景</Text>
-              <View style={imageShareStyles.choiceRow}>
-                {(["slate", "mint", "warm"] as const).map((value) => (
-                  <Pressable
-                    key={value}
-                    accessibilityRole="button"
-                    onPress={() => setImageShareBackground(value)}
-                    style={[
-                      imageShareStyles.choice,
-                      value === "slate" ? imageShareStyles.slateChoice : value === "mint" ? imageShareStyles.mintChoice : imageShareStyles.warmChoice,
-                      imageShareBackground === value && imageShareStyles.choiceActive,
-                    ]}
-                  >
-                    <Text style={imageShareStyles.choiceText}>{value === "slate" ? "简洁" : value === "mint" ? "薄荷" : "暖色"}</Text>
-                  </Pressable>
-                ))}
+              <Text style={styles.actionSheetTitle}>{resolvedLocale === "en-US" ? "Share as image" : "分享为图片"}</Text>
+
+              <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Theme" : "主题风格"}</Text>
+              <View style={imageShareStyles.themeGrid}>
+                {MOBILE_THEME_OPTIONS.map((item) => {
+                  const isSelected = imageShareTheme === item.id;
+                  const label = resolvedLocale === "en-US" ? item.labelEn : item.labelZh;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      accessibilityRole="button"
+                      onPress={() => setImageShareTheme(item.id)}
+                      style={[
+                        imageShareStyles.themeCard,
+                        { backgroundColor: item.previewBg },
+                        isSelected && imageShareStyles.themeCardActive,
+                      ]}
+                    >
+                      <View style={[imageShareStyles.themeDot, { backgroundColor: item.dotColor }]} />
+                      <Text numberOfLines={1} style={[imageShareStyles.themeLabel, isSelected && imageShareStyles.themeLabelActive]}>
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
-              <Text style={styles.actionSheetSectionTitle}>笔记信息</Text>
+
+              <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Typography" : "字体风格"}</Text>
+              <View style={imageShareStyles.choiceRow}>
+                {MOBILE_FONT_OPTIONS.map((item) => {
+                  const isSelected = imageShareFontStyle === item.id;
+                  const label = resolvedLocale === "en-US" ? item.labelEn : item.labelZh;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      accessibilityRole="button"
+                      onPress={() => setImageShareFontStyle(item.id)}
+                      style={[
+                        imageShareStyles.choice,
+                        isSelected && imageShareStyles.choiceActive,
+                      ]}
+                    >
+                      <Text style={[imageShareStyles.choiceText, isSelected && imageShareStyles.choiceTextActive]}>{label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Content Elements" : "显示内容"}</Text>
               {([
-                ["笔记本", imageShareNotebook, setImageShareNotebook],
-                ["标签", imageShareTags, setImageShareTags],
-                ["更新时间", imageShareUpdatedAt, setImageShareUpdatedAt],
-                ["EdgeEver 品牌标识", imageShareBranding, setImageShareBranding],
+                [resolvedLocale === "en-US" ? "Title" : "笔记标题", imageShareTitle, setImageShareTitle],
+                [resolvedLocale === "en-US" ? "Notebook" : "笔记本", imageShareNotebook, setImageShareNotebook],
+                [resolvedLocale === "en-US" ? "Tags" : "标签", imageShareTags, setImageShareTags],
+                [resolvedLocale === "en-US" ? "Updated time" : "更新时间", imageShareUpdatedAt, setImageShareUpdatedAt],
+                [resolvedLocale === "en-US" ? "EdgeEver branding" : "EdgeEver 品牌标识", imageShareBranding, setImageShareBranding],
               ] as const).map(([label, selected, setSelected]) => (
                 <Pressable key={label} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => setSelected(!selected)} style={imageShareStyles.optionRow}>
                   <Text style={imageShareStyles.optionLabel}>{label}</Text>
                   <Text style={imageShareStyles.optionCheck}>{selected ? "✓" : ""}</Text>
                 </Pressable>
               ))}
-              <Text style={styles.actionSheetSectionTitle}>格式</Text>
+
+              <Text style={styles.actionSheetSectionTitle}>{resolvedLocale === "en-US" ? "Format" : "格式"}</Text>
               <View style={imageShareStyles.choiceRow}>
                 {(["png", "jpeg"] as const).map((value) => (
                   <Pressable key={value} accessibilityRole="button" onPress={() => setImageShareFormat(value)} style={[imageShareStyles.formatChoice, imageShareFormat === value && imageShareStyles.choiceActive]}>
-                    <Text style={imageShareStyles.choiceText}>{value === "png" ? "PNG · 文字更清晰" : "JPEG · 文件更小"}</Text>
+                    <Text style={[imageShareStyles.choiceText, imageShareFormat === value && imageShareStyles.choiceTextActive]}>
+                      {value === "png"
+                        ? (resolvedLocale === "en-US" ? "PNG · Crisp text" : "PNG · 超清无损")
+                        : (resolvedLocale === "en-US" ? "JPEG · Smaller file" : "JPEG · 体积小")}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
+
               <Pressable
                 accessibilityRole="button"
                 disabled={isExportingImage}
                 onPress={() => {
                   setImageShareOptionsOpen(false);
                   exportMemoImage(imageShareFormat, {
-                    background: imageShareBackground,
+                    theme: imageShareTheme,
+                    fontStyle: imageShareFontStyle,
+                    showTitle: imageShareTitle,
                     showNotebook: imageShareNotebook,
                     showTags: imageShareTags,
                     showUpdatedAt: imageShareUpdatedAt,
@@ -1071,7 +1151,9 @@ export const MemoDetailModal = ({
                 style={[imageShareStyles.shareButton, isExportingImage && styles.buttonDisabled]}
               >
                 <Share2 color="#ffffff" size={18} />
-                <Text style={imageShareStyles.shareButtonText}>生成并分享</Text>
+                <Text style={imageShareStyles.shareButtonText}>
+                  {resolvedLocale === "en-US" ? "Generate & Share" : "生成并分享"}
+                </Text>
               </Pressable>
             </Pressable>
           </Pressable>
@@ -1143,6 +1225,47 @@ export const MemoDetailModal = ({
 };
 
 const imageShareStyles = StyleSheet.create({
+  sheetContainer: {
+    maxHeight: "85%",
+    paddingBottom: 24,
+  },
+  themeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  themeCard: {
+    width: "23%",
+    minWidth: 70,
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  themeCardActive: {
+    borderColor: "#16A06E",
+    borderWidth: 2,
+  },
+  themeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  themeLabel: {
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  themeLabelActive: {
+    color: "#0f172a",
+    fontWeight: "700",
+  },
   choice: {
     alignItems: "center",
     borderColor: "#cbd5e1",
@@ -1150,26 +1273,27 @@ const imageShareStyles = StyleSheet.create({
     borderWidth: 1,
     flex: 1,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 40,
     paddingHorizontal: 8,
+    backgroundColor: "#f8fafc",
   },
   choiceActive: {
     borderColor: "#16A06E",
     borderWidth: 2,
+    backgroundColor: "#ffffff",
   },
   choiceRow: {
     flexDirection: "row",
     gap: 8,
   },
   choiceText: {
-    color: "#0f172a",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  description: {
     color: "#64748b",
     fontSize: 13,
-    lineHeight: 20,
+    fontWeight: "600",
+  },
+  choiceTextActive: {
+    color: "#0f172a",
+    fontWeight: "700",
   },
   formatChoice: {
     alignItems: "center",
@@ -1178,11 +1302,9 @@ const imageShareStyles = StyleSheet.create({
     borderWidth: 1,
     flex: 1,
     justifyContent: "center",
-    minHeight: 44,
+    minHeight: 42,
     paddingHorizontal: 8,
-  },
-  mintChoice: {
-    backgroundColor: "#ecfdf5",
+    backgroundColor: "#f8fafc",
   },
   optionCheck: {
     color: "#16A06E",
@@ -1199,29 +1321,23 @@ const imageShareStyles = StyleSheet.create({
   optionRow: {
     alignItems: "center",
     flexDirection: "row",
-    minHeight: 42,
+    minHeight: 38,
     paddingHorizontal: 8,
   },
   shareButton: {
     alignItems: "center",
     backgroundColor: "#16A06E",
-    borderRadius: 9,
+    borderRadius: 10,
     flexDirection: "row",
     gap: 8,
     justifyContent: "center",
-    marginTop: 12,
+    marginTop: 16,
     minHeight: 48,
   },
   shareButtonText: {
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "800",
-  },
-  slateChoice: {
-    backgroundColor: "#f8fafc",
-  },
-  warmChoice: {
-    backgroundColor: "#fffbeb",
   },
 });
 
