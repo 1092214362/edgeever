@@ -11,6 +11,7 @@ import { Markdown } from "@tiptap/markdown";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import mermaid from "mermaid";
+import { toCanvas } from "html-to-image";
 import { createEdgeEverMathematics } from "./mathematics";
 
 /** Keep in sync with packages/shared MergeDivider (iOS bundle cannot import monorepo shared). */
@@ -68,6 +69,9 @@ type BridgeMessage =
   | { type: "imagePreview"; source: string; alt: string }
   | { type: "pickImage" }
   | { type: "searchResult"; count: number; index: number }
+  | { type: "imageExportChunk"; requestId: string; chunk: string }
+  | { type: "imageExportComplete"; requestId: string; filename: string; mimeType: string }
+  | { type: "imageExportError"; requestId: string; message: string }
   | { type: "activeFlags"; flags: number }
   | { type: "log"; message: string }
   | { type: "error"; message: string };
@@ -126,6 +130,19 @@ type ConfigureOptions = {
 };
 
 const startedAt = performance.now();
+const IMAGE_EXPORT_WIDTH = 768;
+const IMAGE_EXPORT_PIXEL_RATIO = 1.5;
+const IMAGE_EXPORT_CHUNK_SIZE = 256 * 1024;
+
+type ImageExportRequest = {
+  requestId: string;
+  format: "jpeg" | "png";
+  title: string;
+  fallbackTitle: string;
+  notebook?: string;
+  tags?: string[];
+  updatedAt?: string;
+};
 let mode: "viewer" | "editor" = "viewer";
 let locale = "zh-CN";
 let currentPlaceholder = "开始输入…";
@@ -140,6 +157,22 @@ function post(msg: BridgeMessage) {
   } catch {
     // native host unavailable (browser preview)
   }
+}
+
+function sanitizeImageExportBasename(title: string, fallback: string) {
+  return title.replace(/[\u0000-\u001f<>:"/\\|?*]/g, "-").replace(/\s+/g, " ").replace(/[. ]+$/g, "").trim().slice(0, 100) || fallback;
+}
+
+async function blobToBytes(blob: Blob) {
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
 }
 
 function isProtectedResource(src: string): boolean {
@@ -1052,6 +1085,79 @@ async function afterContentSet(theme: "light" | "dark" = "light") {
   }
 }
 
+async function exportNoteImage(request: ImageExportRequest) {
+  if (!request.requestId || (request.format !== "png" && request.format !== "jpeg")) return;
+  const host = document.createElement("div");
+  host.style.cssText = `position:fixed;left:-100000px;top:0;width:${IMAGE_EXPORT_WIDTH}px;pointer-events:none;`;
+  const documentRoot = document.createElement("div");
+  documentRoot.className = "edgeever-image-document";
+  const card = document.createElement("article");
+  card.className = "edgeever-image-card";
+  const title = document.createElement("h1");
+  title.className = "edgeever-image-title";
+  title.textContent = request.title || request.fallbackTitle;
+  card.appendChild(title);
+  const metadata = [request.notebook, request.updatedAt, ...(request.tags ?? []).map((tag) => `#${tag}`)].filter(Boolean);
+  if (metadata.length > 0) {
+    const meta = document.createElement("div");
+    meta.className = "edgeever-image-meta";
+    meta.textContent = metadata.join(" · ");
+    card.appendChild(meta);
+  }
+  const content = document.createElement("div");
+  content.className = "edgeever-image-content";
+  const editorClone = editor.view.dom.cloneNode(true) as HTMLElement;
+  editorClone.removeAttribute("contenteditable");
+  editorClone.querySelectorAll("button, [contenteditable='true']").forEach((element) => {
+    element.removeAttribute("contenteditable");
+    if (element instanceof HTMLButtonElement) element.remove();
+  });
+  content.appendChild(editorClone);
+  card.appendChild(content);
+  documentRoot.appendChild(card);
+  host.appendChild(documentRoot);
+  document.body.appendChild(host);
+
+  try {
+    await document.fonts?.ready;
+    await Promise.all(Array.from(documentRoot.querySelectorAll("img")).map(async (image) => {
+      if (image.complete) return;
+      try { await image.decode(); } catch { /* Export the readable remainder. */ }
+    }));
+    const totalHeight = Math.max(1, Math.ceil(documentRoot.getBoundingClientRect().height));
+    const canvas = await toCanvas(documentRoot, {
+      backgroundColor: "#f8fafc",
+      height: totalHeight,
+      pixelRatio: IMAGE_EXPORT_PIXEL_RATIO,
+      skipFonts: true,
+      width: IMAGE_EXPORT_WIDTH,
+    });
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => result ? resolve(result) : reject(new Error("Image renderer returned an empty file")),
+        request.format === "jpeg" ? "image/jpeg" : "image/png",
+        request.format === "jpeg" ? 0.9 : 1,
+      );
+    });
+
+    const extension = request.format === "jpeg" ? "jpg" : "png";
+    const basename = sanitizeImageExportBasename(request.title, request.fallbackTitle);
+    const bytes = await blobToBytes(blob);
+    const filename = `${basename}.${extension}`;
+    const mimeType = request.format === "jpeg" ? "image/jpeg" : "image/png";
+    const base64 = bytesToBase64(bytes);
+    for (let offset = 0; offset < base64.length; offset += IMAGE_EXPORT_CHUNK_SIZE) {
+      post({ type: "imageExportChunk", requestId: request.requestId, chunk: base64.slice(offset, offset + IMAGE_EXPORT_CHUNK_SIZE) });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    post({ type: "imageExportComplete", requestId: request.requestId, filename, mimeType });
+  } catch (error) {
+    post({ type: "imageExportError", requestId: request.requestId, message: error instanceof Error ? error.message : "Image export failed" });
+  } finally {
+    host.remove();
+  }
+}
+
 export type EdgeEverEditorAPI = {
   configure: (opts: ConfigureOptions) => void;
   setMarkdown: (md: string) => void;
@@ -1069,9 +1175,13 @@ export type EdgeEverEditorAPI = {
   completeImageUpload: (uploadId: string, imageUrl: string, alt: string) => void;
   cancelImageUpload: (uploadId: string) => void;
   search: (query: string, requestedIndex: number) => void;
+  exportImage: (request: ImageExportRequest) => void;
 };
 
 const api: EdgeEverEditorAPI = {
+  exportImage(request) {
+    void exportNoteImage(request);
+  },
   configure(opts) {
     const nextMode = opts.mode === "editor" ? "editor" : "viewer";
     const modeChanged = nextMode !== mode;

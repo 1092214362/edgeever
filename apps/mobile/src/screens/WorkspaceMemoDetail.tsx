@@ -5,7 +5,7 @@ import { Image as RNImage, Platform, StyleSheet, Text as RNText, View, type Imag
 import { Modal } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
-import { ActivityIndicator, ChevronDown, ChevronLeft, ChevronRight, Copy, History, MoreHorizontal, Pencil, RotateCcw, Search, Share2, Sparkles, Tag, Trash2, X } from "../components/icons";
+import { ActivityIndicator, ChevronDown, ChevronLeft, ChevronRight, Copy, Download, History, MoreHorizontal, Pencil, RotateCcw, Search, Share2, Sparkles, Tag, Trash2, X } from "../components/icons";
 import { Alert, Pressable, Text, TextInput } from "../components/LocalizedText";
 import LocalTiptapEditor, { type LocalTiptapEditorRef } from "../components/LocalTiptapEditor";
 import { MobileAiAssistantModal } from "../components/MobileAiAssistantModal";
@@ -36,6 +36,27 @@ import { styles } from "./workspace-styles";
 
 const ANDROID_SYSTEM_NAVIGATION_FALLBACK = 48;
 const RESOURCE_DATA_URL_CACHE_LIMIT = 32;
+
+type MobileImageExportEvent =
+  | { type: "chunk"; requestId: string; chunk: string }
+  | { type: "complete"; requestId: string; filename: string; mimeType: string }
+  | { type: "error"; requestId: string; message?: string };
+
+const decodeBase64Chunks = (chunks: string[]) => {
+  const parts = chunks.map((chunk) => {
+    const binary = atob(chunk);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  });
+  const output = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+};
 
 type SessionLike = { baseUrl: string; token: string } | null;
 type AuthenticatedImageSource = {
@@ -398,7 +419,10 @@ export const MemoDetailModal = ({
   const [imagePreview, setImagePreview] = useState<{ alt: string; source: string } | null>(null);
   const [resourceTarget, setResourceTarget] = useState<MobileResourceTarget | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
+  const [isExportingImage, setIsExportingImage] = useState(false);
   const viewerRef = useRef<LocalTiptapEditorRef>(null);
+  const imageExportRequestRef = useRef<string | null>(null);
+  const imageExportChunksRef = useRef<string[]>([]);
   const resourceDataUrlCacheRef = useRef(new Map<string, Promise<string | null>>());
   // One user-visible notice per opened memo (multi-image notes should not spam alerts).
   const imageLoadFailureNotifier = useMemo(
@@ -580,6 +604,72 @@ export const MemoDetailModal = ({
       );
     }
   };
+
+  const handleImageExportEvent = useCallback(async (payloadJson: string) => {
+    let event: MobileImageExportEvent;
+    try {
+      event = JSON.parse(payloadJson) as MobileImageExportEvent;
+    } catch {
+      return;
+    }
+    if (!event.requestId || event.requestId !== imageExportRequestRef.current) return;
+    if (event.type === "chunk") {
+      imageExportChunksRef.current.push(event.chunk);
+      return;
+    }
+    if (event.type === "error") {
+      imageExportChunksRef.current = [];
+      imageExportRequestRef.current = null;
+      setIsExportingImage(false);
+      Alert.alert(
+        resolvedLocale === "en-US" ? "Image export failed" : "导出笔记图片失败",
+        event.message || (resolvedLocale === "en-US" ? "Try again later." : "请稍后重试。")
+      );
+      return;
+    }
+
+    try {
+      const { Directory, File, Paths } = await import("expo-file-system");
+      const directory = new Directory(Paths.cache, "edgeever-note-exports");
+      if (!directory.exists) directory.create({ idempotent: true, intermediates: true });
+      const file = new File(directory, event.filename);
+      if (file.exists) file.delete();
+      file.create({ overwrite: true, intermediates: true });
+      file.write(decodeBase64Chunks(imageExportChunksRef.current));
+      const Sharing = await import("expo-sharing");
+      if (!(await Sharing.isAvailableAsync())) throw new Error(resolvedLocale === "en-US" ? "Sharing is unavailable on this device." : "当前设备无法打开系统分享面板。");
+      await Sharing.shareAsync(file.uri, {
+        dialogTitle: event.filename,
+        mimeType: event.mimeType,
+      });
+    } catch (error) {
+      Alert.alert(
+        resolvedLocale === "en-US" ? "Image export failed" : "导出笔记图片失败",
+        error instanceof Error ? error.message : (resolvedLocale === "en-US" ? "Try again later." : "请稍后重试。")
+      );
+    } finally {
+      imageExportChunksRef.current = [];
+      imageExportRequestRef.current = null;
+      setIsExportingImage(false);
+    }
+  }, [resolvedLocale]);
+
+  const exportMemoImage = useCallback((format: "jpeg" | "png") => {
+    if (!memo || !viewerReady || isExportingImage) return;
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    imageExportRequestRef.current = requestId;
+    imageExportChunksRef.current = [];
+    setIsExportingImage(true);
+    safeDomCall(() => viewerRef.current?.exportImage(JSON.stringify({
+      requestId,
+      format,
+      title: memo.title?.trim() || (resolvedLocale === "en-US" ? "Untitled note" : "无标题笔记"),
+      fallbackTitle: resolvedLocale === "en-US" ? "Untitled note" : "无标题笔记",
+      notebook: notebookName,
+      tags: memo.tags,
+      updatedAt: new Date(memo.updatedAt).toLocaleString(resolvedLocale),
+    })));
+  }, [isExportingImage, memo, notebookName, resolvedLocale, viewerReady]);
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} presentationStyle="fullScreen" visible={visible}>
@@ -809,6 +899,7 @@ export const MemoDetailModal = ({
                 locale={resolvedLocale}
                 mode="viewer"
                 onImagePreview={onImagePreview}
+                onImageExportEvent={handleImageExportEvent}
                 onLoadResource={loadViewerResource}
                 onReady={async () => {
                   setViewerReady(true);
@@ -869,6 +960,18 @@ export const MemoDetailModal = ({
                   icon={<Copy color="#0f172a" size={18} />}
                   label={canCopyMemoId ? "复制笔记 ID" : "同步后可复制笔记 ID"}
                   onPress={() => closeActionsAndRun(() => void copyMemoId())}
+                />
+                <DetailActionSheetItem
+                  disabled={isExportingImage || !viewerReady}
+                  icon={isExportingImage ? <ActivityIndicator color="#16A06E" size="small" /> : <Download color="#0f172a" size={18} />}
+                  label={isExportingImage ? "正在导出图片" : "导出 PNG"}
+                  onPress={() => closeActionsAndRun(() => exportMemoImage("png"))}
+                />
+                <DetailActionSheetItem
+                  disabled={isExportingImage || !viewerReady}
+                  icon={<Download color="#0f172a" size={18} />}
+                  label="导出 JPEG"
+                  onPress={() => closeActionsAndRun(() => exportMemoImage("jpeg"))}
                 />
                 {memo.isDeleted ? (
                   <>

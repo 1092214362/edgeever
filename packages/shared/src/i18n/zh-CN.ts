@@ -1007,6 +1007,14 @@ export const zhCN = {
     exportMarkdown: "导出 Markdown",
     exportHtml: "导出 HTML",
     exportPdf: "导出 PDF",
+    exportPng: "导出 PNG",
+    exportJpeg: "导出 JPEG",
+    imageExport: {
+      error: "导出笔记图片失败。",
+      inProgress: "已有笔记图片正在导出，请稍候。",
+      imageEmbedPartial: "图片已导出，但笔记中的 {{total}} 张图片有 {{failed}} 张未能包含。",
+      imageEmbedFailed: "图片已导出，但笔记中的 {{total}} 张图片均未能包含。",
+    },
     htmlExport: {
       error: "导出 HTML 失败。",
       imageEmbedPartial:

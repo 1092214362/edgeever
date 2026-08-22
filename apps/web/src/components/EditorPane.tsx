@@ -36,6 +36,7 @@ import {
   Info,
   FileDown,
   FileCode2,
+  ImageDown,
   Printer,
   Link2,
   Copy,
@@ -148,6 +149,7 @@ import { downloadMarkdownFile } from "@/lib/note-markdown-export";
 import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
 import { downloadNoteHtmlFile, getHtmlImageEmbedNoticeKind } from "@/lib/note-html-export";
 import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
+import { downloadNoteImage, type NoteImageFormat } from "@/lib/note-image-export";
 import { getAiSlashCommandStart, saveAndSyncEditor, shouldOpenAiFromSpace } from "@/lib/editor-shortcuts";
 import {
   AI_SPACE_SHORTCUT_CHANGED_EVENT,
@@ -2859,6 +2861,59 @@ const RichEditorPane = ({
     useMobilePlainTextEditor,
   ]);
 
+  const imageExportInProgressRef = useRef(false);
+  const handleExportImage = useCallback(async (format: NoteImageFormat) => {
+    if (!isEditorReady(editor) || !memo) return;
+    if (imageExportInProgressRef.current) {
+      window.alert(t("editor.imageExport.inProgress"));
+      return;
+    }
+
+    imageExportInProgressRef.current = true;
+    const currentDocument = useMobilePlainTextEditor
+      ? markdownToDoc(getMobilePlainTextValue())
+      : useMarkdownSourceEditor
+        ? markdownToDoc(markdownSource)
+        : editor.getJSON() as TiptapDoc;
+
+    try {
+      const result = await downloadNoteImage({
+        bodyHtml: serializeNoteDocumentForPrint(editor, currentDocument),
+        title: title.trim() || t("common.untitledMemo"),
+        notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
+        tags: parseTagsText(tagsText),
+        updatedAt: formatDateTime(memo.updatedAt),
+        language: i18n.resolvedLanguage ?? i18n.language,
+        fallbackTitle: t("common.untitledMemo"),
+        format,
+        styles: NOTE_HTML_FULL_STYLES,
+      });
+      const noticeKind = getHtmlImageEmbedNoticeKind(result.images);
+      if (noticeKind === "partial") {
+        window.alert(t("editor.imageExport.imageEmbedPartial", result.images));
+      } else if (noticeKind === "failed-all") {
+        window.alert(t("editor.imageExport.imageEmbedFailed", result.images));
+      }
+    } catch {
+      window.alert(t("editor.imageExport.error"));
+    } finally {
+      imageExportInProgressRef.current = false;
+    }
+  }, [
+    editor,
+    getMobilePlainTextValue,
+    i18n.language,
+    i18n.resolvedLanguage,
+    markdownSource,
+    memo,
+    notebookOptions,
+    t,
+    tagsText,
+    title,
+    useMarkdownSourceEditor,
+    useMobilePlainTextEditor,
+  ]);
+
   const handleSaveAsTemplate = useCallback(() => {
     if (!memo) {
       return;
@@ -2909,6 +2964,12 @@ const RichEditorPane = ({
       case "export-pdf":
         handleExportPdf(documentActionRequest.printWindow);
         break;
+      case "export-png":
+        void handleExportImage("png");
+        break;
+      case "export-jpeg":
+        void handleExportImage("jpeg");
+        break;
       case "save-as-template":
         handleSaveAsTemplate();
         break;
@@ -2917,6 +2978,7 @@ const RichEditorPane = ({
     documentActionRequest,
     editor,
     handleExportHtml,
+    handleExportImage,
     handleExportMarkdown,
     handleExportPdf,
     handleSaveAsTemplate,
@@ -4227,6 +4289,20 @@ const RichEditorPane = ({
                 >
                   <Printer className="h-4 w-4 text-slate-500" />
                   {t("editor.exportPdf")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={() => void handleExportImage("png")}
+                >
+                  <ImageDown className="h-4 w-4 text-slate-500" />
+                  {t("editor.exportPng")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+                  onClick={() => void handleExportImage("jpeg")}
+                >
+                  <ImageDown className="h-4 w-4 text-slate-500" />
+                  {t("editor.exportJpeg")}
                 </DropdownMenuItem>
                 {readOnly ? (
                   <>

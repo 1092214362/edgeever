@@ -1007,6 +1007,16 @@ export const enUS = {
     exportMarkdown: "Export Markdown",
     exportHtml: "Export HTML",
     exportPdf: "Export PDF",
+    exportPng: "Export PNG",
+    exportJpeg: "Export JPEG",
+    imageExport: {
+      error: "Could not export the note as an image.",
+      inProgress: "An image export is already in progress.",
+      imageEmbedPartial:
+        "Image exported, but {{failed}} of {{total}} note image(s) could not be included.",
+      imageEmbedFailed:
+        "Image exported, but none of the {{total}} note images could be included.",
+    },
     htmlExport: {
       error: "Could not export the note as HTML.",
       imageEmbedPartial:
