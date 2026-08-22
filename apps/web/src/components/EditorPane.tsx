@@ -159,6 +159,7 @@ import {
   getStoredEditorLinkOpenMode,
   resolveEditorLinkRequireModifier,
   shouldOpenEditorLink,
+  shouldOpenInternalNoteLink,
   shouldShowEditorLinkOpenHint,
   type EditorLinkOpenMode,
 } from "@/lib/editor-link-click";
@@ -1645,11 +1646,16 @@ const RichEditorPane = ({
   }, [cancelResourceMenuHide, isMobileViewport, showResourceMenu]);
 
   const showEditorLinkOpenHint = useCallback((target: EventTarget | null) => {
+    const link = getEditorNavigableLinkFromEventTarget(target);
+    if (parseMemoLinkHref(link?.getAttribute("href"))) {
+      setNoteLinkHintPosition(null);
+      return;
+    }
+
     if (!shouldShowEditorLinkOpenHint(Boolean(editor?.isEditable), isMobileViewport, editorLinkOpenMode)) {
       return;
     }
 
-    const link = getEditorNavigableLinkFromEventTarget(target);
     if (link) {
       setNoteLinkHintPosition(getNoteLinkHintPosition(link));
     } else {
@@ -1685,10 +1691,20 @@ const RichEditorPane = ({
   }, [scheduleResourceMenuHide]);
 
   const handleEditorClickCapture = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    const noteLink = getNoteLinkFromEventTarget(event.target);
+    const memoId = parseMemoLinkHref(noteLink?.getAttribute("href"));
+    if (shouldOpenInternalNoteLink(event, memoId)) {
+      event.preventDefault();
+      event.stopPropagation();
+      setNoteLinkHintPosition(null);
+      onOpenMemo?.(memoId as string);
+      return;
+    }
+
     if (event.button === 0 && !event.ctrlKey && !event.metaKey) {
       showEditorLinkOpenHint(event.target);
     }
-  }, [showEditorLinkOpenHint]);
+  }, [onOpenMemo, showEditorLinkOpenHint]);
 
   const handleEditorFocusCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
     if (showAttachmentMenu(event.target)) return;
