@@ -5,6 +5,7 @@
     "": {
       "name": "@edgeever/ios-editor",
       "dependencies": {
+        "@edgeever/shared": "file:../../../packages/shared",
         "@tiptap/core": "3.27.1",
         "@tiptap/extension-code-block": "3.27.1",
         "@tiptap/extension-image": "3.27.1",
@@ -32,6 +33,8 @@
     "@braintree/sanitize-url": ["@braintree/sanitize-url@7.1.2", "", {}, "sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA=="],
 
     "@chevrotain/types": ["@chevrotain/types@11.1.2", "", {}, "sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw=="],
+
+    "@edgeever/shared": ["@edgeever/shared@file:../../../packages/shared", { "dependencies": { "@tiptap/core": "3.27.1", "@tiptap/extension-image": "3.27.1", "@tiptap/extension-list": "3.27.1", "@tiptap/extension-mathematics": "3.27.1", "@tiptap/extension-table": "3.27.1", "@tiptap/markdown": "3.27.1", "@tiptap/pm": "3.27.1", "@tiptap/starter-kit": "3.27.1", "katex": "0.16.22" } }],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.12", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA=="],
 

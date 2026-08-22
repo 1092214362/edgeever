@@ -12,6 +12,19 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import mermaid from "mermaid";
 import { toCanvas } from "html-to-image";
+import {
+  type NoteImageTheme,
+  type NoteImageFontStyle,
+  type NoteImageFontSize,
+  type NoteImageCardWidth,
+  NOTE_IMAGE_CARD_WIDTH_PIXELS,
+  NOTE_IMAGE_BACKGROUND_COLORS,
+  NOTE_IMAGE_THEMES,
+  resolveTheme,
+  buildImageExportBasename,
+  buildNoteImageCardMarkup,
+  generateCardCss,
+} from "@edgeever/shared/note-image-card";
 import { createEdgeEverMathematics } from "./mathematics";
 
 /** Keep in sync with packages/shared MergeDivider (iOS bundle cannot import monorepo shared). */
@@ -142,7 +155,15 @@ type ImageExportRequest = {
   notebook?: string;
   tags?: string[];
   updatedAt?: string;
-  background?: "mint" | "slate" | "warm";
+  background?: "mint" | "slate" | "warm" | NoteImageTheme;
+  theme?: NoteImageTheme;
+  fontStyle?: NoteImageFontStyle;
+  fontSize?: NoteImageFontSize;
+  cardWidth?: NoteImageCardWidth;
+  showTitle?: boolean;
+  showNotebook?: boolean;
+  showTags?: boolean;
+  showUpdatedAt?: boolean;
   branding?: boolean;
 };
 let mode: "viewer" | "editor" = "viewer";
@@ -1089,41 +1110,49 @@ async function afterContentSet(theme: "light" | "dark" = "light") {
 
 async function exportNoteImage(request: ImageExportRequest) {
   if (!request.requestId || (request.format !== "png" && request.format !== "jpeg")) return;
-  const host = document.createElement("div");
-  host.style.cssText = `position:fixed;left:-100000px;top:0;width:${IMAGE_EXPORT_WIDTH}px;pointer-events:none;`;
-  const documentRoot = document.createElement("div");
-  documentRoot.className = "edgeever-image-document";
-  const card = document.createElement("article");
-  card.className = "edgeever-image-card";
-  const title = document.createElement("h1");
-  title.className = "edgeever-image-title";
-  title.textContent = request.title || request.fallbackTitle;
-  card.appendChild(title);
-  const metadata = [request.notebook, request.updatedAt, ...(request.tags ?? []).map((tag) => `#${tag}`)].filter(Boolean);
-  if (metadata.length > 0) {
-    const meta = document.createElement("div");
-    meta.className = "edgeever-image-meta";
-    meta.textContent = metadata.join(" · ");
-    card.appendChild(meta);
-  }
-  const content = document.createElement("div");
-  content.className = "edgeever-image-content";
+  const resolvedTheme = resolveTheme(request.background, request.theme);
+  const fontStyle = request.fontStyle ?? "serif";
+  const fontSize = request.fontSize ?? "lg";
+  const cardWidth = request.cardWidth ?? "standard";
+  const targetWidth = NOTE_IMAGE_CARD_WIDTH_PIXELS[cardWidth] || 680;
+  const themeCfg = NOTE_IMAGE_THEMES[resolvedTheme] || NOTE_IMAGE_THEMES.slate;
+
   const editorClone = editor.view.dom.cloneNode(true) as HTMLElement;
   editorClone.removeAttribute("contenteditable");
   editorClone.querySelectorAll("button, [contenteditable='true']").forEach((element) => {
     element.removeAttribute("contenteditable");
     if (element instanceof HTMLButtonElement) element.remove();
   });
-  content.appendChild(editorClone);
-  card.appendChild(content);
-  if (request.branding) {
-    const footer = document.createElement("footer");
-    footer.className = "edgeever-image-brand";
-    footer.innerHTML = '<span class="edgeever-image-brand-mark"></span><span>Made with <span class="edgeever-image-brand-name">EdgeEver</span></span>';
-    card.appendChild(footer);
-  }
-  documentRoot.appendChild(card);
-  host.appendChild(documentRoot);
+
+  const bodyHtml = editorClone.innerHTML;
+
+  const host = document.createElement("div");
+  host.style.cssText = `position:fixed;left:-100000px;top:0;width:${targetWidth}px;pointer-events:none;`;
+  const style = document.createElement("style");
+  style.textContent = generateCardCss({ theme: resolvedTheme, fontStyle, fontSize, cardWidth });
+
+  const cardMarkup = buildNoteImageCardMarkup({
+    title: request.title || request.fallbackTitle,
+    notebook: request.notebook,
+    tags: request.tags,
+    updatedAt: request.updatedAt,
+    bodyHtml,
+    theme: resolvedTheme,
+    fontStyle,
+    showTitle: request.showTitle ?? true,
+    showNotebook: request.showNotebook ?? false,
+    showTags: request.showTags ?? false,
+    showUpdatedAt: request.showUpdatedAt ?? true,
+    showBranding: request.branding ?? true,
+  });
+
+  host.appendChild(style);
+  host.insertAdjacentHTML("beforeend", cardMarkup);
+  const documentRoot = host.lastElementChild as HTMLElement;
+  documentRoot.style.width = `${targetWidth}px`;
+  documentRoot.style.maxWidth = "none";
+  documentRoot.style.margin = "0";
+
   document.body.appendChild(host);
 
   try {
@@ -1133,29 +1162,26 @@ async function exportNoteImage(request: ImageExportRequest) {
       try { await image.decode(); } catch { /* Export the readable remainder. */ }
     }));
     const totalHeight = Math.max(1, Math.ceil(documentRoot.getBoundingClientRect().height));
-    const backgroundColor = {
-      mint: "#ecfdf5",
-      slate: "#f8fafc",
-      warm: "#fffbeb",
-    }[request.background ?? "slate"];
-    documentRoot.style.backgroundColor = backgroundColor;
+    const backgroundColor = NOTE_IMAGE_BACKGROUND_COLORS[resolvedTheme] || themeCfg.canvasBg;
+
     const canvas = await toCanvas(documentRoot, {
       backgroundColor,
+      cacheBust: false,
       height: totalHeight,
-      pixelRatio: IMAGE_EXPORT_PIXEL_RATIO,
+      pixelRatio: 2,
       skipFonts: true,
-      width: IMAGE_EXPORT_WIDTH,
+      width: targetWidth,
     });
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         (result) => result ? resolve(result) : reject(new Error("Image renderer returned an empty file")),
         request.format === "jpeg" ? "image/jpeg" : "image/png",
-        request.format === "jpeg" ? 0.9 : 1,
+        request.format === "jpeg" ? 0.92 : 1,
       );
     });
 
     const extension = request.format === "jpeg" ? "jpg" : "png";
-    const basename = sanitizeImageExportBasename(request.title, request.fallbackTitle);
+    const basename = buildImageExportBasename(request.title, request.fallbackTitle);
     const bytes = await blobToBytes(blob);
     const filename = `${basename}.${extension}`;
     const mimeType = request.format === "jpeg" ? "image/jpeg" : "image/png";

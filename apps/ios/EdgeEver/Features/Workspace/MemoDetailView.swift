@@ -20,9 +20,11 @@ struct MemoDetailView: View {
     @State private var imageExportBuffer = MemoImageExportBuffer()
     @State private var imageShareOptionsOpen = false
     @State private var imageShareFormat = "png"
-    @State private var imageShareBackground = "slate"
-    @State private var imageShareNotebook = true
-    @State private var imageShareTags = true
+    @State private var imageShareTheme = "slate"
+    @State private var imageShareFontStyle = "serif"
+    @State private var imageShareTitle = true
+    @State private var imageShareNotebook = false
+    @State private var imageShareTags = false
     @State private var imageShareUpdatedAt = true
     @State private var imageShareBranding = true
     @State private var error: String?
@@ -130,15 +132,29 @@ struct MemoDetailView: View {
         .sheet(isPresented: $imageShareOptionsOpen) {
             NavigationStack {
                 Form {
-                    Section(env.preferences.t("背景", en: "Background")) {
-                        Picker(env.preferences.t("背景", en: "Background"), selection: $imageShareBackground) {
-                            Text(env.preferences.t("简洁", en: "Clean")).tag("slate")
+                    Section(env.preferences.t("主题风格", en: "Theme")) {
+                        Picker(env.preferences.t("主题风格", en: "Theme"), selection: $imageShareTheme) {
+                            Text(env.preferences.t("经典浅色", en: "Light")).tag("slate")
+                            Text(env.preferences.t("极光渐变", en: "Aurora")).tag("aurora")
+                            Text(env.preferences.t("暮色晚霞", en: "Sunset")).tag("sunset")
+                            Text(env.preferences.t("暗夜曜石", en: "Midnight")).tag("midnight")
                             Text(env.preferences.t("薄荷", en: "Mint")).tag("mint")
-                            Text(env.preferences.t("暖色", en: "Warm")).tag("warm")
+                            Text(env.preferences.t("紫雾流光", en: "Lavender")).tag("lavender")
+                            Text(env.preferences.t("经典便签", en: "Notepad")).tag("notepad")
+                            Text(env.preferences.t("水墨宣纸", en: "Rice Paper")).tag("xuan")
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    Section(env.preferences.t("字体风格", en: "Typography")) {
+                        Picker(env.preferences.t("字体风格", en: "Typography"), selection: $imageShareFontStyle) {
+                            Text(env.preferences.t("文艺衬线", en: "Serif")).tag("serif")
+                            Text(env.preferences.t("现代无衬线", en: "Sans")).tag("sans")
+                            Text(env.preferences.t("极客等宽", en: "Mono")).tag("mono")
                         }
                         .pickerStyle(.segmented)
                     }
-                    Section(env.preferences.t("笔记信息", en: "Note information")) {
+                    Section(env.preferences.t("显示内容", en: "Content elements")) {
+                        Toggle(env.preferences.t("笔记标题", en: "Note title"), isOn: $imageShareTitle)
                         Toggle(env.preferences.t("笔记本", en: "Notebook"), isOn: $imageShareNotebook)
                         Toggle(env.preferences.t("标签", en: "Tags"), isOn: $imageShareTags)
                         Toggle(env.preferences.t("更新时间", en: "Updated time"), isOn: $imageShareUpdatedAt)
@@ -146,8 +162,8 @@ struct MemoDetailView: View {
                     }
                     Section(env.preferences.t("图片格式", en: "Image format")) {
                         Picker(env.preferences.t("图片格式", en: "Image format"), selection: $imageShareFormat) {
-                            Text(env.preferences.t("PNG · 文字更清晰", en: "PNG · Best for text")).tag("png")
-                            Text(env.preferences.t("JPEG · 文件更小", en: "JPEG · Smaller file")).tag("jpeg")
+                            Text(env.preferences.t("PNG · 超清无损", en: "PNG · Best for text")).tag("png")
+                            Text(env.preferences.t("JPEG · 体积小", en: "JPEG · Smaller file")).tag("jpeg")
                         }
                         .pickerStyle(.segmented)
                     }
@@ -165,7 +181,9 @@ struct MemoDetailView: View {
                             exportMemoImage(
                                 memo,
                                 format: imageShareFormat,
-                                background: imageShareBackground,
+                                theme: imageShareTheme,
+                                fontStyle: imageShareFontStyle,
+                                showTitle: imageShareTitle,
                                 showNotebook: imageShareNotebook,
                                 showTags: imageShareTags,
                                 showUpdatedAt: imageShareUpdatedAt,
@@ -923,11 +941,13 @@ struct MemoDetailView: View {
     private func exportMemoImage(
         _ memo: MemoDetail,
         format: String,
-        background: String = "slate",
-        showNotebook: Bool = true,
-        showTags: Bool = true,
+        theme: String = "slate",
+        fontStyle: String = "serif",
+        showTitle: Bool = true,
+        showNotebook: Bool = false,
+        showTags: Bool = false,
         showUpdatedAt: Bool = true,
-        showBranding: Bool = false
+        showBranding: Bool = true
     ) {
         guard !imageExporting, bodyReady else { return }
         let requestId = UUID().uuidString
@@ -942,7 +962,12 @@ struct MemoDetailView: View {
             "notebook": showNotebook ? notebookName(for: memo) : "",
             "tags": showTags ? memo.tags : [],
             "updatedAt": showUpdatedAt ? memo.updatedAt : "",
-            "background": background,
+            "theme": theme,
+            "fontStyle": fontStyle,
+            "showTitle": showTitle,
+            "showNotebook": showNotebook,
+            "showTags": showTags,
+            "showUpdatedAt": showUpdatedAt,
             "branding": showBranding,
         ])
     }
