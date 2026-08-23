@@ -10,9 +10,14 @@ on:
         options:
           - inspect
           - start
+          - monitor
         default: inspect
       workflow_id:
         description: Optional Xcode Cloud workflow ID; auto-selects a single enabled Archive workflow when empty
+        required: false
+        type: string
+      build_run_id:
+        description: Xcode Cloud build run ID to monitor
         required: false
         type: string
 
@@ -23,6 +28,7 @@ jobs:
   xcode-cloud:
     if: github.repository == 'tianma-if/edgeever'
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Install App Store Connect client dependencies
         run: python3 -m pip install --quiet PyJWT cryptography
@@ -35,6 +41,7 @@ jobs:
           ASC_API_KEY_BASE64: ${{ secrets.EDGEEVER_APPLE_API_KEY_BASE64 }}
           XCODE_CLOUD_MODE: ${{ inputs.mode }}
           XCODE_CLOUD_WORKFLOW_ID: ${{ inputs.workflow_id }}
+          XCODE_CLOUD_BUILD_RUN_ID: ${{ inputs.build_run_id }}
         run: |
           python3 - <<'PY'
           import base64
@@ -54,6 +61,7 @@ jobs:
           private_key = base64.b64decode(os.environ["ASC_API_KEY_BASE64"]).decode()
           mode = os.environ["XCODE_CLOUD_MODE"]
           requested_workflow_id = os.environ.get("XCODE_CLOUD_WORKFLOW_ID", "").strip()
+          build_run_id = os.environ.get("XCODE_CLOUD_BUILD_RUN_ID", "").strip()
 
           now = int(time.time())
           token = jwt.encode(
@@ -79,6 +87,54 @@ jobs:
               except urllib.error.HTTPError as error:
                   details = error.read().decode()
                   raise SystemExit(f"App Store Connect API {method} {path} failed ({error.code}): {details}")
+
+          if mode == "monitor":
+              if not build_run_id:
+                  raise SystemExit("build_run_id is required in monitor mode")
+              deadline = time.time() + 85 * 60
+              while True:
+                  run = api("GET", f"/v1/ciBuildRuns/{build_run_id}")["data"]
+                  attributes = run.get("attributes") or {}
+                  progress = attributes.get("executionProgress")
+                  completion = attributes.get("completionStatus")
+                  print(
+                      f"Xcode Cloud build #{attributes.get('number')} "
+                      f"progress={progress} completion={completion}",
+                      flush=True,
+                  )
+                  if progress == "COMPLETE":
+                      actions = api(
+                          "GET",
+                          f"/v1/ciBuildRuns/{build_run_id}/actions?limit=200&"
+                          "fields[ciBuildActions]=name,actionType,executionProgress,completionStatus,issueCounts",
+                      )
+                      for action in actions.get("data", []):
+                          action_attributes = action.get("attributes") or {}
+                          print(
+                              f"- action={action_attributes.get('name')} "
+                              f"type={action_attributes.get('actionType')} "
+                              f"completion={action_attributes.get('completionStatus')} "
+                              f"issues={action_attributes.get('issueCounts')}"
+                          )
+                      builds = api(
+                          "GET",
+                          f"/v1/ciBuildRuns/{build_run_id}/builds?limit=50&"
+                          "fields[builds]=version,processingState,uploadedDate",
+                      )
+                      for build in builds.get("data", []):
+                          build_attributes = build.get("attributes") or {}
+                          print(
+                              f"- App Store build id={build.get('id')} "
+                              f"version={build_attributes.get('version')} "
+                              f"processing={build_attributes.get('processingState')} "
+                              f"uploaded={build_attributes.get('uploadedDate')}"
+                          )
+                      if completion != "SUCCEEDED":
+                          raise SystemExit(f"Xcode Cloud build completed with {completion}")
+                      raise SystemExit(0)
+                  if time.time() >= deadline:
+                      raise SystemExit("Timed out waiting for Xcode Cloud build")
+                  time.sleep(30)
 
           product = api("GET", f"/v1/apps/{app_id}/ciProduct").get("data")
           workflows = []
