@@ -12,6 +12,7 @@ on:
           - start
           - monitor
           - store-status
+          - submit-review
         default: inspect
       workflow_id:
         description: Optional Xcode Cloud workflow ID; auto-selects a single enabled Archive workflow when empty
@@ -36,7 +37,7 @@ permissions:
 
 jobs:
   xcode-cloud:
-    if: github.repository == 'tianma-if/edgeever'
+    if: github.repository == 'tianma-if/edgeever' && inputs.mode != 'submit-review'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -261,3 +262,34 @@ jobs:
               f"status={attributes.get('executionProgress')}"
           )
           PY
+
+  submit-review:
+    if: github.repository == 'tianma-if/edgeever' && inputs.mode == 'submit-review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the submission source
+        uses: actions/checkout@v4
+
+      - name: Install fastlane
+        run: gem install fastlane --no-document
+
+      - name: Submit App Store build for review
+        env:
+          APP_STORE_BUILD_NUMBER: "38"
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.EDGEEVER_APPLE_API_ISSUER }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.EDGEEVER_APPLE_API_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.EDGEEVER_APPLE_API_KEY_BASE64 }}
+          APP_STORE_RELEASE_NOTES_ZH: |-
+            新增精美的笔记分享图片导出，支持 PNG/JPEG、8 款海报主题、排版与品牌样式调节。
+            支持通过 @ 建议快速链接笔记，并可从编辑器直接打开引用。
+            新增插入当前日期或时间的编辑器斜杠命令。
+            提升同步占位记录协调时的编辑内容保留可靠性。
+          APP_STORE_RELEASE_NOTES_EN: |-
+            Export polished shareable note images as PNG or JPEG with eight poster themes, typography controls, and brand styling.
+            Link notes with @ suggestions and open references directly from the editor.
+            Insert the current date or time through new editor slash commands.
+            Preserve edits more reliably while reconciling synchronized memo placeholders.
+          APP_STORE_VERSION: ${{ inputs.app_store_version }}
+        run: fastlane ios submit_review
+        working-directory: apps/ios
