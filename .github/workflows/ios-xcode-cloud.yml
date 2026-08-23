@@ -1,0 +1,150 @@
+name: Control iOS Xcode Cloud
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Inspect workflows or start the selected Archive workflow
+        required: true
+        type: choice
+        options:
+          - inspect
+          - start
+        default: inspect
+      workflow_id:
+        description: Optional Xcode Cloud workflow ID; auto-selects a single enabled Archive workflow when empty
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  xcode-cloud:
+    if: github.repository == 'tianma-if/edgeever'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install App Store Connect client dependencies
+        run: python3 -m pip install --quiet PyJWT cryptography
+
+      - name: Inspect or start Xcode Cloud
+        env:
+          ASC_APP_ID: "6792625631"
+          ASC_API_ISSUER: ${{ secrets.EDGEEVER_APPLE_API_ISSUER }}
+          ASC_API_KEY_ID: ${{ secrets.EDGEEVER_APPLE_API_KEY_ID }}
+          ASC_API_KEY_BASE64: ${{ secrets.EDGEEVER_APPLE_API_KEY_BASE64 }}
+          XCODE_CLOUD_MODE: ${{ inputs.mode }}
+          XCODE_CLOUD_WORKFLOW_ID: ${{ inputs.workflow_id }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import re
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          import jwt
+
+          app_id = os.environ["ASC_APP_ID"]
+          issuer = os.environ["ASC_API_ISSUER"]
+          key_id = os.environ["ASC_API_KEY_ID"]
+          private_key = base64.b64decode(os.environ["ASC_API_KEY_BASE64"]).decode()
+          mode = os.environ["XCODE_CLOUD_MODE"]
+          requested_workflow_id = os.environ.get("XCODE_CLOUD_WORKFLOW_ID", "").strip()
+
+          now = int(time.time())
+          token = jwt.encode(
+              {"iss": issuer, "iat": now, "exp": now + 20 * 60, "aud": "appstoreconnect-v1"},
+              private_key,
+              algorithm="ES256",
+              headers={"kid": key_id, "typ": "JWT"},
+          )
+
+          def api(method, path, body=None):
+              request = urllib.request.Request(
+                  "https://api.appstoreconnect.apple.com" + path,
+                  data=None if body is None else json.dumps(body).encode(),
+                  method=method,
+              )
+              request.add_header("Authorization", f"Bearer {token}")
+              if body is not None:
+                  request.add_header("Content-Type", "application/json")
+              try:
+                  with urllib.request.urlopen(request) as response:
+                      payload = response.read().decode()
+                      return json.loads(payload) if payload else {}
+              except urllib.error.HTTPError as error:
+                  details = error.read().decode()
+                  raise SystemExit(f"App Store Connect API {method} {path} failed ({error.code}): {details}")
+
+          products = api("GET", f"/v1/apps/{app_id}/ciProducts?limit=10")
+          workflows = []
+          for product in products.get("data", []):
+              product_id = product["id"]
+              query = urllib.parse.urlencode({
+                  "limit": 50,
+                  "fields[ciWorkflows]": "name,isEnabled,lastModifiedDate",
+              })
+              response = api("GET", f"/v1/ciProducts/{product_id}/workflows?{query}")
+              workflows.extend(response.get("data", []))
+
+          if not workflows:
+              raise SystemExit("No Xcode Cloud workflows found for EdgeEver")
+
+          print("Available Xcode Cloud workflows:")
+          for workflow in workflows:
+              attributes = workflow.get("attributes") or {}
+              print(
+                  f"- id={workflow['id']} name={attributes.get('name')} "
+                  f"enabled={attributes.get('isEnabled')} modified={attributes.get('lastModifiedDate')}"
+              )
+
+          if mode == "inspect":
+              raise SystemExit(0)
+
+          if requested_workflow_id:
+              matches = [workflow for workflow in workflows if workflow["id"] == requested_workflow_id]
+          else:
+              matches = [
+                  workflow
+                  for workflow in workflows
+                  if (workflow.get("attributes") or {}).get("isEnabled")
+                  and re.search(
+                      r"archive|app\s*store|release",
+                      str((workflow.get("attributes") or {}).get("name", "")),
+                      re.IGNORECASE,
+                  )
+              ]
+
+          if len(matches) != 1:
+              raise SystemExit(
+                  f"Expected exactly one matching enabled Archive workflow, found {len(matches)}; "
+                  "rerun with workflow_id from the list above"
+              )
+
+          workflow = matches[0]
+          result = api(
+              "POST",
+              "/v1/ciBuildRuns",
+              {
+                  "data": {
+                      "type": "ciBuildRuns",
+                      "attributes": {},
+                      "relationships": {
+                          "workflow": {
+                              "data": {"type": "ciWorkflows", "id": workflow["id"]}
+                          }
+                      },
+                  }
+              },
+          )
+          build = result["data"]
+          attributes = build.get("attributes") or {}
+          print(
+              f"Started Xcode Cloud build id={build['id']} number={attributes.get('number')} "
+              f"status={attributes.get('executionProgress')}"
+          )
+          PY
