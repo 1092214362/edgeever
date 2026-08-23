@@ -140,7 +140,7 @@ export const PreferenceCard = ({
   }, []);
 
   const activeCustom = customEditorThemes.find((t) => t.id === editorTheme);
-  const isPreset = editorTheme === "default" || editorTheme === "minimal-emerald" || editorTheme === "outline-emerald" || editorTheme === "wechat-green" || editorTheme === "modern-mint";
+  const isPreset = editorTheme === "default" || editorTheme === "minimal-emerald" || editorTheme === "outline-emerald" || editorTheme === "wechat-green" || editorTheme === "modern-mint" || editorTheme === "marxico";
 
   const handleEditClick = () => {
     if (activeCustom) {
@@ -281,6 +281,7 @@ export const PreferenceCard = ({
                 <SelectItem value="outline-emerald">{t("settings.editorThemes.outline-emerald")}</SelectItem>
                 <SelectItem value="wechat-green">{t("settings.editorThemes.wechat-green")}</SelectItem>
                 <SelectItem value="modern-mint">{t("settings.editorThemes.modern-mint")}</SelectItem>
+                <SelectItem value="marxico">{t("settings.editorThemes.marxico")}</SelectItem>
                 {!isMobile && (
                   <>
                     {customEditorThemes.length > 0 && <div className="my-1 border-t border-slate-100" />}

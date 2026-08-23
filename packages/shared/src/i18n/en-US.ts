@@ -218,6 +218,7 @@ export const enUS = {
       "outline-emerald": "Outline Emerald",
       "wechat-green": "WeChat Classic Green",
       "modern-mint": "Modern Mint",
+      marxico: "Marxico Classic",
       custom: "Custom",
     },
     customEditorTheme: {

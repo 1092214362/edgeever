@@ -21,6 +21,15 @@ describe("dark theme contracts", () => {
     expect(css).toContain('[class~="text-emerald-700"]');
   });
 
+  test("Marxico keeps note content legible in dark mode", () => {
+    const css = readFileSync(new URL("../styles/editor-themes/marxico.css", import.meta.url), "utf8");
+
+    expect(css).toContain(':root.dark .edgeever-editor[data-editor-theme="marxico"]');
+    expect(css).toContain("color: var(--editor-theme-text);");
+    expect(contrastRatio("#dce3ea", "#19222b")).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio("#e7edf2", "#19222b")).toBeGreaterThanOrEqual(4.5);
+  });
+
   test("appearance changes stay out of the editor React render path", () => {
     const editorPane = readFileSync(new URL("../components/EditorPane.tsx", import.meta.url), "utf8");
     const editorThemeCss = readFileSync(new URL("../styles/editor-themes/base.css", import.meta.url), "utf8");

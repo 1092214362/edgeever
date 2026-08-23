@@ -1295,7 +1295,7 @@ const RichEditorPane = ({
     editable: Boolean(memo && !effectiveReadOnly && hydratedEditorMemoId === memo.id),
     editorProps: {
       attributes: {
-        class: "edgeever-note-rich-editor prose prose-slate max-w-none focus:outline-none min-h-[300px] px-4 py-3 sm:px-7",
+        class: "edgeever-note-rich-editor prose prose-slate max-w-none focus:outline-none min-h-[240px] px-4 py-3 sm:px-7 lg:min-h-[180px]",
       },
       handleKeyDown: (view, event) => {
         const { selection } = view.state;
@@ -4615,7 +4615,8 @@ const RichEditorPane = ({
           editorTheme === "minimal-emerald" ||
           editorTheme === "outline-emerald" ||
           editorTheme === "wechat-green" ||
-          editorTheme === "modern-mint"
+          editorTheme === "modern-mint" ||
+          editorTheme === "marxico"
             ? editorTheme
             : "custom"
         }
@@ -4628,7 +4629,8 @@ const RichEditorPane = ({
           editorTheme !== "minimal-emerald" &&
           editorTheme !== "outline-emerald" &&
           editorTheme !== "wechat-green" &&
-          editorTheme !== "modern-mint"
+          editorTheme !== "modern-mint" &&
+          editorTheme !== "marxico"
             ? {
                 "--editor-theme-light-bg": customEditorTheme.light.background,
                 "--editor-theme-light-text": customEditorTheme.light.text,
@@ -4662,6 +4664,7 @@ const RichEditorPane = ({
           editorTheme !== "outline-emerald" &&
           editorTheme !== "wechat-green" &&
           editorTheme !== "modern-mint" &&
+          editorTheme !== "marxico" &&
           customEditorTheme.customCss && (
             <style
               data-theme-custom-css
@@ -4674,7 +4677,7 @@ const RichEditorPane = ({
             "flex gap-8 transition-all duration-200",
             useMarkdownSourceEditor
               ? "h-full min-h-0 flex-1 items-stretch px-0 py-0"
-              : "min-h-full items-start px-6 py-6 sm:px-10",
+              : "min-h-full items-start px-6 py-4 sm:px-10",
             desktopFocusMode
               ? "mx-auto w-full max-w-[1400px] justify-center"
               : editorContentAlignment === "center"

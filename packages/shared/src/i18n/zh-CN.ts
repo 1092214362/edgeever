@@ -218,6 +218,7 @@ export const zhCN = {
       "outline-emerald": "Outline 品牌绿",
       "wechat-green": "微信经典绿",
       "modern-mint": "极客薄荷绿",
+      marxico: "马克飞象经典",
       custom: "自定义",
     },
     customEditorTheme: {
