@@ -25,6 +25,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { MemoListPane, MemoSelectionActionBar } from "./MemoListPane";
+import { QuickMemoSwitcher } from "./QuickMemoSwitcher";
 import { AppConfirmDialog, MemoDeleteConfirmDialog, NotebookNameDialog } from "./dialogs/ConfirmDialogs";
 import { api } from "@/lib/api";
 import {
@@ -704,6 +705,7 @@ export const WorkspaceApp = ({
   const autoSelectedDemoNotebookRef = useRef(false);
   const [createdMemoEditId, setCreatedMemoEditId] = useState<string | null>(null);
   const pendingCreatedMemoIdRef = useRef<string | null>(null);
+  const pendingQuickSwitcherMemoIdRef = useRef<string | null>(null);
   const creatingMemoSelectionRef = useRef(false);
   const memoDocumentActionIdRef = useRef(0);
   const [memoDocumentActionRequest, setMemoDocumentActionRequest] = useState<MemoDocumentActionRequest | null>(null);
@@ -795,6 +797,8 @@ export const WorkspaceApp = ({
         : "home"
   );
   const [mobileSearchFocusToken, setMobileSearchFocusToken] = useState(0);
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
+  const [quickSwitcherQuery, setQuickSwitcherQuery] = useState("");
   const [noteSearchFocusToken, setNoteSearchFocusToken] = useState(0);
   const [noteReplaceFocusToken, setNoteReplaceFocusToken] = useState(0);
   const [noteAiAssistantOpenToken, setNoteAiAssistantOpenToken] = useState(0);
@@ -1355,6 +1359,13 @@ export const WorkspaceApp = ({
 
     if (creatingMemoSelectionRef.current || pendingCreatedMemoIdRef.current) {
       return;
+    }
+
+    if (pendingQuickSwitcherMemoIdRef.current) {
+      if (!memos.some((memo) => memo.id === pendingQuickSwitcherMemoIdRef.current)) {
+        return;
+      }
+      pendingQuickSwitcherMemoIdRef.current = null;
     }
 
     if (createdMemoEditId && selectedMemoId === createdMemoEditId) {
@@ -2216,11 +2227,40 @@ export const WorkspaceApp = ({
     setActivePane("memos");
   };
 
-  const handleMobileSearch = () => {
+  const handleMobileSearch = useCallback(() => {
     setMobileBottomNavActive("search");
     setActivePane("memos");
     setMobileSearchFocusToken((value) => value + 1);
-  };
+  }, []);
+
+  const handleGlobalSearch = useCallback(() => {
+    navigateWorkspaceHome();
+    setMemoView("notebook");
+    setSelectedTag(null);
+    setSelectedNotebookId(null);
+    setMemoFilterMode("all");
+    setRightView("editor");
+    clearMemoSelection();
+    handleMobileSearch();
+  }, [clearMemoSelection, handleMobileSearch, navigateWorkspaceHome, setSelectedNotebookId]);
+
+  const handleOpenQuickSwitcherMemo = useCallback((memo: MemoSummary) => {
+    pendingQuickSwitcherMemoIdRef.current = memo.id;
+    setQuickSwitcherOpen(false);
+    setQuickSwitcherQuery("");
+    navigateWorkspaceHome();
+    setMemoView("notebook");
+    setSelectedTag(null);
+    setSelectedNotebookId(memo.notebookId);
+    setSearch("");
+    setMemoFilterMode("all");
+    setRightView("editor");
+    clearMemoSelection();
+    clearPendingCreatedMemo();
+    setCreatedMemoEditId(null);
+    setSelectedMemoId(memo.id);
+    setActivePane("editor");
+  }, [clearMemoSelection, clearPendingCreatedMemo, navigateWorkspaceHome, setSelectedMemoId, setSelectedNotebookId]);
 
   const handleCancelMobileSearch = () => {
     setSearch("");
@@ -2336,7 +2376,7 @@ export const WorkspaceApp = ({
     const removeCommandListener = bridge.onCommand((command) => {
       if (command === "new-memo") handleCreateMemo();
       if (command === "new-notebook") handleCreateNotebook();
-      if (command === "focus-search") handleMobileSearch();
+      if (command === "focus-search") handleGlobalSearch();
       if (command === "toggle-focus-mode") toggleDesktopFocusMode();
       if (command === "sync-now") {
         void runQueuedSync();
@@ -2366,7 +2406,7 @@ export const WorkspaceApp = ({
       removeCommandListener();
       removeMarkdownListener();
     };
-  }, [createMemoMutation, defaultMemoNotebookId, handleCreateMemo, handleCreateNotebook, handleMobileSearch, notebooks, selectedNotebookId, toggleDesktopFocusMode]);
+  }, [createMemoMutation, defaultMemoNotebookId, handleCreateMemo, handleCreateNotebook, handleGlobalSearch, notebooks, selectedNotebookId, toggleDesktopFocusMode]);
 
   const handleWorkspaceBackRequest = useCallback(() => {
     if (appNoticeDialog) {
@@ -2535,6 +2575,16 @@ export const WorkspaceApp = ({
         return;
       }
 
+      if (action === "openQuickSwitcher") {
+        event.preventDefault();
+        if (event.repeat || event.isComposing) {
+          return;
+        }
+        setQuickSwitcherQuery("");
+        setQuickSwitcherOpen(true);
+        return;
+      }
+
       const targetElement = event.target instanceof Element ? event.target : null;
       const isEditorTextTarget = Boolean(targetElement?.closest(".ProseMirror"));
 
@@ -2546,7 +2596,8 @@ export const WorkspaceApp = ({
           mobileNotebookPickerOpen ||
           notebookDeleteConfirmation ||
           notebookNameDialog ||
-          templatesOpen
+          templatesOpen ||
+          quickSwitcherOpen
       );
 
       if (
@@ -2554,6 +2605,8 @@ export const WorkspaceApp = ({
         || action === "saveAndSync"
         || action === "toggleReadingProtection"
         || action === "toggleEditorMode"
+        || action === "openPreviousMemo"
+        || action === "openNextMemo"
       ) {
         // These replace browser-level commands, so consume them throughout the
         // workspace even when the current editor cannot perform the action.
@@ -2569,8 +2622,15 @@ export const WorkspaceApp = ({
           setNoteSaveAndSyncToken((value) => value + 1);
         } else if (action === "toggleReadingProtection") {
           setNoteReadingProtectionToggleToken((value) => value + 1);
-        } else {
+        } else if (action === "toggleEditorMode") {
           setNoteEditorModeToggleToken((value) => value + 1);
+        } else {
+          const targetMemoId = action === "openPreviousMemo" ? previousMemoId : nextMemoId;
+          if (targetMemoId) {
+            clearPendingCreatedMemo();
+            setCreatedMemoEditId(null);
+            setSelectedMemoId(targetMemoId);
+          }
         }
         return;
       }
@@ -2585,16 +2645,19 @@ export const WorkspaceApp = ({
 
       if (action === "focusSearch") {
         event.preventDefault();
-        if (event.shiftKey || !selectedMemoId || !isDesktopViewport()) {
-          if (event.shiftKey) {
-            setSearch("");
-          }
+        if (!selectedMemoId || !isDesktopViewport()) {
           clearMemoSelection();
           handleMobileSearch();
           return;
         }
 
         setNoteSearchFocusToken((value) => value + 1);
+        return;
+      }
+
+      if (action === "focusGlobalSearch") {
+        event.preventDefault();
+        handleGlobalSearch();
         return;
       }
 
@@ -2628,11 +2691,13 @@ export const WorkspaceApp = ({
     rightView,
     appNoticeDialog,
     canCreateMemo,
+    clearPendingCreatedMemo,
     clearMemoSelection,
     createNotebookMutation.isPending,
     createMemoMutation.isPending,
     handleCreateNotebook,
     handleCreateMemo,
+    handleGlobalSearch,
     handleMobileSearch,
     shortcutSettings,
     emptyTrashConfirmationOpen,
@@ -2641,7 +2706,11 @@ export const WorkspaceApp = ({
     mobileNotebookPickerOpen,
     notebookDeleteConfirmation,
     notebookNameDialog,
+    nextMemoId,
+    previousMemoId,
+    quickSwitcherOpen,
     selectedMemoId,
+    setSelectedMemoId,
     templatesOpen,
   ]);
 
@@ -3139,6 +3208,20 @@ export const WorkspaceApp = ({
           </section>
         </main>
       </div>
+
+      <QuickMemoSwitcher
+        open={quickSwitcherOpen}
+        query={quickSwitcherQuery}
+        repository={repository}
+        onOpenChange={(open) => {
+          setQuickSwitcherOpen(open);
+          if (!open) {
+            setQuickSwitcherQuery("");
+          }
+        }}
+        onQueryChange={setQuickSwitcherQuery}
+        onOpenMemo={handleOpenQuickSwitcherMemo}
+      />
 
       {memoDeleteConfirmation && (
         <MemoDeleteConfirmDialog

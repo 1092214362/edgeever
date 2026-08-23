@@ -703,12 +703,28 @@ export const enUS = {
         description: "Create a new notebook at the current level.",
       },
       focusSearch: {
-        label: "Search notes",
-        description: "Open search or focus search within the current note.",
+        label: "Search current note",
+        description: "Focus text search within the current note.",
+      },
+      focusGlobalSearch: {
+        label: "Search all notes",
+        description: "Focus list search to find content across all notes.",
       },
       focusReplace: {
         label: "Replace text",
         description: "Open replace in the current note.",
+      },
+      openQuickSwitcher: {
+        label: "Quick switcher",
+        description: "Search and open any note that is not in trash.",
+      },
+      openPreviousMemo: {
+        label: "Previous note",
+        description: "Open the previous note in the current list.",
+      },
+      openNextMemo: {
+        label: "Next note",
+        description: "Open the next note in the current list.",
       },
       openAiAssistant: {
         label: "Open AI assistant",
@@ -727,6 +743,17 @@ export const enUS = {
         description: "Switch between Markdown source and rich text editing.",
       },
     },
+  },
+  quickSwitcher: {
+    title: "Quick switcher",
+    description: "Search and open any note that is not in trash.",
+    placeholder: "Search note titles or content…",
+    recent: "Recently updated",
+    results: "Search results",
+    empty: "No matching notes",
+    loading: "Searching…",
+    openHint: "Open · Enter",
+    closeHint: "Close · Esc",
   },
   options: {
     memoDensity: {

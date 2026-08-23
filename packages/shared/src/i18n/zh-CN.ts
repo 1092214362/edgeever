@@ -703,12 +703,28 @@ export const zhCN = {
         description: "在当前层级创建一个新笔记本。",
       },
       focusSearch: {
-        label: "搜索笔记",
-        description: "打开搜索或聚焦笔记内搜索。",
+        label: "搜索当前笔记",
+        description: "聚焦当前笔记内的文本搜索。",
+      },
+      focusGlobalSearch: {
+        label: "全局搜索笔记",
+        description: "聚焦笔记列表搜索，在全部笔记内容中查找。",
       },
       focusReplace: {
         label: "替换文本",
         description: "在当前笔记中打开替换。",
+      },
+      openQuickSwitcher: {
+        label: "快速切换笔记",
+        description: "搜索并打开任意未删除的笔记。",
+      },
+      openPreviousMemo: {
+        label: "上一篇笔记",
+        description: "打开当前列表中的上一篇笔记。",
+      },
+      openNextMemo: {
+        label: "下一篇笔记",
+        description: "打开当前列表中的下一篇笔记。",
       },
       openAiAssistant: {
         label: "打开 AI 助手",
@@ -727,6 +743,17 @@ export const zhCN = {
         description: "在 Markdown 源码与富文本编辑模式之间切换。",
       },
     },
+  },
+  quickSwitcher: {
+    title: "快速切换笔记",
+    description: "搜索并打开任意未删除的笔记。",
+    placeholder: "搜索笔记标题或内容…",
+    recent: "最近更新",
+    results: "搜索结果",
+    empty: "没有找到匹配的笔记",
+    loading: "正在搜索…",
+    openHint: "打开 · Enter",
+    closeHint: "关闭 · Esc",
   },
   options: {
     memoDensity: {

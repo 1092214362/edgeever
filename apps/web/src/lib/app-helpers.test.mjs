@@ -231,7 +231,21 @@ describe("automatic sync interval preference", () => {
 });
 
 describe("workspace shortcut preferences", () => {
-  test("provides AI, save, sync, reading protection, and editor mode defaults", () => {
+  test("provides navigation, AI, save, reading protection, and editor mode defaults", () => {
+    expect(DEFAULT_SHORTCUT_SETTINGS.focusGlobalSearch).toEqual({
+      key: "f",
+      ctrlOrMeta: true,
+      shift: true,
+      alt: false,
+    });
+    expect(DEFAULT_SHORTCUT_SETTINGS.openQuickSwitcher).toEqual({
+      key: "o",
+      ctrlOrMeta: true,
+      shift: false,
+      alt: false,
+    });
+    expect(DEFAULT_SHORTCUT_SETTINGS.openPreviousMemo.key).toBe("[");
+    expect(DEFAULT_SHORTCUT_SETTINGS.openNextMemo.key).toBe("]");
     expect(DEFAULT_SHORTCUT_SETTINGS.openAiAssistant).toEqual({
       key: "j",
       ctrlOrMeta: true,
@@ -251,7 +265,27 @@ describe("workspace shortcut preferences", () => {
       alt: false,
     });
     expect(DEFAULT_SHORTCUT_SETTINGS.toggleReadingProtection).toEqual({
-      key: "l",
+      key: "e",
+      ctrlOrMeta: true,
+      shift: false,
+      alt: false,
+    });
+  });
+
+  test("migrates the unreleased reading protection shortcut without replacing custom bindings", () => {
+    const values = installLocalStorage();
+    values.set(SHORTCUT_SETTINGS_STORAGE_KEY, JSON.stringify({
+      toggleReadingProtection: { key: "l", ctrlOrMeta: true, shift: true, alt: false },
+    }));
+    expect(readShortcutSettingsPreference().toggleReadingProtection).toEqual(
+      DEFAULT_SHORTCUT_SETTINGS.toggleReadingProtection,
+    );
+
+    values.set(SHORTCUT_SETTINGS_STORAGE_KEY, JSON.stringify({
+      toggleReadingProtection: { key: "r", ctrlOrMeta: true, shift: true, alt: false },
+    }));
+    expect(readShortcutSettingsPreference().toggleReadingProtection).toEqual({
+      key: "r",
       ctrlOrMeta: true,
       shift: true,
       alt: false,
@@ -267,6 +301,10 @@ describe("workspace shortcut preferences", () => {
     const settings = readShortcutSettingsPreference();
     expect(settings.createMemo.key).toBe("m");
     expect(settings.openAiAssistant).toEqual(DEFAULT_SHORTCUT_SETTINGS.openAiAssistant);
+    expect(settings.focusGlobalSearch).toEqual(DEFAULT_SHORTCUT_SETTINGS.focusGlobalSearch);
+    expect(settings.openQuickSwitcher).toEqual(DEFAULT_SHORTCUT_SETTINGS.openQuickSwitcher);
+    expect(settings.openPreviousMemo).toEqual(DEFAULT_SHORTCUT_SETTINGS.openPreviousMemo);
+    expect(settings.openNextMemo).toEqual(DEFAULT_SHORTCUT_SETTINGS.openNextMemo);
     expect(settings.saveAndSync).toEqual(DEFAULT_SHORTCUT_SETTINGS.saveAndSync);
     expect(settings.toggleReadingProtection).toEqual(DEFAULT_SHORTCUT_SETTINGS.toggleReadingProtection);
     expect(settings.toggleEditorMode).toEqual(DEFAULT_SHORTCUT_SETTINGS.toggleEditorMode);
@@ -283,6 +321,22 @@ describe("workspace shortcut preferences", () => {
     });
 
     expect(getShortcutActionForEvent(
+      keyboardEvent("f", { metaKey: true, shiftKey: true }),
+      DEFAULT_SHORTCUT_SETTINGS,
+    )).toBe("focusGlobalSearch");
+    expect(getShortcutActionForEvent(
+      keyboardEvent("o", { ctrlKey: true }),
+      DEFAULT_SHORTCUT_SETTINGS,
+    )).toBe("openQuickSwitcher");
+    expect(getShortcutActionForEvent(
+      keyboardEvent("[", { metaKey: true }),
+      DEFAULT_SHORTCUT_SETTINGS,
+    )).toBe("openPreviousMemo");
+    expect(getShortcutActionForEvent(
+      keyboardEvent("]", { ctrlKey: true }),
+      DEFAULT_SHORTCUT_SETTINGS,
+    )).toBe("openNextMemo");
+    expect(getShortcutActionForEvent(
       keyboardEvent("j", { metaKey: true }),
       DEFAULT_SHORTCUT_SETTINGS,
     )).toBe("openAiAssistant");
@@ -291,7 +345,7 @@ describe("workspace shortcut preferences", () => {
       DEFAULT_SHORTCUT_SETTINGS,
     )).toBe("saveAndSync");
     expect(getShortcutActionForEvent(
-      keyboardEvent("l", { ctrlKey: true, shiftKey: true }),
+      keyboardEvent("e", { ctrlKey: true }),
       DEFAULT_SHORTCUT_SETTINGS,
     )).toBe("toggleReadingProtection");
     expect(getShortcutActionForEvent(
