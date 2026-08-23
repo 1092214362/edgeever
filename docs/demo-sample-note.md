@@ -160,7 +160,7 @@ Generate an API token in **Settings → MCP Settings** to connect EdgeEver direc
 ### 🖼️ Smart Client-Side Image Compression
 When pasting or dragging images into notes, EdgeEver compresses them to WebP locally in your browser before upload, **reducing file size by 50% - 90%** while preserving visual fidelity.
 
-![EdgeEver Mascot: Geek Cat](/api/v1/resources/res_demo_cat_image/blob)
+![EdgeEver Official Logo](/api/v1/resources/res_demo_logo/blob)
 
 ### 📎 Universal File Attachments
 Embed PDFs, spreadsheets, archives, and multimedia files directly in notes for preview or download:

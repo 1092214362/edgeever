@@ -160,7 +160,7 @@ sequenceDiagram
 ### 🖼️ 智能本地图片压缩
 在笔记中粘贴或拖入高分辨率图片时，前端会在本地自动将其转码压缩为 WebP 格式，在保证视觉无损的前提下**减少 50% - 90% 的体积**，大幅降低云端存储占用并提升跨端加载速度。
 
-![EdgeEver 极客猫猫吉祥物](/api/v1/resources/res_demo_cat_image/blob)
+![EdgeEver 官方 Logo](/api/v1/resources/res_demo_logo/blob)
 
 ### 📎 多类型附件自由挂载
 支持在笔记中嵌入 PDF 文档、CSV 表格、压缩包及多媒体资源，点击即可在线预览或下载：
