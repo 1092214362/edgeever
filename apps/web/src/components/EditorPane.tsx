@@ -663,6 +663,7 @@ type EditorPaneProps = {
   saveAndSyncToken: number;
   readingProtectionToggleToken: number;
   editorModeToggleToken: number;
+  outlineToggleToken: number;
   shortcutSettings: ShortcutSettings;
   onSyncRequested: () => Promise<void>;
   documentActionRequest?: MemoDocumentActionRequest | null;
@@ -736,6 +737,7 @@ const RichEditorPane = ({
   saveAndSyncToken,
   readingProtectionToggleToken,
   editorModeToggleToken,
+  outlineToggleToken,
   shortcutSettings,
   onSyncRequested,
   documentActionRequest,
@@ -834,6 +836,7 @@ const RichEditorPane = ({
   const handledSaveAndSyncTokenRef = useRef(saveAndSyncToken);
   const handledReadingProtectionToggleTokenRef = useRef(readingProtectionToggleToken);
   const handledEditorModeToggleTokenRef = useRef(editorModeToggleToken);
+  const handledOutlineToggleTokenRef = useRef(outlineToggleToken);
   const handledAiAssistantOpenTokenRef = useRef(aiAssistantOpenToken);
   const noteLinkModifier = useMemo(
     () => typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.platform) ? "⌘" : "Ctrl",
@@ -3226,6 +3229,19 @@ const RichEditorPane = ({
   }, [editorModeToggleToken, editorShortcutBlocked, handleMarkdownModeChange, useMobilePlainTextEditor]);
 
   useEffect(() => {
+    if (handledOutlineToggleTokenRef.current === outlineToggleToken) {
+      return;
+    }
+
+    handledOutlineToggleTokenRef.current = outlineToggleToken;
+    if (editorShortcutBlocked || isMobileViewport || useMobilePlainTextEditor || useMarkdownSourceEditor) {
+      return;
+    }
+
+    setEditorOutlineCollapsed((current) => !current);
+  }, [editorShortcutBlocked, isMobileViewport, outlineToggleToken, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+
+  useEffect(() => {
     if (handledSaveAndSyncTokenRef.current === saveAndSyncToken || saveMutationPending) {
       return;
     }
@@ -4793,6 +4809,7 @@ const RichEditorPane = ({
               editor={editor}
               scrollContainer={editorScrollContainer}
               collapsed={editorOutlineCollapsed}
+              shortcutLabel={formatShortcutBinding(shortcutSettings.toggleOutline)}
               onCollapsedChange={setEditorOutlineCollapsed}
             />
           )}

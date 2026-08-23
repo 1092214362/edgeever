@@ -742,6 +742,10 @@ export const zhCN = {
         label: "切换编辑模式",
         description: "在 Markdown 源码与富文本编辑模式之间切换。",
       },
+      toggleOutline: {
+        label: "显示/隐藏文档大纲",
+        description: "在桌面端显示或隐藏当前笔记的文档大纲。",
+      },
     },
   },
   quickSwitcher: {
@@ -1168,6 +1172,8 @@ export const zhCN = {
     outline: "文档大纲",
     showOutline: "显示文档大纲",
     hideOutline: "隐藏文档大纲",
+    collapseOutlineHeading: "收起 {{name}}",
+    expandOutlineHeading: "展开 {{name}}",
   },
   sharing: {
     action: "分享笔记",

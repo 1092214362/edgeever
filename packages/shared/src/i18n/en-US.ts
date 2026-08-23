@@ -742,6 +742,10 @@ export const enUS = {
         label: "Switch editor mode",
         description: "Switch between Markdown source and rich text editing.",
       },
+      toggleOutline: {
+        label: "Show/hide document outline",
+        description: "Show or hide the current note's document outline on desktop.",
+      },
     },
   },
   quickSwitcher: {
@@ -1170,6 +1174,8 @@ export const enUS = {
     outline: "Outline",
     showOutline: "Show outline",
     hideOutline: "Hide outline",
+    collapseOutlineHeading: "Collapse {{name}}",
+    expandOutlineHeading: "Expand {{name}}",
   },
   sharing: {
     action: "Share note",

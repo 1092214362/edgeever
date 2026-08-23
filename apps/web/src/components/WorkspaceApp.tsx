@@ -805,6 +805,7 @@ export const WorkspaceApp = ({
   const [noteSaveAndSyncToken, setNoteSaveAndSyncToken] = useState(0);
   const [noteReadingProtectionToggleToken, setNoteReadingProtectionToggleToken] = useState(0);
   const [noteEditorModeToggleToken, setNoteEditorModeToggleToken] = useState(0);
+  const [noteOutlineToggleToken, setNoteOutlineToggleToken] = useState(0);
   const [search, setSearch] = useState("");
   const [memoFilterMode, setMemoFilterMode] = useState<MemoFilterMode>("all");
   const [memoSortMode, setMemoSortMode] = useState<MemoSortMode>("updated-desc");
@@ -2605,6 +2606,7 @@ export const WorkspaceApp = ({
         || action === "saveAndSync"
         || action === "toggleReadingProtection"
         || action === "toggleEditorMode"
+        || action === "toggleOutline"
         || action === "openPreviousMemo"
         || action === "openNextMemo"
       ) {
@@ -2624,6 +2626,8 @@ export const WorkspaceApp = ({
           setNoteReadingProtectionToggleToken((value) => value + 1);
         } else if (action === "toggleEditorMode") {
           setNoteEditorModeToggleToken((value) => value + 1);
+        } else if (action === "toggleOutline") {
+          setNoteOutlineToggleToken((value) => value + 1);
         } else {
           const targetMemoId = action === "openPreviousMemo" ? previousMemoId : nextMemoId;
           if (targetMemoId) {
@@ -3127,6 +3131,7 @@ export const WorkspaceApp = ({
                     saveAndSyncToken={noteSaveAndSyncToken}
                     readingProtectionToggleToken={noteReadingProtectionToggleToken}
                     editorModeToggleToken={noteEditorModeToggleToken}
+                    outlineToggleToken={noteOutlineToggleToken}
                     shortcutSettings={shortcutSettings}
                     onSyncRequested={syncMemosManually}
                     documentActionRequest={memoDocumentActionRequest}

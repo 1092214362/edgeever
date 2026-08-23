@@ -270,6 +270,12 @@ describe("workspace shortcut preferences", () => {
       shift: false,
       alt: false,
     });
+    expect(DEFAULT_SHORTCUT_SETTINGS.toggleOutline).toEqual({
+      key: "1",
+      ctrlOrMeta: true,
+      shift: true,
+      alt: false,
+    });
   });
 
   test("migrates the unreleased reading protection shortcut without replacing custom bindings", () => {
@@ -308,6 +314,7 @@ describe("workspace shortcut preferences", () => {
     expect(settings.saveAndSync).toEqual(DEFAULT_SHORTCUT_SETTINGS.saveAndSync);
     expect(settings.toggleReadingProtection).toEqual(DEFAULT_SHORTCUT_SETTINGS.toggleReadingProtection);
     expect(settings.toggleEditorMode).toEqual(DEFAULT_SHORTCUT_SETTINGS.toggleEditorMode);
+    expect(settings.toggleOutline).toEqual(DEFAULT_SHORTCUT_SETTINGS.toggleOutline);
   });
 
   test("recognizes Ctrl and Command variants for the new actions", () => {
@@ -352,5 +359,9 @@ describe("workspace shortcut preferences", () => {
       keyboardEvent("/", { metaKey: true }),
       DEFAULT_SHORTCUT_SETTINGS,
     )).toBe("toggleEditorMode");
+    expect(getShortcutActionForEvent(
+      keyboardEvent("!", { code: "Digit1", ctrlKey: true, shiftKey: true }),
+      DEFAULT_SHORTCUT_SETTINGS,
+    )).toBe("toggleOutline");
   });
 });

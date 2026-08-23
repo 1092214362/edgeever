@@ -25,7 +25,8 @@ export type ShortcutAction =
   | "openAiAssistant"
   | "saveAndSync"
   | "toggleReadingProtection"
-  | "toggleEditorMode";
+  | "toggleEditorMode"
+  | "toggleOutline";
 export type ShortcutBinding = {
   key: string;
   ctrlOrMeta: boolean;
@@ -239,6 +240,11 @@ export const getShortcutActionOptions = (
     label: t("shortcuts.actions.toggleEditorMode.label"),
     description: t("shortcuts.actions.toggleEditorMode.description"),
   },
+  {
+    value: "toggleOutline",
+    label: t("shortcuts.actions.toggleOutline.label"),
+    description: t("shortcuts.actions.toggleOutline.description"),
+  },
 ];
 
 export const DEFAULT_SHORTCUT_SETTINGS: ShortcutSettings = {
@@ -254,6 +260,7 @@ export const DEFAULT_SHORTCUT_SETTINGS: ShortcutSettings = {
   saveAndSync: { key: "s", ctrlOrMeta: true, shift: false, alt: false },
   toggleReadingProtection: { key: "e", ctrlOrMeta: true, shift: false, alt: false },
   toggleEditorMode: { key: "/", ctrlOrMeta: true, shift: false, alt: false },
+  toggleOutline: { key: "1", ctrlOrMeta: true, shift: true, alt: false },
 };
 
 const LEGACY_READING_PROTECTION_SHORTCUT: ShortcutBinding = {
@@ -280,6 +287,7 @@ const SHORTCUT_ACTION_VALUES: ShortcutAction[] = [
   "saveAndSync",
   "toggleReadingProtection",
   "toggleEditorMode",
+  "toggleOutline",
 ];
 
 export const isDefaultMemoTitle = (title: string | null | undefined) => title?.trim() === DEFAULT_MEMO_TITLE;
@@ -517,7 +525,8 @@ export const formatShortcutBinding = (binding: ShortcutBinding) => {
 };
 
 export const shortcutBindingFromKeyboardEvent = (event: KeyboardEvent): ShortcutBinding | null => {
-  const key = normalizeShortcutKey(event.key);
+  const digitKey = typeof event.code === "string" ? /^Digit([0-9])$/.exec(event.code)?.[1] : undefined;
+  const key = digitKey ?? normalizeShortcutKey(event.key);
 
   if (["control", "meta", "shift", "alt", "escape"].includes(key)) {
     return null;
