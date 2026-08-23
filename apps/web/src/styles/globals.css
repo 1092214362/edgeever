@@ -109,6 +109,12 @@ html[data-edgeever-environment="demo"] body::after {
     --brand-green-800-rgb: 0 92 25;
     --brand-green-900-rgb: 0 67 18;
     --brand-green-950-rgb: 0 43 11;
+    --workspace-canvas: #f3f5f7;
+    --workspace-sidebar: #eff1f4;
+    --workspace-memo-list: #f6f7f9;
+    --workspace-editor: #ffffff;
+    --workspace-divider: #dde1e7;
+    --workspace-selection: #eef2f6;
     --slate-50-rgb: 248 250 252;
     --slate-100-rgb: 241 245 249;
     --slate-200-rgb: 226 232 240;
@@ -331,6 +337,54 @@ html[data-edgeever-extension-theme] kbd {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.edgeever-workspace-shell {
+  background: var(--workspace-canvas);
+}
+
+.edgeever-workspace-sidebar {
+  border-color: var(--workspace-divider);
+  background: var(--workspace-sidebar);
+}
+
+.edgeever-workspace-memo-list {
+  border-color: var(--workspace-divider);
+  background: var(--workspace-memo-list);
+}
+
+.edgeever-workspace-editor {
+  background: var(--workspace-editor);
+}
+
+.edgeever-workspace-sidebar-footer {
+  background: color-mix(in srgb, var(--workspace-sidebar) 92%, transparent);
+}
+
+.edgeever-workspace-selection {
+  background: var(--workspace-selection);
+}
+
+html[data-edgeever-extension-theme] .edgeever-workspace-shell {
+  background: var(--edgeever-theme-background, var(--workspace-canvas));
+}
+
+html[data-edgeever-extension-theme] .edgeever-workspace-sidebar,
+html[data-edgeever-extension-theme] .edgeever-workspace-memo-list {
+  border-color: var(--edgeever-theme-border, var(--workspace-divider));
+}
+
+html[data-edgeever-extension-theme] .edgeever-workspace-sidebar {
+  background: var(--edgeever-theme-surface-muted, var(--workspace-sidebar));
+}
+
+html[data-edgeever-extension-theme] .edgeever-workspace-memo-list,
+html[data-edgeever-extension-theme] .edgeever-workspace-editor {
+  background: var(--edgeever-theme-surface, var(--workspace-editor));
+}
+
+html[data-edgeever-extension-theme] .edgeever-workspace-selection {
+  background: var(--edgeever-theme-surface-muted, var(--workspace-selection));
+}
+
 @media (min-width: 1024px) {
   .edgeever-workspace-grid--editor {
     grid-template-columns:
@@ -342,11 +396,40 @@ html[data-edgeever-extension-theme] kbd {
   .edgeever-workspace-grid--single-right {
     grid-template-columns: clamp(180px, 17vw, 260px) minmax(0, 1fr);
   }
+
+  .edgeever-workspace-selection-desktop {
+    background: var(--workspace-selection);
+  }
+
+  html[data-edgeever-extension-theme] .edgeever-workspace-selection-desktop {
+    background: var(--edgeever-theme-surface-muted, var(--workspace-selection));
+  }
 }
 
 :root.dark body {
   background: #0f172a;
   color: #f8fafc;
+}
+
+:root.dark .edgeever-workspace-shell,
+:root.dark .edgeever-workspace-sidebar,
+:root.dark .edgeever-workspace-memo-list,
+:root.dark .edgeever-workspace-editor {
+  background: #0f172a;
+}
+
+:root.dark .edgeever-workspace-sidebar,
+:root.dark .edgeever-workspace-memo-list {
+  border-color: #334155;
+}
+
+:root.dark .edgeever-workspace-sidebar-footer {
+  background: rgb(15 23 42 / 88%);
+}
+
+:root.dark .edgeever-workspace-selection,
+:root.dark .edgeever-workspace-selection-desktop {
+  background: #1e293b;
 }
 
 :root.dark .ProseMirror {
