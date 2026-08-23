@@ -11,6 +11,7 @@ on:
           - inspect
           - start
           - monitor
+          - store-status
         default: inspect
       workflow_id:
         description: Optional Xcode Cloud workflow ID; auto-selects a single enabled Archive workflow when empty
@@ -18,6 +19,15 @@ on:
         type: string
       build_run_id:
         description: Xcode Cloud build run ID to monitor
+        required: false
+        type: string
+      app_store_version:
+        description: App Store marketing version to inspect
+        required: false
+        type: string
+        default: "1.38.0"
+      app_store_build_id:
+        description: App Store Connect build resource ID to inspect
         required: false
         type: string
 
@@ -42,6 +52,8 @@ jobs:
           XCODE_CLOUD_MODE: ${{ inputs.mode }}
           XCODE_CLOUD_WORKFLOW_ID: ${{ inputs.workflow_id }}
           XCODE_CLOUD_BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          APP_STORE_VERSION: ${{ inputs.app_store_version }}
+          APP_STORE_BUILD_ID: ${{ inputs.app_store_build_id }}
         run: |
           python3 - <<'PY'
           import base64
@@ -62,6 +74,8 @@ jobs:
           mode = os.environ["XCODE_CLOUD_MODE"]
           requested_workflow_id = os.environ.get("XCODE_CLOUD_WORKFLOW_ID", "").strip()
           build_run_id = os.environ.get("XCODE_CLOUD_BUILD_RUN_ID", "").strip()
+          store_version = os.environ.get("APP_STORE_VERSION", "").strip()
+          store_build_id = os.environ.get("APP_STORE_BUILD_ID", "").strip()
 
           now = int(time.time())
           token = jwt.encode(
@@ -135,6 +149,49 @@ jobs:
                   if time.time() >= deadline:
                       raise SystemExit("Timed out waiting for Xcode Cloud build")
                   time.sleep(30)
+
+          if mode == "store-status":
+              if not store_version or not store_build_id:
+                  raise SystemExit("app_store_version and app_store_build_id are required in store-status mode")
+              version_query = urllib.parse.urlencode({
+                  "filter[platform]": "IOS",
+                  "filter[versionString]": store_version,
+                  "fields[appStoreVersions]": "platform,versionString,appStoreState,releaseType,build",
+                  "limit": 10,
+              })
+              versions = api("GET", f"/v1/apps/{app_id}/appStoreVersions?{version_query}")
+              print(f"App Store version records for {store_version}: {len(versions.get('data', []))}")
+              for version in versions.get("data", []):
+                  attributes = version.get("attributes") or {}
+                  print(
+                      f"- version id={version.get('id')} state={attributes.get('appStoreState')} "
+                      f"releaseType={attributes.get('releaseType')}"
+                  )
+                  try:
+                      attached = api(
+                          "GET",
+                          f"/v1/appStoreVersions/{version['id']}/build?fields[builds]=version,processingState",
+                      )
+                  except SystemExit:
+                      attached = {"data": None}
+                  attached_data = attached.get("data") or {}
+                  attached_attributes = attached_data.get("attributes") or {}
+                  print(
+                      f"- attached build id={attached_data.get('id')} "
+                      f"version={attached_attributes.get('version')} "
+                      f"processing={attached_attributes.get('processingState')}"
+                  )
+              build = api(
+                  "GET",
+                  f"/v1/builds/{store_build_id}?fields[builds]=version,processingState,uploadedDate",
+              )["data"]
+              build_attributes = build.get("attributes") or {}
+              print(
+                  f"Requested build id={build.get('id')} version={build_attributes.get('version')} "
+                  f"processing={build_attributes.get('processingState')} "
+                  f"uploaded={build_attributes.get('uploadedDate')}"
+              )
+              raise SystemExit(0)
 
           product = api("GET", f"/v1/apps/{app_id}/ciProduct").get("data")
           workflows = []
