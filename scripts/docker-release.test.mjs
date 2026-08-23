@@ -85,9 +85,11 @@ describe("Docker release contract", () => {
     expect(workflow).toContain("TCR_IMAGE_NAME: ccr.ccs.tencentyun.com/edgeever/edgeever");
     expect(workflow).toContain("secrets.TENCENT_TCR_USERNAME");
     expect(workflow).toContain("secrets.TENCENT_TCR_PASSWORD");
-    expect(workflow).toContain('echo "${TCR_IMAGE_NAME}:${RELEASE_TAG}"');
-    expect(workflow).toContain('echo "${TCR_IMAGE_NAME}:latest"');
-    expect(workflow).toContain('echo "${TCR_IMAGE_NAME}:sha-${short_sha}"');
+    expect(workflow).toContain("name: Mirror image to Tencent Cloud Container Registry");
+    expect(workflow).toContain('docker buildx imagetools create \\');
+    expect(workflow).toContain('--tag "${TCR_IMAGE_NAME}:${image_tag}"');
+    expect(workflow).toContain('"${GHCR_IMAGE_NAME}:${image_tag}"');
+    expect(workflow).not.toContain('echo "${TCR_IMAGE_NAME}:${RELEASE_TAG}"');
     expect(workflow).toContain('docker logout ccr.ccs.tencentyun.com');
     expect(workflow).toContain('test "${ghcr_digest}" = "${tcr_digest}"');
     expect(workflow).toContain('for image in "${GHCR_IMAGE_NAME}" "${TCR_IMAGE_NAME}"');
