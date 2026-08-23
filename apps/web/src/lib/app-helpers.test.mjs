@@ -231,7 +231,7 @@ describe("automatic sync interval preference", () => {
 });
 
 describe("workspace shortcut preferences", () => {
-  test("provides AI, save, sync, and editor mode defaults", () => {
+  test("provides AI, save, sync, reading protection, and editor mode defaults", () => {
     expect(DEFAULT_SHORTCUT_SETTINGS.openAiAssistant).toEqual({
       key: "j",
       ctrlOrMeta: true,
@@ -250,6 +250,12 @@ describe("workspace shortcut preferences", () => {
       shift: false,
       alt: false,
     });
+    expect(DEFAULT_SHORTCUT_SETTINGS.toggleReadingProtection).toEqual({
+      key: "l",
+      ctrlOrMeta: true,
+      shift: true,
+      alt: false,
+    });
   });
 
   test("fills new shortcut actions into legacy stored settings", () => {
@@ -262,6 +268,7 @@ describe("workspace shortcut preferences", () => {
     expect(settings.createMemo.key).toBe("m");
     expect(settings.openAiAssistant).toEqual(DEFAULT_SHORTCUT_SETTINGS.openAiAssistant);
     expect(settings.saveAndSync).toEqual(DEFAULT_SHORTCUT_SETTINGS.saveAndSync);
+    expect(settings.toggleReadingProtection).toEqual(DEFAULT_SHORTCUT_SETTINGS.toggleReadingProtection);
     expect(settings.toggleEditorMode).toEqual(DEFAULT_SHORTCUT_SETTINGS.toggleEditorMode);
   });
 
@@ -283,6 +290,10 @@ describe("workspace shortcut preferences", () => {
       keyboardEvent("s", { ctrlKey: true }),
       DEFAULT_SHORTCUT_SETTINGS,
     )).toBe("saveAndSync");
+    expect(getShortcutActionForEvent(
+      keyboardEvent("l", { ctrlKey: true, shiftKey: true }),
+      DEFAULT_SHORTCUT_SETTINGS,
+    )).toBe("toggleReadingProtection");
     expect(getShortcutActionForEvent(
       keyboardEvent("/", { metaKey: true }),
       DEFAULT_SHORTCUT_SETTINGS,

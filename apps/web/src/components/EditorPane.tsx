@@ -661,6 +661,7 @@ type EditorPaneProps = {
   replaceFocusToken: number;
   aiAssistantOpenToken: number;
   saveAndSyncToken: number;
+  readingProtectionToggleToken: number;
   editorModeToggleToken: number;
   shortcutSettings: ShortcutSettings;
   onSyncRequested: () => Promise<void>;
@@ -733,6 +734,7 @@ const RichEditorPane = ({
   replaceFocusToken,
   aiAssistantOpenToken,
   saveAndSyncToken,
+  readingProtectionToggleToken,
   editorModeToggleToken,
   shortcutSettings,
   onSyncRequested,
@@ -830,6 +832,7 @@ const RichEditorPane = ({
   const [wechatCopyState, setWechatCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
   const [memoIdCopyNotice, setMemoIdCopyNotice] = useState<{ status: "copied" | "error"; id: string } | null>(null);
   const handledSaveAndSyncTokenRef = useRef(saveAndSyncToken);
+  const handledReadingProtectionToggleTokenRef = useRef(readingProtectionToggleToken);
   const handledEditorModeToggleTokenRef = useRef(editorModeToggleToken);
   const handledAiAssistantOpenTokenRef = useRef(aiAssistantOpenToken);
   const noteLinkModifier = useMemo(
@@ -3203,6 +3206,13 @@ const RichEditorPane = ({
   }, [aiAssistantOpenToken, editorShortcutBlocked, effectiveReadOnly, openAiAssistant]);
 
   useEffect(() => {
+    if (handledReadingProtectionToggleTokenRef.current === readingProtectionToggleToken) return;
+    handledReadingProtectionToggleTokenRef.current = readingProtectionToggleToken;
+    if (editorShortcutBlocked || isMobileViewport || readOnly || !memoRef.current) return;
+    toggleDesktopReadingProtection();
+  }, [editorShortcutBlocked, isMobileViewport, readOnly, readingProtectionToggleToken, toggleDesktopReadingProtection]);
+
+  useEffect(() => {
     if (handledEditorModeToggleTokenRef.current === editorModeToggleToken) {
       return;
     }
@@ -4422,15 +4432,15 @@ const RichEditorPane = ({
               }}
             />
             {!readOnly && (
-              <IconTooltip label={t(desktopReadingProtection ? "editor.disableReadingProtection" : "editor.enableReadingProtection")}>
+              <IconTooltip label={`${t(desktopReadingProtection ? "editor.disableReadingProtection" : "editor.enableReadingProtection")} (${formatShortcutBinding(shortcutSettings.toggleReadingProtection)})`}>
                 <Button
                   className={cn(
                     "hidden shrink-0 sm:inline-flex",
-                    desktopReadingProtection && "bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-300 hover:bg-emerald-100 hover:text-emerald-900"
+                    desktopReadingProtection && "bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-200 hover:text-slate-900"
                   )}
                   size="icon"
                   variant={desktopReadingProtection ? "soft" : "ghost"}
-                  aria-label={t(desktopReadingProtection ? "editor.disableReadingProtection" : "editor.enableReadingProtection")}
+                  aria-label={`${t(desktopReadingProtection ? "editor.disableReadingProtection" : "editor.enableReadingProtection")} (${formatShortcutBinding(shortcutSettings.toggleReadingProtection)})`}
                   aria-pressed={desktopReadingProtection}
                   onClick={toggleDesktopReadingProtection}
                 >

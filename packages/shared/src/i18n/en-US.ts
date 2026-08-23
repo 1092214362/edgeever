@@ -718,6 +718,10 @@ export const enUS = {
         label: "Save and sync",
         description: "Save the current note now and sync pending local changes.",
       },
+      toggleReadingProtection: {
+        label: "Toggle reading protection",
+        description: "Switch notes between reading protection and editing on this device.",
+      },
       toggleEditorMode: {
         label: "Switch editor mode",
         description: "Switch between Markdown source and rich text editing.",

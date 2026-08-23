@@ -718,6 +718,10 @@ export const zhCN = {
         label: "保存并同步",
         description: "立即保存当前笔记，并同步等待中的本地更改。",
       },
+      toggleReadingProtection: {
+        label: "切换阅读保护",
+        description: "在当前设备上切换笔记的阅读保护与编辑状态。",
+      },
       toggleEditorMode: {
         label: "切换编辑模式",
         description: "在 Markdown 源码与富文本编辑模式之间切换。",

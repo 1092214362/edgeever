@@ -20,6 +20,7 @@ export type ShortcutAction =
   | "focusReplace"
   | "openAiAssistant"
   | "saveAndSync"
+  | "toggleReadingProtection"
   | "toggleEditorMode";
 export type ShortcutBinding = {
   key: string;
@@ -205,6 +206,11 @@ export const getShortcutActionOptions = (
     description: t("shortcuts.actions.saveAndSync.description"),
   },
   {
+    value: "toggleReadingProtection",
+    label: t("shortcuts.actions.toggleReadingProtection.label"),
+    description: t("shortcuts.actions.toggleReadingProtection.description"),
+  },
+  {
     value: "toggleEditorMode",
     label: t("shortcuts.actions.toggleEditorMode.label"),
     description: t("shortcuts.actions.toggleEditorMode.description"),
@@ -218,6 +224,7 @@ export const DEFAULT_SHORTCUT_SETTINGS: ShortcutSettings = {
   focusReplace: { key: "h", ctrlOrMeta: true, shift: false, alt: false },
   openAiAssistant: { key: "j", ctrlOrMeta: true, shift: false, alt: false },
   saveAndSync: { key: "s", ctrlOrMeta: true, shift: false, alt: false },
+  toggleReadingProtection: { key: "l", ctrlOrMeta: true, shift: true, alt: false },
   toggleEditorMode: { key: "/", ctrlOrMeta: true, shift: false, alt: false },
 };
 
@@ -232,6 +239,7 @@ const SHORTCUT_ACTION_VALUES: ShortcutAction[] = [
   "focusReplace",
   "openAiAssistant",
   "saveAndSync",
+  "toggleReadingProtection",
   "toggleEditorMode",
 ];
 

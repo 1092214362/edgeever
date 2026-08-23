@@ -799,6 +799,7 @@ export const WorkspaceApp = ({
   const [noteReplaceFocusToken, setNoteReplaceFocusToken] = useState(0);
   const [noteAiAssistantOpenToken, setNoteAiAssistantOpenToken] = useState(0);
   const [noteSaveAndSyncToken, setNoteSaveAndSyncToken] = useState(0);
+  const [noteReadingProtectionToggleToken, setNoteReadingProtectionToggleToken] = useState(0);
   const [noteEditorModeToggleToken, setNoteEditorModeToggleToken] = useState(0);
   const [search, setSearch] = useState("");
   const [memoFilterMode, setMemoFilterMode] = useState<MemoFilterMode>("all");
@@ -2548,7 +2549,12 @@ export const WorkspaceApp = ({
           templatesOpen
       );
 
-      if (action === "openAiAssistant" || action === "saveAndSync" || action === "toggleEditorMode") {
+      if (
+        action === "openAiAssistant"
+        || action === "saveAndSync"
+        || action === "toggleReadingProtection"
+        || action === "toggleEditorMode"
+      ) {
         // These replace browser-level commands, so consume them throughout the
         // workspace even when the current editor cannot perform the action.
         event.preventDefault();
@@ -2561,6 +2567,8 @@ export const WorkspaceApp = ({
           setNoteAiAssistantOpenToken((value) => value + 1);
         } else if (action === "saveAndSync") {
           setNoteSaveAndSyncToken((value) => value + 1);
+        } else if (action === "toggleReadingProtection") {
+          setNoteReadingProtectionToggleToken((value) => value + 1);
         } else {
           setNoteEditorModeToggleToken((value) => value + 1);
         }
@@ -3048,6 +3056,7 @@ export const WorkspaceApp = ({
                     replaceFocusToken={noteReplaceFocusToken}
                     aiAssistantOpenToken={noteAiAssistantOpenToken}
                     saveAndSyncToken={noteSaveAndSyncToken}
+                    readingProtectionToggleToken={noteReadingProtectionToggleToken}
                     editorModeToggleToken={noteEditorModeToggleToken}
                     shortcutSettings={shortcutSettings}
                     onSyncRequested={syncMemosManually}
