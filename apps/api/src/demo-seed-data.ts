@@ -25,9 +25,7 @@ export const DEMO_SEED_MEMOS_ZH = [
     tags: ["overview", "guide", "features", "ai-agent"],
     isPinned: true,
     markdown:
-      `# <img src="/api/v1/resources/res_demo_logo/blob" alt="EdgeEver Logo" width="36" align="absmiddle" /> 欢迎使用 EdgeEver：为极客与创作者打造的现代开源知识库
-
-> **EdgeEver** 是一款兼具**经典三栏美学**与 **AI 原生动力**的开源 Serverless / 容器化个人知识库。它既找回了极客们钟爱的经典印象笔记式双视图与树状目录，又以零服务器成本、完全数据自主、全端原生覆盖与深度 MCP 智能体协同，重新定义了下一代个人第二大脑。
+      `> **EdgeEver** 是一款兼具**经典三栏美学**与 **AI 原生动力**的开源 Serverless / 容器化个人知识库。它既找回了极客们钟爱的经典印象笔记式双视图与树状目录，又以零服务器成本、完全数据自主、全端原生覆盖与深度 MCP 智能体协同，重新定义了下一代个人第二大脑。
 
 ---
 
@@ -248,9 +246,7 @@ export const DEMO_MEMO_ENGLISH = {
   memo_demo_overview: {
     title: "🌿 Welcome to EdgeEver: Modern Open-Source Knowledge Base for Geeks & Creators",
     markdown:
-      `# <img src="/api/v1/resources/res_demo_logo/blob" alt="EdgeEver Logo" width="36" align="absmiddle" /> Welcome to EdgeEver: Modern Open-Source Knowledge Base for Geeks & Creators
-
-> **EdgeEver** is an open-source, AI-native, and portable serverless/containerized personal knowledge base that revives the beloved **Evernote-style three-pane layout**. Designed for geeks and content creators, it combines 100% free serverless hosting, absolute data ownership, native cross-platform clients, and seamless AI Agent (MCP) synergy to redefine your digital second brain.
+      `> **EdgeEver** is an open-source, AI-native, and portable serverless/containerized personal knowledge base that revives the beloved **Evernote-style three-pane layout**. Designed for geeks and content creators, it combines 100% free serverless hosting, absolute data ownership, native cross-platform clients, and seamless AI Agent (MCP) synergy to redefine your digital second brain.
 
 ---
 

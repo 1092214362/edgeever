@@ -1,5 +1,3 @@
-# <img src="/api/v1/resources/res_demo_logo/blob" alt="EdgeEver Logo" width="36" align="absmiddle" /> 欢迎使用 EdgeEver：为极客与创作者打造的现代开源知识库
-
 > **EdgeEver** 是一款兼具**经典三栏美学**与 **AI 原生动力**的开源 Serverless / 容器化个人知识库。它既找回了极客们钟爱的经典印象笔记式双视图与树状目录，又以零服务器成本、完全数据自主、全端原生覆盖与深度 MCP 智能体协同，重新定义了下一代个人第二大脑。
 
 ---

@@ -1,5 +1,3 @@
-# <img src="/api/v1/resources/res_demo_logo/blob" alt="EdgeEver Logo" width="36" align="absmiddle" /> Welcome to EdgeEver: Modern Open-Source Knowledge Base for Geeks & Creators
-
 > **EdgeEver** is an open-source, AI-native, and portable serverless/containerized personal knowledge base that revives the beloved **Evernote-style three-pane layout**. Designed for geeks and content creators, it combines 100% free serverless hosting, absolute data ownership, native cross-platform clients, and seamless AI Agent (MCP) synergy to redefine your digital second brain.
 
 ---
