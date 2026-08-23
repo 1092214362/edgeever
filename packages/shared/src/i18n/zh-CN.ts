@@ -991,6 +991,8 @@ export const zhCN = {
     focusMode: "专注模式",
     enterFocusMode: "进入专注模式",
     exitFocusMode: "退出专注模式",
+    enableReadingProtection: "开启阅读保护",
+    disableReadingProtection: "关闭阅读保护并进入编辑",
     updatedAt: "更新于 {{time}}",
     done: "完成",
     uploadAttachment: "上传附件",

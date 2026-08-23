@@ -40,6 +40,8 @@ import {
   Link2,
   Share2,
   Copy,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GitHubRepositoryLink } from "@/components/GitHubRepositoryLink";
@@ -138,6 +140,8 @@ import {
   formatShortcutBinding,
   getEditableMemoTitle,
   getNotebookMoveOptions,
+  readDesktopReadingProtectionPreference,
+  writeDesktopReadingProtectionPreference,
   type EditorContentAlignment,
   type MemoDocumentActionRequest,
   type ShortcutSettings,
@@ -814,6 +818,7 @@ const RichEditorPane = ({
     typeof window === "undefined" ? false : window.matchMedia(MOBILE_EDITOR_QUERY).matches
   );
   const [isMobileEditing, setIsMobileEditing] = useState(false);
+  const [desktopReadingProtection, setDesktopReadingProtection] = useState(readDesktopReadingProtectionPreference);
   const [mobilePlainText, setMobilePlainText] = useState("");
   const [markdownSource, setMarkdownSource] = useState("");
   const [isMarkdownMode, setIsMarkdownMode] = useState(false);
@@ -879,9 +884,36 @@ const RichEditorPane = ({
   const mobileDefaultEditRequested = Boolean(memo?.id && memo.id === mobileDefaultEditMemoId && !readOnly);
   const mobileEditingActive = isMobileEditing || mobileDefaultEditRequested;
 
-  const effectiveReadOnly = readOnly || (isMobileViewport && !mobileEditingActive);
+  const effectiveReadOnly = readOnly
+    || (isMobileViewport && !mobileEditingActive)
+    || (!isMobileViewport && desktopReadingProtection);
   const useMobilePlainTextEditor = isMobileViewport && mobileEditingActive && !readOnly;
   const useMarkdownSourceEditor = !useMobilePlainTextEditor && isMarkdownMode;
+
+  const toggleDesktopReadingProtection = useCallback(() => {
+    setDesktopReadingProtection((protectedMode) => {
+      const nextProtectedMode = !protectedMode;
+      writeDesktopReadingProtectionPreference(nextProtectedMode);
+      return nextProtectedMode;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport && mobileDefaultEditRequested && desktopReadingProtection) {
+      setDesktopReadingProtection(false);
+      writeDesktopReadingProtectionPreference(false);
+    }
+  }, [desktopReadingProtection, isMobileViewport, mobileDefaultEditRequested]);
+
+  useEffect(() => {
+    if (!desktopReadingProtection) return;
+    setAiAssistantOpen(false);
+    setAiSelection(null);
+    setAiInsertionTarget(null);
+    setNoteSearchReplaceOpen(false);
+    setExternalLinkDialogOpen(false);
+    setNoteLinkPickerOpen(false);
+  }, [desktopReadingProtection]);
 
   const memoRef = useRef<MemoDetail | null>(memo);
   const editSessionRef = useRef<MemoEditSession | null>(null);
@@ -1869,10 +1901,11 @@ const RichEditorPane = ({
   }, [focusNoteSearchInput]);
 
   const openNoteReplace = useCallback(() => {
+    if (effectiveReadOnly) return;
     setNoteSearchOpen(true);
     setNoteSearchReplaceOpen(true);
     focusNoteSearchInput();
-  }, [focusNoteSearchInput]);
+  }, [effectiveReadOnly, focusNoteSearchInput]);
 
   const closeNoteSearch = useCallback(() => {
     setNoteSearchOpen(false);
@@ -2102,6 +2135,7 @@ const RichEditorPane = ({
   }, [editor, getMobilePlainTextValue, markdownSource, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   const openAiAssistant = useCallback(() => {
+    if (effectiveReadOnly) return;
     let selection: AiSelectionContext | null = null;
     let insertionTarget: AiInsertionTarget | null = null;
 
@@ -2156,7 +2190,7 @@ const RichEditorPane = ({
     setAiSelection(selection);
     setAiInsertionTarget(insertionTarget);
     setAiAssistantOpen(true);
-  }, [editor, getMobilePlainTextValue, markdownSource, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+  }, [editor, effectiveReadOnly, getMobilePlainTextValue, markdownSource, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   useEffect(() => {
     openAiAssistantRef.current = openAiAssistant;
@@ -2171,6 +2205,7 @@ const RichEditorPane = ({
   }, []);
 
   const applyAiDraft = useCallback((draft: string, mode: "append" | "replace") => {
+    if (effectiveReadOnly) return false;
     if (mode === "replace" && aiSelection) {
       const replacementDraft = normalizeAiSelectionReplacement(draft);
       if (!replacementDraft) return false;
@@ -2285,7 +2320,7 @@ const RichEditorPane = ({
     setAiInsertionTarget(null);
     setAiAssistantOpen(false);
     return true;
-  }, [aiInsertionTarget, aiSelection, editor, getCurrentMarkdownForAi, getMobilePlainTextValue, markDirty, markdownSource, persistCurrentDraft, tagsText, title, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+  }, [aiInsertionTarget, aiSelection, editor, effectiveReadOnly, getCurrentMarkdownForAi, getMobilePlainTextValue, markDirty, markdownSource, persistCurrentDraft, tagsText, title, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   const getCurrentContentJson = useCallback((): TiptapDoc | null => {
     if (useMobilePlainTextEditor) {
@@ -2906,7 +2941,7 @@ const RichEditorPane = ({
   }, [buildImageExportOptions]);
 
   const handleSaveAsTemplate = useCallback(() => {
-    if (!memo) {
+    if (!memo || effectiveReadOnly) {
       return;
     }
 
@@ -2928,7 +2963,7 @@ const RichEditorPane = ({
       contentMarkdown: currentMarkdown,
     };
     void onSaveAsTemplate(currentTemplateMemo, name.trim());
-  }, [editor, getMobilePlainTextValue, memo, onSaveAsTemplate, t, tagsText, title, useMobilePlainTextEditor]);
+  }, [editor, effectiveReadOnly, getMobilePlainTextValue, memo, onSaveAsTemplate, t, tagsText, title, useMobilePlainTextEditor]);
 
   useEffect(() => {
     if (
@@ -2944,7 +2979,7 @@ const RichEditorPane = ({
 
     switch (documentActionRequest.action) {
       case "share":
-        setShareOpen(true);
+        if (!effectiveReadOnly) setShareOpen(true);
         break;
       case "export-markdown":
         handleExportMarkdown();
@@ -2965,6 +3000,7 @@ const RichEditorPane = ({
   }, [
     documentActionRequest,
     editor,
+    effectiveReadOnly,
     handleExportHtml,
     handleExportMarkdown,
     handleExportPdf,
@@ -4012,6 +4048,7 @@ const RichEditorPane = ({
                 type="button"
                 title={t("sharing.manage")}
                 aria-label={t("sharing.manage")}
+                disabled={effectiveReadOnly}
                 onClick={() => setShareOpen(true)}
               >
                 <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -4124,7 +4161,7 @@ const RichEditorPane = ({
                 <Search className="h-5 w-5" strokeWidth={2.25} />
               </Button>
             </IconTooltip>
-            {!readOnly && (
+            {!effectiveReadOnly && (
               <IconTooltip label={`${t("aiAssistant.open")} (${formatShortcutBinding(shortcutSettings.openAiAssistant)})`}>
                 <Button className="hidden h-8 w-8 text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-300 sm:inline-flex" size="icon" variant="ghost" aria-label={t("aiAssistant.open")} onClick={openAiAssistant}>
                   <Sparkles className="h-5 w-5" strokeWidth={2.25} />
@@ -4145,7 +4182,7 @@ const RichEditorPane = ({
                     variant="ghost"
                     aria-label={t("editor.copyToWeChat")}
                     onClick={() => void handleCopyToWeChat()}
-                    disabled={!editor || effectiveReadOnly || useMobilePlainTextEditor || wechatCopyState === "copying"}
+                    disabled={!editor || useMobilePlainTextEditor || wechatCopyState === "copying"}
                   >
                     {wechatCopyState === "copying" ? (
                       <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -4177,7 +4214,7 @@ const RichEditorPane = ({
             </IconTooltip>
             <PluginToolbarMenu host={pluginHost} onManage={onOpenPluginManager} />
             <ThemeToggle />
-            {!readOnly && (
+            {!effectiveReadOnly && (
               <IconTooltip label={t("editor.save")}>
                 <Button
                   className="hidden sm:inline-flex"
@@ -4204,7 +4241,7 @@ const RichEditorPane = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 bg-white border border-slate-200 rounded-md py-1 shadow-md">
-                {!readOnly && (
+                {!effectiveReadOnly && (
                   <DropdownMenuItem
                     className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-emerald-700 hover:bg-emerald-50 cursor-pointer outline-none"
                     onClick={openAiAssistant}
@@ -4231,6 +4268,7 @@ const RichEditorPane = ({
                 <DropdownMenuItem
                   className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
                   onClick={openNoteReplace}
+                  disabled={effectiveReadOnly}
                 >
                   <ReplaceAll className="h-4 w-4 text-slate-500" />
                   {t("editor.replaceCurrentMemo")}
@@ -4244,7 +4282,7 @@ const RichEditorPane = ({
                   <History className="h-4 w-4 text-slate-500" />
                   {t("editor.versionHistory")}
                 </DropdownMenuItem>
-                {!readOnly && (
+                {!effectiveReadOnly && (
                   <DropdownMenuItem
                     className={cn(
                       "flex h-9 w-full items-center gap-2 px-3 text-left text-sm hover:bg-slate-50 cursor-pointer outline-none",
@@ -4308,6 +4346,7 @@ const RichEditorPane = ({
                     <DropdownMenuItem
                       className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
                       onClick={handleSaveAsTemplate}
+                      disabled={effectiveReadOnly}
                     >
                       <Pencil className="h-4 w-4 text-slate-500" />
                       {t("templates.saveAsTemplate")}
@@ -4316,6 +4355,7 @@ const RichEditorPane = ({
                     <DropdownMenuItem
                       className="flex h-9 w-full items-center gap-2 px-3 text-left text-sm text-rose-700 hover:bg-rose-50 cursor-pointer outline-none"
                       onClick={() => void onDeleted(memo.id)}
+                      disabled={effectiveReadOnly}
                     >
                       <Trash2 className="h-4 w-4" />
                       {t("editor.deleteMemo")}
@@ -4381,6 +4421,23 @@ const RichEditorPane = ({
                 markDirty();
               }}
             />
+            {!readOnly && (
+              <IconTooltip label={t(desktopReadingProtection ? "editor.disableReadingProtection" : "editor.enableReadingProtection")}>
+                <Button
+                  className={cn(
+                    "hidden shrink-0 sm:inline-flex",
+                    desktopReadingProtection && "bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-300 hover:bg-emerald-100 hover:text-emerald-900"
+                  )}
+                  size="icon"
+                  variant={desktopReadingProtection ? "soft" : "ghost"}
+                  aria-label={t(desktopReadingProtection ? "editor.disableReadingProtection" : "editor.enableReadingProtection")}
+                  aria-pressed={desktopReadingProtection}
+                  onClick={toggleDesktopReadingProtection}
+                >
+                  {desktopReadingProtection ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+                </Button>
+              </IconTooltip>
+            )}
           </div>
         </div>
         {noteSearchOpen && (

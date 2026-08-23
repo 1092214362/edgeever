@@ -991,6 +991,8 @@ export const enUS = {
     focusMode: "Focus mode",
     enterFocusMode: "Enter focus mode",
     exitFocusMode: "Exit focus mode",
+    enableReadingProtection: "Enable reading protection",
+    disableReadingProtection: "Disable reading protection and edit",
     updatedAt: "Updated {{time}}",
     done: "Done",
     uploadAttachment: "Upload attachment",

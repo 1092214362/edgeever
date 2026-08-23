@@ -123,6 +123,7 @@ export const IMAGE_COMPRESSION_STORAGE_KEY = "edgeever.imageCompressionEnabled";
 export const SYNC_INTERVAL_STORAGE_KEY = "edgeever.syncInterval";
 const LEGACY_AUTO_SAVE_INTERVAL_STORAGE_KEY = "edgeever.autoSaveInterval";
 export const DESKTOP_FOCUS_MODE_STORAGE_KEY = "edgeever.desktopFocusMode";
+export const DESKTOP_READING_PROTECTION_STORAGE_KEY = "edgeever.desktopReadingProtection";
 export const EDITOR_CONTENT_ALIGNMENT_STORAGE_KEY = "edgeever.editorContentAlignment";
 export const MEMO_LIST_DENSITY_STORAGE_KEY = "edgeever.memoListDensity";
 export const MEMO_LIST_WIDTH_STORAGE_KEY = "edgeever.memoListWidth";
@@ -312,6 +313,22 @@ export const readDesktopFocusModePreference = () => {
 export const writeDesktopFocusModePreference = (enabled: boolean) => {
   try {
     window.localStorage.setItem(DESKTOP_FOCUS_MODE_STORAGE_KEY, enabled ? "true" : "false");
+  } catch {
+    // Local storage can be unavailable in private or restricted browser contexts.
+  }
+};
+
+export const readDesktopReadingProtectionPreference = () => {
+  try {
+    return window.localStorage.getItem(DESKTOP_READING_PROTECTION_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
+export const writeDesktopReadingProtectionPreference = (enabled: boolean) => {
+  try {
+    window.localStorage.setItem(DESKTOP_READING_PROTECTION_STORAGE_KEY, enabled ? "true" : "false");
   } catch {
     // Local storage can be unavailable in private or restricted browser contexts.
   }
