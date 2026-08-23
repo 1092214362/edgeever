@@ -80,9 +80,9 @@ jobs:
                   details = error.read().decode()
                   raise SystemExit(f"App Store Connect API {method} {path} failed ({error.code}): {details}")
 
-          products = api("GET", f"/v1/apps/{app_id}/ciProducts?limit=10")
+          product = api("GET", f"/v1/apps/{app_id}/ciProduct").get("data")
           workflows = []
-          for product in products.get("data", []):
+          for product in [product] if product else []:
               product_id = product["id"]
               query = urllib.parse.urlencode({
                   "limit": 50,
