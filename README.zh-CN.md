@@ -252,7 +252,7 @@ Docker 与 Cloudflare 共用同一套前端、API 路由、业务服务、鉴权
 
 - “minimal品牌绿”主题排版架构借鉴于 [obsidian-minimal](https://github.com/kepano/obsidian-minimal)。
 - “Outline 品牌绿”主题排版架构借鉴于 [Outline](https://github.com/outline/outline)。
-- “马克飞象经典”主题将[马克飞象](https://maxiang.io/)的默认排版适配到了 EdgeEver 编辑器。
+- “经典蓝白”主题借鉴了早期 [StackEdit](https://github.com/benweet/stackedit)/[Bootstrap](https://github.com/twbs/bootstrap) 系 Markdown 排版风格，并参考[马克飞象](https://maxiang.io/)完善中文排版细节。
 
 ## 免责声明
 

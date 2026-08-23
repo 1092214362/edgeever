@@ -203,7 +203,7 @@ export const zhCN = {
     syncIntervalDescription: "定期将编辑内容同步到服务器，本地草稿仍会即时保留。",
     syncIntervals: { "30s": "每 30 秒", "5m": "每 5 分钟", "15m": "每 15 分钟", "30m": "每 30 分钟", "1h": "每 1 小时", "2h": "每 2 小时" },
     mermaidThemeTitle: "图表主题",
-    mermaidThemeDescription: "选择笔记中图表的视觉主题。",
+    mermaidThemeDescription: "跟随应用外观，或为笔记图表选择固定主题。",
     editorThemeTitle: "编辑器主题",
     editorThemeDescription: "选择正文编辑区的排版风格，偏好会保存在当前浏览器中。",
     editorContentAlignmentTitle: "笔记正文布局",
@@ -218,7 +218,7 @@ export const zhCN = {
       "outline-emerald": "Outline 品牌绿",
       "wechat-green": "微信经典绿",
       "modern-mint": "极客薄荷绿",
-      marxico: "马克飞象经典",
+      marxico: "经典蓝白",
       custom: "自定义",
     },
     customEditorTheme: {
@@ -241,6 +241,7 @@ export const zhCN = {
       contrastWarning: "正文、辅助文字、标题或强调色的对比度不足，请调整后保存。",
     },
     mermaidThemes: {
+      auto: "跟随应用外观",
       "zinc-light": "Zinc 浅色",
       "zinc-dark": "Zinc 深色",
       "tokyo-night": "Tokyo Night",

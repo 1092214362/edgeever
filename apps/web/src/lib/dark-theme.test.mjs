@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { contrastRatio } from "./color-contrast";
-import { DEFAULT_CUSTOM_DARK_COLORS, DEFAULT_CUSTOM_LIGHT_COLORS } from "../components/ThemeProvider";
+import {
+  DEFAULT_CUSTOM_DARK_COLORS,
+  DEFAULT_CUSTOM_LIGHT_COLORS,
+  resolveMermaidTheme,
+} from "../components/ThemeProvider";
 
 describe("dark theme contracts", () => {
   test("default custom editor themes meet their contrast thresholds", () => {
@@ -28,6 +32,12 @@ describe("dark theme contracts", () => {
     expect(css).toContain("color: var(--editor-theme-text);");
     expect(contrastRatio("#dce3ea", "#19222b")).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio("#e7edf2", "#19222b")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("automatic Mermaid themes follow the resolved appearance", () => {
+    expect(resolveMermaidTheme("auto", "light")).toBe("zinc-light");
+    expect(resolveMermaidTheme("auto", "dark")).toBe("zinc-dark");
+    expect(resolveMermaidTheme("dracula", "light")).toBe("dracula");
   });
 
   test("appearance changes stay out of the editor React render path", () => {

@@ -1,4 +1,4 @@
-/* Marxico's default reading theme, mapped from its live computed styles. */
+/* Classic StackEdit/Bootstrap-era Markdown typography, adapted for EdgeEver with Marxico as a Chinese presentation reference. */
 
 .edgeever-editor[data-editor-theme="marxico"]:not([data-editor-theme="default"]) {
   --editor-theme-bg: #ffffff;
@@ -188,7 +188,6 @@
 
 .edgeever-editor[data-editor-theme="marxico"]:not([data-editor-theme="default"]) .ProseMirror pre code,
 .edgeever-editor[data-editor-theme="marxico"]:not([data-editor-theme="default"]) .ProseMirror .edgeever-code-source {
-  display: block;
   border: 0;
   border-radius: 0;
   background: #23241f;
@@ -198,6 +197,14 @@
   font-size: 0.9em;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.edgeever-editor[data-editor-theme="marxico"]:not([data-editor-theme="default"]) .ProseMirror pre code {
+  display: block;
+}
+
+.edgeever-editor[data-editor-theme="marxico"]:not([data-editor-theme="default"]) .ProseMirror .edgeever-mermaid-code-block:not(.is-source-visible) .edgeever-mermaid-source {
+  display: none;
 }
 
 .edgeever-editor[data-editor-theme="marxico"]:not([data-editor-theme="default"]) .ProseMirror .edgeever-code-copy-button {

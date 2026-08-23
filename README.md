@@ -256,7 +256,7 @@ Docker runs the same frontend, API routes, services, authentication, MCP impleme
 
 - The "Minimal Emerald" theme typography layout is inspired by [obsidian-minimal](https://github.com/kepano/obsidian-minimal).
 - The "Outline Emerald" theme typography layout is inspired by [Outline](https://github.com/outline/outline).
-- The "Marxico Classic" theme adapts the default typography of [Marxico](https://maxiang.io/) to EdgeEver's editor.
+- The "Classic Blue & White" theme is inspired by the early [StackEdit](https://github.com/benweet/stackedit)/[Bootstrap](https://github.com/twbs/bootstrap) Markdown typography style, with Chinese typography details informed by [Marxico](https://maxiang.io/).
 
 ## Disclaimer
 
