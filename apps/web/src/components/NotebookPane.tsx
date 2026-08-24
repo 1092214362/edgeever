@@ -485,7 +485,7 @@ export const NotebookPane = ({
       <div className="hidden shrink-0 px-3 pb-4 pt-4 lg:block">
         <div className="flex overflow-hidden rounded-full border border-slate-200/90 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-emerald-200/80 hover:shadow-[0_8px_24px_rgba(22,160,110,0.12)]">
           <button
-            className="group flex h-14 min-w-0 flex-1 items-center gap-3 px-3 text-left transition-all duration-200 hover:bg-slate-50/80 disabled:cursor-not-allowed disabled:opacity-50"
+            className="group flex h-14 min-w-0 flex-1 items-center gap-3 px-3 text-left transition-all duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             title={t("notebookPane.newMemo")}
             aria-label={t("notebookPane.newMemo")}
@@ -621,7 +621,7 @@ export const NotebookPane = ({
               href={DESKTOP_DOWNLOAD_URL}
               target="_blank"
               rel="noreferrer"
-              className="group flex min-h-11 w-full items-start gap-3 rounded-md px-3 py-2 text-left text-slate-700 transition-colors duration-200 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+              className="group flex min-h-11 w-full items-start gap-3 rounded-md px-3 py-2 text-left text-slate-700 transition-colors duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
               title={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
               aria-label={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
             >
