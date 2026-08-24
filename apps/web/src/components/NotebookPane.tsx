@@ -87,14 +87,14 @@ const SidebarNavButton = ({
       tone === "warning"
         ? "text-amber-700 hover:bg-amber-50/70 hover:text-amber-800"
         : active
-          ? "edgeever-workspace-selection text-slate-950"
+          ? "edgeever-workspace-selection text-slate-950 font-medium"
           : "text-slate-700 hover:bg-slate-50 hover:text-slate-950"
     )}
     type="button"
     aria-current={active ? "page" : undefined}
     onClick={onClick}
   >
-    <span className="flex h-4 w-4 shrink-0 items-center justify-center">{icon}</span>
+    <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center transition-colors duration-200", active && "text-emerald-600 dark:text-emerald-400")}>{icon}</span>
     <span className="min-w-0 flex-1 truncate">{label}</span>
   </button>
 );
@@ -116,7 +116,7 @@ const SidebarShortcutButton = ({
     <button
       className={cn(
         "flex h-9 min-w-0 w-full items-center justify-center rounded-md px-0 text-xs font-medium transition-colors duration-200",
-        active ? "edgeever-workspace-selection text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+        active ? "edgeever-workspace-selection text-emerald-600 dark:text-emerald-400" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
       )}
       type="button"
       aria-current={active ? "page" : undefined}
@@ -483,9 +483,9 @@ export const NotebookPane = ({
       )}
 
       <div className="hidden shrink-0 px-3 pb-4 pt-4 lg:block">
-        <div className="flex overflow-hidden rounded-full border border-slate-200 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.06)]">
+        <div className="flex overflow-hidden rounded-full border border-slate-200/90 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-emerald-200/80 hover:shadow-[0_8px_24px_rgba(22,160,110,0.12)]">
           <button
-            className="group flex h-14 min-w-0 flex-1 items-center gap-3 px-3 text-left transition-all duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="group flex h-14 min-w-0 flex-1 items-center gap-3 px-3 text-left transition-all duration-200 hover:bg-slate-50/80 disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             title={t("notebookPane.newMemo")}
             aria-label={t("notebookPane.newMemo")}
@@ -621,15 +621,15 @@ export const NotebookPane = ({
               href={DESKTOP_DOWNLOAD_URL}
               target="_blank"
               rel="noreferrer"
-              className="flex min-h-11 w-full items-start gap-3 rounded-md px-3 py-2 text-left text-emerald-700 transition-colors duration-200 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+              className="group flex min-h-11 w-full items-start gap-3 rounded-md px-3 py-2 text-left text-slate-700 transition-colors duration-200 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
               title={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
               aria-label={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
             >
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center mt-0.5">
-                <Download className="h-4 w-4 text-emerald-600" />
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                <Download className="h-4 w-4 text-slate-400 transition-colors duration-200 group-hover:text-emerald-600" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold leading-4">
+                <span className="block truncate text-sm font-medium leading-4 text-slate-800 transition-colors duration-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
                   {t("pwa.sidebarInstall") || "下载桌面客户端"}
                 </span>
                 <span className="mt-1 block whitespace-nowrap text-[11px] font-normal leading-4 text-slate-500">
