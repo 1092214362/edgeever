@@ -22,7 +22,7 @@ import {
   CheckCircle2,
   CircleUserRound,
   Download,
-  ExternalLink,
+  Smartphone,
   RotateCcw,
   Store,
 } from "lucide-react";
@@ -55,6 +55,8 @@ import { statusSettleMotion } from "@/lib/motion";
 const NOTEBOOK_DRAG_SCROLL_EDGE_PX = 56;
 const NOTEBOOK_DRAG_SCROLL_MAX_STEP_PX = 18;
 const DESKTOP_DOWNLOAD_URL = "https://github.com/tianma-if/edgeever/releases/latest";
+const ANDROID_DOWNLOAD_URL = "https://play.google.com/store/apps/details?id=org.edgeever.mobile";
+const IOS_DOWNLOAD_URL = "https://apps.apple.com/us/app/edgeever/id6792625631";
 const CHROMIUM_CLIPPER_URL = "https://chromewebstore.google.com/detail/edgeever-web-clipper/gjadpfmanienmlofajibkfkkpfdkclgo";
 const FIREFOX_CLIPPER_URL = "https://addons.mozilla.org/firefox/addon/edgeever-web-clipper/";
 
@@ -616,65 +618,54 @@ export const NotebookPane = ({
 
       <footer className="edgeever-workspace-sidebar-footer border-t border-slate-200 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-sm">
         <div className="space-y-1">
-          {!window.edgeeverDesktop?.isAvailable && (
-            <a
-              href={DESKTOP_DOWNLOAD_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="group flex min-h-11 w-full items-start gap-3 rounded-md px-3 py-2 text-left text-slate-700 transition-colors duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-              title={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
-              aria-label={t("pwa.sidebarInstallTitle") || "下载 EdgeEver 桌面客户端"}
+          <div className="group/downloads relative">
+            <button
+              className="flex h-8 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium leading-none text-slate-500 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+              type="button"
+              aria-haspopup="menu"
+              aria-label={t("pwa.sidebarDownloadsTitle") || "下载 EdgeEver 客户端与浏览器插件"}
             >
-              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                <Download className="h-4 w-4 text-slate-400 transition-colors duration-200 group-hover:text-emerald-600" />
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                <Download className="h-3.5 w-3.5 text-slate-400" />
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium leading-4 text-slate-800 transition-colors duration-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
-                  {t("pwa.sidebarInstall") || "下载桌面客户端"}
-                </span>
-                <span className="mt-1 block whitespace-nowrap text-[11px] font-normal leading-4 text-slate-500">
-                  {t("pwa.sidebarInstallAvailability") ||
-                    "Mac/iOS/安卓可用 · Windows 敬请期待"}
-                </span>
-              </span>
-            </a>
-          )}
-          {demoMode && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="flex h-8 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium leading-none text-slate-500 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-                  type="button"
-                  title={t("pwa.sidebarClipperTitle") || "安装 EdgeEver 浏览器剪藏插件"}
-                  aria-label={t("pwa.sidebarClipperTitle") || "安装 EdgeEver 浏览器剪藏插件"}
-                >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              <span className="min-w-0 flex-1 truncate">{t("pwa.sidebarDownloads") || "下载客户端"}</span>
+            </button>
+            <div className="pointer-events-none invisible absolute bottom-full left-0 z-50 w-full translate-y-1 pb-1 opacity-0 transition-[opacity,transform,visibility] duration-150 group-hover/downloads:pointer-events-auto group-hover/downloads:visible group-hover/downloads:translate-y-0 group-hover/downloads:opacity-100 group-focus-within/downloads:pointer-events-auto group-focus-within/downloads:visible group-focus-within/downloads:translate-y-0 group-focus-within/downloads:opacity-100">
+              <div className="overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-lg" role="menu">
+                {!window.edgeeverDesktop?.isAvailable && (
+                  <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={DESKTOP_DOWNLOAD_URL} target="_blank" rel="noreferrer" role="menuitem">
+                    <span className="flex w-9 items-center"><Download className="h-4 w-4 text-slate-500" /></span>
+                    <span>{t("pwa.sidebarInstall") || "桌面端"}</span>
+                  </a>
+                )}
+                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={ANDROID_DOWNLOAD_URL} target="_blank" rel="noreferrer" role="menuitem">
+                  <span className="flex w-9 items-center"><Smartphone className="h-4 w-4 text-slate-500" /></span>
+                  <span>{t("pwa.sidebarAndroid") || "安卓端"}</span>
+                </a>
+                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={IOS_DOWNLOAD_URL} target="_blank" rel="noreferrer" role="menuitem">
+                  <span className="flex w-9 items-center"><Smartphone className="h-4 w-4 text-slate-500" /></span>
+                  <span className="min-w-0">
+                    <span className="block">{t("pwa.sidebarIos") || "iOS 端"}</span>
+                    <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
+                      {t("pwa.sidebarIosAvailability") || "仅支持非中国大陆区 Apple ID"}
+                    </span>
                   </span>
-                  <span className="min-w-0 flex-1 truncate">{t("pwa.sidebarClipper") || "安装浏览器剪藏插件"}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top" className="w-52">
-                <DropdownMenuItem asChild>
-                  <a className="gap-2" href={CHROMIUM_CLIPPER_URL} target="_blank" rel="noreferrer">
-                    <span className="flex w-9 items-center gap-1">
-                      <BrowserBrandIcon path={CHROME_ICON_PATH} color="#4285F4" />
-                      <BrowserBrandIcon path={EDGE_ICON_PATH} color="#0C59A4" />
-                    </span>
-                    <span>Chrome / Edge</span>
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a className="gap-2" href={FIREFOX_CLIPPER_URL} target="_blank" rel="noreferrer">
-                    <span className="flex w-9 items-center">
-                      <BrowserBrandIcon path={FIREFOX_ICON_PATH} color="#FF7139" />
-                    </span>
-                    <span>Firefox</span>
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                </a>
+                <div className="-mx-1 my-1 h-px bg-slate-100" />
+                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={CHROMIUM_CLIPPER_URL} target="_blank" rel="noreferrer" role="menuitem">
+                  <span className="flex w-9 items-center gap-1">
+                    <BrowserBrandIcon path={CHROME_ICON_PATH} color="#4285F4" />
+                    <BrowserBrandIcon path={EDGE_ICON_PATH} color="#0C59A4" />
+                  </span>
+                  <span>Chrome / Edge</span>
+                </a>
+                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={FIREFOX_CLIPPER_URL} target="_blank" rel="noreferrer" role="menuitem">
+                  <span className="flex w-9 items-center"><BrowserBrandIcon path={FIREFOX_ICON_PATH} color="#FF7139" /></span>
+                  <span>Firefox</span>
+                </a>
+              </div>
+            </div>
+          </div>
           <button
             onClick={onOpenSettings}
             className="flex h-8 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium leading-none text-slate-700 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/70"
