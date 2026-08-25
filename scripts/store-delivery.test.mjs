@@ -18,6 +18,18 @@ describe("store delivery command", () => {
     ).toBe("ios");
   });
 
+  test("supports recovering a Play-signed APK without re-uploading", () => {
+    expect(
+      parseStoreDeliveryArgs([
+        "--release",
+        "v1.7.0",
+        "--platform",
+        "android",
+        "--recover-play-apk",
+      ]).recoverPlayApk,
+    ).toBe(true);
+  });
+
   test("rejects malformed release tags", () => {
     expect(() => parseStoreDeliveryArgs(["--release", "latest"])).toThrow(
       "stable vX.Y.Z",
@@ -53,6 +65,9 @@ describe("store delivery command", () => {
     expect(workflow).toContain("ANDROID_PLAY_APP_SIGNER_SHA256");
     expect(workflow).toContain("scripts/download-play-universal-apk.mjs");
     expect(workflow).toContain('gh release upload "$RELEASE_TAG" "$apk_path"');
+    expect(
+      workflow.match(/if: \$\{\{ !inputs\.recover_play_apk \}\}/g),
+    ).toHaveLength(5);
   });
 
   test("can prepare a matching Draft before formal publication", () => {
@@ -63,6 +78,8 @@ describe("store delivery command", () => {
 
     expect(workflow).toContain('if [[ "$release_is_draft" = "true" ]]');
     expect(workflow).toContain('previous_tag="${release_tags[0]:-}"');
+    expect(workflow).toContain('git tag "$RELEASE_TAG" "$RELEASE_TARGET"');
+    expect(workflow).toContain("set -o pipefail");
     expect(workflow).toContain(
       "release_target: ${{ steps.release.outputs.release_target }}",
     );

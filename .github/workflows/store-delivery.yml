@@ -26,6 +26,11 @@ on:
           - alpha
           - beta
           - internal
+      recover_play_apk:
+        description: "Skip the completed Play upload and recover its signed APK"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -97,10 +102,16 @@ jobs:
       - name: Validate the checked-out Release target
         env:
           PREVIOUS_TAG: ${{ steps.release.outputs.previous_tag }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
           RELEASE_TARGET: ${{ steps.release.outputs.release_target }}
         run: |
           test "$(git rev-parse HEAD)" = "$(git rev-parse "${RELEASE_TARGET}^{commit}")"
           git fetch origin "refs/tags/${PREVIOUS_TAG}:refs/tags/${PREVIOUS_TAG}"
+          if git rev-parse --verify --quiet "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse "${RELEASE_TARGET}^{commit}")"
+          else
+            git tag "$RELEASE_TAG" "$RELEASE_TARGET"
+          fi
 
       - name: Validate mobile version and audited change range
         id: validate
@@ -110,6 +121,7 @@ jobs:
           PREVIOUS_TAG: ${{ steps.release.outputs.previous_tag }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
+          set -o pipefail
           node scripts/validate-store-delivery.mjs \
             "$RELEASE_TAG" \
             "$PREVIOUS_TAG" \
@@ -145,6 +157,7 @@ jobs:
           bun-version: 1.3.14
 
       - name: Set up EAS CLI
+        if: ${{ !inputs.recover_play_apk }}
         uses: expo/expo-github-action@v8
         with:
           eas-version: 21.4.0
@@ -157,6 +170,7 @@ jobs:
           --cache-dir "$RUNNER_TEMP/edgeever-bun-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
       - name: Restore Android upload keystore
+        if: ${{ !inputs.recover_play_apk }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
@@ -165,6 +179,7 @@ jobs:
           chmod 600 "$RUNNER_TEMP/edgeever-upload.p12"
 
       - name: Build and verify signed Play bundle
+        if: ${{ !inputs.recover_play_apk }}
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/edgeever-upload.p12
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -174,6 +189,7 @@ jobs:
         run: bun run build:android:play
 
       - name: Preserve Play bundle and deobfuscation mapping
+        if: ${{ !inputs.recover_play_apk }}
         uses: actions/upload-artifact@v7
         with:
           name: edgeever-${{ inputs.release_tag }}-google-play
@@ -184,6 +200,7 @@ jobs:
           compression-level: 0
 
       - name: Upload bundle to Google Play
+        if: ${{ !inputs.recover_play_apk }}
         env:
           ANDROID_TRACK: ${{ inputs.android_track }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
