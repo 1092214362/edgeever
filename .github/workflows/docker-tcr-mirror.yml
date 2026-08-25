@@ -28,6 +28,12 @@ env:
   GHCR_IMAGE_NAME: ghcr.io/tianma-if/edgeever
   TCR_IMAGE_NAME: ccr.ccs.tencentyun.com/edgeever/edgeever
 
+concurrency:
+  group: docker-tcr-mirror
+  # A release/manual promotion takes priority over an older main mirror. Main
+  # mirrors queue behind an active release instead of cancelling it.
+  cancel-in-progress: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
+
 jobs:
   mirror:
     if: >-
@@ -59,7 +65,7 @@ jobs:
             destination_tags="${RELEASE_TAG},${RELEASE_TAG#v},latest"
           elif [[ "${EVENT_NAME}" == "workflow_run" ]]; then
             source_tag="sha-${SOURCE_SHA:0:12}"
-            destination_tags="main,${source_tag}"
+            destination_tags="${source_tag},main"
           else
             source_tag="${INPUT_SOURCE_TAG}"
             destination_tags="${INPUT_DESTINATION_TAGS}"
@@ -69,6 +75,7 @@ jobs:
             exit 1
           fi
           IFS=',' read -ra tags <<< "${destination_tags}"
+          primary_tag="${tags[0]}"
           for image_tag in "${tags[@]}"; do
             if [[ ! "${image_tag}" =~ ^[A-Za-z0-9._-]+$ ]]; then
               echo "Invalid destination tag: ${image_tag}" >&2
@@ -77,6 +84,7 @@ jobs:
           done
           {
             echo "source_tag=${source_tag}"
+            echo "primary_tag=${primary_tag}"
             echo "destination_tags=${destination_tags}"
           } >> "${GITHUB_OUTPUT}"
 
@@ -99,29 +107,46 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes skopeo
 
-      - name: Mirror image tags
+      - name: Mirror immutable image once
         env:
           SOURCE_TAG: ${{ steps.image.outputs.source_tag }}
+          PRIMARY_TAG: ${{ steps.image.outputs.primary_tag }}
+        run: |
+          for attempt in 1 2 3; do
+            if timeout --signal=TERM --kill-after=1m 15m skopeo copy \
+              --all \
+              --preserve-digests \
+              --authfile "${HOME}/.docker/config.json" \
+              "docker://${GHCR_IMAGE_NAME}:${SOURCE_TAG}" \
+              "docker://${TCR_IMAGE_NAME}:${PRIMARY_TAG}"; then
+              break
+            else
+              copy_status=$?
+            fi
+            if [[ "${attempt}" -eq 3 ]]; then
+              echo "Failed to mirror ${PRIMARY_TAG} after ${attempt} attempts (status ${copy_status})" >&2
+              exit 1
+            fi
+            echo "Mirror attempt ${attempt} failed for ${PRIMARY_TAG} (status ${copy_status}); retrying" >&2
+            sleep "$((attempt * 15))"
+          done
+
+      - name: Promote TCR tags without transferring layers
+        env:
+          PRIMARY_TAG: ${{ steps.image.outputs.primary_tag }}
           DESTINATION_TAGS: ${{ steps.image.outputs.destination_tags }}
         run: |
+          primary_inspect="$(docker buildx imagetools inspect "${TCR_IMAGE_NAME}:${PRIMARY_TAG}")"
+          primary_digest="$(sed -n 's/^Digest:[[:space:]]*//p' <<<"${primary_inspect}" | head -n 1)"
+          test -n "${primary_digest}"
           IFS=',' read -ra tags <<< "${DESTINATION_TAGS}"
           for image_tag in "${tags[@]}"; do
-            for attempt in 1 2 3; do
-              if skopeo copy \
-                --all \
-                --preserve-digests \
-                --authfile "${HOME}/.docker/config.json" \
-                "docker://${GHCR_IMAGE_NAME}:${SOURCE_TAG}" \
-                "docker://${TCR_IMAGE_NAME}:${image_tag}"; then
-                break
-              fi
-              if [[ "${attempt}" -eq 3 ]]; then
-                echo "Failed to mirror ${image_tag} after ${attempt} attempts" >&2
-                exit 1
-              fi
-              echo "Mirror attempt ${attempt} failed for ${image_tag}; retrying" >&2
-              sleep "$((attempt * 15))"
-            done
+            if [[ "${image_tag}" == "${PRIMARY_TAG}" ]]; then
+              continue
+            fi
+            docker buildx imagetools create \
+              --tag "${TCR_IMAGE_NAME}:${image_tag}" \
+              "${TCR_IMAGE_NAME}@${primary_digest}"
           done
 
       - name: Verify mirrored anonymous image access
