@@ -505,6 +505,8 @@ textarea {
   min-height: 100%;
   outline: none;
   padding: 8px 0 56px;
+  tab-size: 4;
+  white-space: pre-wrap;
 }
 
 .edgeever-public-share .ProseMirror {
