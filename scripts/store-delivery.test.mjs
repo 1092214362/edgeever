@@ -72,6 +72,7 @@ describe("store delivery command", () => {
     );
 
     expect(workflow).toContain("github.repository == 'tianma-if/edgeever'");
+    expect(workflow).toContain("permissions:\n  # Draft Releases are only visible to a token with repository write access.\n  contents: write");
     expect(workflow).toContain('gh release view "$RELEASE_TAG"');
     expect(workflow).toContain('test "$(jq -r \'.isDraft\' <<<"$release")" = "true"');
     expect(workflow).toContain("ref: ${{ steps.release.outputs.target_commitish }}");

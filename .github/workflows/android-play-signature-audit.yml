@@ -9,7 +9,8 @@ on:
         type: string
 
 permissions:
-  contents: read
+  # Draft Releases are only visible to a token with repository write access.
+  contents: write
 
 jobs:
   audit:
