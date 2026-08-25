@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, useMemo, type CSSProperties, type FocusEvent as ReactFocusEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, lazy, Suspense, type CSSProperties, type FocusEvent as ReactFocusEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
@@ -94,7 +94,13 @@ import {
 import { WeChatIcon } from "./WeChatIcon";
 import { ThemeToggle } from "./ThemeToggle";
 import { useEditorTheme, useMarkdownTheme } from "./ThemeProvider";
-import { MarkdownSourceEditor, type MarkdownSourceEditorRef } from "./editor/MarkdownSourceEditor";
+import type { MarkdownSourceEditorRef } from "./editor/MarkdownSourceEditor";
+
+const MarkdownSourceEditor = lazy(() =>
+  import("./editor/MarkdownSourceEditor").then((module) => ({
+    default: module.MarkdownSourceEditor,
+  })),
+);
 import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
@@ -4748,20 +4754,22 @@ const RichEditorPane = ({
               </>
             ) : useMarkdownSourceEditor ? (
               <div className="relative min-h-0 flex-1">
-                <MarkdownSourceEditor
-                  ref={markdownSourceEditorRef}
-                  value={markdownSource}
-                  onChange={handleMarkdownSourceChange}
-                  themeName={markdownTheme}
-                  readOnly={effectiveReadOnly}
-                  placeholder={`# ${t("editor.placeholder")}`}
-                  ariaLabel={t("editor.markdownSourceAria")}
-                  onSlashCommandTrigger={() => {
-                    openAiAssistant();
-                  }}
-                  onLinkShortcut={openExternalLinkDialog}
-                  className="absolute inset-0 h-full w-full"
-                />
+                <Suspense fallback={<div className="h-full w-full" />}>
+                  <MarkdownSourceEditor
+                    ref={markdownSourceEditorRef}
+                    value={markdownSource}
+                    onChange={handleMarkdownSourceChange}
+                    themeName={markdownTheme}
+                    readOnly={effectiveReadOnly}
+                    placeholder={`# ${t("editor.placeholder")}`}
+                    ariaLabel={t("editor.markdownSourceAria")}
+                    onSlashCommandTrigger={() => {
+                      openAiAssistant();
+                    }}
+                    onLinkShortcut={openExternalLinkDialog}
+                    className="absolute inset-0 h-full w-full"
+                  />
+                </Suspense>
               </div>
             ) : (
               <div
