@@ -188,6 +188,11 @@ jobs:
           username: ${{ secrets.TENCENT_TCR_USERNAME }}
           password: ${{ secrets.TENCENT_TCR_PASSWORD }}
 
+      - name: Install registry copy tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+
       - name: Build and publish image
         uses: docker/build-push-action@v6
         with:
@@ -209,9 +214,12 @@ jobs:
           while IFS= read -r image_tag; do
             [[ -n "${image_tag}" ]] || continue
             for attempt in 1 2 3; do
-              if docker buildx imagetools create \
-                --tag "${TCR_IMAGE_NAME}:${image_tag}" \
-                "${GHCR_IMAGE_NAME}:${image_tag}"; then
+              if skopeo copy \
+                --all \
+                --preserve-digests \
+                --authfile "${HOME}/.docker/config.json" \
+                "docker://${GHCR_IMAGE_NAME}:${image_tag}" \
+                "docker://${TCR_IMAGE_NAME}:${image_tag}"; then
                 break
               fi
               if [[ "${attempt}" -eq 3 ]]; then
