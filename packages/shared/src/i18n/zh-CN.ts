@@ -636,7 +636,7 @@ export const zhCN = {
     desktopUpdateDownloading: "正在下载更新…",
     desktopUpdateReady: "更新已下载完成",
     desktopUpdateDownload: "下载更新",
-    desktopUpdateRestart: "重启并更新",
+    desktopUpdateRestart: "重启以更新",
     desktopUpdateInstalling: "正在重启并安装更新…",
     desktopUpdateFailed: "更新失败，请稍后重试。",
   },
