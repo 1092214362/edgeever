@@ -1,4 +1,4 @@
-name: Mirror Docker image to Tencent TCR
+name: Build Tencent TCR image through CNB
 
 on:
   workflow_run:
@@ -11,31 +11,24 @@ on:
       - published
   workflow_dispatch:
     inputs:
-      source_tag:
-        description: "Immutable GHCR tag to mirror"
+      source_ref:
+        description: "Git ref or SHA already verified by the GHCR workflow"
         required: true
         type: string
-      destination_tags:
-        description: "Comma-separated TCR tags"
+      destination_ref:
+        description: "CNB destination: main or a formal vX.Y.Z tag"
         required: true
         type: string
 
 permissions:
   contents: read
-  packages: read
-
-env:
-  GHCR_IMAGE_NAME: ghcr.io/tianma-if/edgeever
-  TCR_IMAGE_NAME: ccr.ccs.tencentyun.com/edgeever/edgeever
 
 concurrency:
-  group: docker-tcr-mirror
-  # A release/manual promotion takes priority over an older main mirror. Main
-  # mirrors queue behind an active release instead of cancelling it.
-  cancel-in-progress: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
+  group: docker-tcr-cnb-source-sync
+  cancel-in-progress: false
 
 jobs:
-  mirror:
+  sync-source:
     if: >-
       github.repository == 'tianma-if/edgeever' &&
       (
@@ -47,123 +40,64 @@ jobs:
           github.event.workflow_run.event == 'push'
         )
       )
-    name: Mirror public image without blocking releases
+    name: Trigger asynchronous Tencent-side image build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 5
     steps:
-      - name: Resolve immutable source and destination tags
-        id: image
+      - name: Resolve verified source and CNB destination
+        id: source
         env:
           EVENT_NAME: ${{ github.event_name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
-          INPUT_SOURCE_TAG: ${{ inputs.source_tag }}
-          INPUT_DESTINATION_TAGS: ${{ inputs.destination_tags }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SOURCE_REF: ${{ inputs.source_ref }}
+          INPUT_DESTINATION_REF: ${{ inputs.destination_ref }}
         run: |
           if [[ "${EVENT_NAME}" == "release" ]]; then
-            source_tag="${RELEASE_TAG}"
-            destination_tags="${RELEASE_TAG},${RELEASE_TAG#v},latest"
+            source_ref="${RELEASE_TAG}"
+            destination_ref="${RELEASE_TAG}"
           elif [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            source_tag="sha-${SOURCE_SHA:0:12}"
-            destination_tags="${source_tag},main"
+            source_ref="${WORKFLOW_SHA}"
+            destination_ref="main"
           else
-            source_tag="${INPUT_SOURCE_TAG}"
-            destination_tags="${INPUT_DESTINATION_TAGS}"
+            source_ref="${INPUT_SOURCE_REF}"
+            destination_ref="${INPUT_DESTINATION_REF}"
           fi
-          if [[ ! "${source_tag}" =~ ^[A-Za-z0-9._-]+$ ]]; then
-            echo "Invalid source tag" >&2
+          if [[ "${destination_ref}" != "main" ]] && [[ ! "${destination_ref}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "destination_ref must be main or vX.Y.Z" >&2
             exit 1
           fi
-          IFS=',' read -ra tags <<< "${destination_tags}"
-          primary_tag="${tags[0]}"
-          for image_tag in "${tags[@]}"; do
-            if [[ ! "${image_tag}" =~ ^[A-Za-z0-9._-]+$ ]]; then
-              echo "Invalid destination tag: ${image_tag}" >&2
-              exit 1
-            fi
-          done
           {
-            echo "source_tag=${source_tag}"
-            echo "primary_tag=${primary_tag}"
-            echo "destination_tags=${destination_tags}"
+            echo "source_ref=${source_ref}"
+            echo "destination_ref=${destination_ref}"
           } >> "${GITHUB_OUTPUT}"
 
-      - name: Sign in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Check out the GHCR-verified source
+        uses: actions/checkout@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ steps.source.outputs.source_ref }}
+          fetch-depth: 0
 
-      - name: Sign in to Tencent Cloud Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ccr.ccs.tencentyun.com
-          username: ${{ secrets.TENCENT_TCR_USERNAME }}
-          password: ${{ secrets.TENCENT_TCR_PASSWORD }}
-
-      - name: Install registry copy tool
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes skopeo
-
-      - name: Mirror immutable image once
+      - name: Verify formal source metadata
+        if: steps.source.outputs.destination_ref != 'main'
         env:
-          SOURCE_TAG: ${{ steps.image.outputs.source_tag }}
-          PRIMARY_TAG: ${{ steps.image.outputs.primary_tag }}
+          RELEASE_TAG: ${{ steps.source.outputs.destination_ref }}
         run: |
-          for attempt in 1 2 3; do
-            if timeout --signal=TERM --kill-after=1m 15m skopeo copy \
-              --all \
-              --preserve-digests \
-              --authfile "${HOME}/.docker/config.json" \
-              "docker://${GHCR_IMAGE_NAME}:${SOURCE_TAG}" \
-              "docker://${TCR_IMAGE_NAME}:${PRIMARY_TAG}"; then
-              break
-            else
-              copy_status=$?
-            fi
-            if [[ "${attempt}" -eq 3 ]]; then
-              echo "Failed to mirror ${PRIMARY_TAG} after ${attempt} attempts (status ${copy_status})" >&2
-              exit 1
-            fi
-            echo "Mirror attempt ${attempt} failed for ${PRIMARY_TAG} (status ${copy_status}); retrying" >&2
-            sleep "$((attempt * 15))"
-          done
+          test "$(jq -r '.version' package.json)" = "${RELEASE_TAG#v}"
+          test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 "${RELEASE_TAG}")"
 
-      - name: Promote TCR tags without transferring layers
+      - name: Push the same Git commit to CNB
         env:
-          PRIMARY_TAG: ${{ steps.image.outputs.primary_tag }}
-          DESTINATION_TAGS: ${{ steps.image.outputs.destination_tags }}
+          CNB_PUSH_TOKEN: ${{ secrets.CNB_TCR_BUILD_PUSH_TOKEN }}
+          DESTINATION_REF: ${{ steps.source.outputs.destination_ref }}
         run: |
-          primary_inspect="$(docker buildx imagetools inspect "${TCR_IMAGE_NAME}:${PRIMARY_TAG}")"
-          primary_digest="$(sed -n 's/^Digest:[[:space:]]*//p' <<<"${primary_inspect}" | head -n 1)"
-          test -n "${primary_digest}"
-          IFS=',' read -ra tags <<< "${DESTINATION_TAGS}"
-          for image_tag in "${tags[@]}"; do
-            if [[ "${image_tag}" == "${PRIMARY_TAG}" ]]; then
-              continue
-            fi
-            docker buildx imagetools create \
-              --tag "${TCR_IMAGE_NAME}:${image_tag}" \
-              "${TCR_IMAGE_NAME}@${primary_digest}"
-          done
-
-      - name: Verify mirrored anonymous image access
-        env:
-          SOURCE_TAG: ${{ steps.image.outputs.source_tag }}
-          DESTINATION_TAGS: ${{ steps.image.outputs.destination_tags }}
-        run: |
-          docker logout ghcr.io
-          docker logout ccr.ccs.tencentyun.com
-          source_inspect="$(docker buildx imagetools inspect "${GHCR_IMAGE_NAME}:${SOURCE_TAG}")"
-          source_digest="$(sed -n 's/^Digest:[[:space:]]*//p' <<<"${source_inspect}" | head -n 1)"
-          test -n "${source_digest}"
-          IFS=',' read -ra tags <<< "${DESTINATION_TAGS}"
-          for image_tag in "${tags[@]}"; do
-            mirror_inspect="$(docker buildx imagetools inspect "${TCR_IMAGE_NAME}:${image_tag}")"
-            mirror_digest="$(sed -n 's/^Digest:[[:space:]]*//p' <<<"${mirror_inspect}" | head -n 1)"
-            test "${source_digest}" = "${mirror_digest}"
-            docker buildx imagetools inspect --raw "${TCR_IMAGE_NAME}:${image_tag}" |
-              jq -e '([.manifests[].platform.architecture] | index("amd64") != null) and ([.manifests[].platform.architecture] | index("arm64") != null)'
-          done
+          test -n "${CNB_PUSH_TOKEN}"
+          auth="$(printf 'cnb:%s' "${CNB_PUSH_TOKEN}" | base64 -w 0)"
+          if [[ "${DESTINATION_REF}" == "main" ]]; then
+            destination="refs/heads/main"
+          else
+            destination="refs/tags/${DESTINATION_REF}"
+          fi
+          git -c http.extraHeader="Authorization: Basic ${auth}" push \
+            https://cnb.cool/tianma-if/edgeever \
+            "HEAD:${destination}"
