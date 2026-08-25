@@ -51,14 +51,16 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           release="$(
-            gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+            gh release view "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json isDraft,isPrerelease,tagName,targetCommitish
           )"
-          release_is_draft="$(jq -r '.draft' <<<"$release")"
+          release_is_draft="$(jq -r '.isDraft' <<<"$release")"
           test "$release_is_draft" = "true" -o "$release_is_draft" = "false"
-          test "$(jq -r '.prerelease' <<<"$release")" = "false"
-          test "$(jq -r '.tag_name' <<<"$release")" = "$RELEASE_TAG"
+          test "$(jq -r '.isPrerelease' <<<"$release")" = "false"
+          test "$(jq -r '.tagName' <<<"$release")" = "$RELEASE_TAG"
 
-          release_target="$(jq -r '.target_commitish' <<<"$release")"
+          release_target="$(jq -r '.targetCommitish' <<<"$release")"
           test -n "$release_target"
           test "$release_target" != "null"
           echo "release_target=$release_target" >> "$GITHUB_OUTPUT"

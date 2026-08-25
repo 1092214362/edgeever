@@ -61,6 +61,8 @@ describe("store delivery command", () => {
     expect(workflow).toContain(
       "release_target: ${{ steps.release.outputs.release_target }}",
     );
+    expect(workflow).toContain('gh release view "$RELEASE_TAG"');
+    expect(workflow).not.toContain("releases/tags/${RELEASE_TAG}");
     expect(workflow).toContain(
       "ref: ${{ steps.release.outputs.release_target }}",
     );
