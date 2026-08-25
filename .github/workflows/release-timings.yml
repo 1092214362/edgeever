@@ -37,6 +37,10 @@ on:
         description: "Draft GHCR preparation Run ID"
         required: true
         type: string
+      store_run_id:
+        description: "Google Play delivery Run ID when Android was rebuilt"
+        required: false
+        type: string
 
 permissions:
   actions: read
@@ -163,6 +167,7 @@ jobs:
           DESKTOP_RUN_ID: ${{ inputs.desktop_run_id }}
           DOCKER_RUN_ID: ${{ inputs.docker_run_id }}
           MOBILE_RUN_ID: ${{ inputs.mobile_run_id }}
+          STORE_RUN_ID: ${{ inputs.store_run_id }}
           TCR_RUN_ID: ${{ steps.release.outputs.tcr_run_id }}
         run: |
           collect_run() {
@@ -179,6 +184,9 @@ jobs:
           collect_run desktop "$DESKTOP_RUN_ID"
           collect_run mobile "$MOBILE_RUN_ID"
           collect_run docker "$DOCKER_RUN_ID"
+          if [[ -n "$STORE_RUN_ID" ]]; then
+            collect_run store "$STORE_RUN_ID"
+          fi
           collect_run cloudflare "$DEMO_RUN_ID"
           collect_run tcr-source "$TCR_RUN_ID"
 
@@ -188,6 +196,10 @@ jobs:
           TCR_READY_AT: ${{ steps.tcr.outputs.ready_at }}
           TCR_STATUS: ${{ steps.tcr.outputs.status }}
         run: |
+          store_args=()
+          if [[ -f "$RUNNER_TEMP/store.json" ]]; then
+            store_args=(--store "$RUNNER_TEMP/store.json")
+          fi
           node scripts/report-release-timings.mjs \
             --tag "${{ inputs.release_tag }}" \
             --sha "${{ inputs.release_sha }}" \
@@ -198,6 +210,7 @@ jobs:
             --mobile "$RUNNER_TEMP/mobile.json" \
             --mobile-mode "${{ inputs.mobile_mode }}" \
             --docker "$RUNNER_TEMP/docker.json" \
+            "${store_args[@]}" \
             --cloudflare "$RUNNER_TEMP/cloudflare.json" \
             --tcr-source "$RUNNER_TEMP/tcr-source.json" \
             --tcr-ready-at "$TCR_READY_AT" \

@@ -166,9 +166,15 @@ jobs:
 
       - name: Install dependencies
         if: ${{ !inputs.recover_play_apk }}
-        run: >-
-          bun install --frozen-lockfile
-          --cache-dir "$RUNNER_TEMP/edgeever-bun-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        run: |
+          for attempt in 1 2 3; do
+            if bun install --frozen-lockfile \
+              --cache-dir "$RUNNER_TEMP/edgeever-bun-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}"; then
+              exit 0
+            fi
+            echo "Dependency install failed on attempt ${attempt}/3" >&2
+          done
+          exit 1
 
       - name: Install Play APK recovery dependency
         if: ${{ inputs.recover_play_apk }}
