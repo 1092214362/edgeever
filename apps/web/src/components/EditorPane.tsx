@@ -93,7 +93,8 @@ import {
 } from "./editor/NoteLinkSuggestion";
 import { WeChatIcon } from "./WeChatIcon";
 import { ThemeToggle } from "./ThemeToggle";
-import { useEditorTheme } from "./ThemeProvider";
+import { useEditorTheme, useMarkdownTheme } from "./ThemeProvider";
+import { MarkdownSourceEditor, type MarkdownSourceEditorRef } from "./editor/MarkdownSourceEditor";
 import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
@@ -751,6 +752,7 @@ const RichEditorPane = ({
 }: RichEditorPaneProps) => {
   const { t, i18n } = useTranslation();
   const { customEditorTheme, editorTheme } = useEditorTheme();
+  const { markdownTheme } = useMarkdownTheme();
   const queryClient = useQueryClient();
   const isSelectionMode = Boolean(selectionActionBar);
   const [title, setTitle] = useState("");
@@ -937,7 +939,7 @@ const RichEditorPane = ({
   const noteSearchInputRef = useRef<HTMLInputElement | null>(null);
   const noteReplaceInputRef = useRef<HTMLInputElement | null>(null);
   const noteSearchAutoSelectionRef = useRef<{ editor: Editor; identity: string } | null>(null);
-  const markdownTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const markdownSourceEditorRef = useRef<MarkdownSourceEditorRef | null>(null);
   const openExternalLinkDialogRef = useRef<() => void>(() => undefined);
   const slashCommandLabelsRef = useRef<SlashCommandLabels>({
     menu: "",
@@ -1045,7 +1047,7 @@ const RichEditorPane = ({
   const restoreScrollAfterModeChange = useCallback((targetMode: "markdown" | "rich", progress: number) => {
     const restore = (attempt: number) => {
       const target = targetMode === "markdown"
-        ? markdownTextAreaRef.current
+        ? markdownSourceEditorRef.current?.getScrollContainer() ?? null
         : editorScrollContainerRef.current;
 
       if (restoreEditorScrollProgress(target, progress) || attempt >= 2) {
@@ -1474,9 +1476,9 @@ const RichEditorPane = ({
     }
 
     if (useMarkdownSourceEditor) {
-      const textarea = markdownTextAreaRef.current;
-      const start = textarea?.selectionStart ?? markdownSource.length;
-      const end = textarea?.selectionEnd ?? start;
+      const selection = markdownSourceEditorRef.current?.getSelection() ?? { from: markdownSource.length, to: markdownSource.length };
+      const start = selection.from;
+      const end = selection.to;
       const selected = markdownSource.slice(start, end);
       const looksLikeUrl = /^(https?:\/\/\S+|www\.\S+)$/i.test(selected.trim());
       setExternalLinkDraft({
@@ -1533,9 +1535,9 @@ const RichEditorPane = ({
       }
 
       if (useMarkdownSourceEditor) {
-        const textarea = markdownTextAreaRef.current;
-        const start = textarea?.selectionStart ?? markdownSource.length;
-        const end = textarea?.selectionEnd ?? start;
+        const selection = markdownSourceEditorRef.current?.getSelection() ?? { from: markdownSource.length, to: markdownSource.length };
+        const start = selection.from;
+        const end = selection.to;
         const selected = markdownSource.slice(start, end);
         const label = selected.trim() ? selected : text;
         const snippet = formatMarkdownLink(label, href);
@@ -1543,10 +1545,8 @@ const RichEditorPane = ({
         setMarkdownSource(next);
         markDirtyStatus();
         window.requestAnimationFrame(() => {
-          const node = markdownTextAreaRef.current;
-          if (!node) return;
-          node.focus();
-          node.setSelectionRange(caret, caret);
+          markdownSourceEditorRef.current?.focus();
+          markdownSourceEditorRef.current?.setSelection(caret, caret);
         });
         return;
       }
@@ -2154,8 +2154,9 @@ const RichEditorPane = ({
       const contentMarkdown = source.slice(from, to).trim();
       if (to > from && contentMarkdown) selection = { kind: "plain", from, to, contentMarkdown };
     } else if (useMarkdownSourceEditor) {
-      const from = markdownTextAreaRef.current?.selectionStart ?? 0;
-      const to = markdownTextAreaRef.current?.selectionEnd ?? from;
+      const selectionPos = markdownSourceEditorRef.current?.getSelection() ?? { from: 0, to: 0 };
+      const from = selectionPos.from;
+      const to = selectionPos.to;
       insertionTarget = { kind: "markdown", position: to };
       const contentMarkdown = markdownSource.slice(from, to).trim();
       if (to > from && contentMarkdown) selection = { kind: "markdown", from, to, contentMarkdown };
@@ -2181,7 +2182,7 @@ const RichEditorPane = ({
     }
     if (!anchor) {
       const fallback = useMarkdownSourceEditor
-        ? markdownTextAreaRef.current?.getBoundingClientRect()
+        ? markdownSourceEditorRef.current?.getSelectionCoordinates() ?? markdownSourceEditorRef.current?.getScrollContainer()?.getBoundingClientRect()
         : useMobilePlainTextEditor
           ? mobileTextAreaRef.current?.getBoundingClientRect()
           : editorScrollContainerRef.current?.getBoundingClientRect();
@@ -2231,8 +2232,8 @@ const RichEditorPane = ({
         const { next, caret } = insertMarkdownSnippet(markdownSource, replacementDraft, aiSelection.from, aiSelection.to);
         setMarkdownSource(next);
         window.requestAnimationFrame(() => {
-          markdownTextAreaRef.current?.focus();
-          markdownTextAreaRef.current?.setSelectionRange(caret, caret);
+          markdownSourceEditorRef.current?.focus();
+          markdownSourceEditorRef.current?.setSelection(caret, caret);
         });
       } else if (aiSelection.kind === "rich" && isEditorReady(editor)) {
         const maxPos = editor.state.doc.content.size;
@@ -2276,8 +2277,8 @@ const RichEditorPane = ({
         const { next, caret } = insertAiDraftAtTextCursor(markdownSource, insertionDraft, aiInsertionTarget.position);
         setMarkdownSource(next);
         window.requestAnimationFrame(() => {
-          markdownTextAreaRef.current?.focus();
-          markdownTextAreaRef.current?.setSelectionRange(caret, caret);
+          markdownSourceEditorRef.current?.focus();
+          markdownSourceEditorRef.current?.setSelection(caret, caret);
         });
       } else if (isEditorReady(editor)) {
         const position = Math.max(0, Math.min(aiInsertionTarget.position, editor.state.doc.content.size));
@@ -2717,7 +2718,7 @@ const RichEditorPane = ({
     }
 
     const scrollProgress = getEditorScrollProgress(
-      isMarkdownMode ? markdownTextAreaRef.current : editorScrollContainerRef.current,
+      isMarkdownMode ? (markdownSourceEditorRef.current?.getScrollContainer() ?? null) : editorScrollContainerRef.current,
     );
 
     if (isMarkdownMode) {
@@ -4746,41 +4747,20 @@ const RichEditorPane = ({
                 </div>
               </>
             ) : useMarkdownSourceEditor ? (
-              // Absolute fill: native <textarea> often ignores flex-1 height; pin to the pane instead.
               <div className="relative min-h-0 flex-1">
-                <textarea
-                  ref={markdownTextAreaRef}
+                <MarkdownSourceEditor
+                  ref={markdownSourceEditorRef}
                   value={markdownSource}
-                  onChange={(event) => handleMarkdownSourceChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && !event.nativeEvent.isComposing) {
-                      const caretPosition = event.currentTarget.selectionStart;
-                      const commandStart = getAiSlashCommandStart({
-                        caretPosition,
-                        insertedText: event.key,
-                        textBefore: event.currentTarget.value.slice(0, caretPosition),
-                      });
-                      if (commandStart !== null && event.currentTarget.selectionEnd === caretPosition) {
-                        event.preventDefault();
-                        const next = `${event.currentTarget.value.slice(0, commandStart)}${event.currentTarget.value.slice(caretPosition)}`;
-                        handleMarkdownSourceChange(next);
-                        window.requestAnimationFrame(() => {
-                          markdownTextAreaRef.current?.setSelectionRange(commandStart, commandStart);
-                          openAiAssistant();
-                        });
-                        return;
-                      }
-                    }
-                    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
-                      event.preventDefault();
-                      openExternalLinkDialog();
-                    }
-                  }}
+                  onChange={handleMarkdownSourceChange}
+                  themeName={markdownTheme}
                   readOnly={effectiveReadOnly}
-                  spellCheck={false}
-                  aria-label={t("editor.markdownSourceAria")}
-                  className="absolute inset-0 h-full w-full resize-none border-0 bg-slate-950 px-4 py-3 font-mono text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500 sm:px-6"
                   placeholder={`# ${t("editor.placeholder")}`}
+                  ariaLabel={t("editor.markdownSourceAria")}
+                  onSlashCommandTrigger={() => {
+                    openAiAssistant();
+                  }}
+                  onLinkShortcut={openExternalLinkDialog}
+                  className="absolute inset-0 h-full w-full"
                 />
               </div>
             ) : (
