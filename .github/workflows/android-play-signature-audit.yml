@@ -17,23 +17,32 @@ jobs:
     name: Require Play-signed Draft APK
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the immutable Release tag
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.release_tag }}
-          fetch-depth: 0
-
       - name: Validate matching Draft Release
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
-          test "$(jq -r '.draft' <<<"$release")" = "true"
-          test "$(jq -r '.prerelease' <<<"$release")" = "false"
-          test "$(jq -r '.tag_name' <<<"$release")" = "$RELEASE_TAG"
-          release_target="$(jq -r '.target_commitish' <<<"$release")"
-          test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse "${release_target}^{commit}")"
+          release="$(gh release view "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json isDraft,isPrerelease,tagName,targetCommitish)"
+          test "$(jq -r '.isDraft' <<<"$release")" = "true"
+          test "$(jq -r '.isPrerelease' <<<"$release")" = "false"
+          test "$(jq -r '.tagName' <<<"$release")" = "$RELEASE_TAG"
+          release_target="$(jq -r '.targetCommitish' <<<"$release")"
+          test -n "$release_target"
+          echo "target_commitish=$release_target" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the immutable Draft target
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.release.outputs.target_commitish }}
+          fetch-depth: 0
+
+      - name: Verify the checked-out Draft target
+        env:
+          RELEASE_TARGET: ${{ steps.release.outputs.target_commitish }}
+        run: test "$(git rev-parse HEAD)" = "$(git rev-parse "${RELEASE_TARGET}^{commit}")"
 
       - name: Download the Draft Android APK
         env:

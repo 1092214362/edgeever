@@ -72,7 +72,10 @@ describe("store delivery command", () => {
     );
 
     expect(workflow).toContain("github.repository == 'tianma-if/edgeever'");
-    expect(workflow).toContain('test "$(jq -r \'.draft\' <<<"$release")" = "true"');
+    expect(workflow).toContain('gh release view "$RELEASE_TAG"');
+    expect(workflow).toContain('test "$(jq -r \'.isDraft\' <<<"$release")" = "true"');
+    expect(workflow).toContain("ref: ${{ steps.release.outputs.target_commitish }}");
+    expect(workflow).not.toContain("ref: ${{ inputs.release_tag }}");
     expect(workflow).toContain("EDGE_EVER_ANDROID_ALLOWED_SIGNER_SHA256: ${{ secrets.ANDROID_PLAY_APP_SIGNER_SHA256 }}");
     expect(workflow).not.toContain("22bf52a9501c89020f5acc966960152c826bfa64f31e578e858d088f8cd75d87");
   });
