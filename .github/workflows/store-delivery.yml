@@ -49,7 +49,7 @@ jobs:
           ref: ${{ inputs.release_tag }}
           fetch-depth: 0
 
-      - name: Validate formal Release and resolve its predecessor
+      - name: Validate Release and resolve its formal predecessor
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -58,7 +58,8 @@ jobs:
           release="$(
             gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
           )"
-          test "$(jq -r '.draft' <<<"$release")" = "false"
+          release_is_draft="$(jq -r '.draft' <<<"$release")"
+          test "$release_is_draft" = "true" -o "$release_is_draft" = "false"
           test "$(jq -r '.prerelease' <<<"$release")" = "false"
           test "$(jq -r '.tag_name' <<<"$release")" = "$RELEASE_TAG"
 
@@ -70,17 +71,21 @@ jobs:
               --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name'
           )
           previous_tag=""
-          current_found="false"
-          for candidate in "${release_tags[@]}"; do
-            if [[ "$current_found" = "true" ]]; then
-              previous_tag="$candidate"
-              break
-            fi
-            if [[ "$candidate" = "$RELEASE_TAG" ]]; then
-              current_found="true"
-            fi
-          done
-          test "$current_found" = "true"
+          if [[ "$release_is_draft" = "true" ]]; then
+            previous_tag="${release_tags[0]:-}"
+          else
+            current_found="false"
+            for candidate in "${release_tags[@]}"; do
+              if [[ "$current_found" = "true" ]]; then
+                previous_tag="$candidate"
+                break
+              fi
+              if [[ "$candidate" = "$RELEASE_TAG" ]]; then
+                current_found="true"
+              fi
+            done
+            test "$current_found" = "true"
+          fi
           test -n "$previous_tag"
           git fetch origin "refs/tags/${previous_tag}:refs/tags/${previous_tag}"
           echo "previous_tag=$previous_tag" >> "$GITHUB_OUTPUT"

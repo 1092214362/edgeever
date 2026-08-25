@@ -58,7 +58,12 @@ previous installation check is actually needed.
   the desktop application by default; installation remains available as an
   explicit option.
   Demo deployment continues independently after its Actions URL is printed.
-- Mobile store delivery is not part of this command. See
+- This command does not authorize or run mobile store delivery itself. After
+  Draft native assets are prepared, publication is blocked unless the Android
+  APK uses the Google Play app-signing certificate. If that gate fails, the
+  Release remains a Draft. Run
+  `bun run publish:stores -- --release vX.Y.Z --platform android --android-track production`
+  for that Draft, then rerun the original release command to resume. See
   [Mobile Store Delivery](store-delivery.md).
 
 ## Registry Credentials

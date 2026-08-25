@@ -49,7 +49,11 @@ bun run release -- \
   Docker 镜像并同时写入 GHCR 与腾讯云 TCR 公共镜像、正式发布、关闭 Issue，
   默认不安装桌面端应用；安装能力作为显式选项保留。
   输出 Actions 链接后，Demo 部署会独立继续执行。
-- 此命令不执行移动端商店交付，详见
+- 此命令不会自行授权或执行移动端商店交付。Draft 原生资产准备完成后，发布
+  命令会强制核验 Android APK 是否使用 Google Play 应用签名证书；未通过时
+  保持 Draft 并停止。此时先针对同一 Draft 执行
+  `bun run publish:stores -- --release vX.Y.Z --platform android --android-track production`，
+  再重新执行原发布命令续跑。详见
   [移动端商店交付](store-delivery.zh-CN.md)。
 
 ## 镜像仓库凭据
