@@ -430,12 +430,23 @@ html[data-theme="dark"] .edgeever-image-size-button.is-active {
 
 .edgeever-prose code,
 .ProseMirror code {
-  border: 1px solid var(--border);
+  border: 1px solid #d4ebdc;
   border-radius: 4px;
-  background: var(--code-bg);
-  padding: 2px 4px;
+  background: #f2f9f5;
+  color: #0d5f3a;
+  padding: 2px 5px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9em;
+  font-size: 0.88em;
+  font-weight: 550;
+}
+
+.edgeever-prose pre code,
+.ProseMirror pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-weight: normal;
 }
 
 .edgeever-prose pre,
@@ -523,6 +534,20 @@ html[data-theme="dark"] .edgeever-prose blockquote,
 html[data-theme="dark"] .ProseMirror blockquote {
   background: color-mix(in srgb, var(--accent) 7%, transparent);
   color: #cbd5e1;
+}
+
+html[data-theme="dark"] .edgeever-prose code,
+html[data-theme="dark"] .ProseMirror code {
+  border-color: rgba(22, 160, 110, 0.28);
+  background: rgba(22, 160, 110, 0.12);
+  color: #6ee7b7;
+}
+
+html[data-theme="dark"] .edgeever-prose pre code,
+html[data-theme="dark"] .ProseMirror pre code {
+  border: 0;
+  background: transparent;
+  color: inherit;
 }
 
 .edgeever-prose .tableWrapper,

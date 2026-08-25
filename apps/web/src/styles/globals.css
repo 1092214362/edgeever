@@ -807,12 +807,13 @@ textarea {
 }
 
 .ProseMirror code {
-  border: 1px solid rgb(var(--slate-300-rgb) / 0.6);
+  border: 1px solid #d4ebdc;
   border-radius: 4px;
-  background: rgb(var(--slate-100-rgb) / 0.7);
-  padding: 0.12rem 0.35rem;
+  background: #f2f9f5;
+  padding: 0.12rem 0.38rem;
   font-size: 0.875em;
-  color: #0f172a;
+  font-weight: 550;
+  color: #0d5f3a;
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -1267,14 +1268,14 @@ textarea {
   margin: 1rem 0;
 }
 .markdown-content code {
-  font-family: monospace;
-  background-color: #f6fbf7;
-  color: #1e293b;
-  border: 1px solid #d9eadf;
-  padding: 0.125rem 0.35rem;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  background-color: #f2f9f5;
+  color: #0d5f3a;
+  border: 1px solid #d4ebdc;
+  padding: 0.125rem 0.38rem;
   border-radius: 4px;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 550;
 }
 .markdown-content pre code {
   background-color: transparent;
@@ -1705,7 +1706,14 @@ textarea {
 }
 
 :root.dark .ProseMirror code,
-:root.dark .ProseMirror pre {
+:root.dark .markdown-content code {
+  border-color: rgba(22, 160, 110, 0.28);
+  background: rgba(22, 160, 110, 0.12);
+  color: #6ee7b7;
+}
+
+:root.dark .ProseMirror pre,
+:root.dark .markdown-content pre {
   border-color: rgb(var(--slate-200-rgb) / 0.8);
   background: rgb(var(--slate-100-rgb) / 0.8);
   color: #e2e8f0;
