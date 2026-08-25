@@ -36,6 +36,11 @@ describe("store delivery command", () => {
     );
     expect(workflow.match(/eas-version: 21\.4\.0/g)).toHaveLength(2);
     expect(workflow.match(/packager: npm/g)).toHaveLength(2);
+    expect(
+      workflow.match(
+        /edgeever-bun-cache-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/g,
+      ),
+    ).toHaveLength(2);
   });
 
   test("replaces the GitHub APK with the Play-signed universal APK", () => {

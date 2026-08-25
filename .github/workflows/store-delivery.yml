@@ -152,7 +152,9 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: >-
+          bun install --frozen-lockfile
+          --cache-dir "$RUNNER_TEMP/edgeever-bun-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
       - name: Restore Android upload keystore
         env:
@@ -266,7 +268,9 @@ jobs:
           working-directory: apps/mobile
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: >-
+          bun install --frozen-lockfile
+          --cache-dir "$RUNNER_TEMP/edgeever-bun-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
       - name: Build the iOS archive on EAS
         id: build
