@@ -42,13 +42,8 @@ jobs:
     outputs:
       version: ${{ steps.validate.outputs.version }}
       version_code: ${{ steps.validate.outputs.version_code }}
+      release_target: ${{ steps.release.outputs.release_target }}
     steps:
-      - name: Check out the immutable Release tag
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.release_tag }}
-          fetch-depth: 0
-
       - name: Validate Release and resolve its formal predecessor
         id: release
         env:
@@ -64,7 +59,9 @@ jobs:
           test "$(jq -r '.tag_name' <<<"$release")" = "$RELEASE_TAG"
 
           release_target="$(jq -r '.target_commitish' <<<"$release")"
-          test "$(git rev-parse "${RELEASE_TAG}^{commit}")" = "$(git rev-parse "${release_target}^{commit}")"
+          test -n "$release_target"
+          test "$release_target" != "null"
+          echo "release_target=$release_target" >> "$GITHUB_OUTPUT"
 
           mapfile -t release_tags < <(
             gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
@@ -87,8 +84,21 @@ jobs:
             test "$current_found" = "true"
           fi
           test -n "$previous_tag"
-          git fetch origin "refs/tags/${previous_tag}:refs/tags/${previous_tag}"
           echo "previous_tag=$previous_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the immutable Release target
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.release.outputs.release_target }}
+          fetch-depth: 0
+
+      - name: Validate the checked-out Release target
+        env:
+          PREVIOUS_TAG: ${{ steps.release.outputs.previous_tag }}
+          RELEASE_TARGET: ${{ steps.release.outputs.release_target }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "${RELEASE_TARGET}^{commit}")"
+          git fetch origin "refs/tags/${PREVIOUS_TAG}:refs/tags/${PREVIOUS_TAG}"
 
       - name: Validate mobile version and audited change range
         id: validate
@@ -121,10 +131,10 @@ jobs:
       ANDROID_SDK_ROOT: /opt/homebrew/share/android-commandlinetools
       JAVA_HOME: /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
     steps:
-      - name: Check out the immutable Release tag
+      - name: Check out the immutable Release target
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ needs.plan.outputs.release_target }}
           clean: true
 
       - name: Set up Bun
@@ -229,10 +239,10 @@ jobs:
     timeout-minutes: 90
     environment: store-delivery
     steps:
-      - name: Check out the immutable Release tag
+      - name: Check out the immutable Release target
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ needs.plan.outputs.release_target }}
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2

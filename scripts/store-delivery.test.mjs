@@ -4,9 +4,7 @@ import { parseStoreDeliveryArgs } from "./store-delivery.mjs";
 
 describe("store delivery command", () => {
   test("uses full production delivery defaults", () => {
-    expect(
-      parseStoreDeliveryArgs(["--release", "v1.7.0"]),
-    ).toMatchObject({
+    expect(parseStoreDeliveryArgs(["--release", "v1.7.0"])).toMatchObject({
       releaseTag: "v1.7.0",
       platform: "both",
       androidTrack: "production",
@@ -15,19 +13,15 @@ describe("store delivery command", () => {
 
   test("accepts an explicit single platform", () => {
     expect(
-      parseStoreDeliveryArgs([
-        "--release",
-        "v1.7.0",
-        "--platform",
-        "ios",
-      ]).platform,
+      parseStoreDeliveryArgs(["--release", "v1.7.0", "--platform", "ios"])
+        .platform,
     ).toBe("ios");
   });
 
   test("rejects malformed release tags", () => {
-    expect(() =>
-      parseStoreDeliveryArgs(["--release", "latest"])
-    ).toThrow("stable vX.Y.Z");
+    expect(() => parseStoreDeliveryArgs(["--release", "latest"])).toThrow(
+      "stable vX.Y.Z",
+    );
   });
 
   test("uses the pinned official EAS CLI setup in store jobs", () => {
@@ -37,7 +31,9 @@ describe("store delivery command", () => {
     );
 
     expect(workflow).not.toContain("bunx eas-cli");
-    expect(workflow.match(/uses: expo\/expo-github-action@v8/g)).toHaveLength(2);
+    expect(workflow.match(/uses: expo\/expo-github-action@v8/g)).toHaveLength(
+      2,
+    );
     expect(workflow.match(/eas-version: 21\.4\.0/g)).toHaveLength(2);
     expect(workflow.match(/packager: npm/g)).toHaveLength(2);
   });
@@ -62,23 +58,48 @@ describe("store delivery command", () => {
 
     expect(workflow).toContain('if [[ "$release_is_draft" = "true" ]]');
     expect(workflow).toContain('previous_tag="${release_tags[0]:-}"');
-    expect(workflow).not.toContain('test "$(jq -r \'.draft\' <<<"$release")" = "false"');
+    expect(workflow).toContain(
+      "release_target: ${{ steps.release.outputs.release_target }}",
+    );
+    expect(workflow).toContain(
+      "ref: ${{ steps.release.outputs.release_target }}",
+    );
+    expect(
+      workflow.match(/ref: \$\{\{ needs\.plan\.outputs\.release_target \}\}/g),
+    ).toHaveLength(2);
+    expect(workflow).not.toContain("ref: ${{ inputs.release_tag }}");
+    expect(workflow).not.toContain(
+      'test "$(jq -r \'.draft\' <<<"$release")" = "false"',
+    );
   });
 
   test("uses a dedicated Draft audit that accepts only the Play app signer", () => {
     const workflow = readFileSync(
-      new URL("../.github/workflows/android-play-signature-audit.yml", import.meta.url),
+      new URL(
+        "../.github/workflows/android-play-signature-audit.yml",
+        import.meta.url,
+      ),
       "utf8",
     );
 
     expect(workflow).toContain("github.repository == 'tianma-if/edgeever'");
-    expect(workflow).toContain("permissions:\n  # Draft Releases are only visible to a token with repository write access.\n  contents: write");
+    expect(workflow).toContain(
+      "permissions:\n  # Draft Releases are only visible to a token with repository write access.\n  contents: write",
+    );
     expect(workflow).toContain('gh release view "$RELEASE_TAG"');
-    expect(workflow).toContain('test "$(jq -r \'.isDraft\' <<<"$release")" = "true"');
-    expect(workflow).toContain("ref: ${{ steps.release.outputs.target_commitish }}");
+    expect(workflow).toContain(
+      'test "$(jq -r \'.isDraft\' <<<"$release")" = "true"',
+    );
+    expect(workflow).toContain(
+      "ref: ${{ steps.release.outputs.target_commitish }}",
+    );
     expect(workflow).not.toContain("ref: ${{ inputs.release_tag }}");
-    expect(workflow).toContain("EDGE_EVER_ANDROID_ALLOWED_SIGNER_SHA256: ${{ secrets.ANDROID_PLAY_APP_SIGNER_SHA256 }}");
-    expect(workflow).not.toContain("22bf52a9501c89020f5acc966960152c826bfa64f31e578e858d088f8cd75d87");
+    expect(workflow).toContain(
+      "EDGE_EVER_ANDROID_ALLOWED_SIGNER_SHA256: ${{ secrets.ANDROID_PLAY_APP_SIGNER_SHA256 }}",
+    );
+    expect(workflow).not.toContain(
+      "22bf52a9501c89020f5acc966960152c826bfa64f31e578e858d088f8cd75d87",
+    );
   });
 
   test("keeps the Play bundle and generated Release APK arm64-only", () => {
