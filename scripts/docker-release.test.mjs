@@ -143,7 +143,10 @@ describe("Docker release contract", () => {
     expect(tcrPublisher).toContain(
       '--label "org.opencontainers.image.revision=${CNB_COMMIT}"',
     );
-    expect(tcrPublisher).toContain("timeout --signal=TERM --kill-after=1m 45m");
+    expect(tcrPublisher).toContain("readonly build_attempts=3");
+    expect(tcrPublisher).toContain("attempt <= build_attempts");
+    expect(tcrPublisher).toContain("timeout --signal=TERM --kill-after=1m 15m");
+    expect(tcrPublisher).toContain("BuildKit can reuse completed layers");
     expect(tcrPublisher).toContain("docker buildx imagetools create \\");
     expect(tcrPublisher).toContain("org.opencontainers.image.revision");
     expect(tcrPublisher).toContain("--format '{{json .Image}}'");

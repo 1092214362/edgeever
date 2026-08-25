@@ -44,16 +44,32 @@ printf '%s' "${TCR_PASSWORD}" | docker login \
   --password-stdin \
   "${TCR_REGISTRY}"
 
-timeout --signal=TERM --kill-after=1m 45m docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  --tag "${TCR_IMAGE}:${primary_tag}" \
-  --label "org.opencontainers.image.source=https://github.com/tianma-if/edgeever" \
-  --label "org.opencontainers.image.revision=${CNB_COMMIT}" \
-  --label "org.opencontainers.image.version=${version}" \
-  --cache-from "type=registry,ref=${TCR_IMAGE}:buildcache" \
-  --cache-to "type=registry,ref=${TCR_IMAGE}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true" \
-  --push \
-  .
+trap 'docker logout "${TCR_REGISTRY}" >/dev/null 2>&1 || true' EXIT
+
+readonly build_attempts=3
+for ((attempt = 1; attempt <= build_attempts; attempt += 1)); do
+  echo "Building multi-platform TCR image (attempt ${attempt}/${build_attempts})..."
+  if timeout --signal=TERM --kill-after=1m 15m docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    --tag "${TCR_IMAGE}:${primary_tag}" \
+    --label "org.opencontainers.image.source=https://github.com/tianma-if/edgeever" \
+    --label "org.opencontainers.image.revision=${CNB_COMMIT}" \
+    --label "org.opencontainers.image.version=${version}" \
+    --cache-from "type=registry,ref=${TCR_IMAGE}:buildcache" \
+    --cache-to "type=registry,ref=${TCR_IMAGE}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true" \
+    --push \
+    .; then
+    break
+  fi
+
+  if ((attempt == build_attempts)); then
+    echo "TCR image build failed after ${build_attempts} attempts." >&2
+    exit 1
+  fi
+
+  echo "Build failed; retrying after a short backoff so BuildKit can reuse completed layers." >&2
+  sleep $((attempt * 10))
+done
 
 primary_inspect="$(docker buildx imagetools inspect "${TCR_IMAGE}:${primary_tag}")"
 primary_digest="$(sed -n 's/^Digest:[[:space:]]*//p' <<<"${primary_inspect}" | head -n 1)"
