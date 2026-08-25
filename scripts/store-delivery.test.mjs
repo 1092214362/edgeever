@@ -52,7 +52,7 @@ describe("store delivery command", () => {
       workflow.match(
         /edgeever-bun-cache-\$\{GITHUB_RUN_ID\}-\$\{GITHUB_RUN_ATTEMPT\}/g,
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 
   test("replaces the GitHub APK with the Play-signed universal APK", () => {
@@ -67,7 +67,11 @@ describe("store delivery command", () => {
     expect(workflow).toContain('gh release upload "$RELEASE_TAG" "$apk_path"');
     expect(
       workflow.match(/if: \$\{\{ !inputs\.recover_play_apk \}\}/g),
-    ).toHaveLength(5);
+    ).toHaveLength(6);
+    expect(workflow).toContain("if: ${{ inputs.recover_play_apk }}");
+    expect(workflow).toContain(
+      "node --input-type=module -e \"await import('google-auth-library')\"",
+    );
   });
 
   test("can prepare a matching Draft before formal publication", () => {

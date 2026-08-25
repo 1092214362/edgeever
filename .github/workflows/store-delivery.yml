@@ -165,9 +165,18 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
+        if: ${{ !inputs.recover_play_apk }}
         run: >-
           bun install --frozen-lockfile
           --cache-dir "$RUNNER_TEMP/edgeever-bun-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+      - name: Install Play APK recovery dependency
+        if: ${{ inputs.recover_play_apk }}
+        run: |
+          if ! bun install --frozen-lockfile \
+            --cache-dir "$RUNNER_TEMP/edgeever-bun-cache-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; then
+            node --input-type=module -e "await import('google-auth-library')"
+          fi
 
       - name: Restore Android upload keystore
         if: ${{ !inputs.recover_play_apk }}
