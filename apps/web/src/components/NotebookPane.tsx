@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   CircleUserRound,
   Download,
+  ExternalLink,
   RotateCcw,
   Store,
 } from "lucide-react";
@@ -32,7 +33,10 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotebookTreeItem } from "./NotebookTreeItem";
@@ -54,25 +58,37 @@ import { statusSettleMotion } from "@/lib/motion";
 const NOTEBOOK_DRAG_SCROLL_EDGE_PX = 56;
 const NOTEBOOK_DRAG_SCROLL_MAX_STEP_PX = 18;
 const DESKTOP_DOWNLOAD_URL = "https://github.com/tianma-if/edgeever/releases/latest";
-const ANDROID_DOWNLOAD_URL = "https://play.google.com/store/apps/details?id=org.edgeever.mobile";
+const ANDROID_PLAY_URL = "https://play.google.com/store/apps/details?id=org.edgeever.mobile";
+const ANDROID_APK_URL = "https://github.com/tianma-if/edgeever/releases/latest";
 const IOS_DOWNLOAD_URL = "https://apps.apple.com/us/app/edgeever/id6792625631";
 const CHROMIUM_CLIPPER_URL = "https://chromewebstore.google.com/detail/edgeever-web-clipper/gjadpfmanienmlofajibkfkkpfdkclgo";
 const FIREFOX_CLIPPER_URL = "https://addons.mozilla.org/firefox/addon/edgeever-web-clipper/";
 
-const BrandIcon = ({ path, color }: { path: string; color: string }) => (
-  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true" style={{ color }}>
+const BrandIconContainer = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <span
+    className={cn(
+      "flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+      className
+    )}
+  >
+    {children}
+  </span>
+);
+
+const BrandIcon = ({ path, color, className }: { path: string; color: string; className?: string }) => (
+  <svg className={cn("h-3.5 w-3.5 shrink-0", className)} viewBox="0 0 24 24" aria-hidden="true" style={{ color }}>
     <path fill="currentColor" d={path} />
   </svg>
 );
 
 const AppStoreIcon = () => (
-  <svg className="h-4 w-4 shrink-0 rounded-[3px] bg-[#0D96F6] p-[2px] text-white" viewBox="0 0 24 24" aria-hidden="true">
+  <svg className="h-3.5 w-3.5 shrink-0 rounded-[2px] bg-[#0D96F6] p-[1.5px] text-white" viewBox="0 0 24 24" aria-hidden="true">
     <path fill="currentColor" d="m8.809 14.92l6.11-11.037c.084-.152.168-.302.244-.459c.069-.142.127-.285.165-.44c.08-.326.058-.666-.066-.977a1.5 1.5 0 0 0-.62-.735a1.42 1.42 0 0 0-.922-.193c-.32.043-.613.194-.844.43c-.11.11-.2.235-.283.368c-.092.146-.175.298-.259.45l-.386.697l-.387-.698c-.084-.151-.167-.303-.259-.449a2.2 2.2 0 0 0-.283-.369a1.45 1.45 0 0 0-.844-.429a1.42 1.42 0 0 0-.921.193a1.5 1.5 0 0 0-.62.735a1.6 1.6 0 0 0-.066.977c.038.155.096.298.164.44c.076.157.16.307.244.459l1.248 2.254l-4.862 8.782H2.03c-.168 0-.336 0-.503.01c-.152.009-.3.028-.448.071c-.31.09-.582.28-.778.548A1.58 1.58 0 0 0 .3 17.404c.197.268.468.457.779.548c.148.043.296.062.448.071c.167.01.335.01.503.01h13.097a2 2 0 0 0 .1-.27c.415-1.416-.616-2.844-2.035-2.844zm-5.696 3.622l-.792 1.5c-.082.156-.165.31-.239.471a2.4 2.4 0 0 0-.16.452a1.7 1.7 0 0 0 .064 1.003c.121.318.334.583.607.755s.589.242.901.197c.314-.044.6-.198.826-.44c.108-.115.196-.242.278-.378c.09-.15.171-.306.253-.462L6 19.464c-.09-.15-.947-1.47-2.887-.922m20.586-3.006a1.47 1.47 0 0 0-.779-.54a2 2 0 0 0-.448-.071c-.168-.01-.335-.01-.503-.01h-3.321L14.258 7.1a4.06 4.06 0 0 0-1.076 2.198a4.64 4.64 0 0 0 .546 3l5.274 9.393c.084.15.167.3.259.444c.084.13.174.253.283.364c.231.232.524.38.845.423s.643-.024.922-.19a1.5 1.5 0 0 0 .621-.726c.125-.307.146-.642.066-.964a2.2 2.2 0 0 0-.165-.434c-.075-.155-.16-.303-.244-.453l-1.216-2.166h1.596c.168 0 .335 0 .503-.009c.152-.009.3-.028.448-.07a1.47 1.47 0 0 0 .78-.541a1.54 1.54 0 0 0 .3-.916a1.54 1.54 0 0 0-.3-.916" />
   </svg>
 );
 
 const GooglePlayIcon = () => (
-  <svg className="h-4 w-4 shrink-0" viewBox="0 0 28.99 31.99" aria-hidden="true">
+  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 28.99 31.99" aria-hidden="true">
     <path fill="#EA4335" d="M13.54 15.28.12 29.34a3.66 3.66 0 0 0 5.33 2.16l15.1-8.6Z" />
     <path fill="#FBBC04" d="m27.11 12.89l-6.53-3.74l-7.35 6.45l7.38 7.28l6.48-3.7a3.54 3.54 0 0 0 1.5-4.79a3.62 3.62 0 0 0-1.5-1.5" />
     <path fill="#4285F4" d="M.12 2.66a3.57 3.57 0 0 0-.12.92v24.84a3.57 3.57 0 0 0 .12.92L14 15.64Z" />
@@ -634,68 +650,177 @@ export const NotebookPane = ({
 
       <footer className="edgeever-workspace-sidebar-footer border-t border-slate-200 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-sm">
         <div className="space-y-1">
-          <div className="group/downloads relative">
-            <button
-              className="flex h-8 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium leading-none text-slate-500 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-              type="button"
-              aria-haspopup="menu"
-              aria-label={t("pwa.sidebarDownloadsTitle") || "下载 EdgeEver 客户端与浏览器插件"}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex h-8 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium leading-none text-slate-500 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 data-[state=open]:bg-slate-100 data-[state=open]:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:data-[state=open]:bg-slate-800"
+                type="button"
+                aria-label={t("pwa.sidebarDownloadsTitle") || "下载 EdgeEver 客户端与浏览器插件"}
+              >
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                  <Download className="h-3.5 w-3.5 text-slate-400" />
+                </span>
+                <span className="min-w-0 flex-1 truncate">{t("pwa.sidebarDownloads") || "下载客户端"}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="top"
+              align="start"
+              sideOffset={6}
+              className="w-64 rounded-lg border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900"
             >
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                <Download className="h-3.5 w-3.5 text-slate-400" />
-              </span>
-              <span className="min-w-0 flex-1 truncate">{t("pwa.sidebarDownloads") || "下载客户端"}</span>
-            </button>
-            <div className="pointer-events-none invisible absolute bottom-full left-0 z-50 w-full translate-y-1 pb-1 opacity-0 transition-[opacity,transform,visibility] duration-150 group-hover/downloads:pointer-events-auto group-hover/downloads:visible group-hover/downloads:translate-y-0 group-hover/downloads:opacity-100 group-focus-within/downloads:pointer-events-auto group-focus-within/downloads:visible group-focus-within/downloads:translate-y-0 group-focus-within/downloads:opacity-100">
-              <div className="overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-950 shadow-lg" role="menu">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {t("pwa.sidebarGroupApps") || "客户端应用"}
+                </DropdownMenuLabel>
                 {!window.edgeeverDesktop?.isAvailable && (
                   <>
-                    <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={DESKTOP_DOWNLOAD_URL} target="_blank" rel="noreferrer" role="menuitem">
-                      <span className="flex w-9 items-center"><BrandIcon path={APPLE_ICON_PATH} color="#111827" /></span>
-                      <span>{t("pwa.sidebarMac") || "Mac"}</span>
-                    </a>
-                    <div className="flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-slate-400" role="menuitem" aria-disabled="true">
-                      <span className="flex w-9 items-center"><BrandIcon path={WINDOWS_ICON_PATH} color="#0078D4" /></span>
-                      <span className="min-w-0">
-                        <span className="block text-slate-600">{t("pwa.sidebarWindows") || "Windows"}</span>
-                        <span className="mt-0.5 block text-[11px] leading-4">{t("pwa.sidebarWindowsAvailability") || "即将推出，敬请期待"}</span>
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={DESKTOP_DOWNLOAD_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <BrandIconContainer>
+                            <BrandIcon path={APPLE_ICON_PATH} color="#111827" />
+                          </BrandIconContainer>
+                          <span className="truncate font-medium">{t("pwa.sidebarMac") || "macOS"}</span>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                          <span className="text-[11px]">DMG</span>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </div>
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled
+                      className="flex cursor-not-allowed items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-400 opacity-60 dark:text-slate-500"
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <BrandIconContainer className="opacity-60">
+                          <BrandIcon path={WINDOWS_ICON_PATH} color="#0078D4" />
+                        </BrandIconContainer>
+                        <span className="truncate">{t("pwa.sidebarWindows") || "Windows"}</span>
+                      </div>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        {t("pwa.sidebarWindowsBadge") || "即将推出"}
                       </span>
-                    </div>
+                    </DropdownMenuItem>
                   </>
                 )}
-                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={ANDROID_DOWNLOAD_URL} target="_blank" rel="noreferrer" role="menuitem">
-                  <span className="flex w-9 items-center"><GooglePlayIcon /></span>
-                  <span>{t("pwa.sidebarAndroid") || "安卓端"}</span>
-                </a>
-                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={IOS_DOWNLOAD_URL} target="_blank" rel="noreferrer" role="menuitem">
-                  <span className="flex w-9 items-center"><AppStoreIcon /></span>
-                  <span className="min-w-0">
-                    <span className="block">{t("pwa.sidebarIos") || "iOS 端"}</span>
-                    <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
-                      {t("pwa.sidebarIosAvailability") || "仅支持非中国大陆区 Apple ID"}
-                    </span>
-                  </span>
-                </a>
-                <div className="-mx-1 my-1 h-px bg-slate-100" />
-                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={CHROMIUM_CLIPPER_URL} target="_blank" rel="noreferrer" role="menuitem">
-                  <span className="flex w-9 items-center gap-1">
-                    <BrandIcon path={CHROME_ICON_PATH} color="#4285F4" />
-                    <BrandIcon path={EDGE_ICON_PATH} color="#0C59A4" />
-                  </span>
-                  <span>Chrome / Edge</span>
-                </a>
-                <a className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100" href={FIREFOX_CLIPPER_URL} target="_blank" rel="noreferrer" role="menuitem">
-                  <span className="flex w-9 items-center"><BrandIcon path={FIREFOX_ICON_PATH} color="#FF7139" /></span>
-                  <span>Firefox</span>
-                </a>
-              </div>
-            </div>
-          </div>
+                <DropdownMenuItem asChild>
+                  <a
+                    href={ANDROID_PLAY_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <BrandIconContainer>
+                        <GooglePlayIcon />
+                      </BrandIconContainer>
+                      <span className="truncate font-medium">{t("pwa.sidebarAndroid") || "Android"}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                      <span className="text-[11px]">{t("pwa.sidebarAndroidGooglePlay") || "Google Play"}</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a
+                    href={ANDROID_APK_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <BrandIconContainer>
+                        <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      </BrandIconContainer>
+                      <span className="truncate font-medium">{t("pwa.sidebarAndroidApk") || "APK 下载"}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                      <span className="text-[11px]">Releases</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a
+                    href={IOS_DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <BrandIconContainer>
+                        <AppStoreIcon />
+                      </BrandIconContainer>
+                      <span className="truncate font-medium">{t("pwa.sidebarIos") || "iOS"}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                      <span className="text-[11px]">{t("pwa.sidebarIosBadge") || "App Store"}</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {t("pwa.sidebarGroupClippers") || "浏览器剪藏插件"}
+                </DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                  <a
+                    href={CHROMIUM_CLIPPER_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <BrandIconContainer>
+                        <div className="flex items-center -space-x-1">
+                          <BrandIcon path={CHROME_ICON_PATH} color="#4285F4" className="h-3 w-3" />
+                          <BrandIcon path={EDGE_ICON_PATH} color="#0C59A4" className="h-3 w-3" />
+                        </div>
+                      </BrandIconContainer>
+                      <span className="truncate font-medium">{t("pwa.sidebarChromeEdge") || "Chrome / Edge"}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                      <span className="text-[11px]">{t("pwa.sidebarWebStoreBadge") || "扩展商店"}</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a
+                    href={FIREFOX_CLIPPER_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex cursor-pointer items-center justify-between gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-700 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus:bg-slate-100 focus:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <BrandIconContainer>
+                        <BrandIcon path={FIREFOX_ICON_PATH} color="#FF7139" />
+                      </BrandIconContainer>
+                      <span className="truncate font-medium">{t("pwa.sidebarFirefox") || "Firefox"}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                      <span className="text-[11px]">{t("pwa.sidebarAddonsBadge") || "附加组件"}</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </div>
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             onClick={onOpenSettings}
             className="flex h-8 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium leading-none text-slate-700 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/70"
             type="button"
-            title={t("notebookPane.profile")}
             aria-label={t("notebookPane.profile")}
           >
             <span className="flex h-4 w-4 shrink-0 items-center justify-center">
