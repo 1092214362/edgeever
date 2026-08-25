@@ -4399,7 +4399,7 @@ const RichEditorPane = ({
           </div>
         </div>
 
-        <div className="space-y-3 px-4 pb-4 pt-4 sm:px-7 lg:space-y-0 lg:pb-0.5 lg:pt-1.5">
+        <div className="space-y-1.5 px-4 pb-2.5 pt-2.5 sm:space-y-3 sm:px-7 sm:pb-4 sm:pt-4 lg:space-y-0 lg:pb-0.5 lg:pt-1.5">
           <input
             value={title}
             readOnly={effectiveReadOnly}
@@ -4408,12 +4408,12 @@ const RichEditorPane = ({
               persistCurrentDraft(event.target.value, tagsText, getMobilePlainTextValue());
               markDirty();
             }}
-            className="block w-full rounded-md border-0 bg-transparent text-2xl font-bold leading-tight text-slate-950 outline-none transition placeholder:text-slate-300 focus-visible:bg-muted focus-visible:shadow-[inset_3px_0_0_var(--brand-green)] sm:text-[26px]"
+            className="block w-full rounded-md border-0 bg-transparent text-xl font-bold leading-snug text-slate-950 outline-none transition placeholder:text-slate-300 focus-visible:bg-muted focus-visible:shadow-[inset_3px_0_0_var(--brand-green)] sm:text-2xl lg:text-[26px]"
             placeholder={t("common.untitledMemo")}
           />
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button
-              className="flex h-8 min-w-0 max-w-full items-center gap-1 rounded-md border border-transparent bg-transparent px-2 text-sm font-medium text-slate-600 outline-none transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus-visible:border-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-500/20 disabled:opacity-50 sm:hidden"
+              className="flex h-7 min-w-0 max-w-full items-center gap-1 rounded-md border border-transparent bg-transparent px-1.5 text-xs font-medium text-slate-600 outline-none transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus-visible:border-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-500/20 disabled:opacity-50 sm:hidden"
               type="button"
               disabled={effectiveReadOnly || notebookUpdatePending}
               title={t("editor.currentNotebook")}
@@ -4683,7 +4683,7 @@ const RichEditorPane = ({
             "flex gap-8 transition-all duration-200",
             useMarkdownSourceEditor
               ? "h-full min-h-0 flex-1 items-stretch px-0 py-0"
-              : "min-h-full items-start px-6 py-4 sm:px-10",
+              : "min-h-full items-start px-4 py-2 sm:px-7 lg:px-10",
             desktopFocusMode
               ? "mx-auto w-full max-w-[1400px] justify-center"
               : editorContentAlignment === "center"
