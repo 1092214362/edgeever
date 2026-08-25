@@ -1204,6 +1204,7 @@ export const zhCN = {
   },
   sharing: {
     action: "分享笔记",
+    afterSync: "同步后可分享笔记",
     active: "正在分享",
     manage: "管理分享",
     title: "分享笔记",

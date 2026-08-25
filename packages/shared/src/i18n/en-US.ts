@@ -1206,6 +1206,7 @@ export const enUS = {
   },
   sharing: {
     action: "Share note",
+    afterSync: "Share note after sync",
     active: "Shared",
     manage: "Manage sharing",
     title: "Share note",
