@@ -1,0 +1,144 @@
+name: Mirror Docker image to Tencent TCR
+
+on:
+  workflow_run:
+    workflows:
+      - Build and publish Docker image
+    types:
+      - completed
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Immutable GHCR tag to mirror"
+        required: true
+        type: string
+      destination_tags:
+        description: "Comma-separated TCR tags"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  GHCR_IMAGE_NAME: ghcr.io/tianma-if/edgeever
+  TCR_IMAGE_NAME: ccr.ccs.tencentyun.com/edgeever/edgeever
+
+jobs:
+  mirror:
+    if: >-
+      github.repository == 'tianma-if/edgeever' &&
+      (
+        github.event_name == 'release' ||
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push'
+        )
+      )
+    name: Mirror public image without blocking releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Resolve immutable source and destination tags
+        id: image
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SOURCE_TAG: ${{ inputs.source_tag }}
+          INPUT_DESTINATION_TAGS: ${{ inputs.destination_tags }}
+        run: |
+          if [[ "${EVENT_NAME}" == "release" ]]; then
+            source_tag="${RELEASE_TAG}"
+            destination_tags="${RELEASE_TAG},${RELEASE_TAG#v},latest"
+          elif [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+            source_tag="sha-${SOURCE_SHA:0:12}"
+            destination_tags="main,${source_tag}"
+          else
+            source_tag="${INPUT_SOURCE_TAG}"
+            destination_tags="${INPUT_DESTINATION_TAGS}"
+          fi
+          if [[ ! "${source_tag}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "Invalid source tag" >&2
+            exit 1
+          fi
+          IFS=',' read -ra tags <<< "${destination_tags}"
+          for image_tag in "${tags[@]}"; do
+            if [[ ! "${image_tag}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+              echo "Invalid destination tag: ${image_tag}" >&2
+              exit 1
+            fi
+          done
+          {
+            echo "source_tag=${source_tag}"
+            echo "destination_tags=${destination_tags}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign in to Tencent Cloud Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ccr.ccs.tencentyun.com
+          username: ${{ secrets.TENCENT_TCR_USERNAME }}
+          password: ${{ secrets.TENCENT_TCR_PASSWORD }}
+
+      - name: Install registry copy tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+
+      - name: Mirror image tags
+        env:
+          SOURCE_TAG: ${{ steps.image.outputs.source_tag }}
+          DESTINATION_TAGS: ${{ steps.image.outputs.destination_tags }}
+        run: |
+          IFS=',' read -ra tags <<< "${DESTINATION_TAGS}"
+          for image_tag in "${tags[@]}"; do
+            for attempt in 1 2 3; do
+              if skopeo copy \
+                --all \
+                --preserve-digests \
+                --authfile "${HOME}/.docker/config.json" \
+                "docker://${GHCR_IMAGE_NAME}:${SOURCE_TAG}" \
+                "docker://${TCR_IMAGE_NAME}:${image_tag}"; then
+                break
+              fi
+              if [[ "${attempt}" -eq 3 ]]; then
+                echo "Failed to mirror ${image_tag} after ${attempt} attempts" >&2
+                exit 1
+              fi
+              echo "Mirror attempt ${attempt} failed for ${image_tag}; retrying" >&2
+              sleep "$((attempt * 15))"
+            done
+          done
+
+      - name: Verify mirrored anonymous image access
+        env:
+          SOURCE_TAG: ${{ steps.image.outputs.source_tag }}
+          DESTINATION_TAGS: ${{ steps.image.outputs.destination_tags }}
+        run: |
+          docker logout ghcr.io
+          docker logout ccr.ccs.tencentyun.com
+          source_inspect="$(docker buildx imagetools inspect "${GHCR_IMAGE_NAME}:${SOURCE_TAG}")"
+          source_digest="$(sed -n 's/^Digest:[[:space:]]*//p' <<<"${source_inspect}" | head -n 1)"
+          test -n "${source_digest}"
+          IFS=',' read -ra tags <<< "${DESTINATION_TAGS}"
+          for image_tag in "${tags[@]}"; do
+            mirror_inspect="$(docker buildx imagetools inspect "${TCR_IMAGE_NAME}:${image_tag}")"
+            mirror_digest="$(sed -n 's/^Digest:[[:space:]]*//p' <<<"${mirror_inspect}" | head -n 1)"
+            test "${source_digest}" = "${mirror_digest}"
+            docker buildx imagetools inspect --raw "${TCR_IMAGE_NAME}:${image_tag}" |
+              jq -e '([.manifests[].platform.architecture] | index("amd64") != null) and ([.manifests[].platform.architecture] | index("arm64") != null)'
+          done
