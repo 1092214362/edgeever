@@ -172,13 +172,10 @@ Embed PDFs, spreadsheets, archives, and multimedia files directly in notes for p
 1. **Cloudflare Serverless (Recommended, 100% Free Forever)**: Runs entirely within Cloudflare's free tier (Workers + D1 SQLite + R2 Storage). No server bills, no VPS maintenance.
 2. **Docker One-Command Deployment (VPS / NAS / Home Server)**:
    ```sh
-   # International VPS / NAS installer (GHCR image)
+   # Official GHCR image
    curl -fsSL https://edgeever.org/install.sh | bash
-
-   # Mainland China mirror installer (Tencent TCR image)
-   curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
    ```
-   Configures Docker Compose and automated daily background updates with one command.
+   Configures Docker Compose and automated daily background updates with one command. Some network environments in mainland China may require an available network proxy or a trusted registry mirror to access GHCR.
 
 ### 💾 Complete Data Freedom: Lossless ZIP Portability
 Export your entire library at any time from **Profile → Import and export**. The archive contains pure Markdown files with standard YAML Front Matter, relative media paths, and full revision histories—compatible with Obsidian, VS Code, and any plain text editor.

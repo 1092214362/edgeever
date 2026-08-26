@@ -199,13 +199,10 @@ sequenceDiagram
 1. **Cloudflare Serverless（推荐，永久 100% 免费）**：基于 Workers + D1 数据库 + R2 对象存储构建，完全处于 Cloudflare 免费额度内，无需采购服务器，免运维、免证书续期。
 2. **Docker 一键自建（VPS / NAS / 家用服务器）**：
    \`\`\`sh
-   # 国际 VPS / NAS 极速安装（GHCR 镜像）
+   # 官方 GHCR 镜像
    curl -fsSL https://edgeever.org/install.sh | bash
-
-   # 大陆地区 VPS / NAS 镜像加速（腾讯云 TCR 镜像）
-   curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
    \`\`\`
-   单命令自动配置 Docker Compose 环境，并内置每日定时自动更新。
+   单命令自动配置 Docker Compose 环境，并内置每日定时自动更新。部分中国大陆网络环境可能需要自行配置可用的网络代理或可信的镜像加速服务，才能正常访问 GHCR。
 
 ### 💾 绝对的数据自由：无损 ZIP 导入与导出
 在**个人中心 → 导入与导出**中，可随时将完整笔记库打包导出为结构清晰的 ZIP 压缩包。解压后即为包含标准 YAML Front Matter、相对路径附件图片与完整修订版本的纯 Markdown 文件树，随时可在 Obsidian、VS Code 等任意工具中无缝打开，永不担心平台绑定！
@@ -420,13 +417,10 @@ Embed PDFs, spreadsheets, archives, and multimedia files directly in notes for p
 1. **Cloudflare Serverless (Recommended, 100% Free Forever)**: Runs entirely within Cloudflare's free tier (Workers + D1 SQLite + R2 Storage). No server bills, no VPS maintenance.
 2. **Docker One-Command Deployment (VPS / NAS / Home Server)**:
    \`\`\`sh
-   # International VPS / NAS installer (GHCR image)
+   # Official GHCR image
    curl -fsSL https://edgeever.org/install.sh | bash
-
-   # Mainland China mirror installer (Tencent TCR image)
-   curl -fsSL https://edgeever-installer-1256854452.cos.ap-guangzhou.myqcloud.com/install.sh | bash -s -- --mirror tcr
    \`\`\`
-   Configures Docker Compose and automated daily background updates with one command.
+   Configures Docker Compose and automated daily background updates with one command. Some network environments in mainland China may require an available network proxy or a trusted registry mirror to access GHCR.
 
 ### 💾 Complete Data Freedom: Lossless ZIP Portability
 Export your entire library at any time from **Profile → Import and export**. The archive contains pure Markdown files with standard YAML Front Matter, relative media paths, and full revision histories—compatible with Obsidian, VS Code, and any plain text editor.
