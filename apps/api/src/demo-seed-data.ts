@@ -173,7 +173,7 @@ sequenceDiagram
 - **多端原生支持**：
   - **Web / PWA**：支持现代浏览器全功能运行与离线安装；
   - **Android 原生客户端**：基于 Expo 与 SQLite 构建，已上架 Google Play，并提供签名 APK 下载；
-  - **iOS 原生客户端**：基于 Swift / SwiftUI 与 GRDB 原生实现，流畅细腻，已上架 App Store；
+  - **iOS 原生客户端**：基于 Swift / SwiftUI 与 GRDB 原生实现，流畅细腻，已上架 App Store（可使用非大陆区 Apple ID 下载）；
   - **macOS 桌面端**：Electron + Rust 高性能 Sidecar，支持 Apple Silicon 和 Intel Mac，内置静默后台更新；
   - **Windows 桌面端**：已开发完毕，即将正式推出。
 - **浏览器网页剪藏 (Web Clipper)**：已在 Chrome、Edge 和 Firefox 官方扩展商店发布，一键剔除网页广告，将正文纯净沉淀为 Markdown 笔记。
@@ -394,7 +394,7 @@ Generate an API token in **Settings → MCP Settings** to connect EdgeEver direc
 - **Cross-Platform Native Apps**:
   - **Web / PWA**: Full-featured in modern browsers with offline installation support;
   - **Android Native App**: Built with Expo & SQLite, available on Google Play and GitHub Releases;
-  - **iOS Native App**: Native Swift / SwiftUI with GRDB local mirror, available on the App Store;
+  - **iOS Native App**: Native Swift / SwiftUI with GRDB local mirror, available on the App Store (requires a non-mainland China Apple ID);
   - **macOS Desktop App**: Electron + Rust Sidecar for Apple Silicon & Intel Mac with silent background updates;
   - **Windows Desktop App**: Development is complete, coming soon.
 - **Browser Web Clipper**: Available on Chrome, Edge, and Firefox extension stores to extract clean, ad-free Markdown articles in one click.

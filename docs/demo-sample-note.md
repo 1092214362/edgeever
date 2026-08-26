@@ -146,7 +146,7 @@ Generate an API token in **Settings → MCP Settings** to connect EdgeEver direc
 - **Cross-Platform Native Apps**:
   - **Web / PWA**: Full-featured in modern browsers with offline installation support;
   - **Android Native App**: Built with Expo & SQLite, available on Google Play and GitHub Releases;
-  - **iOS Native App**: Native Swift / SwiftUI with GRDB local mirror, available on the App Store;
+  - **iOS Native App**: Native Swift / SwiftUI with GRDB local mirror, available on the App Store (requires a non-mainland China Apple ID);
   - **macOS Desktop App**: Electron + Rust Sidecar for Apple Silicon & Intel Mac with silent background updates;
   - **Windows Desktop App**: Development is complete, coming soon.
 - **Browser Web Clipper**: Available on Chrome, Edge, and Firefox extension stores to extract clean, ad-free Markdown articles in one click.
