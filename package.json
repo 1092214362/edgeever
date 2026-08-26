@@ -149,6 +149,7 @@
     "katex": "0.16.22",
     "lucide-react": "latest",
     "marked": "^18.0.5",
+    "pdfjs-dist": "^6.2.108",
     "react": "latest",
     "react-dom": "latest",
     "react-dropzone": "^15.0.0",

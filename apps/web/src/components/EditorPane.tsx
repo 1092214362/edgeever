@@ -117,6 +117,7 @@ import {
   MEMO_CONTENT_STYLE,
   markdownToDoc,
   MergeDivider,
+  isPdfAttachment,
   resolveMemoContentDoc,
   type Notebook,
   type MemoDetail,
@@ -209,6 +210,7 @@ import {
   type ImagePreviewRequestDetail,
 } from "./editor/ResizableImage";
 import { ImageViewer } from "./editor/ImageViewer";
+import { PdfAttachment } from "./editor/PdfAttachment";
 import {
   createNoteSearchHighlightPlugin,
   formatNoteSearchMatchLabel,
@@ -1239,29 +1241,43 @@ const RichEditorPane = ({
         return;
       }
 
-      const content = successfulResults.map(({ file, value: resource }) =>
-        resource.kind === "image"
-          ? {
-              type: "image",
+      const content = successfulResults.map(({ file, value: resource }) => {
+        const filename = resource.filename || file.name;
+        if (resource.kind === "image") {
+          return {
+            type: "image",
+            attrs: {
+              src: resource.url,
+              alt: file.name,
+              title: file.name,
+              width: DEFAULT_IMAGE_WIDTH_PERCENT,
+            },
+          };
+        }
+        if (isPdfAttachment(file.type, filename)) {
+          return {
+            type: "paragraph",
+            content: [{
+              type: "edgeeverPdfAttachment",
               attrs: {
-                src: resource.url,
-                alt: file.name,
-                title: file.name,
-                width: DEFAULT_IMAGE_WIDTH_PERCENT,
+                url: resource.url,
+                label: t("editor.attachmentLabel", { filename }),
               },
-            }
-          : {
-              type: "paragraph",
-              content: [{
-                type: "text",
-                text: t("editor.attachmentLabel", { filename: resource.filename || file.name }),
-                marks: [{
-                  type: "link",
-                  attrs: { href: resource.url, target: "_blank", class: "edgeever-attachment-link" },
-                }],
-              }],
-            }
-      );
+            }],
+          };
+        }
+        return {
+          type: "paragraph",
+          content: [{
+            type: "text",
+            text: t("editor.attachmentLabel", { filename }),
+            marks: [{
+              type: "link",
+              attrs: { href: resource.url, target: "_blank", class: "edgeever-attachment-link" },
+            }],
+          }],
+        };
+      });
 
       if (content.length > 0) {
         activeEditor.chain().focus().insertContent(content).run();
@@ -1286,6 +1302,7 @@ const RichEditorPane = ({
       TaskItem.configure({ nested: true }),
       EdgeEverCodeBlock.configure({ lowlight: codeBlockLowlight, defaultLanguage: "plaintext" }),
       MergeDivider,
+      PdfAttachment,
       ...createEdgeEverMathematics(),
       ThemeBlock,
       ResizableImage.configure({
