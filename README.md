@@ -133,8 +133,6 @@ The Web Clipper is officially published for Chrome, Microsoft Edge, and Firefox.
   <a href="https://addons.mozilla.org/firefox/addon/edgeever-web-clipper/"><img src="https://raw.githubusercontent.com/alrra/browser-logos/58881b84c4d73adc03c06fa2c275a7abee02d935/src/firefox/firefox.svg" alt="Install EdgeEver Web Clipper for Firefox" width="36" height="36" /></a>
 </p>
 
-Developers can also use the [extension development guide](apps/extension/README.md) to build and load the extension from source.
-
 ## Native Clients
 
 Native clients offer a smoother, more reliable experience with deeper system integration, local storage, and offline editing. Changes sync incrementally when connectivity returns, making them ideal for frequent use and unreliable network conditions.
