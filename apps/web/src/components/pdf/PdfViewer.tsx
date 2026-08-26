@@ -1,5 +1,4 @@
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   ChevronDown,
   ChevronLeft,
@@ -20,6 +19,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { ButtonTooltip } from "@/components/ui/button-tooltip";
 import { cn } from "@/lib/utils";
+import { loadPdfJs } from "./pdfjs-loader";
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
@@ -114,9 +114,8 @@ const PdfDocument = ({ url, active, fitWidth, zoom, onError }: PdfDocumentProps)
     let cancelled = false;
     let loadingTask: ReturnType<(typeof import("pdfjs-dist"))["getDocument"]> | null = null;
 
-    void import("pdfjs-dist").then(async (pdfjs) => {
+    void loadPdfJs().then(async (pdfjs) => {
       if (cancelled) return;
-      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
       loadingTask = pdfjs.getDocument({ url });
       const loadedDocument = await loadingTask.promise;
       if (cancelled) return;

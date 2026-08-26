@@ -931,6 +931,7 @@ export const enUS = {
     emptyDescription: "Images and attachments added to notes will appear here",
     previewImage: "Preview image",
     previewPdf: "Preview PDF {{filename}}",
+    pdfThumbnail: "PDF first-page thumbnail: {{filename}}",
     downloadOpen: "Download/open",
     deletedMemo: "Deleted note",
     fromMemo: "From: {{source}}",

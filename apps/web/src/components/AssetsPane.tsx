@@ -34,6 +34,7 @@ import { WORKSPACE_PAGE_TITLE_CLASSNAME } from "@/lib/workspace-ui";
 import type { EdgeEverRepository } from "@/lib/repository";
 import { isPdfAttachment, type ResourceListItem } from "@edgeever/shared";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
+import { PdfThumbnail } from "@/components/pdf/PdfThumbnail";
 
 export const formatBytes = (bytes: number) => {
   if (!Number.isFinite(bytes) || bytes <= 0) {
@@ -380,6 +381,13 @@ export const AssetsPane = ({ onClose, repository }: AssetsPaneProps) => {
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103"
                         loading="lazy"
                       />
+                    ) : isPdfAttachment(resource.mimeType, resource.filename) ? (
+                      <PdfThumbnail
+                        url={resource.url}
+                        label={resource.filename || resource.id}
+                        byteSize={resource.byteSize}
+                        className="p-2"
+                      />
                     ) : (
                       <div className="flex flex-col items-center gap-1.5 p-3 text-center">
                         {getFileIcon(resource.mimeType, resource.filename)}
@@ -453,6 +461,13 @@ export const AssetsPane = ({ onClose, repository }: AssetsPaneProps) => {
                         alt={resource.filename || ""}
                         className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
                         loading="lazy"
+                      />
+                    ) : isPdfAttachment(resource.mimeType, resource.filename) ? (
+                      <PdfThumbnail
+                        url={resource.url}
+                        label={resource.filename || resource.id}
+                        byteSize={resource.byteSize}
+                        className="p-1"
                       />
                     ) : (
                       getFileIcon(resource.mimeType, resource.filename)

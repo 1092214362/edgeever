@@ -931,6 +931,7 @@ export const zhCN = {
     emptyDescription: "在笔记中添加的图片和附件会显示在这里",
     previewImage: "大图预览",
     previewPdf: "预览 PDF {{filename}}",
+    pdfThumbnail: "PDF 首页缩略图：{{filename}}",
     downloadOpen: "下载/打开",
     deletedMemo: "已删除笔记",
     fromMemo: "来自：{{source}}",
