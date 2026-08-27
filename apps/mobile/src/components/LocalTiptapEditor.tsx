@@ -701,11 +701,13 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       attributes: getMobileEditorInputAttributes(
         isViewer ? "edgeever-editor-content edgeever-viewer-content" : "edgeever-editor-content"
       ),
-      handleClick: (_view, _pos, event) => handleMobileResourceEvent(event, onResourcePressRef.current, {
-        allowImagePreview: isViewer,
-        onImagePreview: onImagePreviewRef.current,
-      }),
       handleDOMEvents: {
+        // Intercept attachment anchors before ProseMirror's later click phase so
+        // the embedded file:// WebView never follows relative resource URLs.
+        click: (_view, event) => handleMobileResourceEvent(event, onResourcePressRef.current, {
+          allowImagePreview: isViewer,
+          onImagePreview: onImagePreviewRef.current,
+        }),
         contextmenu: (_view, event) => handleMobileResourceEvent(event, onResourcePressRef.current, {
           allowImagePreview: false,
           onImagePreview: onImagePreviewRef.current,
