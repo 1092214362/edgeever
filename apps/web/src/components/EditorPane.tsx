@@ -224,6 +224,7 @@ import {
 } from "./editor/ResizableImage";
 import { ImageViewer } from "./editor/ImageViewer";
 import { PdfAttachment } from "./editor/PdfAttachment";
+import { FileAttachment } from "./editor/FileAttachment";
 import {
   createNoteSearchHighlightPlugin,
   formatNoteSearchMatchLabel,
@@ -1312,12 +1313,13 @@ const RichEditorPane = ({
         return {
           type: "paragraph",
           content: [{
-            type: "text",
-            text: t("editor.attachmentLabel", { filename }),
-            marks: [{
-              type: "link",
-              attrs: { href: resource.url, target: "_blank", class: "edgeever-attachment-link" },
-            }],
+            type: "edgeeverFileAttachment",
+            attrs: {
+              url: resource.url,
+              label: t("editor.attachmentLabel", { filename }),
+              filename,
+              mimeType: file.type,
+            },
           }],
         };
       });
@@ -1371,6 +1373,7 @@ const RichEditorPane = ({
       EdgeEverCodeBlock.configure({ lowlight: codeBlockLowlight, defaultLanguage: "plaintext" }),
       MergeDivider,
       PdfAttachment,
+      FileAttachment,
       ...createEdgeEverMathematics(),
       ThemeBlock,
       ResizableImage.configure({

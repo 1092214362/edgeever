@@ -6,7 +6,6 @@ import {
   ChevronUp,
   Download,
   ExternalLink,
-  FileText,
   Loader2,
   Maximize2,
   Minimize2,
@@ -18,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { ButtonTooltip } from "@/components/ui/button-tooltip";
+import { AttachmentFileIcon } from "@/components/attachments/AttachmentFileIcon";
 import { isDesktopResourceRuntime, toApiResourceUrl } from "@/lib/desktop-resources";
 import { cn } from "@/lib/utils";
 import { loadPdfJs } from "./pdfjs-loader";
@@ -270,7 +270,7 @@ export const PdfViewer = ({
             disabled={isFullscreen}
             onClick={() => setExpanded(!expanded)}
           >
-            <FileText className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+            <AttachmentFileIcon mimeType="application/pdf" filename={label} className="h-4 w-4" />
             <span className="min-w-0 truncate">{label}</span>
           </button>
           {expanded && !failed ? (
