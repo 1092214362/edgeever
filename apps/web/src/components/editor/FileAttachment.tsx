@@ -7,8 +7,10 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tip
 import { Download, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AttachmentFileIcon } from "@/components/attachments/AttachmentFileIcon";
+import { COMPACT_ATTACHMENT_WIDTH_CLASS } from "@/components/attachments/attachment-layout";
 import { ButtonTooltip } from "@/components/ui/button-tooltip";
 import { isDesktopResourceRuntime, toApiResourceUrl } from "@/lib/desktop-resources";
+import { cn } from "@/lib/utils";
 
 const FileAttachmentNodeView = ({ node }: NodeViewProps) => {
   const { t } = useTranslation();
@@ -23,7 +25,7 @@ const FileAttachmentNodeView = ({ node }: NodeViewProps) => {
 
   return (
     <NodeViewWrapper as="span" className="edgeever-file-attachment-node" contentEditable={false}>
-      <span className="edgeever-file-viewer flex min-h-12 w-full items-center gap-2 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 shadow-sm">
+      <span className={cn("edgeever-file-viewer flex min-h-12 items-center gap-2 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 shadow-sm", COMPACT_ATTACHMENT_WIDTH_CLASS)}>
         <a
           href={resolvedUrl}
           target="_blank"

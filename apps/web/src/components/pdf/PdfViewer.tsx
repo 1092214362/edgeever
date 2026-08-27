@@ -1,4 +1,4 @@
-import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
+import { formatAttachmentMetadata } from "@edgeever/shared";
 import {
   ChevronDown,
   ChevronLeft,
@@ -13,12 +13,13 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { ButtonTooltip } from "@/components/ui/button-tooltip";
 import { AttachmentFileIcon } from "@/components/attachments/AttachmentFileIcon";
-import { formatAttachmentMetadata } from "@edgeever/shared";
+import { COMPACT_ATTACHMENT_WIDTH_CLASS } from "@/components/attachments/attachment-layout";
+import { ButtonTooltip } from "@/components/ui/button-tooltip";
 import { isDesktopResourceRuntime, toApiResourceUrl } from "@/lib/desktop-resources";
 import { cn } from "@/lib/utils";
 import { loadPdfJs } from "./pdfjs-loader";
@@ -245,7 +246,8 @@ export const PdfViewer = ({
     <span
       ref={rootRef}
       className={cn(
-        "edgeever-pdf-viewer block w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
+        "edgeever-pdf-viewer block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
+        expanded ? "w-full" : COMPACT_ATTACHMENT_WIDTH_CLASS,
         isFullscreen && "fixed inset-0 z-[120] flex rounded-none border-0 bg-slate-950/95 p-3 sm:p-5",
         className,
       )}
