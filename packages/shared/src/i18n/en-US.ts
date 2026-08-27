@@ -1061,6 +1061,7 @@ export const enUS = {
       uploading: "Uploading",
       fileFailed: "File upload failed",
       imageCompressing: "Compressing image",
+      imagePreparing: "Processing image",
       fileUploading: "Uploading file",
     },
     notebookFallback: "Notebook",

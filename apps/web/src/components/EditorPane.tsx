@@ -83,6 +83,13 @@ import { EditorOutline } from "./EditorOutline";
 import { EditorTagPicker } from "./EditorTagPicker";
 import { useAiBubbleMenu } from "./editor/useAiBubbleMenu";
 import {
+  ImageUploadPlaceholderExtension,
+  addImageUploadPlaceholder,
+  createImageUploadPlaceholder,
+  removeImageUploadPlaceholder,
+  waitForImageSourceReady,
+} from "./editor/image-upload-placeholder";
+import {
   clampResourceInsertionTarget,
   clearNodeSelectionAtDocumentEnd,
   getResourceInsertionTarget,
@@ -1211,6 +1218,16 @@ const RichEditorPane = ({
 
     const targetMemoId = currentMemo.id;
     const interactionVersionAtRequest = editorCanvasInteractionVersionRef.current;
+    const placeholderPosition = currentEditor.state.selection.from;
+    const imagePlaceholders = files
+      .filter((file) => SUPPORTED_PASTE_IMAGE_TYPES.has(file.type))
+      .map((file) => createImageUploadPlaceholder(
+        file,
+        t("editor.uploadState.imagePreparing"),
+      ));
+    imagePlaceholders.forEach((placeholder) => {
+      addImageUploadPlaceholder(currentEditor, placeholder, placeholderPosition);
+    });
 
     void resourceInsertionLimit(async () => {
       const insertionEditor = editorRef.current;
@@ -1255,6 +1272,10 @@ const RichEditorPane = ({
       if (successfulResults.length > 0) {
         void queryClient.invalidateQueries({ queryKey: ["resources"] });
       }
+
+      await Promise.all(successfulResults.map(({ value: resource }) =>
+        resource.kind === "image" ? waitForImageSourceReady(resource.url) : Promise.resolve()
+      ));
 
       const activeEditor = editorRef.current;
       if (memoRef.current?.id !== targetMemoId || !isEditorReady(activeEditor)) {
@@ -1331,6 +1352,11 @@ const RichEditorPane = ({
       } else {
         setImageUploadState("idle");
       }
+    }).finally(() => {
+      const placeholderEditor = editorRef.current;
+      imagePlaceholders.forEach((placeholder) => {
+        removeImageUploadPlaceholder(placeholderEditor, placeholder);
+      });
     });
   }, [queryClient, repository, resourceInsertionLimit, t]);
 
@@ -1351,6 +1377,7 @@ const RichEditorPane = ({
         allowBase64: false,
         inline: false,
       }),
+      ImageUploadPlaceholderExtension,
       TableKit.configure({
         table: { renderWrapper: true },
       }),

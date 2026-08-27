@@ -32,6 +32,20 @@ const dispatchPlainTextPaste = async (editor: Locator, text: string) => {
   }, text);
 };
 
+const dispatchPngFilePaste = async (editor: Locator) => {
+  await editor.evaluate((element) => {
+    const encoded = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    const bytes = Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0));
+    const clipboardData = new DataTransfer();
+    clipboardData.items.add(new File([bytes], "upload-feedback.png", { type: "image/png" }));
+    element.dispatchEvent(new ClipboardEvent("paste", {
+      bubbles: true,
+      cancelable: true,
+      clipboardData,
+    }));
+  });
+};
+
 test("converts a pasted Markdown image line in the main Web editor", async ({ page }) => {
   const title = `Markdown image paste ${Date.now()}`;
   const memo = await createMemo(page, title);
@@ -104,6 +118,51 @@ test("converts a pasted Markdown image line in the standalone mobile Web editor"
     await expect(editor.locator(`img[src="${secondSource}"]`)).toHaveAttribute("alt", "Second mobile image");
     await expect(editor).not.toContainText(markdown);
   } finally {
+    await deleteMemo(page, memo.id);
+  }
+});
+
+test("shows a stable local preview while a pasted image is uploading", async ({ page }) => {
+  const title = `Image upload feedback ${Date.now()}`;
+  const memo = await createMemo(page, title);
+  let releaseUpload: () => void = () => undefined;
+  const uploadGate = new Promise<void>((resolve) => {
+    releaseUpload = resolve;
+  });
+  let markUploadStarted: () => void = () => undefined;
+  const uploadStarted = new Promise<void>((resolve) => {
+    markUploadStarted = resolve;
+  });
+
+  try {
+    await page.route("**/api/v1/memos/*/resources", async (route) => {
+      markUploadStarted();
+      await uploadGate;
+      await route.continue();
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "全部笔记", exact: true }).click();
+    await page.getByPlaceholder("搜索笔记").fill(title);
+    await page.locator(`[data-memo-id="${memo.id}"]`).locator("button").first().click();
+
+    const editor = page.locator(".ProseMirror[contenteditable='true']");
+    await expect(editor).toBeEditable();
+    await dispatchPngFilePaste(editor);
+
+    const placeholder = editor.locator(".edgeever-image-upload-placeholder");
+    await expect(placeholder).toBeVisible();
+    await expect(placeholder).toHaveClass(/is-preview-ready/);
+    expect((await placeholder.boundingBox())?.height ?? 0).toBeGreaterThan(150);
+    await uploadStarted;
+    await expect(placeholder).toBeVisible();
+
+    releaseUpload();
+    const finalImage = editor.locator(".edgeever-image-node img");
+    await expect(finalImage).toBeVisible();
+    await expect(placeholder).toHaveCount(0);
+    expect((await finalImage.boundingBox())?.height ?? 0).toBeGreaterThan(1);
+  } finally {
+    releaseUpload();
     await deleteMemo(page, memo.id);
   }
 });
