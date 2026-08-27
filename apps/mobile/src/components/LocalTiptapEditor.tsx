@@ -74,6 +74,7 @@ import {
   isMobileImageUploadPlaceholderSource,
   stripMobileImageUploadPlaceholders,
 } from "../lib/mobile-image-upload-placeholder";
+import { resolveMobileAttachmentContent } from "../lib/mobile-attachment-content";
 import {
   getMobileAiSourceRange,
   resolveMobileAiSelectionTriggerPosition,
@@ -695,7 +696,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
             placeholder: getMobileEditorPlaceholder(props.locale),
           })]),
     ],
-    content: resolveImageSources(props.content, props.baseUrl),
+    content: resolveImageSources(resolveMobileAttachmentContent(props.content), props.baseUrl),
     editorProps: {
       attributes: getMobileEditorInputAttributes(
         isViewer ? "edgeever-editor-content edgeever-viewer-content" : "edgeever-editor-content"
@@ -745,7 +746,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     }
     try {
       const parsed = JSON.parse(contentJsonSerialized) as EditorDoc;
-      const next = resolveImageSources(parsed, props.baseUrl);
+      const next = resolveImageSources(resolveMobileAttachmentContent(parsed), props.baseUrl);
       // Do not focus while replacing content. Callers decide when the editor should
       // take focus and place the caret via focusEnd().
       // This command synchronizes native-owned state (draft restore/template/new
@@ -1291,7 +1292,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     if (!editor || editor.isDestroyed || !isViewer) {
       return;
     }
-    const next = resolveImageSources(props.content, props.baseUrl);
+    const next = resolveImageSources(resolveMobileAttachmentContent(props.content), props.baseUrl);
     const current = JSON.stringify(editor.getJSON());
     const incoming = JSON.stringify(next);
     if (current !== incoming) {
