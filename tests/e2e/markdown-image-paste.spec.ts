@@ -54,6 +54,23 @@ test("converts a pasted Markdown image line in the main Web editor", async ({ pa
     await expect(image).toHaveAttribute("title", "Issue 229");
     await expect(editor).not.toContainText(markdown);
 
+    const imageNode = editor.locator(".edgeever-image-node");
+    await image.click();
+    await expect(imageNode).toHaveClass(/(?:is-selected|ProseMirror-selectednode)/);
+    await imageNode.getByRole("button", { name: "较小" }).click();
+
+    const editorBox = await editor.boundingBox();
+    const imageBox = await imageNode.boundingBox();
+    expect(editorBox).not.toBeNull();
+    expect(imageBox).not.toBeNull();
+    await editor.click({
+      position: {
+        x: (editorBox?.width ?? 0) - 4,
+        y: (imageBox?.y ?? 0) - (editorBox?.y ?? 0) + Math.min((imageBox?.height ?? 0) / 2, 20),
+      },
+    });
+    await expect(imageNode).not.toHaveClass(/(?:is-selected|ProseMirror-selectednode)/);
+
     await expect.poll(async () => {
       const response = await page.request.get(`/api/v1/memos/${memo.id}`);
       const body = await response.json() as { memo: { contentJson: unknown } };

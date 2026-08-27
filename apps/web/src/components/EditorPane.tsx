@@ -1836,10 +1836,20 @@ const RichEditorPane = ({
       );
       if (clickedEmptyCanvas) {
         editorCanvasInteractionVersionRef.current += 1;
-        const clearedNodeSelection = Boolean(editor && clearNodeSelectionAtDocumentEnd(editor));
-        if (editor && clearedNodeSelection) {
-          window.requestAnimationFrame(() => editor.commands.focus());
-        }
+        // This handler runs in capture phase, before ProseMirror translates the
+        // click coordinates into a selection. In a desktop WebView that later
+        // selection can map the empty area beside/below a block image back onto
+        // the image, undoing an immediate clear. Reconcile after ProseMirror's
+        // click handling has completed instead.
+        window.requestAnimationFrame(() => {
+          const activeEditor = editorRef.current;
+          if (activeEditor !== editor || !isEditorReady(activeEditor)) {
+            return;
+          }
+          if (clearNodeSelectionAtDocumentEnd(activeEditor)) {
+            activeEditor.commands.focus();
+          }
+        });
       }
     }
   }, [editor, onOpenMemo, showEditorLinkOpenHint]);
