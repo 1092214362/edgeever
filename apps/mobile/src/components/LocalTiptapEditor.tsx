@@ -74,7 +74,10 @@ import {
   isMobileImageUploadPlaceholderSource,
   stripMobileImageUploadPlaceholders,
 } from "../lib/mobile-image-upload-placeholder";
-import { resolveMobileAttachmentContent } from "../lib/mobile-attachment-content";
+import {
+  getMobileAttachmentLinkClass,
+  resolveMobileAttachmentContent,
+} from "../lib/mobile-attachment-content";
 import {
   getMobileAiSourceRange,
   resolveMobileAiSelectionTriggerPosition,
@@ -860,7 +863,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
           attrs: {
             href: resolveUrl(attachmentUrlValue, props.baseUrl),
             target: "_blank",
-            class: "edgeever-attachment-link",
+            class: getMobileAttachmentLinkClass(filenameValue),
           },
         }],
       }],
@@ -885,7 +888,10 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     }
     const range = findMobileAttachmentRange(editor, target.resourceId);
     if (!range) return;
-    const linkMark = editor.schema.marks.link?.create(range.linkAttrs);
+    const linkMark = editor.schema.marks.link?.create({
+      ...range.linkAttrs,
+      class: getMobileAttachmentLinkClass(filenameValue, null, range.linkAttrs.class),
+    });
     if (!linkMark) return;
     editor.view.dispatch(editor.state.tr.replaceWith(
       range.from,
@@ -2986,9 +2992,22 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     justify-content: center;
     border-radius: 8px;
     background: ${theme === "dark" ? "#134e4a" : "#ecfdf5"};
-    content: "📎";
-    font-size: 15px;
+    color: ${theme === "dark" ? "#cbd5e1" : "#64748b"};
+    content: "FILE";
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
   }
+  .edgeever-editor-content a.edgeever-attachment-kind-image::before { background: ${theme === "dark" ? "#064e3b" : "#ecfdf5"}; color: ${theme === "dark" ? "#6ee7b7" : "#10b981"}; content: "▧"; font-size: 20px; }
+  .edgeever-editor-content a.edgeever-attachment-kind-audio::before { background: ${theme === "dark" ? "#0c4a6e" : "#f0f9ff"}; color: ${theme === "dark" ? "#7dd3fc" : "#0ea5e9"}; content: "♪"; font-size: 21px; }
+  .edgeever-editor-content a.edgeever-attachment-kind-video::before { background: ${theme === "dark" ? "#881337" : "#fff1f2"}; color: ${theme === "dark" ? "#fda4af" : "#f43f5e"}; content: "▶"; font-size: 15px; }
+  .edgeever-editor-content a.edgeever-attachment-kind-pdf::before { background: ${theme === "dark" ? "#881337" : "#fff1f2"}; color: ${theme === "dark" ? "#fda4af" : "#e11d48"}; content: "PDF"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-spreadsheet::before { background: ${theme === "dark" ? "#14532d" : "#f0fdf4"}; color: ${theme === "dark" ? "#86efac" : "#16a34a"}; content: "XLS"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-document::before { background: ${theme === "dark" ? "#1e3a8a" : "#eff6ff"}; color: ${theme === "dark" ? "#93c5fd" : "#2563eb"}; content: "DOC"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-presentation::before { background: ${theme === "dark" ? "#7c2d12" : "#fff7ed"}; color: ${theme === "dark" ? "#fdba74" : "#f97316"}; content: "PPT"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-archive::before { background: ${theme === "dark" ? "#713f12" : "#fffbeb"}; color: ${theme === "dark" ? "#fde68a" : "#d97706"}; content: "ZIP"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-code::before { background: ${theme === "dark" ? "#581c87" : "#faf5ff"}; color: ${theme === "dark" ? "#d8b4fe" : "#8b5cf6"}; content: "</>"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-text::before { background: ${theme === "dark" ? "#334155" : "#f1f5f9"}; color: ${theme === "dark" ? "#cbd5e1" : "#64748b"}; content: "TXT"; }
   .edgeever-editor-content a.edgeever-attachment-link::after, .edgeever-editor-content a[href*="/api/v1/resources/"]::after {
     margin-left: auto;
     flex: 0 0 auto;

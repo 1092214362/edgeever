@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { resolveMobileAttachmentContent } from "./mobile-attachment-content";
+import {
+  getMobileAttachmentLinkClass,
+  resolveMobileAttachmentContent,
+} from "./mobile-attachment-content";
 
 describe("resolveMobileAttachmentContent", () => {
   test("converts PDF and file attachment nodes into mobile-safe links", () => {
@@ -43,7 +46,7 @@ describe("resolveMobileAttachmentContent", () => {
               attrs: {
                 href: "/api/v1/resources/res_pdf/blob",
                 target: "_blank",
-                class: "edgeever-attachment-link",
+                class: "edgeever-attachment-link edgeever-attachment-kind-pdf",
               },
             }],
           }],
@@ -58,13 +61,42 @@ describe("resolveMobileAttachmentContent", () => {
               attrs: {
                 href: "/api/v1/resources/res_doc/blob",
                 target: "_blank",
-                class: "edgeever-attachment-link",
+                class: "edgeever-attachment-link edgeever-attachment-kind-document",
               },
             }],
           }],
         },
       ],
     });
+  });
+
+  test("adds type classes to existing resource links and preserves custom classes", () => {
+    const result = resolveMobileAttachmentContent({
+      type: "doc",
+      content: [{
+        type: "paragraph",
+        content: [{
+          type: "text",
+          text: "附件：数据.xlsx",
+          marks: [{
+            type: "link",
+            attrs: {
+              href: "/api/v1/resources/res_sheet/blob",
+              class: "custom edgeever-attachment-link edgeever-attachment-kind-file",
+            },
+          }],
+        }],
+      }],
+    });
+
+    expect(result.content[0]?.content?.[0]).toMatchObject({
+      marks: [{
+        attrs: {
+          class: "custom edgeever-attachment-link edgeever-attachment-kind-spreadsheet",
+        },
+      }],
+    });
+    expect(getMobileAttachmentLinkClass("演示.pptx")).toContain("edgeever-attachment-kind-presentation");
   });
 
   test("preserves surrounding rich content and falls back for incomplete nodes", () => {

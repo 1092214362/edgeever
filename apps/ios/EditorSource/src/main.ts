@@ -12,6 +12,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import mermaid from "mermaid";
 import { toCanvas } from "html-to-image";
+import { resolveAttachmentKind } from "@edgeever/shared";
 import {
   type NoteImageTheme,
   type NoteImageFontStyle,
@@ -141,6 +142,27 @@ function buildAttachmentTargetJson(href: string, label: string): string | null {
     href: normalizeResourceHref(href, resourceId),
     filename,
     resourceId,
+  });
+}
+
+const ATTACHMENT_KIND_CLASS_PREFIX = "edgeever-attachment-kind-";
+
+function normalizeAttachmentFilename(label: string): string {
+  return label.replace(/^\s*(?:附件[：:]|Attachment:)\s*/i, "").trim();
+}
+
+function decorateAttachmentLinks(root: ParentNode): void {
+  root.querySelectorAll<HTMLAnchorElement>(
+    'a.edgeever-attachment-link, a[href*="/api/v1/resources/"]'
+  ).forEach((link) => {
+    Array.from(link.classList).forEach((className) => {
+      if (className.startsWith(ATTACHMENT_KIND_CLASS_PREFIX)) link.classList.remove(className);
+    });
+    const filename = normalizeAttachmentFilename(link.textContent || "");
+    link.classList.add(
+      "edgeever-attachment-link",
+      `${ATTACHMENT_KIND_CLASS_PREFIX}${resolveAttachmentKind(null, filename)}`,
+    );
   });
 }
 
@@ -705,6 +727,7 @@ const editor = new Editor({
   content: { type: "doc", content: [{ type: "paragraph" }] },
   onUpdate: ({ editor: ed }) => {
     refreshToolbarState();
+    requestAnimationFrame(() => decorateAttachmentLinks(editorEl));
     if (suppressChange || mode !== "editor") return;
     emitChange(ed);
   },
@@ -1111,6 +1134,7 @@ async function afterContentSet(theme: "light" | "dark" = "light") {
   editorEl.querySelectorAll<HTMLElement>("[data-placeholder]").forEach((element) => {
     element.dataset.placeholder = currentPlaceholder;
   });
+  decorateAttachmentLinks(editorEl);
   await hydrateProtectedImages(editorEl);
   if (mode === "viewer") {
     await renderMermaidBlocks(editorEl, theme);

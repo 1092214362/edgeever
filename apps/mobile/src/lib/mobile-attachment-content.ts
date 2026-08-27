@@ -1,7 +1,9 @@
 import {
   FILE_ATTACHMENT_NODE_TYPE,
   PDF_ATTACHMENT_NODE_TYPE,
+  resolveAttachmentKind,
   type TiptapDoc,
+  type TiptapMark,
   type TiptapNode,
   type TiptapTextNode,
 } from "@edgeever/shared";
@@ -16,9 +18,58 @@ const getStringAttr = (node: TiptapNode, key: string) => {
   return typeof value === "string" ? value : "";
 };
 
+const ATTACHMENT_KIND_CLASS_PREFIX = "edgeever-attachment-kind-";
+
+const normalizeAttachmentFilename = (label: string) =>
+  label.replace(/^\s*(?:附件[：:]|Attachment:)\s*/i, "").trim();
+
+export const getMobileAttachmentLinkClass = (
+  filename: string,
+  mimeType?: string | null,
+  existingClass?: unknown,
+) => {
+  const preservedClasses = typeof existingClass === "string"
+    ? existingClass.split(/\s+/).filter((className) =>
+        className &&
+        className !== "edgeever-attachment-link" &&
+        !className.startsWith(ATTACHMENT_KIND_CLASS_PREFIX)
+      )
+    : [];
+  const kind = resolveAttachmentKind(mimeType, normalizeAttachmentFilename(filename));
+  return [
+    ...preservedClasses,
+    "edgeever-attachment-link",
+    `${ATTACHMENT_KIND_CLASS_PREFIX}${kind}`,
+  ].join(" ");
+};
+
+const isAttachmentMark = (mark: TiptapMark) => {
+  if (mark.type !== "link") return false;
+  const href = typeof mark.attrs?.href === "string" ? mark.attrs.href : "";
+  const className = typeof mark.attrs?.class === "string" ? mark.attrs.class : "";
+  return className.split(/\s+/).includes("edgeever-attachment-link") || href.includes("/api/v1/resources/");
+};
+
+const withAttachmentKindClass = (node: TiptapTextNode): TiptapTextNode => {
+  if (!node.marks?.some(isAttachmentMark)) return node;
+  return {
+    ...node,
+    marks: node.marks.map((mark) => isAttachmentMark(mark)
+      ? {
+          ...mark,
+          attrs: {
+            ...mark.attrs,
+            class: getMobileAttachmentLinkClass(node.text, null, mark.attrs?.class),
+          },
+        }
+      : mark),
+  };
+};
+
 const toLegacyAttachmentLink = (node: TiptapNode): TiptapTextNode => {
   const url = getStringAttr(node, "url");
   const label = getStringAttr(node, "label") || getStringAttr(node, "filename") || "Attachment";
+  const mimeType = getStringAttr(node, "mimeType");
 
   return {
     type: "text",
@@ -30,7 +81,7 @@ const toLegacyAttachmentLink = (node: TiptapNode): TiptapTextNode => {
             attrs: {
               href: url,
               target: "_blank",
-              class: "edgeever-attachment-link",
+              class: getMobileAttachmentLinkClass(label, mimeType),
             },
           }],
         }
@@ -51,6 +102,10 @@ export const resolveMobileAttachmentContent = (doc: TiptapDoc): TiptapDoc => {
 
     if ("content" in node && node.content) {
       return { ...node, content: node.content.map(visit) };
+    }
+
+    if (node.type === "text") {
+      return withAttachmentKindClass(node as TiptapTextNode);
     }
 
     return node;
