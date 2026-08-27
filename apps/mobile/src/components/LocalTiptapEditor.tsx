@@ -25,6 +25,7 @@ import {
   markdownToDoc,
   MEMO_CONTENT_STYLE,
   MergeDivider,
+  NativeAttachmentMetadata,
   normalizeAiSelectionReplacement,
   prepareNativeEditorContent,
   restoreNativeEditorContent,
@@ -101,7 +102,7 @@ export interface LocalTiptapEditorRef extends DOMImperativeFactory {
   beginImageUpload: (uploadId: DOMValue, previewDataUrl: DOMValue) => void;
   cancelImageUpload: (uploadId: DOMValue) => void;
   completeImageUpload: (uploadId: DOMValue, imageUrl: DOMValue, alt: DOMValue) => void;
-  appendAttachment: (attachmentUrl: DOMValue, filename: DOMValue) => void;
+  appendAttachment: (attachmentUrl: DOMValue, filename: DOMValue, mimeType: DOMValue, byteSize: DOMValue) => void;
   removeResource: (targetJson: DOMValue) => void;
   renameResource: (targetJson: DOMValue, filename: DOMValue) => void;
   /** Replace body without remounting the DomWebView (JSON string of TipTap doc). */
@@ -686,6 +687,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     autofocus: false,
     extensions: [
       StarterKit.configure({ codeBlock: false, link: { openOnClick: false } }),
+      NativeAttachmentMetadata,
       TaskList,
       TaskItem.configure({ nested: true }),
       MergeDivider,
@@ -858,10 +860,17 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     );
   }, [editor, props.baseUrl]);
 
-  const appendAttachment = useCallback((attachmentUrlValue: DOMValue, filenameValue: DOMValue) => {
+  const appendAttachment = useCallback((
+    attachmentUrlValue: DOMValue,
+    filenameValue: DOMValue,
+    mimeTypeValue: DOMValue,
+    byteSizeValue: DOMValue,
+  ) => {
     if (!editor || typeof attachmentUrlValue !== "string" || typeof filenameValue !== "string") {
       return;
     }
+    const mimeType = typeof mimeTypeValue === "string" ? mimeTypeValue : "";
+    const byteSize = typeof byteSizeValue === "number" || typeof byteSizeValue === "string" ? Number(byteSizeValue) : null;
 
     editor.chain().focus().insertContent({
       type: "paragraph",
@@ -873,7 +882,10 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
           attrs: {
             href: resolveUrl(attachmentUrlValue, props.baseUrl),
             target: "_blank",
-            class: getMobileAttachmentLinkClass(filenameValue),
+            class: getMobileAttachmentLinkClass(filenameValue, mimeType),
+            attachmentFilename: filenameValue,
+            attachmentMimeType: mimeType,
+            attachmentByteSize: byteSize !== null && Number.isFinite(byteSize) && byteSize > 0 ? byteSize : null,
           },
         }],
       }],
@@ -3039,9 +3051,10 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     margin-left: auto;
     flex: 0 0 auto;
     color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
-    content: "⋯";
-    font-size: 18px;
-    font-weight: 700;
+    content: attr(data-attachment-meta) "  ⋯";
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
   }
   .edgeever-code-block, .edgeever-mermaid-code-block { position: relative; margin: 18px 0; overflow: visible; background: transparent; }
   .edgeever-code-copy-button { position: absolute; top: 8px; right: 8px; z-index: 1; border: 1px solid ${theme === "dark" ? "#475569" : "#cbded1"}; border-radius: 6px; padding: 5px 8px; background: ${theme === "dark" ? "rgba(30, 41, 59, 0.94)" : "rgba(247, 251, 248, 0.94)"}; color: ${theme === "dark" ? "#cbd5e1" : "#475569"}; font: inherit; font-size: 12px; line-height: 1.35; }

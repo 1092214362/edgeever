@@ -15,6 +15,7 @@ import { toCanvas } from "html-to-image";
 import {
   createNativeUnsupportedContentExtensions,
   docToMarkdown,
+  NativeAttachmentMetadata,
   prepareNativeEditorContent,
   resolveAttachmentKind,
   resolveNativeAttachmentContent,
@@ -705,6 +706,7 @@ function buildExtensions(placeholder: string) {
     StarterKit.configure({
       codeBlock: false,
     }),
+    NativeAttachmentMetadata,
     TaskList,
     TaskItem.configure({ nested: true }),
     MergeDivider,

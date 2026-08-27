@@ -18,6 +18,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { ButtonTooltip } from "@/components/ui/button-tooltip";
 import { AttachmentFileIcon } from "@/components/attachments/AttachmentFileIcon";
+import { formatAttachmentMetadata } from "@edgeever/shared";
 import { isDesktopResourceRuntime, toApiResourceUrl } from "@/lib/desktop-resources";
 import { cn } from "@/lib/utils";
 import { loadPdfJs } from "./pdfjs-loader";
@@ -155,6 +156,8 @@ const PdfDocument = ({ url, active, fitWidth, zoom, onError }: PdfDocumentProps)
 export type PdfViewerProps = {
   url: string;
   label: string;
+  filename?: string;
+  byteSize?: unknown;
   className?: string;
   defaultExpanded?: boolean;
   expanded?: boolean;
@@ -168,6 +171,8 @@ export type PdfViewerProps = {
 export const PdfViewer = ({
   url,
   label,
+  filename,
+  byteSize,
   className,
   defaultExpanded = false,
   expanded: controlledExpanded,
@@ -188,6 +193,7 @@ export const PdfViewer = ({
   const [internalFullscreen, setInternalFullscreen] = useState(false);
   const isFullscreen = fullscreen || internalFullscreen;
   const expanded = isFullscreen || (controlledExpanded ?? uncontrolledExpanded);
+  const metadata = formatAttachmentMetadata("application/pdf", filename || label, byteSize);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -265,13 +271,16 @@ export const PdfViewer = ({
           ) : null}
           <button
             type="button"
-            className="edgeever-attachment-link flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sm font-semibold text-slate-800 disabled:cursor-default"
+            className="edgeever-attachment-link flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left disabled:cursor-default"
             aria-expanded={expanded}
             disabled={isFullscreen}
             onClick={() => setExpanded(!expanded)}
           >
-            <AttachmentFileIcon mimeType="application/pdf" filename={label} className="h-4 w-4" />
-            <span className="min-w-0 truncate">{label}</span>
+            <AttachmentFileIcon mimeType="application/pdf" filename={filename || label} className="h-5 w-5 shrink-0" />
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-semibold text-slate-800">{label}</span>
+              <span className="truncate text-xs font-medium text-slate-500">{metadata}</span>
+            </span>
           </button>
           {expanded && !failed ? (
             <>

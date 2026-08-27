@@ -5,6 +5,7 @@ export * from "./ai-prompt-seeds";
 export * from "./ai-tag-suggestions";
 export * from "./ai-selection";
 export * from "./attachment-kind";
+export * from "./attachment-metadata";
 export * from "./mobile-content-compatibility";
 export * from "./native-attachment-content";
 export * from "./backup";
