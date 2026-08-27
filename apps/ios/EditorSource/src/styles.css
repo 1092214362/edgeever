@@ -596,6 +596,33 @@ html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-code::before { b
 html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-text::before,
 html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-text::before { background: #334155; color: #cbd5e1; }
 
+.edgeever-prose .edgeever-unsupported-content,
+.ProseMirror .edgeever-unsupported-content {
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edgeever-prose .edgeever-unsupported-content--block,
+.ProseMirror .edgeever-unsupported-content--block { display: block; margin: 8px 0; padding: 12px; }
+.edgeever-prose .edgeever-unsupported-content--inline,
+.ProseMirror .edgeever-unsupported-content--inline { display: inline-block; margin: 0 2px; padding: 2px 6px; }
+.edgeever-prose .edgeever-unsupported-mark,
+.ProseMirror .edgeever-unsupported-mark { border-bottom: 1px dashed #64748b; }
+
+html[data-theme="dark"] .edgeever-prose .edgeever-unsupported-content,
+html[data-theme="dark"] .ProseMirror .edgeever-unsupported-content {
+  border-color: #64748b;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+html[data-theme="dark"] .edgeever-prose .edgeever-unsupported-mark,
+html[data-theme="dark"] .ProseMirror .edgeever-unsupported-mark { border-bottom-color: #94a3b8; }
+
 .ProseMirror hr {
   margin: 1.5rem 0;
   border: 0;

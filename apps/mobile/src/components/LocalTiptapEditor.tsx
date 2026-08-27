@@ -15,6 +15,7 @@ import {
   AI_TONES,
   AI_WHOLE_NOTE_ACTIONS,
   canReplaceAiSource,
+  createNativeUnsupportedContentExtensions,
   docToMarkdown,
   getDefaultAiTargetLanguage,
   getAiDocumentFingerprint,
@@ -25,6 +26,8 @@ import {
   MEMO_CONTENT_STYLE,
   MergeDivider,
   normalizeAiSelectionReplacement,
+  prepareNativeEditorContent,
+  restoreNativeEditorContent,
   getImageReferrerPolicy,
   getResourceIdFromUrl,
   type AiAction,
@@ -693,13 +696,17 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       TableKit.configure({
         table: { renderWrapper: true },
       }),
+      ...createNativeUnsupportedContentExtensions(),
       ...(isViewer
         ? []
         : [Placeholder.configure({
             placeholder: getMobileEditorPlaceholder(props.locale),
           })]),
     ],
-    content: resolveImageSources(resolveMobileAttachmentContent(props.content), props.baseUrl),
+    content: prepareNativeEditorContent(
+      resolveImageSources(resolveMobileAttachmentContent(props.content), props.baseUrl),
+      props.locale,
+    ),
     editorProps: {
       attributes: getMobileEditorInputAttributes(
         isViewer ? "edgeever-editor-content edgeever-viewer-content" : "edgeever-editor-content"
@@ -751,7 +758,10 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     }
     try {
       const parsed = JSON.parse(contentJsonSerialized) as EditorDoc;
-      const next = resolveImageSources(resolveMobileAttachmentContent(parsed), props.baseUrl);
+      const next = prepareNativeEditorContent(
+        resolveImageSources(resolveMobileAttachmentContent(parsed), props.baseUrl),
+        props.locale,
+      );
       // Do not focus while replacing content. Callers decide when the editor should
       // take focus and place the caret via focusEnd().
       // This command synchronizes native-owned state (draft restore/template/new
@@ -761,7 +771,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     } catch {
       // Ignore malformed payloads from the native bridge.
     }
-  }, [editor, props.baseUrl]);
+  }, [editor, props.baseUrl, props.locale]);
 
   const search = useCallback((query: DOMValue, requestedIndex: DOMValue) => {
     const normalizedQuery = typeof query === "string" ? query : "";
@@ -1300,13 +1310,16 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
     if (!editor || editor.isDestroyed || !isViewer) {
       return;
     }
-    const next = resolveImageSources(resolveMobileAttachmentContent(props.content), props.baseUrl);
+    const next = prepareNativeEditorContent(
+      resolveImageSources(resolveMobileAttachmentContent(props.content), props.baseUrl),
+      props.locale,
+    );
     const current = JSON.stringify(editor.getJSON());
     const incoming = JSON.stringify(next);
     if (current !== incoming) {
       editor.commands.setContent(next, { emitUpdate: false });
     }
-  }, [editor, isViewer, props.baseUrl, props.content]);
+  }, [editor, isViewer, props.baseUrl, props.content, props.locale]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed || isViewer) {
@@ -1983,7 +1996,10 @@ const normalizeImageSources = (doc: EditorDoc, baseUrl: string) => {
 };
 
 const getPersistableEditorDoc = (doc: EditorDoc, baseUrl: string) =>
-  normalizeImageSources(stripMobileImageUploadPlaceholders(doc), baseUrl);
+  normalizeImageSources(
+    restoreNativeEditorContent(stripMobileImageUploadPlaceholders(doc)),
+    baseUrl,
+  );
 
 const normalizeProtectedResourceSource = (source: string, baseUrl: string) =>
   // Shared normalizer adds `/blob` so editor loads hit the API blob route even when
@@ -3008,6 +3024,17 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-editor-content a.edgeever-attachment-kind-archive::before { background: ${theme === "dark" ? "#713f12" : "#fffbeb"}; color: ${theme === "dark" ? "#fde68a" : "#d97706"}; content: "ZIP"; }
   .edgeever-editor-content a.edgeever-attachment-kind-code::before { background: ${theme === "dark" ? "#581c87" : "#faf5ff"}; color: ${theme === "dark" ? "#d8b4fe" : "#8b5cf6"}; content: "</>"; }
   .edgeever-editor-content a.edgeever-attachment-kind-text::before { background: ${theme === "dark" ? "#334155" : "#f1f5f9"}; color: ${theme === "dark" ? "#cbd5e1" : "#64748b"}; content: "TXT"; }
+  .edgeever-editor-content .edgeever-unsupported-content {
+    border: 1px dashed ${theme === "dark" ? "#64748b" : "#94a3b8"};
+    border-radius: 8px;
+    background: ${theme === "dark" ? "#1e293b" : "#f8fafc"};
+    color: ${theme === "dark" ? "#cbd5e1" : "#475569"};
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .edgeever-editor-content .edgeever-unsupported-content--block { display: block; margin: 8px 0; padding: 12px; }
+  .edgeever-editor-content .edgeever-unsupported-content--inline { display: inline-block; margin: 0 2px; padding: 2px 6px; }
+  .edgeever-editor-content .edgeever-unsupported-mark { border-bottom: 1px dashed ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
   .edgeever-editor-content a.edgeever-attachment-link::after, .edgeever-editor-content a[href*="/api/v1/resources/"]::after {
     margin-left: auto;
     flex: 0 0 auto;

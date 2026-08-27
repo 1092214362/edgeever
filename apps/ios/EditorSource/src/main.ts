@@ -12,7 +12,15 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import mermaid from "mermaid";
 import { toCanvas } from "html-to-image";
-import { resolveAttachmentKind } from "@edgeever/shared";
+import {
+  createNativeUnsupportedContentExtensions,
+  docToMarkdown,
+  prepareNativeEditorContent,
+  resolveAttachmentKind,
+  resolveNativeAttachmentContent,
+  restoreNativeEditorContent,
+  type TiptapDoc,
+} from "@edgeever/shared";
 import {
   type NoteImageTheme,
   type NoteImageFontStyle,
@@ -198,7 +206,7 @@ type ImageExportRequest = {
   branding?: boolean;
 };
 let mode: "viewer" | "editor" = "viewer";
-let locale = "zh-CN";
+let locale: "zh-CN" | "en-US" = "zh-CN";
 let currentPlaceholder = "开始输入…";
 let suppressChange = false;
 const resourceResolvers = new Map<string, (dataUrl: string | null) => void>();
@@ -708,6 +716,7 @@ function buildExtensions(placeholder: string) {
     TableKit.configure({
       table: { resizable: false },
     }),
+    ...createNativeUnsupportedContentExtensions(),
     Placeholder.configure({
       placeholder,
     }),
@@ -886,14 +895,7 @@ const protectLiteralDollarPairs = (value: unknown): unknown => {
 };
 
 const serializeEditorMarkdown = (ed: Editor) => {
-  const manager = (ed.storage as { markdown?: { manager?: { serialize?: (doc: unknown) => string } } })
-    .markdown?.manager;
-  if (manager?.serialize) {
-    return manager.serialize(protectLiteralDollarPairs(ed.getJSON())).replaceAll(LITERAL_DOLLAR_PLACEHOLDER, "\\$");
-  }
-  return typeof ed.getMarkdown === "function"
-    ? ed.getMarkdown()
-    : ed.getText({ blockSeparator: "\n\n" });
+  return docToMarkdown(restoreNativeEditorContent(ed.getJSON() as TiptapDoc));
 };
 
 let pendingAiSelection: { from: number; to: number; isInline: boolean; documentFingerprint: string } | null = null;
@@ -1007,7 +1009,7 @@ const parseAiSelectionReplacement = (ed: Editor, draft: string, isInline: boolea
 
 function emitChange(ed: Editor) {
   try {
-    const contentJson = JSON.stringify(ed.getJSON());
+    const contentJson = JSON.stringify(restoreNativeEditorContent(ed.getJSON() as TiptapDoc));
     const contentMarkdown = serializeEditorMarkdown(ed);
     post({ type: "change", contentMarkdown, contentJson });
   } catch (error) {
@@ -1328,8 +1330,11 @@ const api: EdgeEverEditorAPI = {
   setDocumentFromJSON(json) {
     suppressChange = true;
     try {
-      const doc = JSON.parse(json);
-      editor.commands.setContent(doc);
+      const doc = JSON.parse(json) as TiptapDoc;
+      editor.commands.setContent(prepareNativeEditorContent(
+        resolveNativeAttachmentContent(doc),
+        locale,
+      ));
     } catch {
       editor.commands.setContent({ type: "doc", content: [{ type: "paragraph" }] });
     }
@@ -1351,7 +1356,7 @@ const api: EdgeEverEditorAPI = {
   },
 
   getDocument() {
-    return JSON.stringify(editor.getJSON());
+    return JSON.stringify(restoreNativeEditorContent(editor.getJSON() as TiptapDoc));
   },
 
   captureSelection() {
