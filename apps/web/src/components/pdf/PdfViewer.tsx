@@ -249,7 +249,6 @@ export const PdfViewer = ({
     >
       <span className={cn("flex min-w-0 flex-col", isFullscreen && "mx-auto h-full w-full max-w-6xl overflow-hidden rounded-xl bg-white shadow-2xl")}>
         <span className="flex min-h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-200 bg-white px-3">
-          <FileText className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
           {isFullscreen && onPrevious ? (
             <ButtonTooltip title={t("pdfViewer.previous")}>
               <button type="button" className="pdf-viewer-action" aria-label={t("pdfViewer.previous")} onClick={onPrevious}>
@@ -264,14 +263,16 @@ export const PdfViewer = ({
               </button>
             </ButtonTooltip>
           ) : null}
-          <a
-            href={resolvedUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="edgeever-attachment-link min-w-0 flex-1 truncate text-sm font-semibold text-slate-800"
+          <button
+            type="button"
+            className="edgeever-attachment-link flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sm font-semibold text-slate-800 disabled:cursor-default"
+            aria-expanded={expanded}
+            disabled={isFullscreen}
+            onClick={() => setExpanded(!expanded)}
           >
-            {label}
-          </a>
+            <FileText className="h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+            <span className="min-w-0 truncate">{label}</span>
+          </button>
           {expanded && !failed ? (
             <>
               <ButtonTooltip title={t("pdfViewer.zoomOut")}>
