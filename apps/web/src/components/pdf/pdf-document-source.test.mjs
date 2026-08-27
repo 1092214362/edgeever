@@ -13,6 +13,12 @@ describe("PDF document sources", () => {
     });
   });
 
+  test("recovers leaked desktop resource URLs in the web runtime", async () => {
+    await expect(loadPdfDocumentSource("edgeever-resource://resource/res_web", undefined)).resolves.toEqual({
+      url: "/api/v1/resources/res_web/blob",
+    });
+  });
+
   test("loads synced desktop resources through the native bridge", async () => {
     const source = await loadPdfDocumentSource("edgeever-resource://resource/res_123", bridge);
     expect(source).toEqual({ data: new Uint8Array([1, 7]) });

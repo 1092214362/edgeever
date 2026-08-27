@@ -1,3 +1,5 @@
+import { toApiResourceUrl } from "@/lib/desktop-resources";
+
 type PdfResourceBridge = Pick<EdgeEverDesktopBridge, "readResource" | "readStagedResource">;
 
 export type PdfDocumentSource = { url: string } | { data: Uint8Array };
@@ -20,7 +22,7 @@ export const loadPdfDocumentSource = async (
   url: string,
   bridge: PdfResourceBridge | undefined = typeof window === "undefined" ? undefined : window.edgeeverDesktop,
 ): Promise<PdfDocumentSource> => {
-  if (!bridge) return { url };
+  if (!bridge) return { url: toApiResourceUrl(url) };
 
   const stagedId = parseDesktopResourceId(url, "edgeever-staged:");
   if (stagedId) {

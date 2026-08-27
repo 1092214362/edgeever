@@ -1283,6 +1283,7 @@ const RichEditorPane = ({
               attrs: {
                 url: resource.url,
                 label: t("editor.attachmentLabel", { filename }),
+                displayMode: "compact",
               },
             }],
           };
