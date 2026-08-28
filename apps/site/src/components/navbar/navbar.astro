@@ -194,6 +194,13 @@ const menuitems = [
           if (closeIcon) closeIcon.classList.add("hidden");
         }
       }
+
+      // Close all open <details> menus when clicking outside
+      document.querySelectorAll("header details[open]").forEach(function (details) {
+        if (!details.contains(e.target)) {
+          details.removeAttribute("open");
+        }
+      });
     });
   })();
 </script>
