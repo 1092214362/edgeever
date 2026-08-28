@@ -43,7 +43,7 @@ final class MemoEditViewModelTests: XCTestCase {
         model.beginTitleDerivationSession()
         model.applyEditorPayload(
             markdown: "# Product plan\n\nBody",
-            json: "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Intro\"}]},{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"Product plan\"}]}]}"
+            json: "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"},{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"Product plan\"}]}]}"
         )
         XCTAssertEqual(model.title, "Product plan")
 
@@ -61,6 +61,16 @@ final class MemoEditViewModelTests: XCTestCase {
             json: "{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"Later edit\"}]}]}"
         )
         XCTAssertEqual(reopened.title, "Renamed heading")
+    }
+
+    func testDoesNotDeriveTitleFromH1AfterBodyContent() {
+        let model = MemoEditViewModel()
+        model.beginTitleDerivationSession()
+        model.applyEditorPayload(
+            markdown: "Intro\n\n# Product plan",
+            json: "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Intro\"}]},{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"Product plan\"}]}]}"
+        )
+        XCTAssertEqual(model.title, "")
     }
 
     func testDoesNotDeriveTitleAfterManualTitleEdit() {

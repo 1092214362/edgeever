@@ -77,8 +77,9 @@ const nodeText = (node: unknown): string => {
 };
 
 /**
- * Derives a note title from the first non-empty top-level H1. Callers own the
- * one-shot edit-session policy; this helper only finds the heading text.
+ * Derives a note title only when the first meaningful top-level block is an
+ * H1. Empty text blocks before it are ignored; body content prevents a later
+ * section heading from unexpectedly renaming the note.
  */
 export const deriveMemoTitleFromContent = (doc: unknown): string | null => {
   if (!doc || typeof doc !== "object") return null;
@@ -89,9 +90,12 @@ export const deriveMemoTitleFromContent = (doc: unknown): string | null => {
     if (!value || typeof value !== "object") continue;
     const node = value as { type?: unknown; attrs?: Record<string, unknown> };
     const text = nodeText(node).replace(/\s+/g, " ").trim();
-    if (node.type === "heading" && node.attrs?.level === 1 && text) {
-      return text.slice(0, MEMO_TITLE_MAX_LENGTH);
+    if (!text) {
+      if (node.type === "paragraph" || node.type === "heading") continue;
+      return null;
     }
+    if (node.type !== "heading" || node.attrs?.level !== 1) return null;
+    return text.slice(0, MEMO_TITLE_MAX_LENGTH);
   }
 
   return null;
