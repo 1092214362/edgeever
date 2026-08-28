@@ -126,6 +126,7 @@ import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
 import { EDITOR_CONTENT_MAX_WIDTH, EDITOR_CONTENT_MAX_WIDTH_COLLAPSED } from "@/lib/workspace-ui";
 import {
   countMemoCharacters,
+  deriveMemoTitleFromContent,
   docToMarkdown,
   MEMO_CONTENT_STYLE,
   markdownToDoc,
@@ -953,6 +954,8 @@ const RichEditorPane = ({
   }, [desktopReadingProtection]);
 
   const memoRef = useRef<MemoDetail | null>(memo);
+  const titleRef = useRef(title);
+  const titleDerivationEligibleRef = useRef(false);
   const editSessionRef = useRef<MemoEditSession | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const editorCanvasInteractionVersionRef = useRef(0);
@@ -997,6 +1000,17 @@ const RichEditorPane = ({
       "external-link": "",
     },
   });
+  titleRef.current = title;
+
+  const maybeDeriveMemoTitle = useCallback((contentJson: TiptapDoc) => {
+    if (!titleDerivationEligibleRef.current || titleRef.current.trim()) return titleRef.current;
+    const derivedTitle = deriveMemoTitleFromContent(contentJson);
+    if (!derivedTitle) return titleRef.current;
+    titleDerivationEligibleRef.current = false;
+    titleRef.current = derivedTitle;
+    setTitle(derivedTitle);
+    return derivedTitle;
+  }, []);
   slashCommandLabelsRef.current = {
     menu: t("slashMenu.menu"),
     empty: t("slashMenu.empty"),
@@ -2526,6 +2540,8 @@ const RichEditorPane = ({
       setHydratedEditorMemoId(null);
       editingMemoIdRef.current = null;
       setHasUnsavedChanges(false);
+      titleDerivationEligibleRef.current = false;
+      titleRef.current = "";
       setTitle("");
       setTagsText("");
       setMobilePlainText("");
@@ -2692,6 +2708,8 @@ const RichEditorPane = ({
         setSaveConflictInfo(null);
       }
       setTitle(nextTitle);
+      titleRef.current = nextTitle;
+      titleDerivationEligibleRef.current = !nextTitle.trim();
       setTagsText(nextTagsText);
       setMobilePlainText(nextMarkdown);
       setMarkdownSource(nextMarkdown);
@@ -2779,7 +2797,9 @@ const RichEditorPane = ({
       if (hydratingRef.current || memoRef.current?.isDeleted) {
         return;
       }
-      persistCurrentDraft();
+      const contentJson = editor.getJSON() as TiptapDoc;
+      const nextTitle = maybeDeriveMemoTitle(contentJson);
+      persistCurrentDraft(nextTitle);
       markDirty();
     };
 
@@ -2787,7 +2807,7 @@ const RichEditorPane = ({
     return () => {
       editor.off("update", persistDraft);
     };
-  }, [editor, markDirty, memo, persistCurrentDraft]);
+  }, [editor, markDirty, maybeDeriveMemoTitle, memo, persistCurrentDraft]);
 
   useEffect(() => {
     const advanceMemoSyncBase = (syncedMemo: MemoDetail | null | undefined) => {
@@ -2901,8 +2921,9 @@ const RichEditorPane = ({
 
   const handleMarkdownSourceChange = useCallback((value: string) => {
     setMarkdownSource(value);
+    maybeDeriveMemoTitle(markdownToDoc(value));
     markDirty();
-  }, [markDirty]);
+  }, [markDirty, maybeDeriveMemoTitle]);
 
   const handleCopyToWeChat = useCallback(async () => {
     if (!isEditorReady(editor)) {
@@ -3659,6 +3680,7 @@ const RichEditorPane = ({
     };
     const handleNativeInput = (event: Event) => {
       mobileImeDebugRecorderRef.current(event.type, event);
+      maybeDeriveMemoTitle(markdownToDoc(getMobilePlainTextElementValue(plainTextElement)));
       markMobilePlainTextDirtyRef.current();
     };
 
@@ -3682,7 +3704,7 @@ const RichEditorPane = ({
       plainTextElement.removeEventListener("compositionend", recordNativeEvent);
       plainTextElement.removeEventListener("input", handleNativeInput);
     };
-  }, [useMobilePlainTextEditor]);
+  }, [maybeDeriveMemoTitle, useMobilePlainTextEditor]);
 
   useEffect(() => () => clearMobileEditorTimers(), [clearMobileEditorTimers]);
 
@@ -3959,6 +3981,7 @@ const RichEditorPane = ({
     const nextValue = `${currentText}${currentText ? "\n" : ""}${nextText}`;
     setMobilePlainText(nextValue);
     setMobilePlainTextElementValue(mobileTextAreaRef.current, nextValue);
+    maybeDeriveMemoTitle(markdownToDoc(nextValue));
     markMobilePlainTextDirty();
     recordMobileImeDebugEvent(eventName);
     window.requestAnimationFrame(() => focusMobileInputTarget());
@@ -4566,6 +4589,8 @@ const RichEditorPane = ({
             value={title}
             readOnly={effectiveReadOnly}
             onChange={(event) => {
+              titleDerivationEligibleRef.current = false;
+              titleRef.current = event.target.value;
               setTitle(event.target.value);
               persistCurrentDraft(event.target.value, tagsText, getMobilePlainTextValue());
               markDirty();

@@ -289,6 +289,7 @@ struct MemoEditView: View {
         }
         .task {
             await loadInitial()
+            viewModel.beginTitleDerivationSession()
             contentHydrated = true
             // editorReady flips true from TipTap onBodyReady (or fallback below).
             try? await Task.sleep(nanoseconds: 800_000_000)
@@ -428,7 +429,10 @@ struct MemoEditView: View {
                 env.preferences.t("无标题笔记", en: "Untitled note"),
                 text: Binding(
                     get: { viewModel.title },
-                    set: { viewModel.title = $0 }
+                    set: {
+                        viewModel.userEditedTitle($0)
+                        markDirtyAndScheduleSave()
+                    }
                 )
             )
             .font(.system(size: 28, weight: .heavy))
@@ -436,7 +440,6 @@ struct MemoEditView: View {
             .textFieldStyle(.plain)
             .padding(.top, 14)
             .padding(.bottom, 8)
-            .onChange(of: title) { _, _ in markDirtyAndScheduleSave() }
             .accessibilityLabel(env.preferences.t("笔记标题", en: "Note title"))
             .accessibilityIdentifier(CreateMemoChrome.title)
 
@@ -816,6 +819,7 @@ struct MemoEditView: View {
 
     private func applyTemplateSeed(_ seed: CreateMemoSeed) {
         title = seed.title
+        viewModel.beginTitleDerivationSession()
         tagsText = seed.tagsText
         contentMarkdown = seed.contentMarkdown
         // Empty stub JSON forces TipTapContentSource to open from markdown structure.

@@ -38,6 +38,33 @@ final class MemoEditViewModelTests: XCTestCase {
         XCTAssertTrue(EditorContentCodec.jsonContainsResource(model.contentJSON, src: "/api/v1/resources/image/blob"))
     }
 
+    func testDerivesTitleOnceFromFirstNonEmptyH1() {
+        let model = MemoEditViewModel()
+        model.beginTitleDerivationSession()
+        model.applyEditorPayload(
+            markdown: "# Product plan\n\nBody",
+            json: "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"},{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"Product plan\"}]}]}"
+        )
+        XCTAssertEqual(model.title, "Product plan")
+
+        model.applyEditorPayload(
+            markdown: "# Renamed heading",
+            json: "{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"Renamed heading\"}]}]}"
+        )
+        XCTAssertEqual(model.title, "Product plan")
+    }
+
+    func testDoesNotDeriveTitleAfterManualTitleEdit() {
+        let model = MemoEditViewModel()
+        model.beginTitleDerivationSession()
+        model.userEditedTitle("")
+        model.applyEditorPayload(
+            markdown: "# Product plan",
+            json: "{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"Product plan\"}]}]}"
+        )
+        XCTAssertEqual(model.title, "")
+    }
+
     func testDebouncedSaveKeepsOnlyLatestOperation() async {
         let model = MemoEditViewModel()
         model.markDirty()
