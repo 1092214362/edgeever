@@ -106,6 +106,49 @@ const agentPromptText = copy.agentPromptText;
         </button>
         <span class="text-[10.5px] sm:text-[11.5px] text-slate-600 pl-2 sm:pl-4 font-medium select-none truncate max-w-full">{copy.terminalSub}</span>
       </div>
+
+      <!-- Multi-Platform Client Badges -->
+      <div class="mt-5 pt-4 border-t border-slate-200/60 flex flex-wrap items-center gap-2">
+        <span class="text-[11px] font-semibold text-slate-500 mr-1 select-none">
+          {locale === "en-US" ? "Get Apps:" : "获取客户端："}
+        </span>
+        <a
+          href="https://github.com/tianma-if/edgeever/releases"
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200/80 text-[11px] font-medium text-slate-700 transition-all shadow-2xs"
+        >
+          <Icon name="bx:bxl-apple" class="w-3.5 h-3.5" />
+          <span>macOS</span>
+        </a>
+        <a
+          href="https://apps.apple.com/us/app/edgeever/id6792625631"
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200/80 text-[11px] font-medium text-slate-700 transition-all shadow-2xs"
+        >
+          <Icon name="bx:bx-mobile" class="w-3.5 h-3.5" />
+          <span>iOS</span>
+        </a>
+        <a
+          href="https://play.google.com/store/apps/details?id=org.edgeever.mobile"
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200/80 text-[11px] font-medium text-slate-700 transition-all shadow-2xs"
+        >
+          <Icon name="bx:bxl-android" class="w-3.5 h-3.5" />
+          <span>Android</span>
+        </a>
+        <a
+          href="https://chromewebstore.google.com/detail/edgeever-web-clipper/gjadpfmanienmlofajibkfkkpfdkclgo"
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 border border-slate-200/80 text-[11px] font-medium text-slate-700 transition-all shadow-2xs"
+        >
+          <Icon name="bx:bx-extension" class="w-3.5 h-3.5" />
+          <span>{locale === "en-US" ? "Clipper" : "剪藏插件"}</span>
+        </a>
+      </div>
     </div>
   </div>
 
