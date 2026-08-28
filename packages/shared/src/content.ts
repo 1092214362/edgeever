@@ -101,6 +101,17 @@ export const deriveMemoTitleFromContent = (doc: unknown): string | null => {
   return null;
 };
 
+/** Keeps an automatically generated title complete while the user is still
+ * typing the initial H1, without overriding a title they entered themselves. */
+export const deriveMemoTitleDuringInitialEdit = (
+  currentTitle: string,
+  doc: unknown,
+  wasAutoDerived: boolean,
+): string | null => {
+  if (currentTitle.trim() && !wasAutoDerived) return null;
+  return deriveMemoTitleFromContent(doc);
+};
+
 export const resolveMergedMemoTitle = (
   inputTitle: string | null | undefined,
   sourceMemos: Array<{ title: string | null | undefined }>,

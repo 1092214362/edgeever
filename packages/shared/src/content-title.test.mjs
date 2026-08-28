@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { deriveMemoTitleFromContent, markdownToDoc } from "./content.ts";
+import { deriveMemoTitleDuringInitialEdit, deriveMemoTitleFromContent, markdownToDoc } from "./content.ts";
 
 describe("deriveMemoTitleFromContent", () => {
   test("uses the first non-empty H1", () => {
@@ -26,5 +26,18 @@ describe("deriveMemoTitleFromContent", () => {
 
   test("limits generated titles to the persisted title length", () => {
     expect(deriveMemoTitleFromContent(markdownToDoc(`# ${"a".repeat(200)}`))).toHaveLength(160);
+  });
+});
+
+describe("deriveMemoTitleDuringInitialEdit", () => {
+  test("keeps filling the title as the initial H1 is typed", () => {
+    const first = deriveMemoTitleDuringInitialEdit("", markdownToDoc("# 浏"), false);
+    expect(first).toBe("浏");
+    expect(deriveMemoTitleDuringInitialEdit(first, markdownToDoc("# 浏览器真实回归"), true))
+      .toBe("浏览器真实回归");
+  });
+
+  test("does not replace a manually entered title", () => {
+    expect(deriveMemoTitleDuringInitialEdit("我的标题", markdownToDoc("# 正文标题"), false)).toBeNull();
   });
 });

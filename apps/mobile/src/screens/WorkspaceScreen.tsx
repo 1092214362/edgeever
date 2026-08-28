@@ -70,7 +70,7 @@ import { Alert, Pressable, Text, TextInput } from "../components/LocalizedText";
 import Markdown, { type ASTNode, type RenderRules } from "react-native-markdown-display";
 import { SvgXml } from "react-native-svg";
 import { ApiRequestError } from "@edgeever/client";
-import { buildGitHubFeedbackUrl, createExcerpt, DEFAULT_MEMO_TITLE, deriveMemoTitleFromContent, docToMarkdown, docToText, getNotebookDescendantIds, markdownToDoc, resolveMemoContentDoc, type AuthUser, type MemoDetail, type MemoRevision, type MemoSummary, type Notebook, type TiptapDoc } from "@edgeever/shared";
+import { buildGitHubFeedbackUrl, createExcerpt, DEFAULT_MEMO_TITLE, deriveMemoTitleDuringInitialEdit, docToMarkdown, docToText, getNotebookDescendantIds, markdownToDoc, resolveMemoContentDoc, type AuthUser, type MemoDetail, type MemoRevision, type MemoSummary, type Notebook, type TiptapDoc } from "@edgeever/shared";
 import { MOBILE_UI_METRICS, getMobileCenteredScrollOffset, getMobileNotebookSearchVisibleIds, toggleMobileMemoFilterMode, toggleMobileMemoSelection } from "@edgeever/shared/mobile-ui";
 import { clearMobileMemoDraft, clearMobileNewMemoDraft, readMobileMemoDraft, writeMobileMemoDraft, type MobileMemoDraft } from "../lib/mobile-drafts";
 import {
@@ -2567,10 +2567,9 @@ const CreateMemoModal = ({
       }}
       onChange={async (contentJson) => {
         contentJsonRef.current = contentJson;
-        if (titleDerivationEligibleRef.current && !titleRef.current.trim()) {
-          const derivedTitle = deriveMemoTitleFromContent(contentJson);
+        if (titleDerivationEligibleRef.current) {
+          const derivedTitle = deriveMemoTitleDuringInitialEdit(titleRef.current, contentJson, true);
           if (derivedTitle) {
-            titleDerivationEligibleRef.current = false;
             titleRef.current = derivedTitle;
             setTitle(derivedTitle);
           }
@@ -2975,10 +2974,9 @@ const RichEditorModal = ({
     }
     contentSnapshotRef.current = contentSnapshot;
     contentJsonRef.current = contentJson;
-    if (titleDerivationEligibleRef.current && !titleRef.current.trim()) {
-      const derivedTitle = deriveMemoTitleFromContent(contentJson);
+    if (titleDerivationEligibleRef.current) {
+      const derivedTitle = deriveMemoTitleDuringInitialEdit(titleRef.current, contentJson, true);
       if (derivedTitle) {
-        titleDerivationEligibleRef.current = false;
         titleRef.current = derivedTitle;
         setTitle(derivedTitle);
       }

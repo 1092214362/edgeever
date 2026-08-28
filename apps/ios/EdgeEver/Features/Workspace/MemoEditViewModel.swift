@@ -55,7 +55,6 @@ final class MemoEditViewModel {
 
     private func deriveTitleIfEligible(from json: String) {
         guard titleDerivationEligible,
-              title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               let data = json.data(using: .utf8),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let blocks = root["content"] as? [[String: Any]]
@@ -75,7 +74,6 @@ final class MemoEditViewModel {
                   (attrs["level"] as? NSNumber)?.intValue == 1
             else { return }
             title = String(text.prefix(160))
-            titleDerivationEligible = false
             return
         }
     }

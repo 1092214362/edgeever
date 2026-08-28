@@ -10,7 +10,7 @@ import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { mergeAttributes } from "@tiptap/core";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
-import { createExcerpt, deriveMemoTitleFromContent, docToMarkdown, docToText, emptyDoc, getImageReferrerPolicy, isPdfAttachment, MergeDivider, type MemoDetail, type MemoEditSession, type Notebook, type TagSummary, type TiptapDoc } from "@edgeever/shared";
+import { createExcerpt, deriveMemoTitleDuringInitialEdit, docToMarkdown, docToText, emptyDoc, getImageReferrerPolicy, isPdfAttachment, MergeDivider, type MemoDetail, type MemoEditSession, type Notebook, type TagSummary, type TiptapDoc } from "@edgeever/shared";
 import { createEdgeEverMathematics } from "@edgeever/shared/mathematics";
 import { getMobileEditorInputAttributes, getMobileEditorPlaceholder } from "@edgeever/shared/mobile-editor";
 import {
@@ -94,6 +94,7 @@ export const MobileStandaloneTiptapEditor = ({
   const [title, setTitle] = useState("");
   const titleRef = useRef("");
   const titleDerivationEligibleRef = useRef(false);
+  const titleWasAutoDerivedRef = useRef(false);
   const [tagsText, setTagsText] = useState("");
   const tagsTextRef = useRef("");
   const contentJsonRef = useRef<TiptapDoc>(emptyDoc());
@@ -112,13 +113,21 @@ export const MobileStandaloneTiptapEditor = ({
   const backgroundSavePendingRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
-  const maybeDeriveMemoTitle = useCallback((contentJson: TiptapDoc) => {
-    if (!titleDerivationEligibleRef.current || titleRef.current.trim()) return;
-    const derivedTitle = deriveMemoTitleFromContent(contentJson);
+  const maybeDeriveMemoTitle = useCallback((contentJson: TiptapDoc, finalize = false) => {
+    if (
+      !titleDerivationEligibleRef.current ||
+      (titleRef.current.trim() && !titleWasAutoDerivedRef.current)
+    ) return;
+    const derivedTitle = deriveMemoTitleDuringInitialEdit(
+      titleRef.current,
+      contentJson,
+      titleWasAutoDerivedRef.current,
+    );
     if (!derivedTitle) return;
-    titleDerivationEligibleRef.current = false;
+    titleWasAutoDerivedRef.current = true;
     titleRef.current = derivedTitle;
     setTitle(derivedTitle);
+    if (finalize) titleDerivationEligibleRef.current = false;
   }, []);
 
   const setSaveStateStable = useCallback((nextState: MobileEditorSaveState) => {
@@ -238,7 +247,10 @@ export const MobileStandaloneTiptapEditor = ({
     },
     onUpdate: ({ editor: activeEditor }) => {
       contentJsonRef.current = activeEditor.getJSON() as TiptapDoc;
-      maybeDeriveMemoTitle(contentJsonRef.current);
+      maybeDeriveMemoTitle(
+        contentJsonRef.current,
+        titleWasAutoDerivedRef.current && !activeEditor.isActive("heading", { level: 1 }),
+      );
       dirtyRef.current = true;
       persistLocalDraft();
 
@@ -263,7 +275,12 @@ export const MobileStandaloneTiptapEditor = ({
       return;
     }
 
-    const refreshToolbar = () => setToolbarVersion((version) => version + 1);
+    const refreshToolbar = () => {
+      setToolbarVersion((version) => version + 1);
+      if (titleWasAutoDerivedRef.current && !editor.isActive("heading", { level: 1 })) {
+        titleDerivationEligibleRef.current = false;
+      }
+    };
 
     editor.on("selectionUpdate", refreshToolbar);
     editor.on("transaction", refreshToolbar);
@@ -557,6 +574,7 @@ export const MobileStandaloneTiptapEditor = ({
 
   const handleTitleChange = (nextTitle: string) => {
     titleDerivationEligibleRef.current = false;
+    titleWasAutoDerivedRef.current = false;
     setTitle(nextTitle);
     titleRef.current = nextTitle;
     scheduleMetadataSave();
@@ -794,6 +812,7 @@ export const MobileStandaloneTiptapEditor = ({
           setTitle(draft.title || "");
           titleRef.current = draft.title || "";
           titleDerivationEligibleRef.current = !titleRef.current.trim();
+          titleWasAutoDerivedRef.current = false;
           setTagsText(draft.tagsText || "");
           tagsTextRef.current = draft.tagsText || "";
           contentJsonRef.current = draft.contentJson || emptyDoc();
@@ -808,6 +827,7 @@ export const MobileStandaloneTiptapEditor = ({
           setTitle(queuedTitle);
           titleRef.current = queuedTitle;
           titleDerivationEligibleRef.current = !queuedTitle.trim();
+          titleWasAutoDerivedRef.current = false;
           setTagsText(queuedTagsText);
           tagsTextRef.current = queuedTagsText;
           contentJsonRef.current = queuedPayload.contentJson || emptyDoc();
@@ -824,6 +844,7 @@ export const MobileStandaloneTiptapEditor = ({
           setTitle(nextTitle);
           titleRef.current = nextTitle;
           titleDerivationEligibleRef.current = !nextTitle.trim();
+          titleWasAutoDerivedRef.current = false;
           setTagsText(nextTagsText);
           tagsTextRef.current = nextTagsText;
           contentJsonRef.current = nextContentJson;
