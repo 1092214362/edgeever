@@ -64,17 +64,13 @@ final class MemoEditViewModel {
             let text = Self.nodeText(block)
                 .split(whereSeparator: { $0.isWhitespace })
                 .joined(separator: " ")
-            if text.isEmpty {
-                let type = block["type"] as? String
-                if type == "paragraph" || type == "heading" { continue }
+            if block["type"] as? String == "heading",
+               let attrs = block["attrs"] as? [String: Any],
+               (attrs["level"] as? NSNumber)?.intValue == 1,
+               !text.isEmpty {
+                title = String(text.prefix(160))
                 return
             }
-            guard block["type"] as? String == "heading",
-                  let attrs = block["attrs"] as? [String: Any],
-                  (attrs["level"] as? NSNumber)?.intValue == 1
-            else { return }
-            title = String(text.prefix(160))
-            return
         }
     }
 

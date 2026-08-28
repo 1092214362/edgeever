@@ -6,22 +6,22 @@ describe("deriveMemoTitleFromContent", () => {
     expect(deriveMemoTitleFromContent(markdownToDoc("\n#  Product   plan  \n\nBody"))).toBe("Product plan");
   });
 
-  test("does not use a later H1 when body content comes first", () => {
-    expect(deriveMemoTitleFromContent(markdownToDoc("Intro\n\n# Product plan"))).toBeNull();
+  test("uses the first H1 even when body content comes first", () => {
+    expect(deriveMemoTitleFromContent(markdownToDoc("Intro\n\n# Product plan"))).toBe("Product plan");
   });
 
   test("does not use lower-level headings", () => {
     expect(deriveMemoTitleFromContent(markdownToDoc("## Product plan"))).toBeNull();
   });
 
-  test("does not skip meaningful non-text blocks before the H1", () => {
+  test("uses the first H1 after a non-text block", () => {
     expect(deriveMemoTitleFromContent({
       type: "doc",
       content: [
         { type: "image", attrs: { src: "/cover.png" } },
         { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "Product plan" }] },
       ],
-    })).toBeNull();
+    })).toBe("Product plan");
   });
 
   test("limits generated titles to the persisted title length", () => {
