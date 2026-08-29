@@ -46,6 +46,10 @@ export const FileText = createIcon("file-text");
 export const Folder = createIcon("folder");
 export const Grid = createIcon("grid");
 export const GitHub = createIcon("github");
+export const GooglePlay = ({ color, ...props }: MaterialCommunityIconProps) => {
+  const { resolvedTheme } = useMobileTheme();
+  return <MaterialCommunityIcons name="google-play" {...props} color={resolveMobileThemeColor(color as string | undefined, resolvedTheme)} />;
+};
 export const HardDrive = createIcon("hard-drive");
 export const Heading2 = createIcon("type");
 export const History = createIcon("clock");
