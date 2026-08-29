@@ -17,7 +17,13 @@ import { cn } from "@/lib/utils";
 import { getReleaseTagForVersion } from "@/lib/version-check";
 import { copyTextToClipboard } from "./settings-utils";
 
-export type SystemInfoItem = { label: string; value: string };
+export type SystemInfoItem = {
+  label: string;
+  value: string;
+  mono?: boolean;
+  colSpan?: "full" | "two" | "double-sm";
+  status?: "connected" | "connecting" | "failed" | "warning" | "error" | "default";
+};
 
 type InstanceSystemDiagnostics = Pick<InstanceHealth, "build" | "migration" | "objectStorageProvider" | "storage"> & {
   runtime?: string | null;
@@ -56,6 +62,13 @@ const getDeploymentDescription = (t: (key: string) => string) => {
   return `${trigger} · ${method}`;
 };
 
+const getColSpanClass = (colSpan?: SystemInfoItem["colSpan"]) => {
+  if (colSpan === "full") return "sm:col-span-2 lg:col-span-3";
+  if (colSpan === "two") return "sm:col-span-2 lg:col-span-2";
+  if (colSpan === "double-sm") return "sm:col-span-2 lg:col-span-1";
+  return "col-span-1";
+};
+
 const getWebSystemInfoGroups = (
   t: (key: string) => string,
   language: string,
@@ -88,9 +101,10 @@ const getWebSystemInfoGroups = (
             : clientKind === "desktopApp"
               ? t("systemInfo.unknown")
               : `v${__EDGEEVER_APP_VERSION__}`,
+          mono: true,
         },
-        { label: t("systemInfo.instanceBuild"), value: diagnostics.instance?.build ?? t("systemInfo.unknown") },
-        { label: t("systemInfo.databaseMigration"), value: diagnostics.instance?.migration ?? t("systemInfo.unknown") },
+        { label: t("systemInfo.instanceBuild"), value: diagnostics.instance?.build ?? t("systemInfo.unknown"), mono: true },
+        { label: t("systemInfo.databaseMigration"), value: diagnostics.instance?.migration ?? t("systemInfo.unknown"), mono: true },
         {
           label: t("systemInfo.databaseBackend"),
           value: diagnostics.instance?.storage?.database
@@ -115,7 +129,7 @@ const getWebSystemInfoGroups = (
           label: t("systemInfo.deploymentPlatform"),
           value: t(`systemInfo.deploymentPlatforms.${resolveDeploymentPlatform(diagnostics.instance?.runtime)}`),
         },
-        { label: t("systemInfo.deployment"), value: getDeploymentDescription(t) },
+        { label: t("systemInfo.deployment"), value: getDeploymentDescription(t), colSpan: "full" },
       ],
     },
     {
@@ -126,6 +140,7 @@ const getWebSystemInfoGroups = (
         {
           label: t("systemInfo.clientVersion"),
           value: `v${diagnostics.clientRuntime?.appVersion ?? __EDGEEVER_APP_VERSION__}`,
+          mono: true,
         },
         {
           label: t("systemInfo.releaseTime"),
@@ -133,7 +148,7 @@ const getWebSystemInfoGroups = (
             ? new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(__EDGEEVER_RELEASED_AT__))
             : t("systemInfo.unknown"),
         },
-        { label: t("systemInfo.build"), value: __EDGEEVER_BUILD_LABEL__ },
+        { label: t("systemInfo.build"), value: __EDGEEVER_BUILD_LABEL__, mono: true },
         { label: t("systemInfo.client"), value: t(`systemInfo.clients.${clientKind}`) },
         {
           label: t("systemInfo.os"),
@@ -144,14 +159,15 @@ const getWebSystemInfoGroups = (
         {
           label: t("systemInfo.architecture"),
           value: diagnostics.clientRuntime?.architecture ?? t("systemInfo.unknown"),
+          mono: true,
         },
         {
           label: t("systemInfo.runtimeEngine"),
           value: diagnostics.clientRuntime?.engine
             ?? (clientKind === "desktopApp" ? t("systemInfo.unknown") : detectBrowser(userAgent) ?? t("systemInfo.unknown")),
         },
-        { label: t("systemInfo.language"), value: navigator.language || language },
-        { label: t("systemInfo.timeZone"), value: timeZone },
+        { label: t("systemInfo.language"), value: navigator.language || language, mono: true },
+        { label: t("systemInfo.timeZone"), value: timeZone, mono: true, colSpan: "double-sm" },
       ],
     },
   ];
@@ -232,6 +248,13 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
       : lastSyncedDate && Number.isFinite(lastSyncedDate.getTime())
         ? new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(lastSyncedDate)
         : t("systemInfo.neverSynced");
+    const pendingCount = syncDiagnosticsQuery.data
+      ? syncDiagnosticsQuery.data.pending + syncDiagnosticsQuery.data.syncing
+      : null;
+    const failedCount = syncDiagnosticsQuery.data
+      ? syncDiagnosticsQuery.data.error + syncDiagnosticsQuery.data.conflict
+      : null;
+
     groups.push({
       id: "connection",
       title: t("systemInfo.connectionSection"),
@@ -244,23 +267,26 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
             : healthQuery.isSuccess
               ? t("systemInfo.connectionConnected")
               : t("systemInfo.connectionChecking"),
+          colSpan: "two",
+          status: healthQuery.isError ? "failed" : healthQuery.isSuccess ? "connected" : "connecting",
         },
         {
           label: t("systemInfo.requestLatency"),
           value: healthQuery.data ? `${healthQuery.data.latencyMs} ms` : t("systemInfo.unknown"),
+          mono: true,
         },
         { label: t("systemInfo.lastSuccessfulSync"), value: formattedLastSync },
         {
           label: t("systemInfo.pendingSync"),
-          value: syncDiagnosticsQuery.data
-            ? String(syncDiagnosticsQuery.data.pending + syncDiagnosticsQuery.data.syncing)
-            : t("systemInfo.unknown"),
+          value: pendingCount !== null ? String(pendingCount) : t("systemInfo.unknown"),
+          mono: true,
+          status: (pendingCount ?? 0) > 0 ? "warning" : "default",
         },
         {
           label: t("systemInfo.failedSync"),
-          value: syncDiagnosticsQuery.data
-            ? String(syncDiagnosticsQuery.data.error + syncDiagnosticsQuery.data.conflict)
-            : t("systemInfo.unknown"),
+          value: failedCount !== null ? String(failedCount) : t("systemInfo.unknown"),
+          mono: true,
+          status: (failedCount ?? 0) > 0 ? "error" : "default",
         },
       ],
     });
@@ -311,11 +337,19 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
   };
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button size="sm" variant="outline" className="h-8 w-full bg-white px-3 text-xs sm:w-auto" type="button" onClick={() => void handleCopy()}>
-          <Copy className="h-3.5 w-3.5" />
-          {copied ? t("common.copied") : t("systemInfo.copy")}
+    <div className="grid gap-3.5">
+      <div className="flex items-center justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1.5 bg-white px-2.5 text-xs text-slate-700 shadow-xs hover:bg-slate-50"
+          type="button"
+          onClick={() => void handleCopy()}
+        >
+          {copied ? <CircleCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-500" />}
+          <span className={copied ? "font-medium text-emerald-700" : ""}>
+            {copied ? t("common.copied") : t("systemInfo.copy")}
+          </span>
         </Button>
       </div>
       {infoGroups.map((group) => {
@@ -323,24 +357,25 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
         const isClient = group.id === "client";
         const headingId = `system-info-${group.id}-heading`;
         return (
-          <section key={group.id} className="grid gap-2.5" aria-labelledby={headingId}>
-            <div className="flex flex-wrap items-start justify-between gap-2 px-0.5">
-              <div className="flex min-w-0 items-start gap-2">
-                {isCloud
-                  ? <Cloud className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
-                  : isClient
-                    ? <MonitorSmartphone className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
-                    : <Activity className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />}
+          <section key={group.id} className="grid gap-2" aria-labelledby={headingId}>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 text-emerald-700">
+                  {isCloud
+                    ? <Cloud className="h-3.5 w-3.5" />
+                    : isClient
+                      ? <MonitorSmartphone className="h-3.5 w-3.5" />
+                      : <Activity className="h-3.5 w-3.5" />}
+                </div>
                 <div className="min-w-0">
-                  <h3 id={headingId} className="text-sm font-semibold text-slate-800">{group.title}</h3>
-                  <p className="mt-0.5 text-xs leading-4 text-slate-500">{group.description}</p>
+                  <h3 id={headingId} className="text-xs font-semibold text-slate-800">{group.title}</h3>
                 </div>
               </div>
               {isClient && desktopAvailable ? (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 bg-white px-3 text-xs"
+                  className="h-7 bg-white px-2.5 text-xs shadow-xs hover:bg-slate-50"
                   type="button"
                   disabled={desktopUpdateBusy || desktopUpdateState === "available"}
                   onClick={handleDesktopUpdate}
@@ -361,9 +396,9 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
               ) : null}
             </div>
             {isCloud && active && release ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-emerald-200 border-l-2 border-l-emerald-500 bg-emerald-50/40 px-3 py-2 text-slate-800" role="status">
-                <CircleCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                <div className="min-w-0 flex-1 text-xs font-semibold leading-5">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3 py-1.5 text-slate-800" role="status">
+                <CircleCheck className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                <div className="min-w-0 flex-1 text-xs font-medium text-emerald-950">
                   {t("systemInfo.deployedUpdateTitle", { version: releaseTag?.replace(/^v/, "") ?? release.version })}
                 </div>
                 <a className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700 underline underline-offset-2 hover:text-emerald-900" href={releaseUrl} target="_blank" rel="noreferrer">
@@ -385,14 +420,40 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
                 {desktopUpdateStatus}
               </p>
             ) : null}
-            <dl className="grid gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 sm:grid-cols-3">
-              {group.items.map((item) => (
-                <div key={item.label} className="min-w-0 bg-white px-3 py-2.5">
-                  <dt className="truncate text-[11px] font-semibold uppercase text-slate-400">{item.label}</dt>
-                  <dd className="mt-0.5 break-words font-mono text-xs font-semibold leading-5 text-slate-800">{item.value}</dd>
-                </div>
-              ))}
-            </dl>
+            <div className="rounded-lg border border-slate-200/80 bg-white p-3 sm:p-3.5">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3 sm:gap-x-5">
+                {group.items.map((item) => (
+                  <div
+                    key={item.label}
+                    className={cn("min-w-0", getColSpanClass(item.colSpan))}
+                  >
+                    <dt className="truncate text-[11px] font-normal text-slate-400">{item.label}</dt>
+                    <dd className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                      {item.status === "connected" ? (
+                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" />
+                      ) : item.status === "connecting" ? (
+                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse" />
+                      ) : item.status === "failed" ? (
+                        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500 shadow-[0_0_4px_rgba(244,63,94,0.5)]" />
+                      ) : null}
+                      <span
+                        className={cn(
+                          "break-words text-xs leading-5",
+                          item.mono ? "font-mono font-medium" : "font-sans font-medium",
+                          item.status === "failed" || item.status === "error"
+                            ? "font-semibold text-rose-600"
+                            : item.status === "warning"
+                              ? "font-semibold text-amber-600"
+                              : "text-slate-800",
+                        )}
+                      >
+                        {item.value}
+                      </span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </section>
         );
       })}
