@@ -245,6 +245,10 @@ If you want to migrate notes from other platforms to EdgeEver, please refer to t
 
 Docker runs the same frontend, API routes, services, authentication, MCP implementation, and migrations as Cloudflare. The container uses SQLite with local files or S3-compatible attachment storage and supports `amd64` and `arm64`. See [Deploy EdgeEver with Docker](docs/deploy-docker.md) and [Self-hosting and Docker architecture](docs/self-hosting-architecture.md).
 
+## Sync Timing
+
+Web, PWA, and desktop upload memo edits after 30 seconds of inactivity and check for remote changes every 5 minutes while visible; focus and manual refresh remain immediate. Adjust `DEFERRED_MEMO_SYNC_DELAY_MS` and `BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS` in [`apps/web/src/lib/workspace-refresh.ts`](apps/web/src/lib/workspace-refresh.ts).
+
 ## Acknowledgements
 
 - The "Minimal Emerald" theme typography layout is inspired by [obsidian-minimal](https://github.com/kepano/obsidian-minimal).

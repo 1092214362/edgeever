@@ -244,6 +244,10 @@ Cloudflare Worker 侧执行图片处理会消耗计算/图片处理额度，因�
 
 Docker 与 Cloudflare 共用同一套前端、API 路由、业务服务、鉴权、MCP 实现和 migration。容器使用 SQLite，并支持本地文件或 S3 兼容附件存储，提供 `amd64` 与 `arm64` 镜像。详见[使用 Docker 部署 EdgeEver](docs/deploy-docker.zh-CN.md)和[自托管与 Docker 架构](docs/self-hosting-architecture.zh-CN.md)。
 
+## 同步时序
+
+Web、PWA 与桌面端会在停止编辑 30 秒后上传笔记，并在页面可见时每 5 分钟检查云端变更；窗口聚焦与手动刷新仍会立即拉取。可在 [`apps/web/src/lib/workspace-refresh.ts`](apps/web/src/lib/workspace-refresh.ts) 中调整 `DEFERRED_MEMO_SYNC_DELAY_MS` 和 `BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS`。
+
 ## 致谢
 
 - “minimal品牌绿”主题排版架构借鉴于 [obsidian-minimal](https://github.com/kepano/obsidian-minimal)。
