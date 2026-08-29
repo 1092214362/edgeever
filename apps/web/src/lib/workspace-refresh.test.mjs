@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
+import { QueryClient } from "@tanstack/react-query";
 import {
   BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS,
   claimBackgroundRefreshLease,
@@ -7,6 +8,7 @@ import {
   DEFERRED_MEMO_SYNC_DELAY_MS,
   releaseBackgroundRefreshLease,
   refreshWorkspaceData,
+  preserveRemappedMemoDetailQueries,
   resolveCreatedMemoSelection,
   resolveSyncedMemoId,
   shouldNavigateHomeWhenOpeningMemo,
@@ -74,6 +76,47 @@ describe("refreshWorkspaceData", () => {
     assert.equal(resolveSyncedMemoId(mappings, "memo_local_1"), "memo_remote_1");
     assert.equal(resolveSyncedMemoId(mappings, "memo_existing"), "memo_existing");
     assert.equal(resolveSyncedMemoId(mappings, null), null);
+  });
+
+  it("preserves the active memo detail while desktop sync changes its query key", () => {
+    const queryClient = new QueryClient();
+    const temporaryMemo = {
+      id: "memo_local_1",
+      title: "",
+      contentMarkdown: "",
+      tags: [],
+    };
+    queryClient.setQueryData(["memo", temporaryMemo.id, "notebook"], { memo: temporaryMemo });
+
+    preserveRemappedMemoDetailQueries(
+      queryClient,
+      new Map([[temporaryMemo.id, "memo_remote_1"]]),
+    );
+
+    assert.deepEqual(
+      queryClient.getQueryData(["memo", "memo_remote_1", "notebook"]),
+      { memo: { ...temporaryMemo, id: "memo_remote_1" } },
+    );
+  });
+
+  it("does not replace an already cached remote memo during id handoff", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["memo", "memo_local_1", "notebook"], {
+      memo: { id: "memo_local_1", title: "local", contentMarkdown: "", tags: [] },
+    });
+    queryClient.setQueryData(["memo", "memo_remote_1", "notebook"], {
+      memo: { id: "memo_remote_1", title: "remote", contentMarkdown: "", tags: [] },
+    });
+
+    preserveRemappedMemoDetailQueries(
+      queryClient,
+      new Map([["memo_local_1", "memo_remote_1"]]),
+    );
+
+    assert.equal(
+      queryClient.getQueryData(["memo", "memo_remote_1", "notebook"]).memo.title,
+      "remote",
+    );
   });
 
   it("remaps a created memo selection without closing over the selected memo state", () => {
