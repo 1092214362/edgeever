@@ -1,12 +1,10 @@
-import { deploymentPrompts } from "./deployment-prompts";
-
 export type SiteLocale = "zh-CN" | "en-US";
 
 export const defaultSiteLocale: SiteLocale = "zh-CN";
 export const siteLocaleStorageKey = "edgeever.site.locale";
 export const siteLocaleDataAttribute = "data-edgeever-site-locale";
 export const siteTaglines = {
-  "zh-CN": "开源、原生支持 AI、自由部署（Cloudflare 零成本 / Docker）的自托管「印象笔记」替代方案",
+  "zh-CN": "开源、原生支持 AI、自由部署（Cloudflare 免费额度 / Docker）的自托管「印象笔记」替代方案",
   "en-US": "Open-source, AI-native, self-hosted Evernote alternative with Cloudflare & Docker deployment.",
 } as const satisfies Record<SiteLocale, string>;
 
@@ -30,7 +28,7 @@ export const siteCopy = {
   "zh-CN": {
     layout: {
       defaultDescription:
-        "EdgeEver 是开源、原生支持 AI 的自托管笔记工作区。保留经典印象笔记三栏体验，支持 macOS、iOS、Android 原生端与浏览器剪藏，提供 Cloudflare 零成本免服务器与 Docker 一键自托管。",
+        "EdgeEver 是开源、原生支持 AI 的自托管笔记工作区。保留经典印象笔记三栏体验，覆盖 macOS、iOS、Android 与浏览器剪藏，支持在 Cloudflare 免费额度内运行或使用 Docker 一键自托管。",
       defaultTitle: `EdgeEver - ${siteTaglines["zh-CN"]}`,
       imageAlt: "EdgeEver 笔记应用截图",
       ogLocale: "zh_CN",
@@ -59,15 +57,11 @@ export const siteCopy = {
     },
     hero: {
       slogan: siteTaglines["zh-CN"],
-      popHighlight: "印象笔记 0 成本经典平替 · 全平台原生支持",
+      popHighlight: "印象笔记开源经典平替 · 全平台客户端覆盖",
       demo: "在线演示",
-      agentInstall: "一键 AI 部署",
+      agentInstall: "AI 辅助部署",
       imageAlt: "EdgeEver product preview",
-      badgeText: "💡 全平台覆盖：macOS、iOS、Android、浏览器剪藏 · Cloudflare 免费部署 & Docker 一键安装",
-      terminalCmd: "请在线完成 EdgeEver 部署：Fork https://github.com/tianma-if/edgeever",
-      terminalSub: "Agent 原生 · 复制 Prompt 粘贴给 Cursor / Claude Code / Antigravity 即可自动部署",
-      copySuccess: "部署 Prompt 已复制！粘贴给 AI 助手即可部署",
-      agentPromptText: deploymentPrompts["zh-CN"],
+      badgeText: "💡 全平台覆盖：macOS、iOS、Android、浏览器剪藏 · Cloudflare 免费额度 & Docker 一键安装",
     },
     bento: {
       eyebrow: "WHY EDGEEVER",
@@ -102,11 +96,11 @@ export const siteCopy = {
       },
       card3: {
         badge: "自由部署",
-        title: "0 成本免服务器，或一键 Docker 自托管",
-        desc: "可零成本运行在 Cloudflare 配额内（存 15 万笔记 + 5 万图片）；也可一键脚本部署至 VPS、NAS 或家庭服务器，存储按需随心扩展。",
+        title: "Cloudflare 免费额度，或一键 Docker 自托管",
+        desc: "个人使用通常可运行在 Cloudflare 免费额度内（约 15 万笔记 + 5 万图片）；也可一键脚本部署至 VPS、NAS 或家庭服务器，存储按需扩展。",
         price: "¥0",
         unit: "/ 月",
-        sub: "Cloudflare 终身免服务器",
+        sub: "Cloudflare 免费额度内运行",
         metric: "150,000+",
         metricSub: "免费笔记容量 (可Docker扩展)",
       },
@@ -121,15 +115,15 @@ export const siteCopy = {
       },
       card5: {
         badge: "全端主权",
-        title: "全平台原生客户端与无损 ZIP 归档",
-        desc: "拥有 macOS（Rust+SQLite）、iOS（SwiftUI）、Android 及剪藏插件；基于标准 SQLite 与无损 ZIP 导出，数据完全自主掌控。",
+        title: "全平台客户端与无损 ZIP 归档",
+        desc: "覆盖 macOS（Electron+Rust+SQLite）、原生 iOS（SwiftUI）、Android 及剪藏插件；基于标准 SQLite 与无损 ZIP 导出，数据完全自主掌控。",
         archiveTitle: "edgeever-backup.zip",
         archiveSub: "包含 Markdown、Front Matter、附件与历史版本",
       },
     },
     marquee: {
-      title: "全平台原生覆盖、自由部署与 AI 智脑生态",
-      subtitle: "从 macOS、iOS、Android 原生客户端，到 Docker 一键自托管、微信公众号排版与 Remote MCP 协同",
+      title: "全平台客户端覆盖、自由部署与 AI 智脑生态",
+      subtitle: "从 macOS、原生 iOS、Android 客户端，到 Docker 一键自托管、微信公众号排版与 Remote MCP 协同",
       items: [
         {
           tag: "macOS 桌面端",
@@ -210,7 +204,7 @@ export const siteCopy = {
           title: "自由选择部署方式：Cloudflare Serverless 与 Docker",
           summary: "同一套现代应用，既可免费运行于 Cloudflare Serverless，也可通过 Docker 一键部署到 VPS、NAS 或家庭服务器。",
           points: [
-            "Cloudflare 零成本自托管：无需购买云服务器与维护 SSL 证书，免费额度可容纳约 15 万条短笔记和 5 万张图片。",
+            "Cloudflare 免费额度自托管：无需购买云服务器与维护 SSL 证书，个人使用通常可容纳约 15 万条短笔记和 5 万张图片。",
             "Docker 一键脚本部署：单行 curl 命令极速启动，存储按需随心扩展，轻松承载百万级笔记与海量附件。",
             "数据安全尽在掌握：无论选择哪种部署形态，所有数据均保存在您自己的账号或私有设备中，安全无忧。",
           ],
@@ -245,7 +239,7 @@ export const siteCopy = {
           ],
         },
         {
-          title: "全平台原生客户端与多端同步",
+          title: "全平台客户端与多端同步",
           summary: "覆盖 macOS、iOS、Android、浏览器剪藏插件与 Web/PWA，摆脱商业软件的设备数限制。",
           points: [
             "不限设备登录数：自建专属 API，彻底打碎商业笔记“免费版仅限 2 台设备”的枷锁。",
@@ -295,7 +289,7 @@ export const siteCopy = {
   "en-US": {
     layout: {
       defaultDescription:
-        "EdgeEver is an open-source, AI-native, self-hosted Evernote alternative. Enjoy a classic three-pane workspace across macOS, iOS, Android, and Web Clipper with free Cloudflare serverless or Docker deployment.",
+        "EdgeEver is an open-source, AI-native, self-hosted Evernote alternative. Enjoy a classic three-pane workspace across macOS, iOS, Android, and Web Clipper, running within Cloudflare's free tier or on Docker.",
       defaultTitle: "Open-Source, Self-Hosted Evernote Alternative | EdgeEver",
       imageAlt: "EdgeEver notes app screenshot",
       ogLocale: "en_US",
@@ -324,15 +318,11 @@ export const siteCopy = {
     },
     hero: {
       slogan: siteTaglines["en-US"],
-      popHighlight: "Free Evernote Alternative · All-Platform Native Apps",
+      popHighlight: "Open-Source Evernote Alternative · Apps Across Platforms",
       demo: "Live demo",
-      agentInstall: "Deploy with AI",
+      agentInstall: "AI-Assisted Deploy",
       imageAlt: "EdgeEver product preview",
-      badgeText: "💡 All Platforms: macOS, iOS, Android, Web Clipper · Free Cloudflare & 1-line Docker Deploy",
-      terminalCmd: "Deploy EdgeEver online: Fork https://github.com/tianma-if/edgeever",
-      terminalSub: "Agent Native · Copy prompt to Cursor / Claude Code / Antigravity to deploy automatically",
-      copySuccess: "Deployment Prompt copied! Paste into AI Assistant",
-      agentPromptText: deploymentPrompts["en-US"],
+      badgeText: "💡 All Platforms: macOS, iOS, Android, Web Clipper · Cloudflare Free Tier & 1-Line Docker Deploy",
     },
     bento: {
       eyebrow: "WHY EDGEEVER",
@@ -367,11 +357,11 @@ export const siteCopy = {
       },
       card3: {
         badge: "Flexible Deploy",
-        title: "Zero Cost Serverless, or 1-Line Docker Deploy",
-        desc: "Run 100% free on Cloudflare (up to 150k notes & 50k images), or deploy with Docker on your VPS, NAS, or private server with unlimited scalability.",
+        title: "Cloudflare Free Tier, or 1-Line Docker Deploy",
+        desc: "Personal use typically fits within Cloudflare's free tier (about 150k notes & 50k images), or deploy with Docker on your VPS, NAS, or private server and scale storage as needed.",
         price: "$0",
         unit: "/ mo",
-        sub: "Cloudflare Serverless Forever",
+        sub: "Within Cloudflare's Free Tier",
         metric: "150,000+",
         metricSub: "Free Note Capacity (Scalable with Docker)",
       },
@@ -386,15 +376,15 @@ export const siteCopy = {
       },
       card5: {
         badge: "Data Sovereignty",
-        title: "All-Platform Native Apps & Lossless ZIP Backup",
-        desc: "Available on macOS (Rust+SQLite), iOS (SwiftUI), Android (Google Play/APK), and Web Clipper. Lossless ZIP export and standard SQLite for full ownership.",
+        title: "Apps Across Platforms & Lossless ZIP Backup",
+        desc: "Available on macOS (Electron+Rust+SQLite), native iOS (SwiftUI), Android (Google Play/APK), and Web Clipper. Lossless ZIP export and standard SQLite provide full ownership.",
         archiveTitle: "edgeever-backup.zip",
         archiveSub: "Markdown + Attachments + Revision History",
       },
     },
     marquee: {
-      title: "All-Platform Native Apps, Flexible Deploy & AI Synergy",
-      subtitle: "From macOS, iOS & Android native apps to Docker self-hosting, styled creator copying, and Remote MCP collaboration.",
+      title: "Apps Across Platforms, Flexible Deploy & AI Synergy",
+      subtitle: "From macOS, native iOS & Android apps to Docker self-hosting, styled creator copying, and Remote MCP collaboration.",
       items: [
         {
           tag: "macOS Desktop",
@@ -475,7 +465,7 @@ export const siteCopy = {
           title: "Flexible Deployment: Cloudflare Serverless & Docker",
           summary: "The same modern application runs seamlessly on Cloudflare Serverless or on a VPS, NAS, or home server via Docker.",
           points: [
-            "Zero-Cost Cloudflare Self-Hosting: No VPS rental or SSL certificates required. Free tier supports up to 150k notes and 50k images.",
+            "Cloudflare Free-Tier Self-Hosting: No VPS rental or SSL certificates required. Personal use typically supports about 150k notes and 50k images.",
             "1-Line Docker Deployment: Quick deployment with a single curl command, scaling easily to millions of notes and large files.",
             "Complete Data Privacy: Regardless of deployment method, all your data lives strictly within your own account or private hardware.",
           ],
@@ -510,7 +500,7 @@ export const siteCopy = {
           ],
         },
         {
-          title: "All-Platform Native Clients & Multi-Device Sync",
+          title: "Apps Across Platforms & Multi-Device Sync",
           summary: "Available across macOS, iOS, Android, browser Web Clipper, and Web/PWA, freeing you from commercial device caps.",
           points: [
             "Unlimited Devices: Self-hosted API eliminates commercial restrictions like the '2-device login limit'.",
