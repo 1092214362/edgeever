@@ -2922,7 +2922,6 @@ export const WorkspaceApp = ({
                   onOpenTags={handleOpenTags}
                   onOpenTemplates={handleOpenTemplates}
                   onOpenAiPrompts={handleOpenAiPrompts}
-                  onOpenPluginMarketplace={handleOpenPluginManager}
                   onOpenSettings={handleOpenSettings}
                   onOpenTrash={() => {
                     navigateWorkspaceTrash();
