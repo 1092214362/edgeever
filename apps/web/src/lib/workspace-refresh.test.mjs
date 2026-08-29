@@ -4,6 +4,7 @@ import {
   BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS,
   claimBackgroundRefreshLease,
   createRefreshSingleFlight,
+  DEFERRED_MEMO_SYNC_DELAY_MS,
   releaseBackgroundRefreshLease,
   refreshWorkspaceData,
   resolveCreatedMemoSelection,
@@ -12,6 +13,10 @@ import {
 } from "./workspace-refresh.ts";
 
 describe("refreshWorkspaceData", () => {
+  it("uses a fixed 30-second delay for uploading memo edits", () => {
+    assert.equal(DEFERRED_MEMO_SYNC_DELAY_MS, 30_000);
+  });
+
   it("uses a shared five-minute background refresh interval", () => {
     assert.equal(BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS, 5 * 60_000);
   });

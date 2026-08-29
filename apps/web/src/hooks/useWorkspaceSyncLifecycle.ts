@@ -6,6 +6,7 @@ import {
   BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS,
   claimBackgroundRefreshLease,
   createRefreshSingleFlight,
+  DEFERRED_MEMO_SYNC_DELAY_MS,
   releaseBackgroundRefreshLease,
   type WorkspaceRefreshMode,
 } from "@/lib/workspace-refresh";
@@ -13,22 +14,19 @@ import {
 type RefreshWorkspace = (mode: WorkspaceRefreshMode) => Promise<unknown>;
 
 export const useWorkspaceSyncLifecycle = ({
-  pendingSyncCount,
+  failedSyncCount,
   backgroundRefreshKey,
   refreshWorkspace,
   runQueuedSync,
   setOnline,
-  syncIntervalMs,
 }: {
-  pendingSyncCount: number;
+  failedSyncCount: number;
   backgroundRefreshKey: string;
   refreshWorkspace: RefreshWorkspace;
   runQueuedSync: () => Promise<void>;
   setOnline: (online: boolean) => void;
-  syncIntervalMs: number | null;
 }) => {
   const deferredSyncTimerRef = useRef<number | null>(null);
-  const deferredSyncPendingRef = useRef(false);
   const runQueuedSyncRef = useRef(runQueuedSync);
   const refreshWorkspaceRef = useRef(refreshWorkspace);
   const backgroundRefreshOwnerRef = useRef(createClientUuid());
@@ -108,7 +106,6 @@ export const useWorkspaceSyncLifecycle = ({
 
   useEffect(() => {
     const handleQueueChanged = () => {
-      deferredSyncPendingRef.current = false;
       if (deferredSyncTimerRef.current !== null) {
         window.clearTimeout(deferredSyncTimerRef.current);
         deferredSyncTimerRef.current = null;
@@ -121,21 +118,17 @@ export const useWorkspaceSyncLifecycle = ({
 
   useEffect(() => {
     const scheduleDeferredSync = () => {
-      deferredSyncPendingRef.current = true;
       if (deferredSyncTimerRef.current !== null) {
         window.clearTimeout(deferredSyncTimerRef.current);
         deferredSyncTimerRef.current = null;
       }
-      if (syncIntervalMs === null) return;
       deferredSyncTimerRef.current = window.setTimeout(() => {
         deferredSyncTimerRef.current = null;
-        deferredSyncPendingRef.current = false;
         void runQueuedSyncRef.current();
-      }, syncIntervalMs);
+      }, DEFERRED_MEMO_SYNC_DELAY_MS);
     };
 
     window.addEventListener(SYNC_QUEUE_DEFERRED_EVENT, scheduleDeferredSync);
-    if (deferredSyncPendingRef.current) scheduleDeferredSync();
     return () => {
       window.removeEventListener(SYNC_QUEUE_DEFERRED_EVENT, scheduleDeferredSync);
       if (deferredSyncTimerRef.current !== null) {
@@ -143,7 +136,7 @@ export const useWorkspaceSyncLifecycle = ({
         deferredSyncTimerRef.current = null;
       }
     };
-  }, [syncIntervalMs]);
+  }, []);
 
   useEffect(() => {
     const leaseKey = `edgeever.background-refresh:${backgroundRefreshKey}`;
@@ -201,8 +194,8 @@ export const useWorkspaceSyncLifecycle = ({
   }, [backgroundRefreshKey]);
 
   useEffect(() => {
-    if (pendingSyncCount === 0) return;
+    if (failedSyncCount === 0) return;
     const timer = window.setInterval(() => void runQueuedSync(), 15_000);
     return () => window.clearInterval(timer);
-  }, [pendingSyncCount, runQueuedSync]);
+  }, [failedSyncCount, runQueuedSync]);
 };
