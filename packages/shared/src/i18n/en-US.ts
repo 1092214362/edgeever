@@ -1088,6 +1088,8 @@ export const enUS = {
       conflict: "Conflict",
       error: "Save failed",
       unsaved: "Unsaved",
+      storageUnavailable: "Browser local storage stopped responding. Keep this page open, close other EdgeEver tabs, then retry. Copy the local draft before clearing any browser data.",
+      storageRetry: "Retry save",
       conflictReason: {
         revisionWithVersions: "The cloud note was updated (local base revision {{expected}}, cloud is {{current}}). Common causes: another browser tab, another device, or a cloud change while you were offline. Copy your local draft, then use the cloud version before editing again.",
         revision: "The cloud note was updated elsewhere. Common causes: another browser tab, another device, or a cloud change while you were offline. Copy your local draft, then use the cloud version before editing again.",

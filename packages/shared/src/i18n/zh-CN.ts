@@ -1088,6 +1088,8 @@ export const zhCN = {
       conflict: "有冲突",
       error: "保存失败",
       unsaved: "未保存",
+      storageUnavailable: "浏览器本地存储无响应。请保持当前页面打开，关闭其他 EdgeEver 标签页后重试。清除浏览器数据前请先复制本地草稿。",
+      storageRetry: "重试保存",
       conflictReason: {
         revisionWithVersions: "云端笔记已更新（本地基于版本 {{expected}}，云端已是 {{current}}）。常见原因：其他标签页、其他设备，或离线期间云端被改过。可先复制本地草稿，再采用云端版本后继续编辑。",
         revision: "云端笔记已在其他位置被更新。常见原因：其他标签页、其他设备，或离线期间云端被改过。可先复制本地草稿，再采用云端版本后继续编辑。",
