@@ -254,6 +254,10 @@ Web、PWA 与桌面端会在停止编辑 30 秒后上传笔记，并在页面可
 - “Outline 品牌绿”主题排版架构借鉴于 [Outline](https://github.com/outline/outline)。
 - “经典蓝白”主题借鉴了早期 [StackEdit](https://github.com/benweet/stackedit)/[Bootstrap](https://github.com/twbs/bootstrap) 系 Markdown 排版风格，并参考[马克飞象](https://maxiang.io/)完善中文排版细节。
 
+## 商标与品牌使用
+
+EdgeEver 名称、Logo 及其他品牌标识用于识别官方项目。Fork 或修改版可以说明其“基于 EdgeEver”，但不得暗示官方身份或误导用户。开源许可不授予商标权利；其他使用须事先取得项目维护者的书面许可。
+
 ## 免责声明
 
 EdgeEver 是一款完全独立的开源笔记软件，由个人和社区自主开发维护。本项目与 Evernote®（印象笔记）及其关联公司不存在任何商业合作、授权、赞助或隶属关系。

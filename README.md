@@ -255,6 +255,10 @@ Web, PWA, and desktop upload memo edits after 30 seconds of inactivity and check
 - The "Outline Emerald" theme typography layout is inspired by [Outline](https://github.com/outline/outline).
 - The "Classic Blue & White" theme is inspired by the early [StackEdit](https://github.com/benweet/stackedit)/[Bootstrap](https://github.com/twbs/bootstrap) Markdown typography style, with Chinese typography details informed by [Marxico](https://maxiang.io/).
 
+## Trademark and Brand Use
+
+The EdgeEver name, logo, and other brand identifiers distinguish the official project. Forks and modified versions may state that they are based on EdgeEver, but must not imply official status or mislead users. The open-source license does not grant trademark rights; other uses require prior written permission from the project maintainers.
+
 ## Disclaimer
 
 EdgeEver is an independent open-source note-taking application developed and maintained by individuals and the community. It is not affiliated with, authorized, sponsored, or endorsed by Evernote Corporation or its affiliates.
