@@ -155,7 +155,7 @@ export const useWorkspaceSyncLifecycle = ({
       if (document.visibilityState === "hidden" || isBrowserOffline()) return;
       // Focus and visibility events remain immediate. Periodic refreshes use
       // a short cross-tab lease so multiple visible EdgeEver tabs do not all
-      // poll D1 every thirty seconds.
+      // poll D1 every five minutes.
       void runRefresh().catch(() => {
         // A later focus, visibility, or interval refresh will retry.
       });

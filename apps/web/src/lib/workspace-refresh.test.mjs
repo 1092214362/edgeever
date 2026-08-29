@@ -12,8 +12,8 @@ import {
 } from "./workspace-refresh.ts";
 
 describe("refreshWorkspaceData", () => {
-  it("uses a shared 30-second background refresh interval", () => {
-    assert.equal(BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS, 30_000);
+  it("uses a shared five-minute background refresh interval", () => {
+    assert.equal(BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS, 5 * 60_000);
   });
 
   it("allows only one tab to own a live background refresh lease", () => {

@@ -1,7 +1,7 @@
 export type WorkspaceRefreshMode = "background" | "manual";
 export type WorkspaceMemoView = "notebook" | "trash";
 
-export const BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS = 30_000;
+export const BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS = 5 * 60_000;
 export const BACKGROUND_WORKSPACE_REFRESH_LEASE_MS = BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS * 2;
 export const BACKGROUND_WORKSPACE_REFRESH_COALESCE_MS = 1_000;
 
