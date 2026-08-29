@@ -23,6 +23,7 @@ const createIcon = (name: FeatherName) => {
 };
 
 export const Archive = createIcon("archive");
+export const Activity = createIcon("activity");
 export const AlertTriangle = createIcon("alert-triangle");
 export const ArrowUpCircle = createIcon("arrow-up-circle");
 export const BookOpen = createIcon("book-open");
@@ -34,6 +35,7 @@ export const ChevronDown = createIcon("chevron-down");
 export const ChevronLeft = createIcon("chevron-left");
 export const ChevronRight = createIcon("chevron-right");
 export const Code = createIcon("code");
+export const Cloud = createIcon("cloud");
 export const Copy = createIcon("copy");
 export const Database = createIcon("database");
 export const Download = createIcon("download");
@@ -61,6 +63,7 @@ export const LogOut = createIcon("log-out");
 export const Moon = createIcon("moon");
 export const Merge = createIcon("git-merge");
 export const MessageSquare = createIcon("message-square");
+export const MonitorSmartphone = createIcon("smartphone");
 export const Minus = createIcon("minus");
 export const MoreHorizontal = createIcon("more-horizontal");
 export const MoreVertical = createIcon("more-vertical");

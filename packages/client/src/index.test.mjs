@@ -8,6 +8,31 @@ const jsonResponse = (body, init = {}) => new Response(JSON.stringify(body), {
 });
 
 describe("EdgeEver client HTTP contract", () => {
+  test("reads public instance diagnostics through the configured base URL", async () => {
+    const calls = [];
+    const client = createEdgeEverClient({
+      baseUrl: "https://notes.example/",
+      fetch: async (input) => {
+        calls.push(String(input));
+        return jsonResponse(String(input).endsWith("/api/health")
+          ? { ok: true, name: "edgeever", runtime: "cloudflare-workers" }
+          : { version: "1.47.0", changes: {} });
+      },
+    });
+
+    const [health, release] = await Promise.all([
+      client.getInstanceHealth(),
+      client.getInstanceRelease(),
+    ]);
+
+    expect(calls).toEqual([
+      "https://notes.example/api/health",
+      "https://notes.example/api/release",
+    ]);
+    expect(health.runtime).toBe("cloudflare-workers");
+    expect(release.version).toBe("1.47.0");
+  });
+
   test("normalizes the base URL and sends backup pagination with auth", async () => {
     const calls = [];
     const client = createEdgeEverClient({

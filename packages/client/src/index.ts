@@ -42,6 +42,25 @@ export type EdgeEverClientOptions = {
   onUnauthorized?: () => void;
 };
 
+export type InstanceHealth = {
+  ok: true;
+  name: string;
+  runtime?: string | null;
+  authMode?: string | null;
+  build?: string | null;
+  migration?: string | null;
+  storage?: {
+    database?: "d1" | "sqlite" | string | null;
+    resources?: "r2" | "filesystem" | "s3" | string | null;
+  } | null;
+  objectStorageProvider?: "builtin" | "s3" | "unknown" | string | null;
+};
+
+export type InstanceRelease = {
+  version: string;
+  changes: Record<string, readonly string[]>;
+};
+
 export type MemoFilterMode = "all" | "tagged" | "untagged" | "pinned";
 export type MemoSortMode = "updated-desc" | "created-desc" | "title-asc";
 
@@ -247,6 +266,10 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
   };
 
   return {
+    getInstanceHealth: () => request<InstanceHealth>("/api/health"),
+
+    getInstanceRelease: () => request<InstanceRelease>("/api/release"),
+
     getSession: () => request<AuthSession>("/api/v1/auth/session"),
 
     getPublicMemoShare: (token: string) =>
