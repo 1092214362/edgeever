@@ -25,6 +25,43 @@ describe("storage adapter", () => {
     expect(SELF_HOSTED_DATABASE_DIALECT).toBe("sqlite");
   });
 
+  test("implements the portable statement result contract without D1 types", async () => {
+    const executions: Array<{ sql: string; bindings: unknown[] }> = [];
+    const sqlite = {
+      query: (sql: string) => ({
+        all: (...bindings: unknown[]) => [{ sql, value: bindings[0] }],
+        get: (...bindings: unknown[]) => ({ sql, value: bindings[0] }),
+        run: (...bindings: unknown[]) => {
+          executions.push({ sql, bindings });
+          return { changes: 1, lastInsertRowid: 7 };
+        },
+      }),
+      transaction: (callback: () => void) => () => callback(),
+    };
+    const database = createSelfHostedStorageAdapter(sqlite, ".edgeever-unused-resources").db;
+    const statement = database.prepare("SELECT ? AS value").bind("edgeever");
+
+    await expect(statement.all<{ sql: string; value: string }>()).resolves.toMatchObject({
+      success: true,
+      results: [{ sql: "SELECT ? AS value", value: "edgeever" }],
+    });
+    await expect(statement.first<string>("value")).resolves.toBe("edgeever");
+    await expect(database.prepare("UPDATE notes SET value = ?").bind("updated").run()).resolves.toMatchObject({
+      success: true,
+      results: [],
+      meta: { changes: 1, lastInsertRowid: 7 },
+    });
+    await expect(database.batch([
+      database.prepare("DELETE FROM notes WHERE id = ?").bind("one"),
+      database.prepare("DELETE FROM notes WHERE id = ?").bind("two"),
+    ])).resolves.toHaveLength(2);
+    expect(executions.map(({ bindings }) => bindings)).toEqual([
+      ["updated"],
+      ["one"],
+      ["two"],
+    ]);
+  });
+
   test("stores attachments in a persistent filesystem directory", async () => {
     const directory = await mkdtemp(`${tmpdir()}/edgeever-storage-`);
     const sqlite = {

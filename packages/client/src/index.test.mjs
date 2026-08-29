@@ -50,6 +50,62 @@ describe("EdgeEver client HTTP contract", () => {
     expect(calls[0].init.credentials).toBe("include");
   });
 
+  test("resolves runtime base URLs and credentials for every request", async () => {
+    let baseUrl = "https://first.example/";
+    let token = "first-token";
+    const calls = [];
+    const contexts = [];
+    const client = createEdgeEverClient({
+      baseUrl: () => baseUrl,
+      token: () => token,
+      beforeRequest: (context) => contexts.push(context),
+      shouldAttachToken: (path) => path !== "/api/v1/auth/login",
+      fetch: async (input, init) => {
+        calls.push({
+          input: String(input),
+          authorization: new Headers(init.headers).get("Authorization"),
+        });
+        return jsonResponse({ authenticated: true, notebooks: [], memos: [], totalCount: 0, nextAfterId: null });
+      },
+    });
+
+    await client.getSession();
+    baseUrl = "https://second.example///";
+    token = "second-token";
+    await client.syncBootstrap({ limit: 20 });
+    await client.login({ username: "admin", password: "secret" });
+
+    expect(calls).toEqual([
+      { input: "https://first.example/api/v1/auth/session", authorization: "Bearer first-token" },
+      { input: "https://second.example/api/v1/sync/bootstrap?limit=20", authorization: "Bearer second-token" },
+      { input: "https://second.example/api/v1/auth/login", authorization: null },
+    ]);
+    expect(contexts.map(({ path, token: requestToken }) => [path, requestToken])).toEqual([
+      ["/api/v1/auth/session", "first-token"],
+      ["/api/v1/sync/bootstrap?limit=20", "second-token"],
+      ["/api/v1/auth/login", "second-token"],
+    ]);
+  });
+
+  test("does not leak API credentials or JSON headers to absolute resource URLs", async () => {
+    let call;
+    const client = createEdgeEverClient({
+      baseUrl: "https://notes.example",
+      token: "secret",
+      fetch: async (input, init) => {
+        call = { input: String(input), headers: new Headers(init.headers) };
+        return new Response("asset");
+      },
+    });
+
+    const blob = await client.getResourceBlob("https://assets.example/file.bin");
+
+    expect(await blob.text()).toBe("asset");
+    expect(call.input).toBe("https://assets.example/file.bin");
+    expect(call.headers.get("Authorization")).toBeNull();
+    expect(call.headers.get("Content-Type")).toBeNull();
+  });
+
   test("keeps multipart restore bodies free of a synthetic JSON content type", async () => {
     let headers;
     const client = createEdgeEverClient({

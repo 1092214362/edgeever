@@ -1,6 +1,7 @@
 import type { MemoSummary, Notebook, TiptapDoc } from "@edgeever/shared";
 import { DEFAULT_MEMO_TITLE } from "@edgeever/shared";
 import { getMobileNotebookSearchVisibleIds } from "@edgeever/shared/mobile-ui";
+import type { MemoFilterMode, MemoSortMode } from "@edgeever/client";
 import { buildNotebookTree, type NotebookNode, type NotebookNodeComparator } from "./utils";
 import * as React from "react";
 import type { ReactNode } from "react";
@@ -8,8 +9,7 @@ import type { TFunction } from "i18next";
 
 export type Pane = "notebooks" | "memos" | "editor";
 export type MemoView = "notebook" | "trash";
-export type MemoFilterMode = "all" | "tagged" | "untagged" | "pinned";
-export type MemoSortMode = "updated-desc" | "created-desc" | "title-asc";
+export type { MemoFilterMode, MemoSortMode } from "@edgeever/client";
 export type NotebookSortMode = "custom" | "name-asc" | "memo-count-desc" | "updated-desc";
 export type EditorContentAlignment = "start" | "center";
 export type MemoListDensity = "preview" | "compact";
