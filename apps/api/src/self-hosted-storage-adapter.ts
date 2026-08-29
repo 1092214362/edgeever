@@ -166,4 +166,9 @@ export const createSelfHostedStorageAdapter = (
 ): StorageAdapter => ({
   db: new SqliteDatabaseAdapter(sqlite) as unknown as DatabaseAdapter,
   resources: createLocalBlobStore(resourcesDirectory),
+  diagnostics: {
+    database: "sqlite",
+    resources: "filesystem",
+    migrationTable: "_edgeever_migrations",
+  },
 });

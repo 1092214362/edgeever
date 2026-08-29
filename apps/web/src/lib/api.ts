@@ -55,6 +55,13 @@ export type InstanceHealth = {
   name: string;
   runtime: string;
   authMode: string;
+  build: string;
+  migration: string;
+  storage: {
+    database: "d1" | "sqlite";
+    resources: "r2" | "filesystem" | "s3";
+  };
+  objectStorageProvider: "builtin" | "s3" | "unknown";
 };
 
 type ListMemosResponse = {

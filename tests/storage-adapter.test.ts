@@ -14,6 +14,11 @@ describe("storage adapter", () => {
 
     expect(adapter.db).toBe(db);
     expect(adapter.resources).toBe(resources);
+    expect(adapter.diagnostics).toEqual({
+      database: "d1",
+      resources: "r2",
+      migrationTable: "d1_migrations",
+    });
   });
 
   test("keeps the self-hosted database dialect explicit", () => {
@@ -29,6 +34,11 @@ describe("storage adapter", () => {
 
     try {
       const adapter = createSelfHostedStorageAdapter(sqlite, directory);
+      expect(adapter.diagnostics).toEqual({
+        database: "sqlite",
+        resources: "filesystem",
+        migrationTable: "_edgeever_migrations",
+      });
       await adapter.resources.put("workspace/memo/image.bin", new Uint8Array([1, 2, 3]));
 
       expect(await readFile(`${directory}/workspace/memo/image.bin`)).toEqual(new Uint8Array([1, 2, 3]));
@@ -77,6 +87,11 @@ describe("storage adapter", () => {
       { bucket: "edgeever", endpoint: "http://minio:9000" },
       client as never,
     );
+    expect(adapter.diagnostics).toEqual({
+      database: "sqlite",
+      resources: "s3",
+      migrationTable: "_edgeever_migrations",
+    });
 
     await adapter.resources.put("memo/image.txt", new Uint8Array([1]), {
       httpMetadata: { contentType: "text/plain" },

@@ -44,6 +44,11 @@ export type BlobStoreAdapter = {
 export type StorageAdapter = {
   db: DatabaseAdapter;
   resources: BlobStoreAdapter;
+  diagnostics: {
+    database: "d1" | "sqlite";
+    resources: "r2" | "filesystem" | "s3";
+    migrationTable: "d1_migrations" | "_edgeever_migrations";
+  };
 };
 
 /** Database engines that a self-hosted deployment may select. */

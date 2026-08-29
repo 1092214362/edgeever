@@ -12,4 +12,9 @@ export const createCloudflareStorageAdapter = (
 ): StorageAdapter => ({
   db: bindings.DB,
   resources: bindings.RESOURCES,
+  diagnostics: {
+    database: "d1",
+    resources: "r2",
+    migrationTable: "d1_migrations",
+  },
 });

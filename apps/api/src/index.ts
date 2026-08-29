@@ -59,6 +59,7 @@ import {
   DEMO_SEED_REVISIONS,
 } from "./demo-seed-data";
 import { createCloudflareStorageAdapter } from "./cloudflare-storage-adapter";
+import { INSTANCE_BUILD_ID } from "./instance-build";
 import type {
   DatabaseAdapter,
   PreparedStatementAdapter,
@@ -151,6 +152,7 @@ import { registerNotebookRoutes } from "./notebook-routes";
 import { registerMemoShareRoutes, registerPublicShareRoutes } from "./share-routes";
 import {
   deleteStoredObjects,
+  getActiveObjectStorageConfig,
   resolveObjectStorage,
 } from "./object-storage";
 import {
@@ -273,6 +275,28 @@ app.use(
 
 app.get("/api/release", (c) => c.json(releaseSummary));
 
+const getAppliedMigration = async (env: Bindings) => {
+  try {
+    const row = await env.storage.db
+      .prepare(`SELECT name FROM ${env.storage.diagnostics.migrationTable} ORDER BY name DESC LIMIT 1`)
+      .first<{ name?: string }>();
+    return row?.name?.match(/^(\d+)/)?.[1] ?? row?.name ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+};
+
+const getActiveObjectStorageProvider = async (env: Bindings) => {
+  try {
+    const active = await getActiveObjectStorageConfig(env.storage.db);
+    return active?.provider === "builtin" || active?.provider === "s3"
+      ? active.provider
+      : "unknown";
+  } catch {
+    return "unknown";
+  }
+};
+
 app.get("/api/health", async (c) => {
   const authMode = await getInstanceAuthMode(c.env, true);
 
@@ -297,6 +321,13 @@ app.get("/api/health", async (c) => {
     name: "edgeever",
     runtime: c.env.EDGE_EVER_RUNTIME ?? "cloudflare-workers",
     authMode,
+    build: INSTANCE_BUILD_ID.slice(0, 12),
+    migration: await getAppliedMigration(c.env),
+    storage: {
+      database: c.env.storage.diagnostics.database,
+      resources: c.env.storage.diagnostics.resources,
+    },
+    objectStorageProvider: await getActiveObjectStorageProvider(c.env),
   });
 });
 
