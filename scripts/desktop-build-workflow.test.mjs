@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 
 const workflow = readFileSync(new URL("../.github/workflows/desktop-build.yml", import.meta.url), "utf8");
 const mobileWorkflow = readFileSync(new URL("../.github/workflows/mobile-build.yml", import.meta.url), "utf8");
+const desktopPackageVerifier = readFileSync(new URL("./verify-desktop-package.mjs", import.meta.url), "utf8");
 
 function step(name) {
   const start = workflow.indexOf(`      - name: ${name}\n`);
@@ -78,5 +79,8 @@ describe("desktop release workflow", () => {
     expect(workflow).toContain("allow-missing-windows-signature");
     expect(workflow).toContain("name: Audit signed Windows update");
     expect(workflow).toContain("verify-windows-update-release.mjs");
+    expect(desktopPackageVerifier).toContain(
+      'path.replaceAll("\\\\", "/")',
+    );
   });
 });

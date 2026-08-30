@@ -25,6 +25,9 @@ const files = walk(outputDirectory);
 const matchingPrefix = (prefix) => files.filter((path) => basename(path).startsWith(prefix));
 const requestedPlatform = process.env.EDGE_EVER_VERIFY_TARGET ?? process.platform;
 const requestedArch = process.env.EDGE_EVER_DESKTOP_ARCH ?? process.arch;
+const listAsarFiles = (asarPath) => new Set(
+  listPackage(asarPath).map((path) => path.replaceAll("\\", "/")),
+);
 
 const verifyMachOArch = (path, arch, label) => {
   const result = spawnSync("lipo", ["-archs", path], { encoding: "utf8" });
@@ -72,7 +75,7 @@ if (requestedPlatform === "darwin") {
   verifyMachOArch(sidecar, requestedArch, "Rust sidecar");
   const asarPath = join(appResources, "app.asar");
   assert.ok(existsSync(asarPath), `macOS app bundle is missing app.asar: ${asarPath}`);
-  const asarFiles = new Set(listPackage(asarPath));
+  const asarFiles = listAsarFiles(asarPath);
   assert.ok(asarFiles.has("/src/preload/index.cjs"), "macOS app bundle must contain the sandbox-compatible CommonJS preload");
   assert.ok(!asarFiles.has("/src/preload/index.mjs"), "macOS app bundle must not contain the unsupported ESM preload");
   const appIconPath = join(appResources, "icon.icns");
@@ -100,7 +103,7 @@ if (requestedPlatform === "darwin") {
   verifyPeX64(sidecar, "Rust sidecar");
   const asarPath = join(resources, "app.asar");
   assert.ok(existsSync(asarPath), `Windows app bundle is missing app.asar: ${asarPath}`);
-  const asarFiles = new Set(listPackage(asarPath));
+  const asarFiles = listAsarFiles(asarPath);
   assert.ok(asarFiles.has("/src/preload/index.cjs"), "Windows app bundle must contain the sandbox-compatible CommonJS preload");
   assert.ok(!asarFiles.has("/src/preload/index.mjs"), "Windows app bundle must not contain the unsupported ESM preload");
 } else if (requestedPlatform === "linux") {
