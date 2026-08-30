@@ -698,6 +698,11 @@ const viewWorkflowRun = ({ repository, runId }) => ghJson([
   "status,conclusion,url,headSha,jobs",
 ]);
 
+export const signedWindowsUpdateAuditPassed = (runView) =>
+  runView.jobs?.some(
+    (job) => job.name === "Audit signed Windows update" && job.conclusion === "success",
+  ) ?? false;
+
 const waitForRerunStart = async ({ repository, runId }) => {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
@@ -1429,22 +1434,36 @@ const releaseMain = async (options) => {
     androidReleaseReady,
   ]);
 
-  if (desktopPlan.rebuild) {
-    signDraftWindowsUpdate({ repository: options.repository, tag });
+  let windowsUpdateAuditRunId;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (desktopPlan.rebuild) {
+      signDraftWindowsUpdate({ repository: options.repository, tag });
+    }
+    windowsUpdateAuditRunId = await dispatchReleaseWorkflow({
+      repository: options.repository,
+      workflow: RELEASE_WORKFLOWS.desktop,
+      tag,
+      headSha: releaseSha,
+    });
+    checkpoint.windowsUpdateAuditRunId = windowsUpdateAuditRunId;
+    persistCheckpoint();
+    await waitForRun({
+      repository: options.repository,
+      runId: windowsUpdateAuditRunId,
+      label: "Draft signed Windows update audit",
+    });
+    const auditRun = viewWorkflowRun({
+      repository: options.repository,
+      runId: windowsUpdateAuditRunId,
+    });
+    if (signedWindowsUpdateAuditPassed(auditRun)) break;
+    if (!desktopPlan.rebuild || attempt === 3) {
+      throw new Error("Draft signed Windows update workflow completed without running its audit job.");
+    }
+    console.log(
+      "[release] desktop assets changed while preparing the signature; signing the latest manifest and retrying its audit",
+    );
   }
-  const windowsUpdateAuditRunId = await dispatchReleaseWorkflow({
-    repository: options.repository,
-    workflow: RELEASE_WORKFLOWS.desktop,
-    tag,
-    headSha: releaseSha,
-  });
-  checkpoint.windowsUpdateAuditRunId = windowsUpdateAuditRunId;
-  persistCheckpoint();
-  await waitForRun({
-    repository: options.repository,
-    runId: windowsUpdateAuditRunId,
-    label: "Draft signed Windows update audit",
-  });
 
   const draft = ghJson([
     "release",

@@ -16,6 +16,7 @@ import {
   resolveReleaseVersion,
   reusedAssetMatches,
   selectPublishedDmg,
+  signedWindowsUpdateAuditPassed,
   waitForRun,
 } from "./release.mjs";
 
@@ -52,6 +53,18 @@ describe("release automation", () => {
     expect(signing).toBeGreaterThanOrEqual(0);
     expect(audit).toBeGreaterThan(signing);
     expect(publication).toBeGreaterThan(audit);
+  });
+
+  test("requires the signed Windows audit job instead of accepting a rebuild-only workflow", () => {
+    expect(signedWindowsUpdateAuditPassed({
+      jobs: [{ name: "Audit signed Windows update", conclusion: "success" }],
+    })).toBe(true);
+    expect(signedWindowsUpdateAuditPassed({
+      jobs: [
+        { name: "Audit signed Windows update", conclusion: "skipped" },
+        { name: "Finalize desktop release assets", conclusion: "success" },
+      ],
+    })).toBe(false);
   });
 
   test("checks the offline Windows key before creating release state", () => {
