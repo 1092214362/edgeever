@@ -49,7 +49,7 @@ try {
 
   await verifyEntry({
     filePath: entryPath,
-    readySelector: "#root > *",
+    readySelector: '[data-edgeever-renderer-ready="true"] #root > *',
     label: "Desktop renderer",
   });
   await verifyEntry({

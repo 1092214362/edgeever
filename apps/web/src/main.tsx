@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React from "react";
+import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, HashRouter } from "react-router";
 import { registerSW } from "virtual:pwa-register";
@@ -9,11 +9,17 @@ import { emitPwaUpdateNotice } from "./lib/pwa-update-notice";
 import { withEnvironmentTitlePrefix } from "./lib/environment-title";
 import { initializeTheme, ThemeProvider } from "./components/ThemeProvider";
 import { DesktopRendererErrorBoundary } from "./components/DesktopRendererErrorBoundary";
+import { reportDesktopRendererReadyAfterPaint } from "./lib/desktop-renderer-ready";
 import "./styles/globals.css";
 
 const PWA_UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1_000;
 const DEVELOPMENT_PWA_RELOAD_KEY = "edgeever.dev-pwa-reset";
 const isDesktopRenderer = __EDGEEVER_DESKTOP_BUILD__ || window.edgeeverDesktop?.isAvailable === true;
+
+const DesktopBootstrapReady = () => {
+  useEffect(() => reportDesktopRendererReadyAfterPaint(), []);
+  return null;
+};
 
 if (import.meta.env.DEV) {
   if (__EDGEEVER_DEVELOPMENT_PROFILE__) {
@@ -116,6 +122,7 @@ const mountApp = () => {
   }).render(
     <React.StrictMode>
       <DesktopRendererErrorBoundary>
+        <DesktopBootstrapReady />
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <Router>
@@ -126,7 +133,6 @@ const mountApp = () => {
       </DesktopRendererErrorBoundary>
     </React.StrictMode>
   );
-  queueMicrotask(() => window.edgeeverDesktop?.rendererBootstrapReady());
 };
 
 const bootstrap = async () => {
