@@ -25,6 +25,7 @@ import { trayIconPath } from "./tray-icon.mjs";
 import { writeRichClipboard } from "./clipboard-write.mjs";
 import { LocalDataResetError, scheduleMacLocalDataReset } from "./local-data-reset.mjs";
 import { buildDesktopDiagnosticIssueUrl, normalizeDesktopDiagnostic } from "./desktop-diagnostics.mjs";
+import { createRendererStartupGuard } from "./renderer-startup-guard.mjs";
 import {
   fetchTrustedWindowsUpdate,
   verifyDownloadedWindowsUpdate,
@@ -96,6 +97,8 @@ let sidecarRestartAttempts = 0;
 let sidecarRestartInFlight = false;
 let localDataResetScheduled = false;
 let rendererCrashDialogOpen = false;
+let rendererStartupFailureDialogOpen = false;
+let rendererStartupGuard = null;
 let recoveredAfterAbnormalExit = false;
 const updateCheckIntervalMs = 60 * 60 * 1_000;
 const updateCheckFocusThrottleMs = 15 * 60 * 1_000;
@@ -220,6 +223,39 @@ const handleRendererProcessGone = async (details) => {
   } finally {
     rendererCrashDialogOpen = false;
   }
+};
+
+const showRendererStartupFailure = async (details) => {
+  if (isQuitting || rendererStartupFailureDialogOpen || !mainWindow || mainWindow.isDestroyed()) return;
+  rendererStartupFailureDialogOpen = true;
+  const isChinese = app.getLocale().toLowerCase().startsWith("zh");
+  const reason = String(details?.message || details?.errorDescription || details?.kind || "unknown").slice(0, 1000);
+  await writeDiagnostic("renderer.startup-failed", { ...details, reason });
+  try {
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: "error",
+      title: isChinese ? "EdgeEver 启动失败" : "EdgeEver failed to start",
+      message: isChinese ? "页面没有成功启动。错误已经写入诊断日志。" : "The page did not start successfully. The error was written to the diagnostic log.",
+      detail: `${reason}\n\n${logPath()}`,
+      buttons: isChinese ? ["打开日志位置", "重新加载", "关闭"] : ["Show log", "Reload", "Close"],
+      defaultId: 1,
+      cancelId: 2,
+    });
+    if (result.response === 0) shell.showItemInFolder(logPath());
+    if (result.response === 1 && mainWindow && !mainWindow.isDestroyed()) {
+      armRendererStartupGuard();
+      mainWindow.webContents.reload();
+    }
+  } finally {
+    rendererStartupFailureDialogOpen = false;
+  }
+};
+
+const armRendererStartupGuard = () => {
+  rendererStartupGuard = createRendererStartupGuard({
+    onFailure: (details) => { void showRendererStartupFailure(details); },
+  });
+  rendererStartupGuard.arm();
 };
 
 const execFileAsync = (command, argumentsList) => new Promise((resolve, reject) => {
@@ -818,6 +854,7 @@ const createWindow = async () => {
     },
   });
   rendererReady = false;
+  armRendererStartupGuard();
   if (state.isMaximized) mainWindow.maximize();
   mainWindow.on("resize", () => void saveWindowState());
   mainWindow.on("move", () => void saveWindowState());
@@ -840,12 +877,16 @@ const createWindow = async () => {
       validatedURL,
       isMainFrame,
     });
+    if (isMainFrame && errorCode !== -3) {
+      rendererStartupGuard?.fail({ kind: "load-failed", errorCode, errorDescription, validatedURL });
+    }
   });
   mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
     void writeDiagnostic("renderer.preload-error", {
       preloadPath,
       message: String(error?.message || error).slice(0, 2000),
     });
+    rendererStartupGuard?.fail({ kind: "preload-error", message: String(error?.message || error).slice(0, 2000) });
   });
   mainWindow.webContents.on("console-message", (details) => {
     if (details.level !== "error") return;
@@ -1010,6 +1051,10 @@ app.whenReady().then(async () => {
     rendererReady = true;
     flushPendingDesktopCommands();
     flushPendingMarkdownImport();
+  });
+  ipcMain.on("desktop:renderer-bootstrap-ready", (event) => {
+    if (event.sender !== mainWindow?.webContents) return;
+    if (rendererStartupGuard?.complete()) void writeDiagnostic("renderer.bootstrap-ready");
   });
   ipcMain.on("desktop:api-base-url-sync", (event) => { event.returnValue = configuredApiBaseUrl; });
   ipcMain.on("desktop:session-token-sync", (event) => { event.returnValue = desktopSessionToken; });

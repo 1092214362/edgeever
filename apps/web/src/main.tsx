@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
+import { BrowserRouter, HashRouter } from "react-router";
 import { registerSW } from "virtual:pwa-register";
 import { App } from "./app/App";
 import "./i18n";
@@ -13,6 +13,7 @@ import "./styles/globals.css";
 
 const PWA_UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1_000;
 const DEVELOPMENT_PWA_RELOAD_KEY = "edgeever.dev-pwa-reset";
+const isDesktopRenderer = __EDGEEVER_DESKTOP_BUILD__ || window.edgeeverDesktop?.isAvailable === true;
 
 if (import.meta.env.DEV) {
   if (__EDGEEVER_DEVELOPMENT_PROFILE__) {
@@ -106,6 +107,7 @@ const mountApp = () => {
   }
 
   initializeTheme();
+  const Router = isDesktopRenderer ? HashRouter : BrowserRouter;
 
   createRoot(root, {
     onUncaughtError(error, errorInfo) {
@@ -116,14 +118,15 @@ const mountApp = () => {
       <DesktopRendererErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <BrowserRouter>
+            <Router>
               <App />
-            </BrowserRouter>
+            </Router>
           </ThemeProvider>
         </QueryClientProvider>
       </DesktopRendererErrorBoundary>
     </React.StrictMode>
   );
+  queueMicrotask(() => window.edgeeverDesktop?.rendererBootstrapReady());
 };
 
 const bootstrap = async () => {
@@ -132,7 +135,7 @@ const bootstrap = async () => {
     if (reloading) {
       return;
     }
-  } else {
+  } else if (!isDesktopRenderer) {
     registerProductionServiceWorker();
   }
 
