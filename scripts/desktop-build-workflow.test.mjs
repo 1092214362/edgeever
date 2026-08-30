@@ -61,12 +61,22 @@ describe("desktop release workflow", () => {
   });
 
   test("reports timings after builds without instrumenting native build steps", () => {
-    expect(workflow).toContain("name: Report macOS build timings");
+    expect(workflow).toContain("name: Report desktop build timings");
     expect(workflow).toContain("--platform desktop");
     expect(workflow).toContain("name: edgeever-desktop-build-timings");
     expect(mobileWorkflow).toContain("name: Report Android build timings");
     expect(mobileWorkflow).toContain("--platform android");
     expect(mobileWorkflow).toContain("name: edgeever-android-build-timings");
     expect(mobileWorkflow).not.toContain("Build signed release APK for GitHub Release\n        run: time");
+  });
+
+  test("builds an unsigned Windows x64 Preview and audits its signed update metadata", () => {
+    expect(workflow).toContain("name: Windows x64 unsigned Preview");
+    expect(workflow).toContain("EDGE_EVER_DESKTOP_TARGET: win");
+    expect(workflow).toContain("Get-AuthenticodeSignature");
+    expect(workflow).toContain("create-windows-update-metadata.mjs");
+    expect(workflow).toContain("allow-missing-windows-signature");
+    expect(workflow).toContain("name: Audit signed Windows update");
+    expect(workflow).toContain("verify-windows-update-release.mjs");
   });
 });

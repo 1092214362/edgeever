@@ -44,6 +44,25 @@ describe("release automation", () => {
     expect(publication).toBeGreaterThan(signatureGate);
   });
 
+  test("blocks publication until the offline-signed Windows update passes an independent audit", () => {
+    const releaseSource = readFileSync(new URL("./release.mjs", import.meta.url), "utf8");
+    const signing = releaseSource.indexOf("signDraftWindowsUpdate({");
+    const audit = releaseSource.indexOf('label: "Draft signed Windows update audit"');
+    const publication = releaseSource.indexOf('"--draft=false"');
+    expect(signing).toBeGreaterThanOrEqual(0);
+    expect(audit).toBeGreaterThan(signing);
+    expect(publication).toBeGreaterThan(audit);
+  });
+
+  test("checks the offline Windows key before creating release state", () => {
+    const releaseSource = readFileSync(new URL("./release.mjs", import.meta.url), "utf8");
+    const releaseMain = releaseSource.indexOf("const releaseMain = async");
+    const keyCheck = releaseSource.indexOf("assertWindowsUpdateSigningKey({", releaseMain);
+    const issueCreation = releaseSource.indexOf('"issue",\n      "create"', releaseMain);
+    expect(keyCheck).toBeGreaterThan(releaseMain);
+    expect(issueCreation).toBeGreaterThan(keyCheck);
+  });
+
   test("starts Play delivery as soon as Android preparation finishes", () => {
     const releaseSource = readFileSync(new URL("./release.mjs", import.meta.url), "utf8");
     const androidReady = releaseSource.lastIndexOf("const androidReleaseReady");
@@ -337,6 +356,7 @@ describe("release automation", () => {
     expect(body).toContain("- 并行检查。");
     expect(body).toContain("## Commit coverage audit");
     expect(body).toContain("Play-signed Android arm64 APK");
+    expect(body).toContain("unsigned Windows x64 Preview");
     expect(body).toContain("- Change 1: `aaaaaaaa`");
     expect(body).toContain("- Excluded `bbbbbbbb`: test-only coverage");
   });
