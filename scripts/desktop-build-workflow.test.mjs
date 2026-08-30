@@ -20,6 +20,10 @@ describe("desktop release workflow", () => {
     const releasePlan = mobileWorkflow.indexOf("      - name: Compare with previous formal release");
     expect(regressionTests).toBeGreaterThanOrEqual(0);
     expect(regressionTests).toBeLessThan(releasePlan);
+    expect(workflow).toContain('gh release view "$CURRENT_TAG"');
+    expect(mobileWorkflow).toContain('gh release view "$CURRENT_TAG"');
+    expect(workflow).not.toContain('releases/tags/${CURRENT_TAG}');
+    expect(mobileWorkflow).not.toContain('releases/tags/${CURRENT_TAG}');
   });
 
   test("rejects a published APK that is not Play-signed and restores Draft state", () => {
