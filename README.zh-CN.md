@@ -71,11 +71,13 @@ Cloudflare 在线部署可以选择以下两种方式之一：
 ```text
 请在线完成 EdgeEver 部署：
 1. Fork https://github.com/tianma-if/edgeever。
-2. 将这个 Fork 导入 Cloudflare Workers & Pages。
-3. 创建 D1 `edgeever` 与 R2 `edgeever-resources`，设置
-   `EDGE_EVER_AUTH_PASSWORD` Worker Secret，并配置生产环境 `main` 构建。
-4. 启动首次构建，验证 `/api/health`、`/api/openapi.json` 和登录。
-5. 启用并手动运行一次名为 `Update deployed EdgeEver` 的 GitHub Actions 工作流，
+2. 在 Cloudflare 中创建 D1 `edgeever` 与 R2 `edgeever-resources`。
+3. 将这个 Fork 导入 Cloudflare Workers & Pages，并将 `main` 设为生产分支。
+4. 添加一个名为 `EDGE_EVER_AUTH_PASSWORD` 的 Worker Secret，值为用户自行设置的
+   管理员登录密码，建议使用至少 32 个字符且仅用于此实例的强密码。
+5. 启动首次构建，验证 `/api/health`、`/api/openapi.json`，并使用用户名 `admin`
+   和配置的密码验证登录。
+6. 启用并手动运行一次名为 `Update deployed EdgeEver` 的 GitHub Actions 工作流，
    以便后续自动同步更新，持续获得 EdgeEver 最新的产品特性和问题修复。
 ```
 
@@ -83,13 +85,14 @@ Cloudflare 在线部署可以选择以下两种方式之一：
 
 ### 方案二：手动在线部署
 
-仅需在网页端完成 5 步极简配置：
+仅需在网页端完成 6 步配置：
 
 1. **Fork 仓库**：在 GitHub 点击右上角 **Fork**，将项目 Fork 到您的个人账户下。
-2. **启用 Actions**：进入 Fork 的 **Actions** 标签页，点击 **I understand my workflows, go ahead and enable them**，确保名为 **Update deployed EdgeEver** 的 GitHub Actions 工作流能够自动运行，从而持续获得 **EdgeEver** 最新的产品特性和问题修复。
-3. **导入 Cloudflare**：登录 Cloudflare 控制台，进入 **Workers & Pages**，选择导入该 Fork 仓库。
-4. **创建资源与登录凭据**：创建 D1 `edgeever` 与 R2 `edgeever-resources`，并添加 Worker Secret `EDGE_EVER_AUTH_PASSWORD` 作为管理员登录密码。binding 由部署命令生成，不要修改 Fork 中的文件。
-5. **启动构建与验证**：导入仓库后直接启动首次构建。部署完成后访问 `/api/health`，确认返回 `200` 即可开始使用。
+2. **创建 Cloudflare 资源**：创建 D1 `edgeever` 与 R2 `edgeever-resources`。
+3. **导入并配置项目**：在 Cloudflare **Workers & Pages** 中导入该 Fork，并将 `main` 设为生产分支。binding 由部署命令生成，不要修改 Fork 中的文件。
+4. **设置管理员密码**：添加一个名为 `EDGE_EVER_AUTH_PASSWORD` 的 Worker Secret，并将其值设为您要使用的管理员登录密码。建议使用至少 32 个字符且仅用于此实例的强密码。
+5. **首次构建与验证**：启动首次构建。部署完成后访问 `/api/health`，确认返回 `200`，并使用用户名 `admin` 和配置的密码验证登录。
+6. **启用自动更新**：进入 Fork 的 **Actions** 标签页，点击 **I understand my workflows, go ahead and enable them**，然后手动运行一次 **Update deployed EdgeEver**，确保后续能够自动获得 EdgeEver 的最新功能与修复。
 
 > 📖 包含具体参数与构建命令的详细步骤，请查看 [在线部署完整文档](docs/deploy-cloudflare-button.zh-CN.md)。
 

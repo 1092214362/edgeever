@@ -71,11 +71,15 @@ Copy the prompt below directly into an AI Agent (such as Codex, Claude, Cursor, 
 ```text
 Deploy EdgeEver online:
 1. Fork https://github.com/tianma-if/edgeever.
-2. Import the Fork into Cloudflare Workers & Pages.
-3. Create D1 `edgeever` and R2 `edgeever-resources`, set the
-   `EDGE_EVER_AUTH_PASSWORD` Worker Secret, and configure the production `main` build.
-4. Start the first build and verify `/api/health`, `/api/openapi.json`, and login.
-5. Enable and manually run the GitHub Actions workflow named `Update deployed EdgeEver`
+2. Create D1 `edgeever` and R2 `edgeever-resources` in Cloudflare.
+3. Import the Fork into Cloudflare Workers & Pages and use `main` as the production
+   branch.
+4. Add a Worker Secret named `EDGE_EVER_AUTH_PASSWORD`, using a password chosen by the
+   user as its value. Prefer a strong password of at least 32 characters that is unique
+   to this instance.
+5. Start the first build, verify `/api/health` and `/api/openapi.json`, then verify login
+   with username `admin` and the configured password.
+6. Enable and manually run the GitHub Actions workflow named `Update deployed EdgeEver`
    once so the Fork can automatically receive the latest EdgeEver features and fixes.
 ```
 
@@ -83,13 +87,14 @@ Deploy EdgeEver online:
 
 ### Option B: Manual Online Deployment
 
-Complete setup in 5 simple web steps:
+Complete setup in 6 web steps:
 
 1. **Fork the Repository**: Click **Fork** at the top right of GitHub to fork EdgeEver into your personal account.
-2. **Enable Actions**: Open the Fork's **Actions** tab and click **I understand my workflows, go ahead and enable them** so the GitHub Actions workflow named **Update deployed EdgeEver** can run automatically, keeping you up to date with the latest **EdgeEver** features and fixes.
-3. **Import into Cloudflare**: Log into the Cloudflare Dashboard, navigate to **Workers & Pages**, and choose to import your Fork repository.
-4. **Create Resources & Credentials**: Create D1 `edgeever` and R2 `edgeever-resources`, then set the Worker Secret `EDGE_EVER_AUTH_PASSWORD` as your admin password. The deploy command creates the bindings; do not edit Fork files.
-5. **Build & Verify**: Start the first build after importing the repository. Once complete, visit `/api/health` to verify a `200` response before logging in.
+2. **Create Cloudflare Resources**: Create D1 `edgeever` and R2 `edgeever-resources`.
+3. **Import & Configure the Project**: Import the Fork into Cloudflare **Workers & Pages** and use `main` as the production branch. The deploy command creates the bindings; do not edit Fork files.
+4. **Set the Administrator Password**: Add a Worker Secret named `EDGE_EVER_AUTH_PASSWORD` and set its value to your chosen administrator login password. Prefer a strong password of at least 32 characters that is unique to this instance.
+5. **Build & Verify**: Start the initial build. Once deployed, confirm `/api/health` returns `200`, then verify login with username `admin` and the configured password.
+6. **Enable Automatic Updates**: Open the Fork's **Actions** tab, click **I understand my workflows, go ahead and enable them**, then manually run **Update deployed EdgeEver** once so the Fork can automatically receive future EdgeEver features and fixes.
 
 > 📖 For full step-by-step instructions and configuration details, see the [Online Deployment Guide](docs/deploy-cloudflare-button.md).
 
