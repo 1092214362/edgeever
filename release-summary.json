@@ -1,23 +1,11 @@
 {
-  "version": "1.51.0",
+  "version": "1.51.1",
   "changes": {
     "en-US": [
-      "Upload, restore, and use attachments up to 1 GiB with streamed processing that avoids excessive memory use.",
-      "Deploy EdgeEver with Docker from a new guided entry on the product website.",
-      "Find desktop and mobile downloads more easily, with Windows presented as a standard supported platform.",
-      "Share multiple items into the Android app in succession without the previous share reappearing.",
-      "Open Flomo migration directly from the website navigation.",
-      "Follow clearer Cloudflare deployment guidance, including brute-force login protection recommendations.",
-      "Join the EdgeEver WeChat community using the refreshed group QR code."
+      "Restore the macOS, Windows, Android, and iOS icons in the desktop download menu."
     ],
     "zh-CN": [
-      "支持上传、恢复和使用最大 1 GiB 的附件，并通过流式处理避免占用过多内存。",
-      "可从产品官网新增的引导入口使用 Docker 部署 EdgeEver。",
-      "更容易找到桌面端和移动端下载入口，Windows 现作为标准支持平台展示。",
-      "可连续向 Android 应用分享多个内容，之前的分享不再重复出现。",
-      "可从官网导航直接进入 Flomo 迁移入口。",
-      "Cloudflare 部署指引更加清晰，并补充暴力登录防护建议。",
-      "可使用更新后的群二维码加入 EdgeEver 微信社区。"
+      "修复桌面端下载菜单中 macOS、Windows、Android 和 iOS 图标无法显示的问题。"
     ]
   }
 }
