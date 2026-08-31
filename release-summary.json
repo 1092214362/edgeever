@@ -1,13 +1,23 @@
 {
-  "version": "1.50.0",
+  "version": "1.51.0",
   "changes": {
     "en-US": [
-      "System information now identifies whether a self-hosted Docker deployment is running the official EdgeEver image or a custom image, making support diagnostics clearer.",
-      "Windows Preview now launches the packaged interface reliably, avoids a missing Visual C++ runtime dependency, and shows actionable diagnostics instead of a silent white screen when startup fails."
+      "Upload, restore, and use attachments up to 1 GiB with streamed processing that avoids excessive memory use.",
+      "Deploy EdgeEver with Docker from a new guided entry on the product website.",
+      "Find desktop and mobile downloads more easily, with Windows presented as a standard supported platform.",
+      "Share multiple items into the Android app in succession without the previous share reappearing.",
+      "Open Flomo migration directly from the website navigation.",
+      "Follow clearer Cloudflare deployment guidance, including brute-force login protection recommendations.",
+      "Join the EdgeEver WeChat community using the refreshed group QR code."
     ],
     "zh-CN": [
-      "系统信息现在会标识 Docker 自托管部署使用的是 EdgeEver 官方镜像还是自定义镜像，便于排查部署问题。",
-      "Windows 预览版现在可以可靠启动打包界面，不再依赖缺失的 Visual C++ 运行库；启动失败时会显示可操作的诊断信息，而不是无提示白屏。"
+      "支持上传、恢复和使用最大 1 GiB 的附件，并通过流式处理避免占用过多内存。",
+      "可从产品官网新增的引导入口使用 Docker 部署 EdgeEver。",
+      "更容易找到桌面端和移动端下载入口，Windows 现作为标准支持平台展示。",
+      "可连续向 Android 应用分享多个内容，之前的分享不再重复出现。",
+      "可从官网导航直接进入 Flomo 迁移入口。",
+      "Cloudflare 部署指引更加清晰，并补充暴力登录防护建议。",
+      "可使用更新后的群二维码加入 EdgeEver 微信社区。"
     ]
   }
 }
