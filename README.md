@@ -161,6 +161,10 @@ Welcome to the EdgeEver community. Join us to discuss the EdgeEver experience, r
 
 👉 [Join the EdgeEver Telegram group](https://t.me/+wwUx1BYLrIdiZjY1)
 
+## Plugins and Themes
+
+EdgeEver supports device-local plugins and code-free themes on Web and desktop, installable from the Plugin Marketplace, GitHub, or a Manifest URL. Developers can use `@edgeever/plugin-api`; see the [plugin development guide](docs/plugin-development.md).
+
 ## Tech Stack
 
 - Bun workspace monorepo with Web, API, official site, and shared type package.

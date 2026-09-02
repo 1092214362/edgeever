@@ -159,6 +159,10 @@ iOS 客户端需要使用非中国大陆区 Apple ID 下载。
   <img src="assets/wechat-group-qr.jpg" alt="EdgeEver AI 交流群二维码" width="260" />
 </p>
 
+## 插件与主题
+
+EdgeEver 的 Web 与桌面端支持安装在当前设备的插件和无代码主题，可从插件市场、GitHub 或 Manifest 地址安装。开发者可使用 `@edgeever/plugin-api`，详情参阅[插件开发文档](docs/plugin-development.zh-CN.md)。
+
 ## 技术栈
 
 - Bun workspace monorepo，包含 Web、API、官网与共享类型包。
