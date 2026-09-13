@@ -1,19 +1,13 @@
 {
-  "version": "1.69.0",
+  "version": "1.70.0",
   "changes": {
     "en-US": [
-      "Add paper editor themes such as Letter, Guide, Blueprint, and Journal. Copy to WeChat uses the same style, and a live phone preview follows editor scroll.",
-      "Collapse the notebook sidebar into an icon rail to give the editor more room.",
-      "Play common video attachments inline, and delete in-note video and file attachment cards.",
-      "Enter Android note editing without remounting the viewer, so the editor no longer loses its place.",
-      "List EdgeEver Tasks as an official marketplace plugin, and fix GitHub plugin release tags and plugin panel tab switching."
+      "Replace the Xiaohongshu and X/Twitter factory AI prompts with Extract tasks and Continue writing. Opening the assistant on a whole note now starts on a custom instruction. After upgrade, those two factory presets—including edited copies—are removed; prompts you created yourself are kept.",
+      "Keep table layout stable when switching editor themes, give themes original four-character Chinese names, and balance desktop editor gutters so the reading column fills leftover width."
     ],
     "zh-CN": [
-      "新增暖笺、教程、蓝图、刊物等纸稿编辑器主题，复制到公众号时沿用同一风格，并提供跟随滚动的实时手机预览。",
-      "笔记本侧栏可收成图标轨道，给编辑区腾出更多空间。",
-      "常见视频附件可在笔记内直接播放，也可直接删除笔记中的视频和文件附件卡片。",
-      "Android 进入笔记编辑时不再重新挂载阅读视图，避免编辑状态丢失。",
-      "插件市场列出官方 EdgeEver Tasks，并修复 GitHub 插件发行标签与面板标签页切换。"
+      "内置 AI 提示改为笔记工作流：用「提取待办」和「继续写作」替换小红书、推特风格模板；对整篇笔记打开助手时默认进入自定义指令。升级后这两个出厂模板（含已编辑版本）会被移除，自建提示词不受影响。",
+      "切换编辑器主题时表格不再变形；主题使用独立四字中文名；桌面编辑区左右留白更均衡，阅读栏会填满中间剩余宽度。"
     ]
   }
 }
