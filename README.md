@@ -271,9 +271,9 @@ Web, PWA, and desktop upload memo edits after 30 seconds of inactivity and check
 
 - EdgeEver's note-taking product design was also informed by the publicly available product experiences of mature note-taking tools such as [Evernote](https://evernote.com/). The related features were independently designed and implemented by EdgeEver.
 - The product design of mind-map and visual-diagram notes was informed by the publicly available product experiences of [XMind](https://xmind.com/) and [ProcessOn](https://www.processon.com/). These features were independently designed and implemented by EdgeEver.
-- The "Minimal Green" theme typography layout is inspired by [obsidian-minimal](https://github.com/kepano/obsidian-minimal).
-- The "Ruled Green" theme typography layout is inspired by [Outline](https://github.com/outline/outline).
-- Paper editor themes (Letter, Guide, Blueprint, Journal, Stance, Stub, Brief, Outline, Whitespace, and Grove) take editorial cues from the public typography presets on [墨格](https://moyufang.cn/editor). The implementations, assets, and copy are original to EdgeEver.
+- The "Minimal Jade" theme typography layout is inspired by [obsidian-minimal](https://github.com/kepano/obsidian-minimal).
+- The "Lined Jade" theme typography layout is inspired by [Outline](https://github.com/outline/outline).
+- Editor themes such as Warm Page, Lesson Page, Navy Draft, Lead Issue, Clay Review, Amber Notes, Teal Aside, Violet Index, Mist Page, and Forest Notes take heading hierarchy, chapter numerals, and quote structure cues from the public typography presets on [墨格](https://moyufang.cn/editor). Names, assets, and implementations are original to EdgeEver.
 
 ## Trademark and Brand Use
 

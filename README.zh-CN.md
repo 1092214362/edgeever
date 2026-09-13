@@ -268,9 +268,9 @@ Web、PWA 与桌面端会在停止编辑 30 秒后上传笔记，并在页面可
 
 - EdgeEver 的笔记产品设计也参考了 [Evernote（印象笔记）](https://evernote.com/) 等成熟笔记工具的公开产品体验。相关功能由 EdgeEver 独立设计与实现。
 - 思维导图与可视化图表笔记的产品设计参考了 [XMind](https://xmind.com/) 和 [ProcessOn](https://www.processon.com/) 等图表工具的公开产品体验。相关功能由 EdgeEver 独立设计与实现。
-- “极简绿”主题排版架构借鉴于 [obsidian-minimal](https://github.com/kepano/obsidian-minimal)。
-- “描边绿”主题排版架构借鉴于 [Outline](https://github.com/outline/outline)。
-- 暖笺、教程、蓝图、刊物、立场、存根、内参、纲要、留白、草木等纸稿编辑器主题，参考了 [墨格](https://moyufang.cn/editor) 公开排版方案的标题层级、章节数字与引言结构。实现、素材与文案均由 EdgeEver 独立完成。
+- “极简青翠”主题排版架构借鉴于 [obsidian-minimal](https://github.com/kepano/obsidian-minimal)。
+- “线描翠绿”主题排版架构借鉴于 [Outline](https://github.com/outline/outline)。
+- 日暖素笺、青页讲义、夜蓝制图、铅字期刊、陶色时评、琥珀田记、青玉编按、堇色目录、雾色静页、林间手记等编辑器主题，标题层级、章节数字与引言结构参考了 [墨格](https://moyufang.cn/editor) 的公开排版方案。名称、素材与实现均由 EdgeEver 独立完成。
 
 ## 商标与品牌使用
 

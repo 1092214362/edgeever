@@ -110,8 +110,8 @@ describe("custom editor theme files", () => {
   });
 
   test("localizes factory custom theme names without rewriting user names", () => {
-    const copy = { defaultName: "自定义主题", newName: (index) => `新主题 ${index}` };
-    expect(localizeStoredCustomThemeName(DEFAULT_CUSTOM_EDITOR_THEME_NAME, copy)).toBe("自定义主题");
+    const copy = { defaultName: "自定主题", newName: (index) => `新主题 ${index}` };
+    expect(localizeStoredCustomThemeName(DEFAULT_CUSTOM_EDITOR_THEME_NAME, copy)).toBe("自定主题");
     expect(localizeStoredCustomThemeName("New theme 2", copy)).toBe("新主题 2");
     expect(localizeStoredCustomThemeName("Calm / Green", copy)).toBe("Calm / Green");
   });

@@ -67,7 +67,7 @@ EdgeEver is engineered to provide a distraction-free, elegant writing experience
 - **Reading Protection Mode**: When reading or reviewing notes, press `Cmd/Ctrl + E` to toggle read-only protection, locking the editor to prevent accidental edits while browsing; press it again to seamlessly resume editing.
 
 ### 🎭 Curated Typography Themes & Publishing Export
-- **Preset Editor Themes**: Switch effortlessly between `WeChat Green`, `Mint Green`, `Minimal Green`, `Ruled Green`, and paper styles such as Letter, Guide, and Blueprint.
+- **Preset Editor Themes**: Switch effortlessly between `WeChat Green`, `Fresh Mint`, `Minimal Jade`, `Lined Jade`, and styles such as Warm Page, Lesson Page, and Navy Draft.
 - **One-Click Publishing Export**: Built for publishers and bloggers. Click the **WeChat Icon** in the top bar to format your note with inline CSS. Paste directly into WeChat Official Account editor, Substack, Medium, or WordPress while preserving layout and syntax highlighting.
 
 ### 🖼️ 8 Exquisite Social Poster Themes
