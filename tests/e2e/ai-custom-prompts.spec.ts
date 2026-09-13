@@ -309,7 +309,7 @@ test.describe("AI custom prompts", () => {
 
     const instruction = assistant.getByRole("textbox", { name: "告诉 AI 你想怎么处理" });
     await instruction.fill("写一首诗");
-    await selectAction(assistant, "翻译");
+    await selectAction(assistant, "全文翻译");
     await expect(assistant.getByRole("textbox", { name: "输入要处理的内容" })).toHaveValue("写一首诗");
     await assistant.getByRole("button", { name: "生成", exact: true }).click();
     await expect(result).toHaveText("Write a poem.");
@@ -658,7 +658,7 @@ test.describe("AI custom prompts", () => {
     await page.getByRole("button", { name: "打开 AI 写作助手", exact: true }).click();
 
     const dialog = page.getByRole("dialog", { name: "AI 笔记助手" });
-    await selectAction(dialog, "总结");
+    await selectAction(dialog, "精简总结");
     await dialog.getByRole("button", { name: "生成", exact: true }).click();
     await expect(dialog.getByText("AI 插入段落", { exact: true })).toBeVisible();
     const copyButton = dialog.getByRole("button", { name: "复制结果", exact: true });
@@ -753,13 +753,13 @@ test.describe("AI custom prompts", () => {
     await page.evaluate(() => window.localStorage.removeItem("edgeever.aiAssistant.lastAction"));
     const dialog = await openMemoAssistant(page, memo.id, notebookName);
     await expect(dialog.getByRole("combobox", { name: "处理方式" })).toHaveText("自定义指令");
-    await selectAction(dialog, "翻译");
-    await expect(dialog.getByRole("combobox", { name: "处理方式" })).toHaveText("翻译");
+    await selectAction(dialog, "全文翻译");
+    await expect(dialog.getByRole("combobox", { name: "处理方式" })).toHaveText("全文翻译");
     await dialog.getByRole("button", { name: "关闭", exact: true }).click();
     await expect(dialog).toBeHidden();
 
     await page.getByRole("button", { name: "打开 AI 写作助手", exact: true }).click();
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("combobox", { name: "处理方式" })).toHaveText("翻译");
+    await expect(dialog.getByRole("combobox", { name: "处理方式" })).toHaveText("全文翻译");
   });
 });

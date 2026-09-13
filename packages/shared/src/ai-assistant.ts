@@ -61,8 +61,8 @@ export const AI_SELECTED_TEXT_ACTIONS: readonly AiAction[] = [
   "translate",
   "improve-writing",
   "make-shorter",
-  "rewrite-proofread",
-  "simplify-language",
+  "extract-todos",
+  "continue-writing",
   "custom",
 ];
 
@@ -71,8 +71,8 @@ export const AI_WHOLE_NOTE_ACTIONS: readonly AiAction[] = [
   "translate",
   "improve-writing",
   "make-shorter",
-  "rewrite-proofread",
-  "simplify-language",
+  "extract-todos",
+  "continue-writing",
   "custom",
 ];
 

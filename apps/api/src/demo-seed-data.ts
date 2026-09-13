@@ -159,7 +159,7 @@ sequenceDiagram
 在正文空白行直接按下 **\`空格键 (Space)\`**、输入 **\`/ai\`**、通过 **\`/\`** 斜杠指令菜单，或选中文本点击浮动工具栏中的 **AI 按钮**，即可即时呼出 AI 写作助手面板：
 - **精炼总结与要点提取**：一键压缩提炼全文核心结论、提取待办事项与关键行动项；
 - **格式保真智能翻译**：在严格保留原有 Markdown、数学公式、链接与代码块的前提下，精准翻译多国语言；
-- **内容重塑与风格改写**：支持改进表达、修正错别字与语法、转为社交媒体（如小红书/推特）风格，或按上下文顺滑续写；
+- **内容重塑与续写**：支持润色与精炼表达，或按上下文顺滑续写；
 - **BYOK 隐私直连 (Bring Your Own Key)**：支持直连 OpenAI、Anthropic Claude、Google Gemini、DeepSeek 及各类 OpenAI 兼容的中继 API，数据完全由端侧直发，不经过任何第三方中转。
 
 ### 2️⃣ 开放 MCP 协议 (Model Context Protocol)
@@ -378,7 +378,7 @@ sequenceDiagram
 Press the **\`Space\` bar** in an empty block, type **\`/ai\`**, use the **\`/\`** slash command menu, or select text and click the **AI button** on the floating toolbar to instantly summon the AI writing assistant:
 - **Summarization & Action Items**: Condense documents into key takeaways, conclusions, and actionable todos;
 - **Format-Preserving Translation**: Translate accurately into multiple languages while strictly preserving Markdown, math equations, links, and code blocks;
-- **Rewriting & Style Transformation**: Improve phrasing, fix spelling/grammar, adapt to social media styles (e.g. Xiaohongshu / Twitter), or continue writing seamlessly;
+- **Rewriting & Continuation**: Polish phrasing, make writing concise, or continue writing seamlessly;
 - **BYOK Direct Key (Bring Your Own Key)**: Direct client-side connection with OpenAI, Anthropic Claude, Google Gemini, DeepSeek, and OpenAI-compatible relays with zero third-party data transit.
 
 ### 2️⃣ Model Context Protocol (MCP) Integration

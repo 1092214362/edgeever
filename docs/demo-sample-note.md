@@ -132,7 +132,7 @@ sequenceDiagram
 Press the **`Space` bar** in an empty block, type **`/ai`**, use the **`/`** slash command menu, or select text and click the **AI button** on the floating toolbar to instantly summon the AI writing assistant:
 - **Summarization & Action Items**: Condense documents into key takeaways, conclusions, and actionable todos;
 - **Format-Preserving Translation**: Translate accurately into multiple languages while strictly preserving Markdown, math equations, links, and code blocks;
-- **Rewriting & Style Transformation**: Improve phrasing, fix spelling/grammar, adapt to social media styles (e.g. Xiaohongshu / Twitter), or continue writing seamlessly;
+- **Rewriting & Continuation**: Polish phrasing, make writing concise, or continue writing seamlessly;
 - **BYOK Direct Key (Bring Your Own Key)**: Direct client-side connection with OpenAI, Anthropic Claude, Google Gemini, DeepSeek, and OpenAI-compatible relays with zero third-party data transit.
 
 ### 2️⃣ Model Context Protocol (MCP) Integration
