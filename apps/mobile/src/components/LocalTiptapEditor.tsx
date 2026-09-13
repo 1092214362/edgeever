@@ -20,10 +20,9 @@ import {
   canReplaceAiSource,
   createNativeUnsupportedContentExtensions,
   docToMarkdown,
-  getDefaultAiAction,
   getDefaultAiTargetLanguage,
   readStoredAiAssistantLastActionPreference,
-  resolveAiAssistantLastAction,
+  resolveAiAssistantOpenAction,
   writeStoredAiAssistantLastActionPreference,
   getAiDocumentFingerprint,
   getRichTextAiSelectionContext,
@@ -1071,8 +1070,8 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       content: editor.state.doc.slice(from, to).content.toJSON(),
     } as EditorDoc, props.baseUrl)).trim();
     if (!markdown) return false;
-    const resolved = resolveAiAssistantLastAction({
-      fallbackAction: getDefaultAiAction(!wholeNote),
+    const resolved = resolveAiAssistantOpenAction({
+      hasSelection: !wholeNote,
       preference: readStoredAiAssistantLastActionPreference(wholeNote ? "wholeNote" : "selected"),
       prompts: aiPrompts,
     });

@@ -6,13 +6,12 @@ import {
   AI_TONES,
   AI_WHOLE_NOTE_ACTIONS,
   buildAiAssistantLastActionPreference,
-  getDefaultAiAction,
   getDefaultAiTargetLanguage,
   promptAllowsAppend,
   promptAllowsReplace,
   promptNeedsTargetLanguage,
   promptNeedsTone,
-  resolveAiAssistantLastAction,
+  resolveAiAssistantOpenAction,
   type AiAction,
   type AiAssistantLastActionPreference,
   type AiTargetLanguage,
@@ -149,8 +148,8 @@ export const MobileAiAssistantModal = ({
 
   useEffect(() => {
     if (!visible || !sessionReady || initializedForOpen || promptsQuery.isLoading) return;
-    const resolved = resolveAiAssistantLastAction({
-      fallbackAction: getDefaultAiAction(false),
+    const resolved = resolveAiAssistantOpenAction({
+      hasSelection: false,
       preference: storedPreferenceRef.current,
       prompts,
     });

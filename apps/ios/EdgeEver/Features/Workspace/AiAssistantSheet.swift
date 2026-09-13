@@ -542,7 +542,7 @@ struct AiAssistantSheet: View {
     }
 
     private func applyStoredOrDefaultAction(from loaded: [AiPromptTemplate], allowPromptMatch: Bool) {
-        let stored = env.preferences.lastAiAssistantAction(isSelection: isSelection)
+        let stored = isSelection ? env.preferences.lastAiAssistantAction(isSelection: true) : nil
         let fallback: AiAction = isSelection ? .improveWriting : .custom
         if let stored {
             if allowPromptMatch, let promptId = stored.promptId, let match = loaded.first(where: { $0.id == promptId }) {

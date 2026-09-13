@@ -86,6 +86,26 @@ const NON_REPLACEABLE_AI_ACTIONS: readonly AiAction[] = [
 export const getDefaultAiAction = (hasSelection: boolean): AiAction =>
   hasSelection ? "improve-writing" : "custom";
 
+/** Last processing method is restored only for a text selection. Whole-note opens stay on custom. */
+export const storedPreferenceForAiAssistantOpen = (
+  hasSelection: boolean,
+  preference: AiAssistantLastActionPreference | null | undefined,
+): AiAssistantLastActionPreference | null => (hasSelection ? preference ?? null : null);
+
+export const resolveAiAssistantOpenAction = ({
+  hasSelection,
+  preference,
+  prompts,
+}: {
+  hasSelection: boolean;
+  preference: AiAssistantLastActionPreference | null | undefined;
+  prompts: readonly AiAssistantPromptOption[];
+}) => resolveAiAssistantLastAction({
+  fallbackAction: getDefaultAiAction(hasSelection),
+  preference: storedPreferenceForAiAssistantOpen(hasSelection, preference),
+  prompts,
+});
+
 export const getDefaultAiTargetLanguage = (locale: string | undefined): AiTargetLanguage =>
   locale?.toLowerCase().startsWith("zh") ? "en" : "zh-CN";
 

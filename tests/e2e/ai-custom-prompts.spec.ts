@@ -747,7 +747,7 @@ test.describe("AI custom prompts", () => {
     await expect(page.locator(".ProseMirror[contenteditable='true']")).toContainText("进展顺利");
   });
 
-  test("remembers the last processing action when the assistant is reopened", async ({ page }) => {
+  test("opens on a custom instruction when nothing is selected", async ({ page }) => {
     const memo = await createMemo(page, `e2e-ai-last-action-${Date.now()}`, "记住上次处理方式。");
     await ensureAuthenticatedPage(page);
     await page.evaluate(() => window.localStorage.removeItem("edgeever.aiAssistant.lastAction"));
@@ -760,6 +760,6 @@ test.describe("AI custom prompts", () => {
 
     await page.getByRole("button", { name: "打开 AI 写作助手", exact: true }).click();
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("combobox", { name: "处理方式" })).toHaveText("全文翻译");
+    await expect(dialog.getByRole("combobox", { name: "处理方式" })).toHaveText("自定义指令");
   });
 });
