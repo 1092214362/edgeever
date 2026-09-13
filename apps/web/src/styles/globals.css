@@ -2031,6 +2031,7 @@ textarea {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+  letter-spacing: normal;
   line-height: 1.45;
   transition: background-color 120ms ease;
 }
@@ -2092,8 +2093,12 @@ textarea {
 .ProseMirror th p,
 .ProseMirror td p,
 .markdown-content th p,
-.markdown-content td p {
+.markdown-content td p,
+.edgeever-editor[data-editor-theme]:not([data-editor-theme="default"]) .ProseMirror :is(th, td) p,
+.edgeever-editor[data-paper-theme]:not([data-editor-theme="default"]) .ProseMirror :is(th, td) p {
   margin: 0;
+  letter-spacing: inherit;
+  line-height: inherit;
 }
 
 .ProseMirror .selectedCell::after {

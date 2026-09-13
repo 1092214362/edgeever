@@ -106,4 +106,27 @@ describe("editor typography contract", () => {
     }
   });
 
+  test("does not let preset themes override table geometry", () => {
+    const geometryPattern =
+      /(?<![\w-])(?:padding|min-width|max-width|min-height|max-height|line-height|table-layout|width|height)(?:-[a-z]+)?\s*:/;
+
+    for (const filename of ["base.css", ...PRESET_THEME_FILES]) {
+      const source = readStyle(`./editor-themes/${filename}`);
+      const tableRules = [
+        declarationsForSelector(source, ".ProseMirror table"),
+        declarationsForSelector(source, ".ProseMirror .tableWrapper"),
+        declarationsForSelector(source, ".ProseMirror th"),
+        declarationsForSelector(source, ".ProseMirror td"),
+        declarationsForSelector(source, ".ProseMirror th p"),
+        declarationsForSelector(source, ".ProseMirror td p"),
+        declarationsForSelector(source, ".ProseMirror col"),
+        declarationsForSelector(source, ".ProseMirror tr"),
+      ].join("\n");
+
+      expect(tableRules).not.toMatch(geometryPattern);
+      expect(tableRules).not.toMatch(/--mobile-table-column-width\s*:/);
+      expect(tableRules).not.toMatch(/\bborder\s*:/);
+    }
+  });
+
 });
