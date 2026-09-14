@@ -718,7 +718,8 @@ export const enUS = {
     sourcePlaceholder: "https://github.com/owner/edgeever-plugin",
     install: "Install",
     installing: "Installing…",
-    empty: "No plugins or themes are installed on this device.",
+    empty: "This workspace has no plugins or themes installed yet.",
+    syncDescription: "The install list follows this workspace on Web and desktop. Each browser or desktop app downloads the packages itself. Android and iOS apps do not run plugins. Settings and secrets stay on this device.",
     permissions: {
       publicNetwork: "Read content from any public website",
     },
