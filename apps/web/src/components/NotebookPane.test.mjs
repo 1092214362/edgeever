@@ -37,12 +37,12 @@ test("keeps the desktop sync status bar and sidebar chrome compact without shrin
   expect(source).toContain('className="px-3 pt-1.5"');
   expect(source).toContain('className="hidden shrink-0 px-3 pb-2 pt-2 lg:block"');
   expect(source).toContain('className="group flex h-12 max-w-[calc(100%-2.25rem)]');
-  expect(source).toContain("mb-2 hidden h-8 w-full items-center justify-start gap-2");
-  expect(source).toContain('className="mb-2 space-y-1"');
+  expect(source).toContain("mb-1 hidden h-8 w-full items-center justify-start gap-2");
+  expect(source).toContain('className="mb-1 space-y-1"');
   expect(source).not.toContain("mb-3 hidden h-8 w-full");
   expect(source).not.toContain('className="mb-3 space-y-1"');
-  expect(source).not.toContain("mb-1 hidden h-8 w-full");
-  expect(source).not.toContain('className="mb-1 space-y-1"');
+  expect(source).not.toContain("mb-2 hidden h-8 w-full");
+  expect(source).not.toContain('className="mb-2 space-y-1"');
 });
 
 test("marks diagram note types as beta without labeling regular notes", () => {

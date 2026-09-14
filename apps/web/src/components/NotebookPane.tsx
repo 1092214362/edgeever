@@ -727,7 +727,7 @@ export const NotebookPane = ({
       >
         {showTemplateEntry && (
           <button
-            className="mb-2 hidden h-8 w-full items-center justify-start gap-2 rounded-md px-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50 lg:flex"
+            className="mb-1 hidden h-8 w-full items-center justify-start gap-2 rounded-md px-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50 lg:flex"
             type="button"
             title={t("templates.useTemplate")}
             onClick={onOpenTemplates}
@@ -738,7 +738,7 @@ export const NotebookPane = ({
           </button>
         )}
 
-        <nav className="mb-2 space-y-1" aria-label={t("companion.primaryNavigation")}>
+        <nav className="mb-1 space-y-1" aria-label={t("companion.primaryNavigation")}>
           <SidebarNavButton
             active={!companionActive && view === "notebook" && selectedNotebookId === null}
             icon={<LayoutList className="h-4 w-4" />}
