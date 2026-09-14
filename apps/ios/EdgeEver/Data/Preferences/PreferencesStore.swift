@@ -2,6 +2,17 @@ import Foundation
 import Observation
 import SwiftUI
 
+enum AppUILocale {
+    /// Unmatched system languages use English, not Simplified Chinese.
+    static func usesEnglish(preferenceCode: String, systemLanguageCode: String?) -> Bool {
+        if preferenceCode == "en-US" { return true }
+        if preferenceCode == "zh-CN" { return false }
+        let code = (systemLanguageCode ?? "").lowercased()
+        if code.isEmpty { return true }
+        return !code.hasPrefix("zh")
+    }
+}
+
 @Observable
 @MainActor
 final class PreferencesStore {
@@ -53,9 +64,10 @@ final class PreferencesStore {
     }
 
     var isEnglish: Bool {
-        if localeCode == "en-US" { return true }
-        if localeCode == "zh-CN" { return false }
-        return Locale.autoupdatingCurrent.language.languageCode?.identifier == "en"
+        AppUILocale.usesEnglish(
+            preferenceCode: localeCode,
+            systemLanguageCode: Locale.autoupdatingCurrent.language.languageCode?.identifier
+        )
     }
 
     var colorScheme: ColorScheme? {

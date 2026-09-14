@@ -1,4 +1,5 @@
 import { enUS, zhCN } from "@edgeever/shared/i18n";
+import { resolveSupportedLocale } from "@edgeever/shared/i18n/locales";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   readMobileLocalePreference,
@@ -214,7 +215,7 @@ const templateTranslations = [
 ].sort((left, right) => right.source.length - left.source.length);
 
 const resolveSystemLocale = (): SupportedMobileLocale =>
-  (Intl.DateTimeFormat().resolvedOptions().locale || "zh-CN").toLowerCase().startsWith("en") ? "en-US" : "zh-CN";
+  resolveSupportedLocale(Intl.DateTimeFormat().resolvedOptions().locale);
 
 export const translateMobileText = (value: string, locale: SupportedMobileLocale) => {
   if (locale !== "en-US" || !/[\u3400-\u9fff]/.test(value)) {

@@ -1,4 +1,5 @@
 import { DEFAULT_MEMO_TITLE, type MemoSummary, type Notebook } from "@edgeever/shared";
+import { resolveSupportedLocale } from "@edgeever/shared/i18n/locales";
 import type { MobileLocalePreference } from "../lib/preferences";
 
 export type NotebookOption = {
@@ -113,10 +114,12 @@ export const filterCollapsedNotebookOptions = (options: NotebookOption[], collap
 };
 
 export const getResolvedMobileLocale = (localePreference: MobileLocalePreference) =>
-  localePreference === "system" ? Intl.DateTimeFormat().resolvedOptions().locale || "zh-CN" : localePreference;
+  localePreference === "system"
+    ? resolveSupportedLocale(Intl.DateTimeFormat().resolvedOptions().locale)
+    : localePreference;
 
 export const isEnglishMobileLocale = (localePreference: MobileLocalePreference) =>
-  getResolvedMobileLocale(localePreference).startsWith("en");
+  getResolvedMobileLocale(localePreference) === "en-US";
 
 export const formatDate = (value: string, localePreference: MobileLocalePreference = "system") =>
   new Intl.DateTimeFormat(getResolvedMobileLocale(localePreference), {

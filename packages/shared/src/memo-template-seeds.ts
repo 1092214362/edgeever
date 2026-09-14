@@ -1,3 +1,5 @@
+import { resolveSupportedLocale } from "./i18n/locales";
+
 export type MemoTemplateSeedLocale = "zh-CN" | "en-US";
 
 export type MemoTemplateSeedTranslation = {
@@ -92,7 +94,7 @@ export const DEFAULT_MEMO_TEMPLATE_SEEDS: readonly MemoTemplateSeed[] = [
 
 export const normalizeMemoTemplateSeedLocale = (
   locale: string | null | undefined,
-): MemoTemplateSeedLocale => locale?.toLowerCase().startsWith("en") ? "en-US" : "zh-CN";
+): MemoTemplateSeedLocale => resolveSupportedLocale(locale);
 
 export const localizeMemoTemplateSeed = (
   templateSeed: MemoTemplateSeed,

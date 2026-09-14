@@ -60,13 +60,13 @@ const localeRedirectScript = `(() => {
   const supportedLocales = ["zh-CN", "en-US"];
   const normalizeLocale = (locale) => {
     if (!locale) return null;
-    const normalized = String(locale).toLowerCase();
+    const normalized = String(locale).trim().replaceAll("_", "-").toLowerCase();
 
     if (normalized === "zh" || normalized.startsWith("zh-")) {
       return "zh-CN";
     }
 
-    if (normalized === "en" || normalized === "en-us" || normalized.startsWith("en-")) {
+    if (normalized === "en" || normalized.startsWith("en-")) {
       return "en-US";
     }
 
@@ -90,8 +90,11 @@ const localeRedirectScript = `(() => {
   };
   const getBrowserLocale = () => {
     const browserLocales = navigator.languages?.length ? navigator.languages : [navigator.language];
+    let sawCandidate = false;
 
     for (const locale of browserLocales) {
+      if (!locale) continue;
+      sawCandidate = true;
       const supported = normalizeLocale(locale);
 
       if (supported) {
@@ -99,7 +102,7 @@ const localeRedirectScript = `(() => {
       }
     }
 
-    return null;
+    return sawCandidate ? "en-US" : null;
   };
   const getCurrentLocale = (pathname) => pathname === "/en" || pathname.startsWith("/en/") ? "en-US" : "zh-CN";
   const isExplicitLocalePath = (pathname) => pathname === "/en" || pathname.startsWith("/en/");
