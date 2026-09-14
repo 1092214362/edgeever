@@ -67,12 +67,18 @@ describe("mobile workspace utilities", () => {
     expect(isEnglishMobileLocale("en-US")).toBe(true);
   });
 
-  test("falls unmatched system languages back to English", () => {
+  test("resolves Japanese system languages to Japanese and unmatched languages to English", () => {
     const original = Intl.DateTimeFormat.prototype.resolvedOptions;
-    Intl.DateTimeFormat.prototype.resolvedOptions = function resolvedOptions() {
-      return { ...original.call(this), locale: "ja-JP" };
+    const withLocale = (locale: string) => {
+      Intl.DateTimeFormat.prototype.resolvedOptions = function resolvedOptions() {
+        return { ...original.call(this), locale };
+      };
     };
     try {
+      withLocale("ja-JP");
+      expect(getResolvedMobileLocale("system")).toBe("ja");
+      expect(isEnglishMobileLocale("system")).toBe(true);
+      withLocale("fr-FR");
       expect(getResolvedMobileLocale("system")).toBe("en-US");
       expect(isEnglishMobileLocale("system")).toBe(true);
     } finally {

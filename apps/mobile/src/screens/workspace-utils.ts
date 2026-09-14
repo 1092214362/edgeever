@@ -119,7 +119,7 @@ export const getResolvedMobileLocale = (localePreference: MobileLocalePreference
     : localePreference;
 
 export const isEnglishMobileLocale = (localePreference: MobileLocalePreference) =>
-  getResolvedMobileLocale(localePreference) === "en-US";
+  getResolvedMobileLocale(localePreference) !== "zh-CN";
 
 export const formatDate = (value: string, localePreference: MobileLocalePreference = "system") =>
   new Intl.DateTimeFormat(getResolvedMobileLocale(localePreference), {
@@ -142,7 +142,9 @@ export const formatMemoPreviewDate = (value: string, localePreference: MobileLoc
     return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
   }
   if (memoDay === today - 24 * 60 * 60 * 1000) {
-    return isEnglishMobileLocale(localePreference) ? "Yesterday" : "昨天";
+    if (locale === "ja") return "昨日";
+    if (locale === "en-US") return "Yesterday";
+    return "昨天";
   }
   return new Intl.DateTimeFormat(locale, { year: "numeric", month: "numeric", day: "numeric" }).format(date);
 };

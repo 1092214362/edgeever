@@ -33,8 +33,10 @@ const seed = (
   translations: { "zh-CN": zhCN, "en-US": enUS },
 });
 
-export const normalizeAiPromptSeedLocale = (locale: string | null | undefined): AiPromptSeedLocale =>
-  resolveSupportedLocale(locale);
+export const normalizeAiPromptSeedLocale = (locale: string | null | undefined): AiPromptSeedLocale => {
+  const resolved = resolveSupportedLocale(locale);
+  return resolved === "zh-CN" ? "zh-CN" : "en-US";
+};
 
 export const localizeAiPromptSeed = (
   promptSeed: AiPromptSeed,
