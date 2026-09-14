@@ -245,7 +245,7 @@ export const enUS = {
     flowchart: "Flowchart",
     architecture: "Architecture diagram",
     createType: "Choose note type",
-    moreTypes: "More types",
+    moreTypes: "More",
     back: "Back to note list",
     title: "Diagram title",
     canvas: "{{type}} canvas",
