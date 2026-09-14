@@ -417,6 +417,8 @@ type EditorPaneProps = {
   onToggleDesktopFocusMode: () => void;
   editorContentAlignment: EditorContentAlignment;
   mobileDefaultEditMemoId: string | null;
+  pendingInsertFiles?: { memoId: string; files: File[] } | null;
+  onPendingInsertFilesConsumed?: () => void;
   preserveUnsavedContentFromMemoId?: string | null;
   saveBlocked?: boolean;
   isTrashView: boolean;
@@ -489,6 +491,8 @@ const RichEditorPane = ({
   onToggleDesktopFocusMode,
   editorContentAlignment,
   mobileDefaultEditMemoId,
+  pendingInsertFiles = null,
+  onPendingInsertFilesConsumed,
   preserveUnsavedContentFromMemoId: _preserveUnsavedContentFromMemoId,
   saveBlocked: _saveBlocked = false,
   isTrashView,
@@ -1751,6 +1755,14 @@ const RichEditorPane = ({
       }
     };
   }, [editor]);
+
+  useEffect(() => {
+    if (!pendingInsertFiles || pendingInsertFiles.memoId !== memo?.id) return;
+    if (hydratedEditorMemoId !== memo.id) return;
+    if (!isEditorReady(editor) || !editor.isEditable || pendingInsertFiles.files.length === 0) return;
+    insertResourceFiles(pendingInsertFiles.files);
+    onPendingInsertFilesConsumed?.();
+  }, [editor, hydratedEditorMemoId, insertResourceFiles, memo?.id, onPendingInsertFilesConsumed, pendingInsertFiles]);
 
   useEffect(() => {
     if (!isEditorReady(editor)) {
