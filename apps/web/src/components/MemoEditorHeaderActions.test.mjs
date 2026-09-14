@@ -74,5 +74,6 @@ describe("shared memo editor header actions", () => {
   test("keeps Evernote-like desktop reading gutters aligned with the title", () => {
     expect(editorSource).toContain("min-h-full items-start px-4 py-2 sm:px-7 lg:px-10");
     expect(densitySource).toContain("sm:px-7 sm:pb-4 sm:pt-4 lg:space-y-0 lg:px-10 lg:py-0");
+    expect(editorSource).toContain("overflow-y-auto lg:[scrollbar-gutter:stable_both-edges]");
   });
 });

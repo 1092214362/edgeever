@@ -4229,7 +4229,7 @@ const RichEditorPane = ({
             : useMarkdownSourceEditor
               // Source mode: fill the pane and scroll inside the textarea (not a 300px card).
               ? "flex flex-col overflow-hidden"
-              : "overflow-y-auto"
+              : "overflow-y-auto lg:[scrollbar-gutter:stable_both-edges]"
         )}
       >
         {!isNamedEditorTheme(editorTheme) && customEditorTheme.customCss && (
