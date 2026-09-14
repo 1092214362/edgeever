@@ -1,5 +1,5 @@
 {
-  "version": "1.71.0",
+  "version": "1.72.0",
   "changes": {
     "en-US": [
       "Keep plugin and theme membership on the workspace so other browsers and desktop apps re-download verified packages after you switch devices. Settings, secrets, and native mobile apps stay local to each device.",
