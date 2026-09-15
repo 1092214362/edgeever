@@ -2,19 +2,16 @@ import "./styles.css";
 import "katex/dist/katex.min.css";
 import { Graph } from "@antv/x6";
 import { Editor } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
-import { TaskItem, TaskList } from "@tiptap/extension-list";
 import Placeholder from "@tiptap/extension-placeholder";
 import CodeBlock from "@tiptap/extension-code-block";
-import { TableKit } from "@tiptap/extension-table";
-import { Markdown } from "@tiptap/markdown";
 import { EdgeEverLink } from "@edgeever/shared/editor-link";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import mermaid from "mermaid";
 import { toCanvas } from "html-to-image";
 import {
+  createEdgeEverDocumentExtensions,
   createNativeUnsupportedContentExtensions,
   diagramDocumentToX6Cells,
   attachDiagramReader,
@@ -45,7 +42,7 @@ import {
   generateCardCss,
 } from "@edgeever/shared/note-image-card";
 import { createEdgeEverMathematics } from "@edgeever/shared/mathematics";
-import { createIosImageGallery, MergeDivider } from "./document-nodes";
+import { createIosImageGallery } from "./document-nodes";
 import { createImageInsertTransaction, groupUploadedImages, NATIVE_IMAGE_GALLERY_CSS } from "@edgeever/shared/native-image-gallery";
 
 const galleryStyle = document.createElement("style");
@@ -745,30 +742,25 @@ function createEdgeEverImageExtension() {
 
 function buildExtensions(placeholder: string) {
   return [
-    StarterKit.configure({
-      codeBlock: false,
-      link: false,
+    ...createEdgeEverDocumentExtensions({
+      mathematics: createEdgeEverMathematics(),
+      starterKit: { codeBlock: false, link: false },
+      image: createEdgeEverImageExtension(),
+      gallery: createIosImageGallery(() => locale),
+      pdf: false,
+      file: false,
+      pluginEmbed: false,
+      table: { table: { resizable: false } },
+      markdown: true,
     }),
     EdgeEverLink,
     NativeAttachmentMetadata,
-    TaskList,
-    TaskItem.configure({ nested: true }),
-    MergeDivider,
-    ...createEdgeEverMathematics(),
     CodeBlock.configure({
       languageClassPrefix: "language-",
-    }),
-    createIosImageGallery(() => locale),
-    createEdgeEverImageExtension(),
-    TableKit.configure({
-      table: { resizable: false },
     }),
     ...createNativeUnsupportedContentExtensions(),
     Placeholder.configure({
       placeholder,
-    }),
-    Markdown.configure({
-      markedOptions: { gfm: true },
     }),
   ];
 }
