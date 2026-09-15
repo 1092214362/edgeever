@@ -1,5 +1,5 @@
 {
-  "version": "1.73.1",
+  "version": "1.73.2",
   "changes": {
     "en-US": [
       "Capture the current screen from the desktop tray or menu bar into a new note that already contains the screenshot, and remove the empty note if the image cannot be saved.",
