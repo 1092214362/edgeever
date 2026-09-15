@@ -52,14 +52,18 @@ import {
   promptNeedsTargetLanguage,
   promptNeedsTone,
   readStoredAiAssistantLastActionPreference,
+  readStoredAiAssistantMode,
   resolveAiAssistantComposerInput,
   resolveAiAssistantOpenAction,
   targetLanguages,
   writeStoredAiAssistantLastActionPreference,
+  writeStoredAiAssistantMode,
   type AiAssistantAction,
+  type AiAssistantMode,
   type AiTone,
   type TargetLanguage,
 } from "@/lib/ai-assistant";
+import { CompanionChat } from "@/components/CompanionChat";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   clampFloatingPanelPosition,
@@ -102,18 +106,30 @@ export const AiAssistantDialog = ({
   title,
   contentMarkdown,
   selectionMarkdown,
+  memoId,
+  notebookId,
+  companionAvailable = false,
   onOpenChange,
   onApply,
   onOpenPromptLibrary,
+  beforeCompanionApply,
+  onCompanionNotesChanged,
+  onOpenCompanionNote,
 }: {
   open: boolean;
   anchor: AiAssistantAnchor;
   title: string;
   contentMarkdown: string;
   selectionMarkdown?: string | null;
+  memoId?: string;
+  notebookId?: string;
+  companionAvailable?: boolean;
   onOpenChange: (open: boolean) => void;
   onApply: (text: string, mode: "append" | "replace") => boolean;
   onOpenPromptLibrary?: () => void;
+  beforeCompanionApply?: () => Promise<void>;
+  onCompanionNotesChanged?: () => Promise<void>;
+  onOpenCompanionNote?: (id: string, notebookId: string) => void;
 }) => {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -140,6 +156,7 @@ export const AiAssistantDialog = ({
   const [attachments, setAttachments] = useState<PreparedAiAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isReadingAttachments, setIsReadingAttachments] = useState(false);
+  const [mode, setMode] = useState<AiAssistantMode>("instruction");
   const [initializedForOpen, setInitializedForOpen] = useState(false);
   const [panelElement, setPanelElement] = useState<HTMLElement | null>(null);
   const [draggedPosition, setDraggedPosition] = useState<FloatingPanelPosition | null>(null);
@@ -214,6 +231,7 @@ export const AiAssistantDialog = ({
     dragStateRef.current = null;
     customInstructionEditedRef.current = false;
     lastRequestRef.current = null;
+    setMode(hasSelection ? "instruction" : readStoredAiAssistantMode());
   }, [defaultAction, defaultTargetLanguage, hasSelection, open]);
 
   useEffect(() => {
@@ -600,6 +618,11 @@ export const AiAssistantDialog = ({
     };
   }, [handleDragEnd, handleDragMove, open]);
 
+  const chatting = mode === "ask";
+  const selectMode = (next: AiAssistantMode) => {
+    setMode(next);
+    writeStoredAiAssistantMode(next);
+  };
   const panelStyle = useMemo<CSSProperties>(() => {
     const { height: viewportHeight, width: viewportWidth } = viewportSize;
     if (draggedPosition) {
@@ -657,6 +680,37 @@ export const AiAssistantDialog = ({
               <X className="h-4 w-4" />
             </Button>
           </div>
+          <div className="mb-3 flex shrink-0 gap-1 rounded-lg bg-slate-100 p-1" role="tablist" aria-label={t("aiAssistant.title")}>
+            {(["instruction", "ask"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                role="tab"
+                aria-selected={mode === item}
+                className={cn(
+                  "h-8 flex-1 rounded-md px-2 text-xs font-medium",
+                  mode === item ? "bg-card text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800",
+                )}
+                onClick={() => selectMode(item)}
+              >
+                {t(`aiAssistant.modes.${item}`)}
+              </button>
+            ))}
+          </div>
+          {chatting ? (
+            <CompanionChat
+              available={companionAvailable}
+              variant="assistant"
+              allowWrites
+              forceAllowNotes
+              focus={{ memoId, notebookId, title, selectionMarkdown }}
+              placeholder={t("aiAssistant.modes.askPlaceholder")}
+              beforeApply={beforeCompanionApply ?? (async () => undefined)}
+              onNotesChanged={onCompanionNotesChanged ?? (async () => undefined)}
+              onOpenNote={onOpenCompanionNote ?? (() => undefined)}
+            />
+          ) : (
+          <>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             <div className="grid gap-4">
             {hasSelection ? (
@@ -972,6 +1026,8 @@ export const AiAssistantDialog = ({
               </div>
             </div>
           ) : null}
+          </>
+          )}
         </section>,
         document.body,
       ) : null}

@@ -121,6 +121,20 @@ describe("shared companion MCP adapter", () => {
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
     expect(createCompanionTools({ ...f, scope, input: { ...f.input, allowNotes: false } })).toEqual({});
   });
+  test("read-only note access keeps MCP reads and omits write tools", async () => {
+    const f = await setup();
+    const tools = createCompanionTools({
+      ...f, scope, input: { ...f.input, allowWrites: false },
+      signal: new AbortController().signal, assertActive: async () => {}, sources: [],
+    });
+    expect(tools.get_memo).toBeTruthy();
+    expect(tools.search_memos).toBeTruthy();
+    expect(tools.create_memo).toBeUndefined();
+    expect(tools.update_memo).toBeUndefined();
+    expect(tools.merge_memos).toBeUndefined();
+    expect(await tools.get_memo.execute({ memoId: f.notes[0].id })).toMatchObject({ content: "One original content" });
+    expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
+  });
   test("repeated complete reads return a reference without consuming the note budget again", async () => {
     const f = await setup();
     for (const note of f.notes) await updateMemoRecord(f.db, scope.workspaceId, note.id, { contentMarkdown: "x".repeat(6000) }, actor, "owner");

@@ -976,6 +976,15 @@ export const enUS = {
   },
   aiAssistant: {
     title: "AI note assistant",
+    modes: {
+      instruction: "Instruction",
+      ask: "Agent",
+      askHint: "Search and organize notes. Writes are listed first and run only after you confirm.",
+      emptyTitle: "Ask your knowledge base",
+      emptyHint: "Search, cite the current note, or ask the assistant to organize.",
+      askPlaceholder: "Ask your notes, or have the agent organize them…",
+      resumeLast: "Continue last",
+    },
     open: "Open AI writing assistant",
     openForSelection: "Ask AI",
     actionLabel: "Action",

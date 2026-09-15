@@ -3207,6 +3207,16 @@ export const WorkspaceApp = ({
                       pluginHost={pluginHost}
                       pluginNavigationRequest={pluginNavigationRequest}
                     onOpenAiPrompts={handleOpenAiPrompts}
+                    companionAvailable={authRequired && Boolean(user) && !demoMode}
+                    beforeCompanionApply={async () => {
+                      const { assertCompanionChangesSynced } = await import("@/lib/companion-actions");
+                      await assertCompanionChangesSynced(localDataScope);
+                    }}
+                    onCompanionNotesChanged={async () => {
+                      const result = await refreshWorkspaceFromServer("manual");
+                      if ("skipped" in result && result.skipped) throw new Error("Workspace refresh was skipped.");
+                    }}
+                    onOpenCompanionNote={handleOpenPluginNote}
                     desktopFocusMode={desktopFocusModeActive}
                     onToggleDesktopFocusMode={toggleDesktopFocusMode}
                     editorContentAlignment={editorContentAlignment}

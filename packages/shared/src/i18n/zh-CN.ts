@@ -976,6 +976,15 @@ export const zhCN = {
   },
   aiAssistant: {
     title: "AI 笔记助手",
+    modes: {
+      instruction: "指令模式",
+      ask: "Agent 模式",
+      askHint: "可以检索和整理笔记。改库前会先列出，确认后才执行。",
+      emptyTitle: "问问你的知识库",
+      emptyHint: "搜索、引用当前笔记，或让助手按你的要求整理。",
+      askPlaceholder: "问问你的笔记，或让 Agent 整理…",
+      resumeLast: "继续上次",
+    },
     open: "打开 AI 写作助手",
     openForSelection: "用 AI 处理",
     actionLabel: "处理方式",

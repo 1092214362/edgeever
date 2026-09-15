@@ -21,12 +21,14 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
     return result;
   };
   const remember = (memo: MemoSummary) => {
-    const source = { id: memo.id, title: (memo.title ?? "").slice(0, 200), revision: memo.revision };
+    const source = { id: memo.id, title: (memo.title ?? "").slice(0, 200), revision: memo.revision, notebookId: memo.notebookId };
     const index = args.sources.findIndex(item => item.id === memo.id);
     if (index < 0) args.sources.push(source); else args.sources[index] = source;
     return source;
   };
-  return Object.fromEntries(COMPANION_MCP_TOOLS.map(definition => {
+  const catalog = COMPANION_MCP_TOOLS.filter(definition =>
+    args.input.allowWrites !== false || definition.annotations.readOnlyHint);
+  return Object.fromEntries(catalog.map(definition => {
     const readOnly = definition.annotations.readOnlyHint;
     return [definition.name, tool({
       description: `${definition.description}${readOnly ? "" : " This only proposes changes; the user must confirm the card. Supply a short _reason."}`,
@@ -68,7 +70,7 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
         if (definition.name === "search_memos" || definition.name === "list_memos") return {
           ...result as object,
           memos: (result as { memos: MemoSummary[] }).memos.map(memo => ({ ...remember(memo), notebookId: memo.notebookId,
-            tags: memo.tags, excerpt: takeNoteText(memo.excerpt, 1000) })),
+            tags: memo.tags, excerpt: takeNoteText(memo.excerpt, 180) })),
         };
         const serialized = JSON.stringify(result);
         const text = serialized.slice(0, Math.min(8000, metadataRemaining));

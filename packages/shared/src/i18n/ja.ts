@@ -976,6 +976,15 @@ export const ja = {
   },
   aiAssistant: {
     title: "AI ノートアシスタント",
+    modes: {
+      instruction: "指示モード",
+      ask: "Agent モード",
+      askHint: "ノートの検索と整理ができます。書き込みは先に一覧表示され、確認後に実行されます。",
+      emptyTitle: "ナレッジベースに尋ねる",
+      emptyHint: "検索、現在のノートの引用、または整理を依頼できます。",
+      askPlaceholder: "ノートに尋ねる、または Agent に整理を依頼…",
+      resumeLast: "前回の続き",
+    },
     open: "AI 執筆アシスタントを開く",
     openForSelection: "AI に依頼",
     actionLabel: "操作",
