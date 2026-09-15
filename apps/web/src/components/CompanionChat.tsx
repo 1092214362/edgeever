@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCircle } from "lucide-react";
+import { Loader2, MessageCircle } from "lucide-react";
 import type { CompanionAction, CompanionTurn, CompanionTurnInput } from "@edgeever/shared";
 import { Button } from "@/components/ui/button";
 import { api, ApiRequestError } from "@/lib/api";
@@ -44,6 +44,8 @@ export function CompanionChat({
   const active = useRef<{ id: string; controller: AbortController } | null>(null);
   const alive = useRef(true);
   const locked = useRef(false);
+  const scroller = useRef<HTMLDivElement>(null);
+  const pinToBottom = useRef(true);
 
   const explainError = (cause: unknown) => {
     const code = cause instanceof ApiRequestError ? cause.code : "";
@@ -92,6 +94,7 @@ export function CompanionChat({
     event.preventDefault();
     const text = message.trim();
     if (!text || locked.current) return;
+    pinToBottom.current = true;
     void perform(async () => {
       const id = crypto.randomUUID();
       const controller = new AbortController();
@@ -141,6 +144,7 @@ export function CompanionChat({
             setTurns(previous => previous.filter(item => item.id !== id));
             setMessage(text);
           }
+          await onNotesChanged().catch(() => {});
         }
       }
     });
@@ -166,6 +170,12 @@ export function CompanionChat({
   const threadTurns = turns.filter(turn => turn.threadId === threadId).reverse();
   const previousThread = threads.find(thread => thread.threadId !== threadId);
 
+  useLayoutEffect(() => {
+    const node = scroller.current;
+    if (!node || !pinToBottom.current) return;
+    node.scrollTop = node.scrollHeight;
+  }, [turns, threadId, actions]);
+
   if (!available) {
     return <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-4 text-center">
       <MessageCircle aria-hidden="true" className="h-9 w-9 text-emerald-600" />
@@ -176,17 +186,31 @@ export function CompanionChat({
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
     {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
     {loading ? <p role="status">{t("common.loading")}</p> : null}
-    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+    <div
+      ref={scroller}
+      className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1"
+      onScroll={event => {
+        const node = event.currentTarget;
+        pinToBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
+      }}
+    >
       {!loading && !threadTurns.length && previousThread ? <div className="flex items-center gap-2">
         <p className="min-w-0 flex-1 truncate text-xs text-slate-500">{previousThread.message}</p>
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setThreadId(previousThread.threadId)}>
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { pinToBottom.current = true; setThreadId(previousThread.threadId); }}>
           {t("aiAssistant.modes.resumeLast")}
         </Button>
       </div> : null}
       {threadTurns.map(turn => <article key={turn.id} className="space-y-2 rounded-lg border p-3 text-sm">
         <p className="whitespace-pre-wrap break-words font-medium">{turn.message}</p>
         {turn.response ? <CompanionNoteText text={turn.response} sources={turn.sources} onOpenNote={onOpenNote} /> : null}
-        {turn.status !== "completed" ? <p className="text-xs text-slate-500">{t(`companion.status.${turn.status}`)}</p> : null}
+        {turn.status === "running" ? (
+          <p role="status" className="flex items-center gap-2 text-xs text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-600" aria-hidden="true" />
+            <span className="sr-only">{t("companion.status.running")}</span>
+          </p>
+        ) : turn.status !== "completed" ? (
+          <p className="text-xs text-slate-500">{t(`companion.status.${turn.status}`)}</p>
+        ) : null}
         {actions.filter(action => action.turnId === turn.id).map(action => <CompanionActionCard key={action.id} action={action}
           busy={busy || Boolean(running)} onApply={applyAction} onDismiss={item => void perform(() => api.dismissCompanionAction(item.id))} onOpenNote={onOpenNote} />)}
       </article>)}

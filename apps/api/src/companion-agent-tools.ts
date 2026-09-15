@@ -6,6 +6,10 @@ import type { CompanionScope } from "./companion-service";
 import { COMPANION_MCP_TOOLS, validateCompanionTool } from "./companion-tool-catalog";
 import { companionWorkspaceCursor, proposeCompanionToolAction } from "./companion-tool-actions";
 import { executeWorkspaceTool } from "./mcp-tool-executor";
+import { getMemoDetail } from "./memo-service";
+import { AppError } from "./app-error";
+
+const AUTO_APPLY_WRITES = new Set(["create_memo", "update_memo", "trash_memos"]);
 
 export function createCompanionTools(args: { db: DatabaseAdapter; scope: CompanionScope; input: CompanionTurnInput;
   context?: AppContext; signal: AbortSignal; assertActive: () => Promise<void>; sources: CompanionSource[] }): ToolSet {
@@ -49,9 +53,10 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
   };
   return Object.fromEntries(catalog.map(definition => {
     const readOnly = definition.annotations.readOnlyHint;
+    const autoApply = AUTO_APPLY_WRITES.has(definition.name);
     return [definition.name, tool({
-      description: `${definition.description}${toolHints[definition.name] ?? ""}${readOnly ? "" : " This only proposes changes; the user must confirm the card. Supply a short _reason."}`,
-      inputSchema: jsonSchema<Record<string, unknown>>((readOnly ? definition.inputSchema : {
+      description: `${definition.description}${toolHints[definition.name] ?? ""}${readOnly || autoApply ? autoApply ? " This executes immediately. New notes are created in the named notebook. Trashed notes go to the recycle bin; edits keep revision history." : "" : " This only proposes changes; the user must confirm the card. Supply a short _reason."}`,
+      inputSchema: jsonSchema<Record<string, unknown>>((readOnly || autoApply ? definition.inputSchema : {
         ...definition.inputSchema, properties: { ...definition.inputSchema.properties, _reason: { type: "string", minLength: 1, maxLength: 400 } },
         required: [...(definition.inputSchema.required ?? []), "_reason"],
       }) as Parameters<typeof jsonSchema>[0]),
@@ -64,8 +69,14 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
         const current = await companionWorkspaceCursor(args.db, args.scope.workspaceId);
         cursor ??= current;
         if (cursor !== current) return { error: "Notes changed during this request. Start a fresh request." };
-        if (!readOnly && parameters_.dryRun !== true) return proposeCompanionToolAction(args.db, args.scope, args.input.id,
+        if (!readOnly && !autoApply && parameters_.dryRun !== true) return proposeCompanionToolAction(args.db, args.scope, args.input.id,
           definition.name, parameters_, typeof _reason === "string" ? _reason : definition.title, cursor, inspected);
+        if (autoApply && parameters_.dryRun !== true && definition.name === "update_memo") {
+          const memo = await getMemoDetail(args.db, args.scope.workspaceId, String(parameters_.memoId));
+          if (!memo || inspected.get(memo.id) !== memo.revision) {
+            throw new AppError("companion_action_unread", "Read the complete source notes before changing their content.", 400);
+          }
+        }
         if (definition.name === "get_memo" && inspected.has(String(parameters_.memoId))) {
           // The original full result remains in this run's model messages. Only
           // reuse it after authorization/context/cursor checks, never across runs.
@@ -78,6 +89,10 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           parameters_.includeContent = false;
         }
         const result = await executeWorkspaceTool(args.context!, args.context!.get("auth"), definition.name, parameters_);
+        if (autoApply && parameters_.dryRun !== true) {
+          cursor = await companionWorkspaceCursor(args.db, args.scope.workspaceId);
+          return { applied: true, ...(typeof result === "object" && result ? result as object : { result }) };
+        }
         if (current !== await companionWorkspaceCursor(args.db, args.scope.workspaceId)) return { error: "Notes changed during this read. Start a fresh request." };
         if (definition.name === "get_memo") {
           const memo = (result as { memo: MemoDetail }).memo;
