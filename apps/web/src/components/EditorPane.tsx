@@ -99,7 +99,7 @@ import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { memoShareQueryKey, ShareMemoDialog } from "./dialogs/ShareMemoDialog";
-import { ShareNoteImageDialog, type ShareNoteImageSource } from "./dialogs/ShareNoteImageDialog";
+import { ShareNoteImageDialog } from "./dialogs/ShareNoteImageDialog";
 import { AiAssistantDialog, type AiAssistantAnchor } from "./dialogs/AiAssistantDialog";
 import { api } from "@/lib/api";
 import { isDesktopResourceRuntime, stageDesktopResource, toDesktopResourceDownloadUrl, toDesktopResourceUrl } from "@/lib/desktop-resources";
@@ -154,15 +154,9 @@ import {
   type MemoDocumentActionRequest,
   type ShortcutSettings,
 } from "@/lib/app-helpers";
-import { copyEditorToWeChat, copyMarkdownToWeChat } from "@/lib/wechat-copy";
 import { isPaperEditorTheme, publishEditorCssVars, resolvePaperEditorTheme } from "@/lib/publish-layout";
 import { ThemeBlock } from "./ThemeBlock";
 import { EditorPhonePreview, PhonePreviewGlyph } from "./EditorPhonePreview";
-import { downloadMarkdownFile } from "@/lib/note-markdown-export";
-import { NOTE_HTML_FULL_STYLES } from "@/lib/note-html-export-assets";
-import { downloadNoteHtmlFile, getHtmlImageEmbedNoticeKind } from "@/lib/note-html-export";
-import { openNotePrintPreview, serializeNoteDocumentForPrint } from "@/lib/note-print";
-import type { NoteImageFormat } from "@/lib/note-image-export";
 import {
   applyPlainTextTab,
   getAiSlashCommandStart,
@@ -225,6 +219,7 @@ import { useEditorSaveStatus } from "./editor/useEditorSaveStatus";
 import { getEditorSaveChrome } from "./editor/editor-save-chrome";
 import { classifyEditorSaveFailure, shouldLeaveEditorAfterSaveError } from "./editor/editor-save-failure";
 import { useEditorSaveConflictActions } from "./editor/useEditorSaveConflictActions";
+import { useEditorDocumentActions } from "./editor/useEditorDocumentActions";
 import { useEditorNoteSearchController } from "./editor/useEditorNoteSearchController";
 import { EditorNoteLinkPicker } from "./editor/EditorNoteLinkPicker";
 import { EditorResourceDialogs } from "./editor/EditorResourceDialogs";
@@ -423,9 +418,6 @@ const RichEditorPane = ({
   const [imageUploadState, setImageUploadState] = useState<"idle" | "compressing" | "uploading" | "error">("idle");
   const [imagePreview, setImagePreview] = useState<ImagePreviewRequestDetail | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [imageShareOpen, setImageShareOpen] = useState(false);
-  const [imageShareSource, setImageShareSource] = useState<ShareNoteImageSource | null>(null);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [aiAssistantAnchor, setAiAssistantAnchor] = useState<AiAssistantAnchor>({ left: 24, placement: "below", top: 96 });
   const aiBubbleMenu = useAiBubbleMenu(aiAssistantOpen);
@@ -477,7 +469,6 @@ const RichEditorPane = ({
   const [mobileToolbarOpen, setMobileToolbarOpen] = useState(false);
   const [editorOutlineCollapsed, setEditorOutlineCollapsed] = useState(readEditorOutlineCollapsedPreference);
   const [phonePreviewOpen, setPhonePreviewOpen] = useState(readEditorPhonePreviewPreference);
-  const [wechatCopyState, setWechatCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
   const [memoIdCopyNotice, setMemoIdCopyNotice] = useState<{ status: "copied" | "error"; id: string } | null>(null);
   const handledSaveAndSyncTokenRef = useRef(saveAndSyncToken);
   const handledReadingProtectionToggleTokenRef = useRef(readingProtectionToggleToken);
@@ -2470,25 +2461,35 @@ const RichEditorPane = ({
     markDirty();
   }, [markDirty]);
 
-  const handleCopyToWeChat = useCallback(async () => {
-    if (!isEditorReady(editor)) {
-      return;
-    }
-
-    setWechatCopyState("copying");
-    try {
-      if (useMarkdownSourceEditor) {
-        await copyMarkdownToWeChat(markdownSource);
-      } else {
-        await copyEditorToWeChat(editor);
-      }
-      setWechatCopyState("copied");
-      window.setTimeout(() => setWechatCopyState("idle"), 2200);
-    } catch {
-      setWechatCopyState("error");
-      window.setTimeout(() => setWechatCopyState("idle"), 2600);
-    }
-  }, [editor, markdownSource, useMarkdownSourceEditor]);
+  const {
+    handleCopyToWeChat,
+    handleExportHtml,
+    handleExportMarkdown,
+    handleExportPdf,
+    handleOpenImageShare,
+    handleSaveAsTemplate,
+    imageShareOpen,
+    imageShareSource,
+    setImageShareOpen,
+    setShareOpen,
+    shareOpen,
+    wechatCopyState,
+  } = useEditorDocumentActions({
+    documentActionRequest,
+    editor,
+    effectiveReadOnly,
+    getMobilePlainTextValue,
+    hydratedEditorMemoId,
+    markdownSource,
+    memo,
+    notebookName: notebookOptions.find((notebook) => notebook.id === memo?.notebookId)?.name ?? "",
+    onDocumentActionConsumed,
+    onSaveAsTemplate,
+    tagsText,
+    title,
+    useMarkdownSourceEditor,
+    useMobilePlainTextEditor,
+  });
 
   const handleCopyMemoId = useCallback(async () => {
     if (!memo || isLocalMemoId(memo.id)) {
@@ -2498,253 +2499,6 @@ const RichEditorPane = ({
     setMemoIdCopyNotice({ status: copied ? "copied" : "error", id: memo.id });
     window.setTimeout(() => setMemoIdCopyNotice(null), copied ? 2200 : 3000);
   }, [memo]);
-
-  const handleExportPdf = useCallback((preopenedWindow?: Window | null) => {
-    if (!isEditorReady(editor) || !memo) {
-      return;
-    }
-
-    if (preopenedWindow === null) {
-      window.alert(t("editor.pdfExport.popupBlocked"));
-      return;
-    }
-
-    const currentDocument = useMobilePlainTextEditor
-      ? markdownToDoc(getMobilePlainTextValue())
-      : useMarkdownSourceEditor
-        ? markdownToDoc(markdownSource)
-        : editor.getJSON() as TiptapDoc;
-    const html = serializeNoteDocumentForPrint(editor, currentDocument);
-    const opened = openNotePrintPreview(
-      {
-        title: title.trim() || t("common.untitledMemo"),
-        notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
-        tags: parseTagsText(tagsText),
-        updatedAt: formatDateTime(memo.updatedAt),
-        html,
-        language: i18n.resolvedLanguage ?? i18n.language,
-        labels: {
-          close: t("editor.pdfExport.close"),
-          error: t("editor.pdfExport.error"),
-          hint: t("editor.pdfExport.hint"),
-          preparing: t("editor.pdfExport.preparing"),
-          print: t("editor.pdfExport.print"),
-          ready: t("editor.pdfExport.ready"),
-        },
-      },
-      preopenedWindow ?? undefined,
-    );
-
-    if (!opened) {
-      window.alert(t("editor.pdfExport.popupBlocked"));
-    }
-  }, [
-    editor,
-    getMobilePlainTextValue,
-    i18n.language,
-    i18n.resolvedLanguage,
-      markdownSource,
-      markDirtyStatus,
-    memo,
-    notebookOptions,
-    t,
-    tagsText,
-    title,
-    useMarkdownSourceEditor,
-    useMobilePlainTextEditor,
-  ]);
-
-  const handleExportMarkdown = useCallback(() => {
-    if (!isEditorReady(editor) || !memo) {
-      return;
-    }
-
-    const markdown = useMobilePlainTextEditor
-      ? getMobilePlainTextValue()
-      : useMarkdownSourceEditor
-        ? markdownSource
-        : docToMarkdown(editor.getJSON() as TiptapDoc);
-    downloadMarkdownFile(
-      markdown,
-      title,
-      t("common.untitledMemo")
-    );
-  }, [
-    editor,
-    getMobilePlainTextValue,
-    markdownSource,
-    memo,
-    t,
-    title,
-    useMarkdownSourceEditor,
-    useMobilePlainTextEditor,
-  ]);
-
-  const handleExportHtml = useCallback(async () => {
-    if (!isEditorReady(editor) || !memo) {
-      return;
-    }
-
-    const currentDocument = useMobilePlainTextEditor
-      ? markdownToDoc(getMobilePlainTextValue())
-      : useMarkdownSourceEditor
-        ? markdownToDoc(markdownSource)
-        : editor.getJSON() as TiptapDoc;
-    const bodyHtml = serializeNoteDocumentForPrint(editor, currentDocument);
-
-    try {
-      const { images } = await downloadNoteHtmlFile({
-        bodyHtml,
-        title: title.trim() || t("common.untitledMemo"),
-        notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
-        tags: parseTagsText(tagsText),
-        updatedAt: formatDateTime(memo.updatedAt),
-        language: i18n.resolvedLanguage ?? i18n.language,
-        fallbackTitle: t("common.untitledMemo"),
-        styles: NOTE_HTML_FULL_STYLES,
-      });
-
-      const noticeKind = getHtmlImageEmbedNoticeKind(images);
-      if (noticeKind === "partial") {
-        window.alert(t("editor.htmlExport.imageEmbedPartial", {
-          embedded: images.embedded,
-          total: images.total,
-          failed: images.failed,
-        }));
-      } else if (noticeKind === "failed-all") {
-        window.alert(t("editor.htmlExport.imageEmbedFailed", {
-          total: images.total,
-        }));
-      }
-    } catch {
-      window.alert(t("editor.htmlExport.error"));
-    }
-  }, [
-    editor,
-    getMobilePlainTextValue,
-    i18n.language,
-    i18n.resolvedLanguage,
-    markdownSource,
-    memo,
-    notebookOptions,
-    t,
-    tagsText,
-    title,
-    useMarkdownSourceEditor,
-    useMobilePlainTextEditor,
-  ]);
-
-  const buildImageExportOptions = useCallback((format: NoteImageFormat) => {
-    if (!isEditorReady(editor) || !memo) return;
-    const currentDocument = useMobilePlainTextEditor
-      ? markdownToDoc(getMobilePlainTextValue())
-      : useMarkdownSourceEditor
-        ? markdownToDoc(markdownSource)
-        : editor.getJSON() as TiptapDoc;
-    return {
-      bodyHtml: serializeNoteDocumentForPrint(editor, currentDocument),
-      title: title.trim() || t("common.untitledMemo"),
-      notebook: notebookOptions.find((notebook) => notebook.id === memo.notebookId)?.name ?? "",
-      tags: parseTagsText(tagsText),
-      updatedAt: formatDateTime(memo.updatedAt),
-      language: i18n.resolvedLanguage ?? i18n.language,
-      fallbackTitle: t("common.untitledMemo"),
-      format,
-      styles: NOTE_HTML_FULL_STYLES,
-    };
-  }, [
-    editor,
-    getMobilePlainTextValue,
-    i18n.language,
-    i18n.resolvedLanguage,
-    markdownSource,
-    memo,
-    notebookOptions,
-    t,
-    tagsText,
-    title,
-    useMarkdownSourceEditor,
-    useMobilePlainTextEditor,
-  ]);
-
-  const handleOpenImageShare = useCallback(() => {
-    const options = buildImageExportOptions("png");
-    if (!options) return;
-    const { format: _format, ...source } = options;
-    setImageShareSource(source);
-    setImageShareOpen(true);
-  }, [buildImageExportOptions]);
-
-  const handleSaveAsTemplate = useCallback(() => {
-    if (!memo || effectiveReadOnly) {
-      return;
-    }
-
-    const name = window.prompt(t("templates.templateNamePrompt"), memo.title || "");
-    if (!name?.trim()) {
-      return;
-    }
-
-    const currentMarkdown = useMobilePlainTextEditor
-      ? getMobilePlainTextValue()
-      : isEditorReady(editor)
-        ? docToMarkdown(editor.getJSON() as TiptapDoc)
-        : memo.contentMarkdown;
-    const currentTemplateMemo: MemoDetail = {
-      ...memo,
-      title,
-      tags: parseTagsText(tagsText),
-      contentJson: markdownToDoc(currentMarkdown),
-      contentMarkdown: currentMarkdown,
-    };
-    void onSaveAsTemplate(currentTemplateMemo, name.trim());
-  }, [editor, effectiveReadOnly, getMobilePlainTextValue, memo, onSaveAsTemplate, t, tagsText, title, useMobilePlainTextEditor]);
-
-  useEffect(() => {
-    if (
-      !documentActionRequest ||
-      documentActionRequest.memoId !== memo?.id ||
-      hydratedEditorMemoId !== memo.id ||
-      !isEditorReady(editor)
-    ) {
-      return;
-    }
-
-    onDocumentActionConsumed?.(documentActionRequest.id);
-
-    switch (documentActionRequest.action) {
-      case "share":
-        if (!effectiveReadOnly) setShareOpen(true);
-        break;
-      case "export-markdown":
-        handleExportMarkdown();
-        break;
-      case "export-html":
-        void handleExportHtml();
-        break;
-      case "export-pdf":
-        handleExportPdf(documentActionRequest.printWindow);
-        break;
-      case "share-image":
-        handleOpenImageShare();
-        break;
-      case "save-as-template":
-        handleSaveAsTemplate();
-        break;
-    }
-  }, [
-    documentActionRequest,
-    editor,
-    effectiveReadOnly,
-    handleExportHtml,
-    handleExportMarkdown,
-    handleExportPdf,
-    handleOpenImageShare,
-    handleSaveAsTemplate,
-    hydratedEditorMemoId,
-    memo,
-    onDocumentActionConsumed,
-  ]);
 
   useEffect(() => {
     if (!useMobilePlainTextEditor) {
