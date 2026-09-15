@@ -57,11 +57,10 @@ import {
   remapEditorInstanceMemoIdentity,
 } from "./editor/editor-instance-identity";
 import {
-  createMarkdownModeSnapshot,
   isMarkdownSourceUnchanged,
   resolveMarkdownModeContent,
-  type MarkdownModeSnapshot,
 } from "./editor/editor-mode-content";
+import { useEditorMarkdownMode } from "./editor/useEditorMarkdownMode";
 import {
   ImageUploadPlaceholderExtension,
   addImageUploadPlaceholder,
@@ -88,8 +87,6 @@ import {
 } from "./editor/NoteLinkSuggestion";
 import { WeChatIcon } from "./WeChatIcon";
 import { isNamedEditorTheme, useEditorTheme, useMarkdownTheme } from "./ThemeProvider";
-import type { MarkdownSourceEditorRef } from "./editor/MarkdownSourceEditor";
-
 const MarkdownSourceEditor = lazy(() =>
   import("./editor/MarkdownSourceEditor").then((module) => ({
     default: module.MarkdownSourceEditor,
@@ -214,12 +211,11 @@ import { PdfAttachment } from "./editor/PdfAttachment";
 import { FileAttachment } from "./editor/FileAttachment";
 import { createInlineFieldExtension } from "./editor/InlineField";
 import { createPluginEmbedExtension } from "./editor/PluginEmbed";
-import { getEditorScrollProgress, restoreEditorScrollProgress } from "./editor/editor-mode-scroll";
+import { useEditorDocumentActions } from "./editor/useEditorDocumentActions";
 import { useEditorSaveStatus } from "./editor/useEditorSaveStatus";
 import { getEditorSaveChrome } from "./editor/editor-save-chrome";
 import { classifyEditorSaveFailure, shouldLeaveEditorAfterSaveError } from "./editor/editor-save-failure";
 import { useEditorSaveConflictActions } from "./editor/useEditorSaveConflictActions";
-import { useEditorDocumentActions } from "./editor/useEditorDocumentActions";
 import { useEditorNoteSearchController } from "./editor/useEditorNoteSearchController";
 import { EditorNoteLinkPicker } from "./editor/EditorNoteLinkPicker";
 import { EditorResourceDialogs } from "./editor/EditorResourceDialogs";
@@ -461,8 +457,6 @@ const RichEditorPane = ({
   const [isMobileEditing, setIsMobileEditing] = useState(false);
   const [desktopReadingProtection, setDesktopReadingProtection] = useState(readDesktopReadingProtectionPreference);
   const [mobilePlainText, setMobilePlainText] = useState("");
-  const [markdownSource, setMarkdownSource] = useState("");
-  const [isMarkdownMode, setIsMarkdownMode] = useState(false);
   const [mobileToolbarOpen, setMobileToolbarOpen] = useState(false);
   const [editorOutlineCollapsed, setEditorOutlineCollapsed] = useState(readEditorOutlineCollapsedPreference);
   const [phonePreviewOpen, setPhonePreviewOpen] = useState(readEditorPhonePreviewPreference);
@@ -528,7 +522,6 @@ const RichEditorPane = ({
     || (isMobileViewport && !mobileEditingActive)
     || (!isMobileViewport && desktopReadingProtection);
   const useMobilePlainTextEditor = isMobileViewport && mobileEditingActive && !readOnly;
-  const useMarkdownSourceEditor = !useMobilePlainTextEditor && isMarkdownMode;
 
   const toggleDesktopReadingProtection = useCallback(() => {
     setDesktopReadingProtection((protectedMode) => {
@@ -584,8 +577,6 @@ const RichEditorPane = ({
   const mobileDraftTimerRef = useRef<number | null>(null);
   const mobileSaveTimerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const markdownSourceEditorRef = useRef<MarkdownSourceEditorRef | null>(null);
-  const markdownModeSnapshotRef = useRef<MarkdownModeSnapshot | null>(null);
   const openExternalLinkDialogRef = useRef<() => void>(() => undefined);
   const slashCommandLabelsRef = useRef<SlashCommandLabels>({
     menu: "",
@@ -702,22 +693,6 @@ const RichEditorPane = ({
   const editingMemoIdRef = useRef<string | null>(memo?.id ?? null);
   const imageCompressionEnabledRef = useRef(imageCompressionEnabled);
   const resourceMenuHideTimerRef = useRef<number | null>(null);
-
-  const restoreScrollAfterModeChange = useCallback((targetMode: "markdown" | "rich", progress: number) => {
-    const restore = (attempt: number) => {
-      const target = targetMode === "markdown"
-        ? markdownSourceEditorRef.current?.getScrollContainer() ?? null
-        : editorScrollContainerRef.current;
-
-      if (restoreEditorScrollProgress(target, progress) || attempt >= 2) {
-        return;
-      }
-
-      window.requestAnimationFrame(() => restore(attempt + 1));
-    };
-
-    window.requestAnimationFrame(() => restore(0));
-  }, []);
 
   useEffect(() => {
     const handleMemoIdRemapped = (event: Event) => {
@@ -1197,6 +1172,25 @@ const RichEditorPane = ({
     // durable id; an actual memo switch still receives a fresh undo history.
     editorInstanceMemoKey,
   ]);
+
+  const {
+    clearMarkdownSnapshot,
+    handleMarkdownModeChange,
+    hydrateMarkdownSource,
+    isMarkdownMode,
+    markdownModeSnapshotRef,
+    markdownSource,
+    markdownSourceEditorRef,
+    resetMarkdownMode,
+    setMarkdownSource,
+  } = useEditorMarkdownMode({
+    editor,
+    editorScrollContainerRef,
+    effectiveReadOnly,
+    getMemoId: () => memoRef.current?.id,
+    hydratingRef,
+  });
+  const useMarkdownSourceEditor = !useMobilePlainTextEditor && isMarkdownMode;
 
   useEffect(() => {
     const syncPreference = (event?: Event) => {
@@ -2027,15 +2021,13 @@ const RichEditorPane = ({
       editSessionRef.current = null;
       hydratedMemoIdRef.current = null;
       appliedEditorSourceKeyRef.current = null;
-      markdownModeSnapshotRef.current = null;
+      resetMarkdownMode();
       setHydratedEditorMemoId(null);
       editingMemoIdRef.current = null;
       setHasUnsavedChanges(false);
       setTitle("");
       setTagsText("");
       setMobilePlainText("");
-      setMarkdownSource("");
-      setIsMarkdownMode(false);
       setMobilePlainTextElementValue(mobileTextAreaRef.current, "");
       setSaveState("idle");
       setStorageSaveError(false);
@@ -2051,7 +2043,7 @@ const RichEditorPane = ({
     if (!sameMemo) {
       hydratedMemoIdRef.current = null;
       appliedEditorSourceKeyRef.current = null;
-      markdownModeSnapshotRef.current = null;
+      clearMarkdownSnapshot();
       setHydratedEditorMemoId(null);
     }
 
@@ -2208,10 +2200,7 @@ const RichEditorPane = ({
       setTitle(nextTitle);
       setTagsText(nextTagsText);
       setMobilePlainText(nextMarkdown);
-      setMarkdownSource(nextMarkdown);
-      markdownModeSnapshotRef.current = isMarkdownMode
-        ? createMarkdownModeSnapshot(memo.id, nextContent, nextMarkdown)
-        : null;
+      hydrateMarkdownSource(memo.id, nextContent, nextMarkdown);
       setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
 
       if (isEditorReady(currentEditor) && shouldReplaceDocument) {
@@ -2398,53 +2387,6 @@ const RichEditorPane = ({
       window.removeEventListener("edgeever:sync-completed", handleSyncCompleted);
     };
   }, []);
-
-  const applyMarkdownSourceToRichText = useCallback((scrollProgress: number) => {
-    if (!isEditorReady(editor)) {
-      return;
-    }
-
-    hydratingRef.current = true;
-    editor.commands.setContent(resolveMarkdownModeContent(
-      markdownModeSnapshotRef.current,
-      memoRef.current?.id,
-      markdownSource,
-    ));
-    markdownModeSnapshotRef.current = null;
-    setIsMarkdownMode(false);
-    restoreScrollAfterModeChange("rich", scrollProgress);
-    window.setTimeout(() => {
-      hydratingRef.current = false;
-    }, 0);
-  }, [editor, markdownSource, restoreScrollAfterModeChange]);
-
-  const handleMarkdownModeChange = useCallback(() => {
-    if (effectiveReadOnly || !isEditorReady(editor)) {
-      return;
-    }
-
-    const scrollProgress = getEditorScrollProgress(
-      isMarkdownMode ? (markdownSourceEditorRef.current?.getScrollContainer() ?? null) : editorScrollContainerRef.current,
-    );
-
-    if (isMarkdownMode) {
-      applyMarkdownSourceToRichText(scrollProgress);
-      return;
-    }
-
-    const currentMemoId = memoRef.current?.id;
-    if (!currentMemoId) {
-      return;
-    }
-    const snapshot = createMarkdownModeSnapshot(
-      currentMemoId,
-      editor.getJSON() as TiptapDoc,
-    );
-    markdownModeSnapshotRef.current = snapshot;
-    setMarkdownSource(snapshot.markdownSource);
-    setIsMarkdownMode(true);
-    restoreScrollAfterModeChange("markdown", scrollProgress);
-  }, [applyMarkdownSourceToRichText, editor, effectiveReadOnly, isMarkdownMode, markdownSource, restoreScrollAfterModeChange]);
 
   const handleMarkdownSourceChange = useCallback((value: string) => {
     setMarkdownSource(value);
@@ -3062,10 +3004,7 @@ const RichEditorPane = ({
     setTitle(nextTitle);
     setTagsText(nextTagsText);
     setMobilePlainText(nextMarkdown);
-    setMarkdownSource(nextMarkdown);
-    markdownModeSnapshotRef.current = isMarkdownMode
-      ? createMarkdownModeSnapshot(remoteMemo.id, nextContent, nextMarkdown)
-      : null;
+    hydrateMarkdownSource(remoteMemo.id, nextContent, nextMarkdown);
     setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
 
     const currentEditor = editorRef.current;
@@ -3095,7 +3034,7 @@ const RichEditorPane = ({
     }
 
     await queryClient.invalidateQueries({ queryKey: ["memo", remoteMemo.id] });
-  }, [isMarkdownMode, onSaved, queryClient, repository]);
+  }, [hydrateMarkdownSource, onSaved, queryClient, repository]);
 
   const {
     conflictActionMessage,
