@@ -44,7 +44,7 @@ import {
   buildNoteImageCardMarkup,
   generateCardCss,
 } from "@edgeever/shared/note-image-card";
-import { createEdgeEverMathematics } from "./mathematics";
+import { createEdgeEverMathematics } from "@edgeever/shared/mathematics";
 import { createIosImageGallery, MergeDivider } from "./document-nodes";
 import { createImageInsertTransaction, groupUploadedImages, NATIVE_IMAGE_GALLERY_CSS } from "@edgeever/shared/native-image-gallery";
 

@@ -11,6 +11,7 @@ import {
   MERGE_DIVIDER_NODE_TYPE,
   MergeDivider as SharedMergeDivider,
 } from "@edgeever/shared";
+import { createEdgeEverMathematics } from "@edgeever/shared/mathematics";
 import { createIosImageGallery, ImageGallery, MergeDivider } from "./document-nodes.ts";
 
 const galleryDoc = {
@@ -30,6 +31,7 @@ const iosMarkdownManager = new MarkdownManager({
     StarterKit.configure({ codeBlock: false, link: false }),
     Image,
     MergeDivider,
+    ...createEdgeEverMathematics(),
     createIosImageGallery(() => "en-US"),
     Markdown.configure({
       markedOptions: { gfm: true },
@@ -80,5 +82,34 @@ describe("iOS document nodes share the web schema", () => {
       attrs: { layout: "2" },
     });
     expect(persisted.content[0].content.map((node) => node.attrs.src)).toEqual(["/one.png", "/two.png"]);
+  });
+
+  test("parses inline and block math the same as the web codec", () => {
+    const markdown = "Euler: $e^{i\\pi}+1=0$.\n\n$$\n\\frac{a}{b}\n$$";
+    const webDoc = markdownToDoc(markdown);
+    const iosDoc = iosMarkdownManager.parse(markdown);
+
+    expect(webDoc.content[0]?.content?.[1]).toMatchObject({
+      type: "inlineMath",
+      attrs: { latex: "e^{i\\pi}+1=0" },
+    });
+    expect(webDoc.content[1]).toMatchObject({
+      type: "blockMath",
+      attrs: { latex: "\\frac{a}{b}" },
+    });
+    expect(iosDoc.content.map((node) => node.type)).toEqual(webDoc.content.map((node) => node.type));
+    expect(iosDoc.content[0]?.content?.[1]).toMatchObject(webDoc.content[0]?.content?.[1]);
+    expect(iosDoc.content[1]).toMatchObject(webDoc.content[1]);
+    expect(docToMarkdown(iosDoc)).toBe(docToMarkdown(webDoc));
+  });
+
+  test("keeps currency dollar pairs as literal text like the web codec", () => {
+    const markdown = "Price: $100$";
+    const webDoc = markdownToDoc(markdown);
+    const iosDoc = iosMarkdownManager.parse(markdown);
+
+    expect(webDoc.content[0]?.content?.some((node) => node.type === "inlineMath")).toBe(false);
+    expect(iosDoc.content[0]?.content?.some((node) => node.type === "inlineMath")).toBe(false);
+    expect(docToMarkdown(iosDoc)).toBe(docToMarkdown(webDoc));
   });
 });
