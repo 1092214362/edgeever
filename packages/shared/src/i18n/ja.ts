@@ -704,7 +704,6 @@ export const ja = {
       general: "一般",
       ai: "AI 連携",
       data: "インポートとエクスポート",
-      paw: "肉球モード",
       advanced: "詳細",
       account: "ログイン設定",
     },

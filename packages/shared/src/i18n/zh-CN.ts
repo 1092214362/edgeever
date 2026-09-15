@@ -704,7 +704,6 @@ export const zhCN = {
       general: "常规设置",
       ai: "AI集成",
       data: "导入导出",
-      paw: "猫爪模式",
       advanced: "高级设置",
       account: "登录设置",
     },

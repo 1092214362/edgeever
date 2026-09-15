@@ -10,8 +10,6 @@ describe("AI assistant modes", () => {
     expect(source).not.toContain('"organize"');
     expect(source).not.toContain("inset-y-3 right-3");
     expect(source).toContain("<CompanionChat");
-    expect(source).toContain("allowWrites");
-    expect(source).toContain("forceAllowNotes");
     expect(editor).toContain("companionAvailable={companionAvailable}");
     expect(editor).toContain("beforeCompanionApply={beforeCompanionApply}");
   });

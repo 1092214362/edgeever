@@ -3,8 +3,6 @@ import { useTranslation } from "react-i18next";
 import { MessageCircle } from "lucide-react";
 import type { CompanionAction, CompanionTurn, CompanionTurnInput } from "@edgeever/shared";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api, ApiRequestError } from "@/lib/api";
 import { companionLocale } from "@/lib/companion-locale";
 import { CompanionActionCard } from "./CompanionActionCard";
@@ -19,9 +17,6 @@ export type CompanionChatFocus = {
 
 type CompanionChatProps = {
   available: boolean;
-  variant: "page" | "assistant";
-  allowWrites: boolean;
-  forceAllowNotes?: boolean;
   focus?: CompanionChatFocus;
   placeholder?: string;
   beforeApply: () => Promise<void>;
@@ -31,9 +26,6 @@ type CompanionChatProps = {
 
 export function CompanionChat({
   available,
-  variant,
-  allowWrites,
-  forceAllowNotes = false,
   focus,
   placeholder,
   beforeApply,
@@ -41,13 +33,10 @@ export function CompanionChat({
   onOpenNote,
 }: CompanionChatProps) {
   const { t, i18n } = useTranslation();
-  const compact = variant === "assistant";
   const [turns, setTurns] = useState<CompanionTurn[]>([]);
   const [actions, setActions] = useState<CompanionAction[]>([]);
   const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
   const [message, setMessage] = useState("");
-  const [useMemory, setUseMemory] = useState(false);
-  const [allowNotes, setAllowNotes] = useState(forceAllowNotes);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,13 +56,11 @@ export function CompanionChat({
     return t("companion.failed");
   };
   const reload = async () => {
-    const [turnResult, actionResult, settingsResult] = await Promise.all([
+    const [turnResult, actionResult] = await Promise.all([
       api.listCompanionTurns(),
       api.listCompanionActions(),
-      api.getCompanionDiscoverySettings(),
     ]);
     if (!alive.current) return;
-    setUseMemory(settingsResult.settings.useMemory === true);
     setTurns(turnResult.turns);
     setActions(actionResult.actions);
   };
@@ -90,10 +77,6 @@ export function CompanionChat({
     // This workspace owns ephemeral account-scoped state, discarded on unmount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [available]);
-
-  useEffect(() => {
-    if (forceAllowNotes) setAllowNotes(true);
-  }, [forceAllowNotes]);
 
   const perform = async (work: () => Promise<unknown>) => {
     if (locked.current) return;
@@ -117,9 +100,9 @@ export function CompanionChat({
         inputTokens: null, outputTokens: null, createdAt: new Date().toISOString() }, ...previous]);
       let completed = false;
       const payload: CompanionTurnInput = {
-        id, threadId, message: text, useMemory,
-        allowNotes: forceAllowNotes || allowNotes,
-        allowWrites,
+        id, threadId, message: text, useMemory: false,
+        allowNotes: true,
+        allowWrites: true,
         locale: companionLocale(i18n.resolvedLanguage),
         ...(focus?.memoId || focus?.selectionMarkdown?.trim()
           ? { focus: {
@@ -179,7 +162,7 @@ export function CompanionChat({
   const threads = [...new Map(turns.map(turn => [turn.threadId, turn])).values()];
   const running = turns.find(turn => turn.status === "running");
   const threadTurns = turns.filter(turn => turn.threadId === threadId).reverse();
-  const previousThread = compact ? threads.find(thread => thread.threadId !== threadId) : undefined;
+  const previousThread = threads.find(thread => thread.threadId !== threadId);
 
   if (!available) {
     return <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-4 text-center">
@@ -191,23 +174,11 @@ export function CompanionChat({
   return <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
     {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
     {loading ? <p role="status">{t("common.loading")}</p> : null}
-    {!compact ? <div className="flex flex-wrap items-center gap-2">
-      <div className="min-w-0 flex-1">
-        <Select value={threadId} disabled={busy} onValueChange={setThreadId}>
-          <SelectTrigger aria-label={t("companion.history")}><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {!threads.some(thread => thread.threadId === threadId) ? <SelectItem value={threadId}>{t("companion.newChat")}</SelectItem> : null}
-            {threads.map(thread => <SelectItem key={thread.threadId} value={thread.threadId}>{thread.message.slice(0, 40)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-      <Button variant="outline" disabled={busy} onClick={() => { setThreadId(crypto.randomUUID()); setMessage(""); }}>{t("companion.newChat")}</Button>
-    </div> : null}
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
       {!loading && !threadTurns.length ? <div className="space-y-3 py-8 text-center">
         <MessageCircle aria-hidden="true" className="mx-auto h-9 w-9 text-emerald-600" />
-        <h2 className="text-sm font-semibold text-slate-900">{t(compact ? "aiAssistant.modes.emptyTitle" : "companion.emptyTitle")}</h2>
-        <p className="mx-auto max-w-md text-sm leading-relaxed text-slate-500">{t(compact ? "aiAssistant.modes.emptyHint" : "companion.intro")}</p>
+        <h2 className="text-sm font-semibold text-slate-900">{t("aiAssistant.modes.emptyTitle")}</h2>
+        <p className="mx-auto max-w-md text-sm leading-relaxed text-slate-500">{t("aiAssistant.modes.emptyHint")}</p>
         {previousThread ? <div className="space-y-2">
           <p className="mx-auto max-w-md truncate text-xs text-slate-400">{previousThread.message}</p>
           <Button type="button" variant="outline" disabled={busy} onClick={() => setThreadId(previousThread.threadId)}>
@@ -234,18 +205,7 @@ export function CompanionChat({
       </article>)}
     </div>
     <form onSubmit={send} className="space-y-2 border-t pt-3">
-      {!compact ? <div className="flex flex-wrap gap-4 text-sm">
-        <label className="flex items-center gap-2"><Checkbox checked={useMemory} disabled={busy} onCheckedChange={checked => void perform(async () => {
-          const { settings } = await api.getCompanionDiscoverySettings();
-          await api.saveCompanionDiscoverySettings({ enabled: settings.enabled, version: settings.version, useMemory: checked === true });
-        })} />{t("companion.useMemory")}</label>
-        <label className="flex items-center gap-2"><Checkbox checked={allowNotes} disabled={busy} onCheckedChange={checked => setAllowNotes(checked === true)} />{t("companion.allowNotes")}</label>
-      </div> : <p className="text-xs leading-relaxed text-slate-500">{t("aiAssistant.modes.askHint")}</p>}
-      {!compact ? <details className="text-xs leading-relaxed text-slate-500">
-        <summary className="cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">{t("companion.privacyTitle")}</summary>
-        <p className="mt-2">{t("companion.privacy")}</p>
-        <p className="mt-2">{t("companion.contextHelp")}</p>
-      </details> : null}
+      <p className="text-xs leading-relaxed text-slate-500">{t("aiAssistant.modes.askHint")}</p>
       <label className="sr-only" htmlFor="companion-message">{t("companion.message")}</label>
       <textarea
         id="companion-message"
@@ -273,7 +233,7 @@ export function CompanionChat({
         {running ? <Button type="button" variant="outline" onClick={() => void stop(running.id)}>{t("companion.stop")}</Button> : null}
         <Button type="submit" disabled={busy || loading || Boolean(running) || !message.trim()}>
           {busy ? t("common.processing") : t("companion.send")}
-          {compact && !busy ? <kbd aria-hidden="true" className="ml-1 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium leading-none text-slate-400">↵</kbd> : null}
+          {!busy ? <kbd aria-hidden="true" className="ml-1 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium leading-none text-slate-400">↵</kbd> : null}
         </Button>
       </div>
     </form>

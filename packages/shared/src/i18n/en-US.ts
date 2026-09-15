@@ -704,7 +704,6 @@ export const enUS = {
       general: "General",
       ai: "AI Integrations",
       data: "Import & Export",
-      paw: "Paw mode",
       advanced: "Advanced",
       account: "Login Settings",
     },

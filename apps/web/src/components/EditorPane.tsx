@@ -310,7 +310,6 @@ type EditorPaneProps = {
   pluginHost: EdgeEverPluginHost;
   pluginNavigationRequest?: { id: number; noteId: string; search: string } | null;
   onOpenExecutionCenter: () => void;
-  companionDiscoveryHub?: ReactNode;
 };
 
 type RichEditorPaneProps = EditorPaneProps & {
@@ -388,7 +387,6 @@ const RichEditorPane = ({
   pluginHost,
   pluginNavigationRequest,
   onOpenExecutionCenter,
-  companionDiscoveryHub,
   onRequestMobileNativeEdit,
 }: RichEditorPaneProps) => {
   const { t, i18n } = useTranslation();
@@ -3424,7 +3422,6 @@ const RichEditorPane = ({
               </Button>
             )}
             <MemoEditorHeaderActions
-              companionDiscoveryHub={companionDiscoveryHub}
               moreButtonClassName={cn(!mobileEditingActive && !readOnly && "hidden sm:inline-flex")}
               moreMenuClassName="w-44 rounded-md"
               onOpenExecutionCenter={onOpenExecutionCenter}

@@ -700,9 +700,6 @@ export const AiAssistantDialog = ({
           {chatting ? (
             <CompanionChat
               available={companionAvailable}
-              variant="assistant"
-              allowWrites
-              forceAllowNotes
               focus={{ memoId, notebookId, title, selectionMarkdown }}
               placeholder={t("aiAssistant.modes.askPlaceholder")}
               beforeApply={beforeCompanionApply ?? (async () => undefined)}
