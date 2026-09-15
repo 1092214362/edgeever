@@ -246,6 +246,11 @@ import {
   resolveEditorDraftState,
   shouldReplaceEditorDocument,
 } from "./editor/editor-draft-state";
+import {
+  pendingEditorInsertMatchesMemo,
+  shouldInsertPendingEditorFiles,
+  usablePendingInsertFiles,
+} from "./editor/editor-pending-insert";
 import type { EdgeEverPluginHost, PluginEditorAdapter } from "@/lib/plugins/plugin-host";
 import {
   useEditorResourceActions,
@@ -997,7 +1002,7 @@ const RichEditorPane = ({
     const currentEditor = editorRef.current;
 
     if (!currentMemo || currentMemo.isDeleted || !currentEditor || !currentEditor.isEditable || files.length === 0) {
-      return;
+      return false;
     }
 
     const targetMemoId = currentMemo.id;
@@ -1171,6 +1176,7 @@ const RichEditorPane = ({
         removeImageUploadPlaceholder(placeholderEditor, placeholder);
       });
     });
+    return true;
   }, [queryClient, repository, resourceInsertionLimit, t]);
 
   const pluginEmbedExtension = useMemo(() => createPluginEmbedExtension(pluginHost), [pluginHost]);
@@ -1757,12 +1763,40 @@ const RichEditorPane = ({
   }, [editor]);
 
   useEffect(() => {
-    if (!pendingInsertFiles || pendingInsertFiles.memoId !== memo?.id) return;
-    if (hydratedEditorMemoId !== memo.id) return;
-    if (!isEditorReady(editor) || !editor.isEditable || pendingInsertFiles.files.length === 0) return;
-    insertResourceFiles(pendingInsertFiles.files);
+    if (!pendingInsertFiles || !pendingEditorInsertMatchesMemo(
+      pendingInsertFiles,
+      memo?.id,
+      editorInstanceMemoIdentityRef.current.aliases,
+    )) return;
+    const files = usablePendingInsertFiles(pendingInsertFiles);
+    if (files.length === 0) {
+      onPendingInsertFilesConsumed?.();
+      return;
+    }
+    if (!shouldInsertPendingEditorFiles({
+      pendingInsertFiles,
+      memoId: memo?.id,
+      memoAliases: editorInstanceMemoIdentityRef.current.aliases,
+      editorHydratedForMemo: editorIsHydratedForCurrentMemo,
+      editorReady: isEditorReady(editor),
+      readOnly: effectiveReadOnly,
+    }) || !isEditorReady(editor)) return;
+    // Hydration leaves the editor non-editable until a later effect calls
+    // setEditable. That later effect does not re-render, so waiting on
+    // editor.isEditable here would drop the screenshot forever.
+    if (!editor.isEditable) editor.setEditable(true);
+    if (!insertResourceFiles(files)) return;
     onPendingInsertFilesConsumed?.();
-  }, [editor, hydratedEditorMemoId, insertResourceFiles, memo?.id, onPendingInsertFilesConsumed, pendingInsertFiles]);
+  }, [
+    editor,
+    editorIsHydratedForCurrentMemo,
+    effectiveReadOnly,
+    hydratedEditorMemoId,
+    insertResourceFiles,
+    memo?.id,
+    onPendingInsertFilesConsumed,
+    pendingInsertFiles,
+  ]);
 
   useEffect(() => {
     if (!isEditorReady(editor)) {

@@ -117,6 +117,9 @@ import { createPublicNetworkAdapter } from "@/lib/plugins/public-network-adapter
 import { clearRendererRecoveryRequired, isRendererRecoveryRequired } from "@/lib/renderer-recovery";
 import { EditorPaneErrorBoundary, EditorRecoveryPane } from "./EditorPaneErrorBoundary";
 import { isMarkdownFile, readMarkdownFile } from "@/lib/markdown-file-import";
+import { compressImageForUpload } from "@/lib/image-compression";
+import { createScreenshotMemo, screenshotFileFromImportPayload } from "@/lib/screenshot-import";
+import { isDesktopResourceRuntime, stageDesktopResource, toDesktopResourceUrl } from "@/lib/desktop-resources";
 
 const isDesktopViewport = () => window.matchMedia("(min-width: 1024px)").matches;
 const PULL_TO_REFRESH_TRIGGER_PX = 72;
@@ -752,7 +755,6 @@ export const WorkspaceApp = ({
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const autoSelectedDemoNotebookRef = useRef(false);
   const [createdMemoEditId, setCreatedMemoEditId] = useState<string | null>(null);
-  const [pendingEditorInsert, setPendingEditorInsert] = useState<{ memoId: string; files: File[] } | null>(null);
   const pendingCreatedMemoIdRef = useRef<string | null>(null);
   const pendingQuickSwitcherMemoIdRef = useRef<string | null>(null);
   const creatingMemoSelectionRef = useRef(false);
@@ -1729,6 +1731,39 @@ export const WorkspaceApp = ({
     },
   });
 
+  const revealCreatedMemo = (memo: MemoDetail) => {
+    const targetNotebookId = memo.notebookId;
+    const isDiagram = Boolean(parseDiagramDocument(memo.contentMarkdown));
+
+    setMemoView("notebook");
+    setSearch("");
+    setSelectedTag(null);
+    // A newly created memo is not pinned or otherwise guaranteed to match
+    // the active list filter. Leave filtered views so the selected memo
+    // remains visible instead of the list effect falling back to its first
+    // item (for example, the currently pinned memo).
+    setMemoFilterMode("all");
+    if (targetNotebookId !== selectedNotebookId) {
+      setSelectedNotebookId(targetNotebookId);
+    }
+    cacheMemoDetail(queryClient, memo, "notebook");
+    updateMemoSummaryInLists(queryClient, memoToSummary(memo));
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["memos"], refetchType: "inactive" }),
+      queryClient.invalidateQueries({ queryKey: ["notebooks"], refetchType: "inactive" }),
+    ]);
+    navigateWorkspaceHome();
+    setRightView("editor");
+    pendingCreatedMemoIdRef.current = memo.id;
+    setCreatedMemoEditId(isDiagram ? null : memo.id);
+    setSelectedMemoId(memo.id);
+    setActivePane("editor");
+
+    if (!isDesktopViewport() && !isDiagram) {
+      openStandaloneMobileEditor(memo.id);
+    }
+  };
+
   const createMemoMutation = useMutation({
     mutationFn: async (input: Parameters<typeof repository.createMemo>[0]) => {
       const requiresRemoteMemo = requiresRemoteMemoForStandaloneMobileEditor({
@@ -1741,36 +1776,7 @@ export const WorkspaceApp = ({
       return data;
     },
     onSuccess: (data) => {
-      const targetNotebookId = data.memo.notebookId;
-      const isDiagram = Boolean(parseDiagramDocument(data.memo.contentMarkdown));
-
-      setMemoView("notebook");
-      setSearch("");
-      setSelectedTag(null);
-      // A newly created memo is not pinned or otherwise guaranteed to match
-      // the active list filter. Leave filtered views so the selected memo
-      // remains visible instead of the list effect falling back to its first
-      // item (for example, the currently pinned memo).
-      setMemoFilterMode("all");
-      if (targetNotebookId !== selectedNotebookId) {
-        setSelectedNotebookId(targetNotebookId);
-      }
-      cacheMemoDetail(queryClient, data.memo, "notebook");
-      updateMemoSummaryInLists(queryClient, memoToSummary(data.memo));
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["memos"], refetchType: "inactive" }),
-        queryClient.invalidateQueries({ queryKey: ["notebooks"], refetchType: "inactive" }),
-      ]);
-      navigateWorkspaceHome();
-      setRightView("editor");
-      pendingCreatedMemoIdRef.current = data.memo.id;
-      setCreatedMemoEditId(isDiagram ? null : data.memo.id);
-      setSelectedMemoId(data.memo.id);
-      setActivePane("editor");
-
-      if (!isDesktopViewport() && !isDiagram) {
-        openStandaloneMobileEditor(data.memo.id);
-      }
+      revealCreatedMemo(data.memo);
     },
     onError: () => {
       clearPendingCreatedMemo();
@@ -2188,25 +2194,56 @@ export const WorkspaceApp = ({
       : defaultMemoNotebookId;
     if (!notebookId) return;
 
-    const source = payload.bytes instanceof Uint8Array ? payload.bytes : new Uint8Array(payload.bytes);
-    const bytes = new Uint8Array(source.byteLength);
-    bytes.set(source);
-    const file = new File([bytes], payload.name || "screenshot.png", { type: payload.type || "image/png" });
+    const file = screenshotFileFromImportPayload(payload);
+    if (file.size === 0) {
+      setAppNoticeDialog({
+        title: t("memoList.importScreenshotFailedTitle"),
+        description: t("memoList.importScreenshotEmpty"),
+      });
+      return;
+    }
     setTemplatesOpen(false);
     setMobileBottomNavActive("home");
     creatingMemoSelectionRef.current = true;
     try {
-      const data = await createMemoMutation.mutateAsync({
+      const preparedFile = imageCompressionEnabled ? (await compressImageForUpload(file)).file : file;
+      const memo = await createScreenshotMemo({
         notebookId,
         title: payload.title?.trim() || "",
-        contentMarkdown: "",
-        tags: [],
+        file: preparedFile,
+        createMemo: (input) => repository.createMemo(input),
+        uploadResource: async (memoId, uploadFile) => {
+          try {
+            const { resource } = await repository.uploadMemoResource(memoId, uploadFile);
+            return { url: toDesktopResourceUrl(resource.url), filename: resource.filename };
+          } catch (error) {
+            if (!isDesktopResourceRuntime()) throw error;
+            const staged = await stageDesktopResource(memoId, uploadFile);
+            if (!staged) throw error;
+            return { url: `edgeever-staged://${staged.id}`, filename: uploadFile.name };
+          }
+        },
+        updateMemo: (created, content) => repository.updateMemo(created, {
+          expectedRevision: created.revision,
+          expectedContentHash: created.contentHash,
+          editSessionId: `screenshot:${created.id}`,
+          title: created.title ?? "",
+          contentJson: content.contentJson,
+          contentMarkdown: content.contentMarkdown,
+          tags: created.tags,
+        }),
+        deleteMemo: (memoId) => repository.deleteMemo(memoId, true),
       });
-      setPendingEditorInsert({ memoId: data.memo.id, files: [file] });
+      await putLocalMemo(localDataScope, memo);
+      revealCreatedMemo(memo);
     } catch {
       creatingMemoSelectionRef.current = false;
+      setAppNoticeDialog({
+        title: t("memoList.importScreenshotFailedTitle"),
+        description: t("memoList.importScreenshotFailed"),
+      });
     }
-  }, [createMemoMutation, defaultMemoNotebookId, memoView, notebooks, selectedNotebookId]);
+  }, [defaultMemoNotebookId, imageCompressionEnabled, localDataScope, memoView, notebooks, repository, selectedNotebookId, t]);
 
   const handleCreateMemo = (kind?: DiagramKind) => {
     const targetNotebookId = createMemoNotebookId;
@@ -3699,8 +3736,6 @@ export const WorkspaceApp = ({
                     onToggleDesktopFocusMode={toggleDesktopFocusMode}
                     editorContentAlignment={editorContentAlignment}
                     mobileDefaultEditMemoId={createdMemoEditId}
-                    pendingInsertFiles={pendingEditorInsert}
-                    onPendingInsertFilesConsumed={() => setPendingEditorInsert(null)}
                     isTrashView={memoView === "trash"}
                     notebooks={notebooks}
                     isLoading={memoQuery.isLoading}
