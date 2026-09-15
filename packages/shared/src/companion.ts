@@ -12,6 +12,7 @@ export const CompanionMemoryUpdateSchema = z.object({
 export const CompanionTurnFocusSchema = z.object({
   memoId: z.string().trim().min(1).max(100).optional(),
   notebookId: z.string().trim().min(1).max(100).optional(),
+  notebookTitle: z.string().trim().max(160).optional(),
   title: z.string().trim().max(160).optional(),
   selectionMarkdown: z.string().max(2000).optional(),
 }).strict();

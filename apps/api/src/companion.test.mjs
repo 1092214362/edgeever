@@ -64,8 +64,16 @@ describe("companion turn context", () => {
   test("focus is model-only data and read-only turns cannot propose writes", () => {
     expect(companionUserContent(input({
       message: "What did I write?",
-      focus: { memoId: "memo_1", notebookId: "nb_1", title: "Pricing", selectionMarkdown: "Q3 cap" },
+      focus: { memoId: "memo_1", notebookId: "nb_1", notebookTitle: "功能演示", title: "Pricing", selectionMarkdown: "Q3 cap" },
     }))).toContain("[note:memo_1]");
+    expect(companionUserContent(input({
+      message: "学习资料里面有哪些笔记?",
+      focus: { memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示" },
+    }))).toContain("功能演示");
+    expect(companionUserContent(input({
+      message: "学习资料里面有哪些笔记?",
+      focus: { memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示" },
+    }))).toContain("not a search filter");
     expect(companionUserContent(input({ message: "What did I write?" }))).toBe("What did I write?");
     expect(companionTurnInstructions(input({ allowNotes: true, allowWrites: false }))).toContain("read-only");
     expect(companionTurnInstructions(input({ allowNotes: true }))).toBe("");
@@ -344,6 +352,8 @@ describe("actual AI SDK companion runtime", () => {
     expect(COMPANION_INSTRUCTIONS).toContain("If there is no useful non-redundant reason, do not propose");
     expect(COMPANION_INSTRUCTIONS).toContain("[Note title](#memo=NOTE_ID)");
     expect(COMPANION_INSTRUCTIONS).toContain("Do not paste note bodies");
+    expect(COMPANION_INSTRUCTIONS).toContain("find_notebooks");
+    expect(COMPANION_INSTRUCTIONS).toContain("Do not ask permission to search");
   });
 
   test("the real tool loop persists a proposal but exposes no execute-write tool", async () => {
@@ -490,6 +500,16 @@ describe("actual AI SDK companion runtime", () => {
     expect(JSON.stringify(messages)).not.toContain("secret");
     expect(companionMessages({ ...next, useMemory: true }, [safe], 3)).toHaveLength(3);
     expect(companionMessages(next, [safe], 4)).toHaveLength(1);
+  });
+  test("note-enabled follow-ups keep prior sourced replies", () => {
+    const next = input({ allowNotes: true, useMemory: false, message: "把第二篇打开" });
+    const prior = { id: "listed", thread_id: next.threadId, status: "completed", memory_revision: 3, use_memory: 0,
+      allow_notes: 1, sources_json: '[{"id":"memo_1","title":"随手记下"}]', message: "学习资料里面有哪些笔记?",
+      response: "[随手记下](#memo=memo_1)" };
+    const messages = companionMessages(next, [prior], 3);
+    expect(messages).toHaveLength(3);
+    expect(messages[1].content).toContain("随手记下");
+    expect(companionMessages(input({ allowNotes: false, useMemory: false, threadId: next.threadId }), [prior], 3)).toHaveLength(1);
   });
   test("large histories have a total budget and never split message pairs", () => {
     const next = input({ message: "current" });

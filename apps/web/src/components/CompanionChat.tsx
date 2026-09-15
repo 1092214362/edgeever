@@ -11,6 +11,7 @@ import { CompanionNoteText } from "./CompanionNoteText";
 export type CompanionChatFocus = {
   memoId?: string;
   notebookId?: string;
+  notebookTitle?: string;
   title?: string;
   selectionMarkdown?: string | null;
 };
@@ -108,6 +109,7 @@ export function CompanionChat({
           ? { focus: {
             ...(focus.memoId ? { memoId: focus.memoId } : {}),
             ...(focus.notebookId ? { notebookId: focus.notebookId } : {}),
+            ...(focus.notebookTitle ? { notebookTitle: focus.notebookTitle } : {}),
             ...(focus.title ? { title: focus.title } : {}),
             ...(focus.selectionMarkdown?.trim() ? { selectionMarkdown: focus.selectionMarkdown.trim().slice(0, 2000) } : {}),
           } }
@@ -183,20 +185,10 @@ export function CompanionChat({
       </div> : null}
       {threadTurns.map(turn => <article key={turn.id} className="space-y-2 rounded-lg border p-3 text-sm">
         <p className="whitespace-pre-wrap break-words font-medium">{turn.message}</p>
-        <CompanionNoteText
-          text={turn.response || t("companion.waiting")}
-          sources={turn.sources}
-          onOpenNote={onOpenNote}
-        />
-        <p className="text-xs text-slate-500">{t(`companion.status.${turn.status}`)}{turn.model ? ` · ${turn.model}` : ""}</p>
-        {turn.sources.length ? <ul className="space-y-1 text-xs">{turn.sources.map(source => <li key={source.id}>
-          <button type="button" className="font-medium text-emerald-700 underline decoration-emerald-200 underline-offset-2 hover:text-emerald-800" onClick={() => onOpenNote(source.id, source.notebookId ?? "")}>
-            {source.title || t("common.untitledMemo")}
-          </button>
-        </li>)}</ul> : null}
+        {turn.response ? <CompanionNoteText text={turn.response} sources={turn.sources} onOpenNote={onOpenNote} /> : null}
+        {turn.status !== "completed" ? <p className="text-xs text-slate-500">{t(`companion.status.${turn.status}`)}</p> : null}
         {actions.filter(action => action.turnId === turn.id).map(action => <CompanionActionCard key={action.id} action={action}
           busy={busy || Boolean(running)} onApply={applyAction} onDismiss={item => void perform(() => api.dismissCompanionAction(item.id))} onOpenNote={onOpenNote} />)}
-        {turn.status === "running" ? <Button size="sm" variant="outline" onClick={() => void stop(turn.id)}>{t("companion.stop")}</Button> : null}
       </article>)}
     </div>
     <form onSubmit={send} className="border-t pt-3">
@@ -227,11 +219,14 @@ export function CompanionChat({
             event.currentTarget.form?.requestSubmit();
           }}
         />
-        {running ? <Button type="button" variant="outline" onClick={() => void stop(running.id)}>{t("companion.stop")}</Button> : null}
-        <Button type="submit" variant="solid" disabled={busy || loading || Boolean(running) || !message.trim()}>
-          {busy ? t("common.processing") : t("companion.send")}
-          {!busy ? <kbd aria-hidden="true" className="ml-1 rounded bg-card/10 px-1 py-0.5 text-[10px] font-medium leading-none text-white/70">↵</kbd> : null}
-        </Button>
+        {running ? (
+          <Button type="button" variant="outline" onClick={() => void stop(running.id)}>{t("companion.stop")}</Button>
+        ) : (
+          <Button type="submit" variant="solid" disabled={busy || loading || !message.trim()}>
+            {busy ? t("common.processing") : t("companion.send")}
+            {!busy ? <kbd aria-hidden="true" className="ml-1 rounded bg-card/10 px-1 py-0.5 text-[10px] font-medium leading-none text-white/70">↵</kbd> : null}
+          </Button>
+        )}
       </div>
     </form>
   </div>;

@@ -108,6 +108,7 @@ export const AiAssistantDialog = ({
   selectionMarkdown,
   memoId,
   notebookId,
+  notebookTitle,
   companionAvailable = false,
   onOpenChange,
   onApply,
@@ -123,6 +124,7 @@ export const AiAssistantDialog = ({
   selectionMarkdown?: string | null;
   memoId?: string;
   notebookId?: string;
+  notebookTitle?: string;
   companionAvailable?: boolean;
   onOpenChange: (open: boolean) => void;
   onApply: (text: string, mode: "append" | "replace") => boolean;
@@ -700,7 +702,7 @@ export const AiAssistantDialog = ({
           {chatting ? (
             <CompanionChat
               available={companionAvailable}
-              focus={{ memoId, notebookId, title, selectionMarkdown }}
+              focus={{ memoId, notebookId, notebookTitle, title, selectionMarkdown }}
               placeholder={t("aiAssistant.modes.askPlaceholder")}
               beforeApply={beforeCompanionApply ?? (async () => undefined)}
               onNotesChanged={onCompanionNotesChanged ?? (async () => undefined)}

@@ -4017,6 +4017,7 @@ const RichEditorPane = ({
         selectionMarkdown={aiSelection?.contentMarkdown}
         memoId={memo?.id}
         notebookId={memo?.notebookId}
+        notebookTitle={notebookOptions.find((notebook) => notebook.id === memo?.notebookId)?.name}
         companionAvailable={companionAvailable}
         onOpenChange={handleAiAssistantOpenChange}
         onApply={applyAiDraft}
