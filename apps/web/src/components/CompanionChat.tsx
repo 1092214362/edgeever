@@ -175,16 +175,11 @@ export function CompanionChat({
     {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
     {loading ? <p role="status">{t("common.loading")}</p> : null}
     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-      {!loading && !threadTurns.length ? <div className="space-y-3 py-8 text-center">
-        <MessageCircle aria-hidden="true" className="mx-auto h-9 w-9 text-emerald-600" />
-        <h2 className="text-sm font-semibold text-slate-900">{t("aiAssistant.modes.emptyTitle")}</h2>
-        <p className="mx-auto max-w-md text-sm leading-relaxed text-slate-500">{t("aiAssistant.modes.emptyHint")}</p>
-        {previousThread ? <div className="space-y-2">
-          <p className="mx-auto max-w-md truncate text-xs text-slate-400">{previousThread.message}</p>
-          <Button type="button" variant="outline" disabled={busy} onClick={() => setThreadId(previousThread.threadId)}>
-            {t("aiAssistant.modes.resumeLast")}
-          </Button>
-        </div> : null}
+      {!loading && !threadTurns.length && previousThread ? <div className="flex items-center gap-2">
+        <p className="min-w-0 flex-1 truncate text-xs text-slate-500">{previousThread.message}</p>
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setThreadId(previousThread.threadId)}>
+          {t("aiAssistant.modes.resumeLast")}
+        </Button>
       </div> : null}
       {threadTurns.map(turn => <article key={turn.id} className="space-y-2 rounded-lg border p-3 text-sm">
         <p className="whitespace-pre-wrap break-words font-medium">{turn.message}</p>
@@ -204,36 +199,38 @@ export function CompanionChat({
         {turn.status === "running" ? <Button size="sm" variant="outline" onClick={() => void stop(turn.id)}>{t("companion.stop")}</Button> : null}
       </article>)}
     </div>
-    <form onSubmit={send} className="space-y-2 border-t pt-3">
-      <p className="text-xs leading-relaxed text-slate-500">{t("aiAssistant.modes.askHint")}</p>
+    <form onSubmit={send} className="border-t pt-3">
+      <p id="companion-ask-hint" className="sr-only">{t("aiAssistant.modes.askHint")}</p>
       <label className="sr-only" htmlFor="companion-message">{t("companion.message")}</label>
-      <textarea
-        id="companion-message"
-        className="min-h-20 max-h-40 w-full resize-y rounded-md border p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-        maxLength={4000}
-        value={message}
-        disabled={busy}
-        placeholder={placeholder || t("companion.message")}
-        onChange={e => setMessage(e.target.value)}
-        onKeyDown={event => {
-          if (
-            event.key !== "Enter"
-            || event.shiftKey
-            || event.nativeEvent.isComposing
-            || busy
-            || loading
-            || Boolean(running)
-            || !message.trim()
-          ) return;
-          event.preventDefault();
-          event.currentTarget.form?.requestSubmit();
-        }}
-      />
-      <div className="flex justify-end gap-2">
+      <div className="flex items-end gap-2">
+        <textarea
+          id="companion-message"
+          rows={2}
+          aria-describedby="companion-ask-hint"
+          className="max-h-32 min-h-10 flex-1 resize-none rounded-md border border-slate-200 px-3 py-2 text-sm leading-5 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/15"
+          maxLength={4000}
+          value={message}
+          disabled={busy}
+          placeholder={placeholder || t("companion.message")}
+          onChange={e => setMessage(e.target.value)}
+          onKeyDown={event => {
+            if (
+              event.key !== "Enter"
+              || event.shiftKey
+              || event.nativeEvent.isComposing
+              || busy
+              || loading
+              || Boolean(running)
+              || !message.trim()
+            ) return;
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
+          }}
+        />
         {running ? <Button type="button" variant="outline" onClick={() => void stop(running.id)}>{t("companion.stop")}</Button> : null}
-        <Button type="submit" disabled={busy || loading || Boolean(running) || !message.trim()}>
+        <Button type="submit" variant="solid" disabled={busy || loading || Boolean(running) || !message.trim()}>
           {busy ? t("common.processing") : t("companion.send")}
-          {!busy ? <kbd aria-hidden="true" className="ml-1 rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium leading-none text-slate-400">↵</kbd> : null}
+          {!busy ? <kbd aria-hidden="true" className="ml-1 rounded bg-card/10 px-1 py-0.5 text-[10px] font-medium leading-none text-white/70">↵</kbd> : null}
         </Button>
       </div>
     </form>
