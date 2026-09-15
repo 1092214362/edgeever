@@ -130,13 +130,9 @@ import { createEdgeEverMathematics } from "@edgeever/shared/mathematics";
 import { codeBlockLowlight, EdgeEverCodeBlock } from "@/lib/code-block";
 import { compressImageForUpload } from "@/lib/image-compression";
 import { LOCAL_DATABASE_INTERRUPTED_EVENT, localDb, selectNewestLocalDraft, type MemoUpdateSyncPayload } from "@/lib/local-db";
-import { LocalDatabaseUnavailableError } from "@/lib/local-database-recovery";
 import { persistEmergencyDraft, readEmergencyDraft, removeEmergencyDraft } from "@/lib/emergency-draft";
-import { getMemoUpdateQueueId, isMemoUpdateAlreadyApplied, queueMemoUpdate, shouldQueueMemoSaveError } from "@/lib/sync-queue";
+import { getMemoUpdateQueueId, isMemoUpdateAlreadyApplied, queueMemoUpdate } from "@/lib/sync-queue";
 import {
-  formatLocalDraftClipboardText,
-  formatMemoSaveConflictReason,
-  getMemoSaveConflictInfo,
   getMemoSaveConflictInfoFromQueueItem,
 } from "@/lib/memo-save-conflict";
 import { copyTextToClipboard } from "@/lib/clipboard";
@@ -226,6 +222,9 @@ import { createInlineFieldExtension } from "./editor/InlineField";
 import { createPluginEmbedExtension } from "./editor/PluginEmbed";
 import { getEditorScrollProgress, restoreEditorScrollProgress } from "./editor/editor-mode-scroll";
 import { useEditorSaveStatus } from "./editor/useEditorSaveStatus";
+import { getEditorSaveChrome } from "./editor/editor-save-chrome";
+import { classifyEditorSaveFailure, shouldLeaveEditorAfterSaveError } from "./editor/editor-save-failure";
+import { useEditorSaveConflictActions } from "./editor/useEditorSaveConflictActions";
 import { useEditorNoteSearchController } from "./editor/useEditorNoteSearchController";
 import { EditorNoteLinkPicker } from "./editor/EditorNoteLinkPicker";
 import { EditorResourceDialogs } from "./editor/EditorResourceDialogs";
@@ -413,8 +412,6 @@ const RichEditorPane = ({
     setSaveConflictInfo,
     setSaveState,
   } = useEditorSaveStatus();
-  const [conflictActionPending, setConflictActionPending] = useState<"adopt" | "copy" | null>(null);
-  const [conflictActionMessage, setConflictActionMessage] = useState<string | null>(null);
   const [storageSaveError, setStorageSaveError] = useState(false);
   const [hydratedEditorMemoId, setHydratedEditorMemoId] = useState<string | null>(null);
 
@@ -2864,32 +2861,31 @@ const RichEditorPane = ({
       setSaveState("idle");
     },
     onError: async (error) => {
-      if (error instanceof LocalDatabaseUnavailableError) {
+      const failure = classifyEditorSaveFailure(error);
+      if (failure.kind === "storage") {
         setStorageSaveError(true);
         setSaveConflictInfo(null);
         setSaveState("error");
         return;
       }
       setStorageSaveError(false);
-      const sourceError = error instanceof MemoSaveRequestError ? error.originalError : error;
-      const conflictInfo = getMemoSaveConflictInfo(sourceError);
 
-      if (conflictInfo) {
-        setSaveConflictInfo(conflictInfo);
+      if (failure.kind === "conflict") {
+        setSaveConflictInfo(failure.conflict);
         setSaveState("conflict");
         return;
       }
 
-      if (error instanceof MemoSaveRequestError && shouldQueueMemoSaveError(sourceError)) {
-        await queueMemoUpdate(error.payload);
+      if (failure.kind === "queue") {
+        await queueMemoUpdate(failure.payload);
         await localDb.drafts.put({
-          memoId: error.payload.memoId,
-          title: error.payload.title,
-          tagsText: error.tagsText,
-          contentJson: error.payload.contentJson,
+          memoId: failure.payload.memoId,
+          title: failure.payload.title,
+          tagsText: failure.tagsText,
+          contentJson: failure.payload.contentJson,
           updatedAt: new Date().toISOString(),
         });
-        removeEmergencyDraft(error.payload.memoId);
+        removeEmergencyDraft(failure.payload.memoId);
 
         setHasUnsavedChanges(false);
         setSaveConflictInfo(null);
@@ -3273,19 +3269,6 @@ const RichEditorPane = ({
     return () => window.clearTimeout(timer);
   }, [dirtyVersion, editor, hasUnsavedChanges, memo, mutateSave, saveMutationPending, saveState, useMobilePlainTextEditor]);
 
-  // Must stay above early returns so hook order never changes across loading/empty/editor states.
-  const saveConflictReason = useMemo(
-    () => (saveState === "conflict" ? formatMemoSaveConflictReason(t, saveConflictInfo) : null),
-    [saveConflictInfo, saveState, t],
-  );
-
-  useEffect(() => {
-    if (saveState !== "conflict") {
-      setConflictActionPending(null);
-      setConflictActionMessage(null);
-    }
-  }, [saveState]);
-
   const getLocalDraftMarkdown = useCallback(() => {
     if (useMobilePlainTextEditor) {
       return getMobilePlainTextValue();
@@ -3307,108 +3290,83 @@ const RichEditorPane = ({
     useMobilePlainTextEditor,
   ]);
 
-  const handleCopyLocalDraft = useCallback(async () => {
-    if (conflictActionPending) {
-      return;
-    }
-
-    setConflictActionPending("copy");
-    setConflictActionMessage(null);
-    try {
-      const text = formatLocalDraftClipboardText({
-        title,
-        tags: parseTagsText(tagsText),
-        contentMarkdown: getLocalDraftMarkdown(),
-      });
-      const copied = await copyTextToClipboard(text);
-      if (!copied) {
-        setConflictActionMessage(t("editor.saveState.conflictCopyDraftFailed"));
-        return;
-      }
-      setConflictActionMessage(t("editor.saveState.conflictCopyDraftDone"));
-      window.setTimeout(() => {
-        setConflictActionMessage((current) =>
-          current === t("editor.saveState.conflictCopyDraftDone") ? null : current
-        );
-      }, 2000);
-    } catch {
-      setConflictActionMessage(t("editor.saveState.conflictCopyDraftFailed"));
-    } finally {
-      setConflictActionPending(null);
-    }
-  }, [conflictActionPending, getLocalDraftMarkdown, t, tagsText, title]);
-
-  const handleAdoptCloudAndReload = useCallback(async () => {
+  const adoptCloudMemo = useCallback(async () => {
     const currentMemo = memoRef.current;
-    if (!currentMemo || conflictActionPending === "adopt") {
+    if (!currentMemo) {
       return;
     }
 
-    setConflictActionPending("adopt");
-    setConflictActionMessage(null);
-    try {
-      const { memo: remoteMemo } = await repository.adoptCloudMemo(currentMemo.id);
-      await onSaved(remoteMemo);
+    const { memo: remoteMemo } = await repository.adoptCloudMemo(currentMemo.id);
+    await onSaved(remoteMemo);
 
-      setHasUnsavedChanges(false);
-      setSaveConflictInfo(null);
-      setSaveState("idle");
-      setConflictActionMessage(null);
+    setHasUnsavedChanges(false);
+    setSaveConflictInfo(null);
+    setSaveState("idle");
 
-      const nextTitle = getEditableMemoTitle(remoteMemo.title);
-      const nextTagsText = remoteMemo.tags.join(", ");
-      const nextContent = resolveMemoContentDoc(remoteMemo.contentJson, remoteMemo.contentMarkdown);
-      const nextMarkdown = remoteMemo.contentMarkdown || docToMarkdown(nextContent);
+    const nextTitle = getEditableMemoTitle(remoteMemo.title);
+    const nextTagsText = remoteMemo.tags.join(", ");
+    const nextContent = resolveMemoContentDoc(remoteMemo.contentJson, remoteMemo.contentMarkdown);
+    const nextMarkdown = remoteMemo.contentMarkdown || docToMarkdown(nextContent);
 
-      memoRef.current = remoteMemo;
-      editSessionRef.current = null;
-      hydratedMemoIdRef.current = remoteMemo.id;
-      setHydratedEditorMemoId(remoteMemo.id);
-      editingMemoIdRef.current = remoteMemo.id;
-      appliedEditorSourceKeyRef.current = `memo:${remoteMemo.id}:${remoteMemo.revision}:${remoteMemo.updatedAt}:${remoteMemo.contentHash}:${nextTitle}:${nextTagsText}:${nextMarkdown}`;
+    memoRef.current = remoteMemo;
+    editSessionRef.current = null;
+    hydratedMemoIdRef.current = remoteMemo.id;
+    setHydratedEditorMemoId(remoteMemo.id);
+    editingMemoIdRef.current = remoteMemo.id;
+    appliedEditorSourceKeyRef.current = `memo:${remoteMemo.id}:${remoteMemo.revision}:${remoteMemo.updatedAt}:${remoteMemo.contentHash}:${nextTitle}:${nextTagsText}:${nextMarkdown}`;
 
-      setTitle(nextTitle);
-      setTagsText(nextTagsText);
-      setMobilePlainText(nextMarkdown);
-      setMarkdownSource(nextMarkdown);
-      markdownModeSnapshotRef.current = isMarkdownMode
-        ? createMarkdownModeSnapshot(remoteMemo.id, nextContent, nextMarkdown)
-        : null;
-      setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
+    setTitle(nextTitle);
+    setTagsText(nextTagsText);
+    setMobilePlainText(nextMarkdown);
+    setMarkdownSource(nextMarkdown);
+    markdownModeSnapshotRef.current = isMarkdownMode
+      ? createMarkdownModeSnapshot(remoteMemo.id, nextContent, nextMarkdown)
+      : null;
+    setMobilePlainTextElementValue(mobileTextAreaRef.current, nextMarkdown);
 
-      const currentEditor = editorRef.current;
-      if (isEditorReady(currentEditor)) {
-        hydratingRef.current = true;
-        try {
-          currentEditor.commands.setContent(nextContent);
-        } catch (err) {
-          console.error("Failed to apply cloud memo after conflict resolve:", err);
-          currentEditor.commands.setContent(markdownToDoc(nextMarkdown));
-        }
-        window.setTimeout(() => {
-          hydratingRef.current = false;
-        }, 0);
+    const currentEditor = editorRef.current;
+    if (isEditorReady(currentEditor)) {
+      hydratingRef.current = true;
+      try {
+        currentEditor.commands.setContent(nextContent);
+      } catch (err) {
+        console.error("Failed to apply cloud memo after conflict resolve:", err);
+        currentEditor.commands.setContent(markdownToDoc(nextMarkdown));
       }
-
-      if (requiresLocalEditSession(remoteMemo)) {
-        editSessionRef.current = createLocalEditSession(remoteMemo);
-      } else {
-        void api.createMemoEditSession(remoteMemo.id).then((response) => {
-          if (editingMemoIdRef.current !== remoteMemo.id) return;
-          editSessionRef.current = response.editSession;
-        }).catch(() => {
-          if (editingMemoIdRef.current !== remoteMemo.id) return;
-          editSessionRef.current = createLocalEditSession(remoteMemo);
-        });
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ["memo", remoteMemo.id] });
-    } catch {
-      setConflictActionMessage(t("editor.saveState.conflictAdoptFailed"));
-    } finally {
-      setConflictActionPending(null);
+      window.setTimeout(() => {
+        hydratingRef.current = false;
+      }, 0);
     }
-  }, [conflictActionPending, isMarkdownMode, onSaved, queryClient, repository, t]);
+
+    if (requiresLocalEditSession(remoteMemo)) {
+      editSessionRef.current = createLocalEditSession(remoteMemo);
+    } else {
+      void api.createMemoEditSession(remoteMemo.id).then((response) => {
+        if (editingMemoIdRef.current !== remoteMemo.id) return;
+        editSessionRef.current = response.editSession;
+      }).catch(() => {
+        if (editingMemoIdRef.current !== remoteMemo.id) return;
+        editSessionRef.current = createLocalEditSession(remoteMemo);
+      });
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ["memo", remoteMemo.id] });
+  }, [isMarkdownMode, onSaved, queryClient, repository]);
+
+  const {
+    conflictActionMessage,
+    conflictActionPending,
+    handleAdoptCloudAndReload,
+    handleCopyLocalDraft,
+    saveConflictReason,
+  } = useEditorSaveConflictActions({
+    adoptCloudMemo,
+    getLocalDraftMarkdown,
+    saveConflictInfo,
+    saveState,
+    tagsText,
+    title,
+  });
 
   if (isSelectionMode) {
     return (
@@ -3443,29 +3401,11 @@ const RichEditorPane = ({
     );
   }
 
-  const saveLabel =
-    saveState === "saving"
-      ? t("editor.saveState.saving")
-      : saveState === "saved"
-        ? t("editor.saveState.saved")
-        : saveState === "queued"
-          ? t("editor.saveState.queued")
-          : saveState === "conflict"
-            ? t("editor.saveState.conflict")
-            : saveState === "error"
-              ? t("editor.saveState.error")
-              : hasUnsavedChanges
-                ? t("editor.saveState.unsaved")
-                : t("editor.saveState.saved");
-
-  const saveStateClassName =
-    saveState === "error" || saveState === "conflict"
-      ? "bg-rose-50 text-rose-700"
-      : saveState === "queued"
-        ? "bg-slate-50 text-slate-400"
-        : saveState === "saving" || hasUnsavedChanges
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-slate-100 text-slate-500";
+  const { saveLabel, saveStateClassName } = getEditorSaveChrome({
+    hasUnsavedChanges,
+    saveState,
+    t,
+  });
 
   const imageUploadLabel =
     imageUploadState === "error"
@@ -3577,8 +3517,7 @@ const RichEditorPane = ({
         onBackToList();
       },
       onError: (error) => {
-        const sourceError = error instanceof MemoSaveRequestError ? error.originalError : error;
-        if (error instanceof MemoSaveRequestError && shouldQueueMemoSaveError(sourceError)) {
+        if (shouldLeaveEditorAfterSaveError(error)) {
           onMobileDefaultEditConsumed();
           onBackToList();
         }
@@ -3601,8 +3540,7 @@ const RichEditorPane = ({
         setMobileToolbarOpen(false);
       },
       onError: (error) => {
-        const sourceError = error instanceof MemoSaveRequestError ? error.originalError : error;
-        if (error instanceof MemoSaveRequestError && shouldQueueMemoSaveError(sourceError)) {
+        if (shouldLeaveEditorAfterSaveError(error)) {
           onMobileDefaultEditConsumed();
           setIsMobileEditing(false);
           setMobileToolbarOpen(false);
