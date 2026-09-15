@@ -425,12 +425,9 @@ const RichEditorPane = ({
   const [aiInsertionTarget, setAiInsertionTarget] = useState<AiInsertionTarget | null>(null);
   const [mobileNotebookSheetOpen, setMobileNotebookSheetOpen] = useState(false);
   const [notebookUpdatePending, setNotebookUpdatePending] = useState(false);
-  const [noteSearchOpen, setNoteSearchOpen] = useState(false);
-  const [noteSearchQuery, setNoteSearchQuery] = useState("");
-  const [noteSearchReplaceOpen, setNoteSearchReplaceOpen] = useState(false);
-  const [noteSearchReplacement, setNoteSearchReplacement] = useState("");
-  const [noteSearchIndex, setNoteSearchIndex] = useState(0);
   const handledPluginNavigationRequestRef = useRef(0);
+  const openNoteSearchFromSelectionRef = useRef<(text: string, showReplace?: boolean) => void>(() => undefined);
+  const closeNoteReplaceRef = useRef<() => void>(() => undefined);
   const [noteLinkPickerOpen, setNoteLinkPickerOpen] = useState(false);
   const [noteLinkQuery, setNoteLinkQuery] = useState("");
   const [noteLinkHintPosition, setNoteLinkHintPosition] = useState<NoteLinkHintPosition | null>(null);
@@ -571,7 +568,7 @@ const RichEditorPane = ({
     setAiAssistantOpen(false);
     setAiSelection(null);
     setAiInsertionTarget(null);
-    setNoteSearchReplaceOpen(false);
+    closeNoteReplaceRef.current();
     setExternalLinkDialogOpen(false);
     setNoteLinkPickerOpen(false);
   }, [desktopReadingProtection]);
@@ -587,7 +584,6 @@ const RichEditorPane = ({
   const mobileDraftTimerRef = useRef<number | null>(null);
   const mobileSaveTimerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const noteSearchInputRef = useRef<HTMLInputElement | null>(null);
   const markdownSourceEditorRef = useRef<MarkdownSourceEditorRef | null>(null);
   const markdownModeSnapshotRef = useRef<MarkdownModeSnapshot | null>(null);
   const openExternalLinkDialogRef = useRef<() => void>(() => undefined);
@@ -1124,13 +1120,7 @@ const RichEditorPane = ({
         }
 
         event.preventDefault();
-        setNoteSearchQuery(selectedText);
-        setNoteSearchOpen(true);
-        setNoteSearchReplaceOpen(shortcutKey === "h");
-        window.requestAnimationFrame(() => {
-          noteSearchInputRef.current?.focus();
-          noteSearchInputRef.current?.select();
-        });
+        openNoteSearchFromSelectionRef.current(selectedText, shortcutKey === "h");
         return true;
       },
       handleTextInput: (view, from, to, text) => {
@@ -1656,31 +1646,35 @@ const RichEditorPane = ({
   }, [editor]);
 
   const {
+    closeReplace: closeNoteReplace,
     closeSearch: closeNoteSearch,
+    inputRef: noteSearchInputRef,
     matchLabel: noteSearchMatchLabel,
     matches: noteSearchMatches,
     moveMatch: moveNoteSearchMatch,
+    openFromSelection: openNoteSearchFromSelection,
     openReplace: openNoteReplace,
     openSearch: openNoteSearch,
+    openWithQuery: openNoteSearchWithQuery,
+    query: noteSearchQuery,
     replaceAllMatches: replaceAllNoteSearchMatches,
+    replaceOpen: noteSearchReplaceOpen,
+    replacement: noteSearchReplacement,
+    searchOpen: noteSearchOpen,
+    setQuery: setNoteSearchQuery,
+    setReplacement: setNoteSearchReplacement,
   } = useEditorNoteSearchController({
     contentSearchQuery,
     dirtyVersion,
     editor,
     editorScrollContainerRef,
     memoId: memo?.id ?? null,
-    noteSearchIndex,
-    noteSearchInputRef,
-    noteSearchOpen,
-    noteSearchQuery,
-    noteSearchReplacement,
     readOnly: effectiveReadOnly,
     replaceFocusToken,
     searchFocusToken,
-    setNoteSearchIndex,
-    setNoteSearchOpen,
-    setNoteSearchReplaceOpen,
   });
+  openNoteSearchFromSelectionRef.current = openNoteSearchFromSelection;
+  closeNoteReplaceRef.current = closeNoteReplace;
 
   useEffect(() => {
     if (
@@ -1692,12 +1686,8 @@ const RichEditorPane = ({
       || !isEditorReady(editor)
     ) return;
     handledPluginNavigationRequestRef.current = pluginNavigationRequest.id;
-    setNoteSearchQuery(pluginNavigationRequest.search);
-    setNoteSearchIndex(0);
-    setNoteSearchReplaceOpen(false);
-    setNoteSearchOpen(true);
-    window.requestAnimationFrame(() => noteSearchInputRef.current?.focus());
-  }, [editor, hydratedEditorMemoId, memo?.id, pluginNavigationRequest]);
+    openNoteSearchWithQuery(pluginNavigationRequest.search);
+  }, [editor, hydratedEditorMemoId, memo?.id, openNoteSearchWithQuery, pluginNavigationRequest]);
 
   useEffect(() => {
     if (!isEditorReady(editor)) {
