@@ -63,6 +63,8 @@ describe("note search", () => {
     expect(shouldResetNoteSearchForMemoChange("note-a", "note-a")).toBe(false);
     expect(shouldResetNoteSearchForMemoChange(null, "note-b")).toBe(true);
     expect(shouldResetNoteSearchForMemoChange(null, null)).toBe(false);
+    // Desktop create keeps the editor instance key while the local id remaps.
+    expect(shouldResetNoteSearchForMemoChange("memo_local_1", "memo_local_1")).toBe(false);
     expect(shouldDiscardPluginNoteSearchRequest(
       { noteId: "note-a" },
       "note-b",

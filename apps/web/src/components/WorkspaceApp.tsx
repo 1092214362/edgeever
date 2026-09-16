@@ -229,6 +229,7 @@ export const WorkspaceApp = ({
   const pendingCreatedMemoIdRef = useRef<string | null>(null);
   const pendingQuickSwitcherMemoIdRef = useRef<string | null>(null); // also companion/plugin opens not yet in the list
   const creatingMemoSelectionRef = useRef(false);
+  const createMemoInFlightRef = useRef(false);
   const memoDocumentActionIdRef = useRef(0);
   const [memoDocumentActionRequest, setMemoDocumentActionRequest] = useState<MemoDocumentActionRequest | null>(null);
   const [memoDeleteConfirmation, setMemoDeleteConfirmation] = useState<MemoDeleteConfirmation | null>(null);
@@ -1236,6 +1237,9 @@ export const WorkspaceApp = ({
       clearPendingCreatedMemo();
       setCreatedMemoEditId(null);
     },
+    onSettled: () => {
+      createMemoInFlightRef.current = false;
+    },
   });
 
   const saveTemplateMutation = useMutation({
@@ -1717,6 +1721,13 @@ export const WorkspaceApp = ({
     if (!targetNotebookId || memoView === "trash") {
       return;
     }
+
+    // Desktop Cmd+N is handled by both the native menu and the in-app shortcut.
+    // A second click can also land before React Query flips `isPending`.
+    if (createMemoInFlightRef.current || createMemoMutation.isPending) {
+      return;
+    }
+    createMemoInFlightRef.current = true;
 
     setTemplatesOpen(false);
     setMobileBottomNavActive("home");
