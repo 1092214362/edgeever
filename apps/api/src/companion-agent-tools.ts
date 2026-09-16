@@ -9,11 +9,9 @@ import { executeWorkspaceTool } from "./mcp-tool-executor";
 import { getMemoDetail } from "./memo-service";
 import { AppError } from "./app-error";
 
-const AUTO_APPLY_WRITES = new Set([
-  "create_memo", "create_diagram_memo", "update_memo", "update_diagram", "trash_memos",
-  "use_note_template", "create_note_template", "update_note_template", "delete_note_template",
-  "create_ai_instruction", "update_ai_instruction", "delete_ai_instruction", "restore_default_ai_instructions",
-]);
+const AUTO_APPLY_WRITES = new Set(
+  COMPANION_MCP_TOOLS.filter(tool => !tool.annotations.readOnlyHint).map(tool => tool.name),
+);
 
 export function createCompanionTools(args: { db: DatabaseAdapter; scope: CompanionScope; input: CompanionTurnInput;
   context?: AppContext; signal: AbortSignal; assertActive: () => Promise<void>; sources: CompanionSource[] }): ToolSet {
@@ -82,7 +80,7 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
         if (cursor !== current) return { error: "Notes changed during this request. Start a fresh request." };
         if (!readOnly && !autoApply && parameters_.dryRun !== true) return proposeCompanionToolAction(args.db, args.scope, args.input.id,
           definition.name, parameters_, typeof _reason === "string" ? _reason : definition.title, cursor, inspected);
-        if (autoApply && parameters_.dryRun !== true && (definition.name === "update_memo" || definition.name === "update_diagram")) {
+        if (autoApply && parameters_.dryRun !== true && (definition.name === "update_memo" || definition.name === "update_diagram" || definition.name === "restore_memo_revision")) {
           const memo = await getMemoDetail(args.db, args.scope.workspaceId, String(parameters_.memoId));
           if (!memo || inspected.get(memo.id) !== memo.revision) {
             throw new AppError("companion_action_unread",
@@ -91,6 +89,15 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
                 : "Read the complete source notes before changing their content.", 400);
           }
           if (definition.name === "update_diagram") parameters_.expectedRevision = memo.revision;
+        }
+        if (autoApply && parameters_.dryRun !== true && definition.name === "merge_memos") {
+          const memoIds = Array.isArray(parameters_.memoIds) ? parameters_.memoIds.map(String) : [];
+          for (const memoId of memoIds) {
+            const memo = await getMemoDetail(args.db, args.scope.workspaceId, memoId);
+            if (!memo || inspected.get(memo.id) !== memo.revision) {
+              throw new AppError("companion_action_unread", "Read every source note completely before merging.", 400);
+            }
+          }
         }
         if ((definition.name === "get_memo" || definition.name === "get_diagram") && inspected.has(String(parameters_.memoId))) {
           // The original full result remains in this run's model messages. Only
@@ -137,7 +144,7 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
               changes: updated.changes,
             };
           }
-          if ((definition.name === "create_memo" || definition.name === "use_note_template")
+          if ((definition.name === "create_memo" || definition.name === "use_note_template" || definition.name === "merge_memos")
             && result && typeof result === "object" && "memo" in result) {
             remember((result as { memo: MemoDetail }).memo);
           }

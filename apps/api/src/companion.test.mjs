@@ -362,9 +362,8 @@ describe("companion HTTP contracts", () => {
 
 describe("actual AI SDK companion runtime", () => {
   test("proposal reasons contain evidence instead of card boilerplate", () => {
-    expect(COMPANION_INSTRUCTIONS).toContain("concrete evidence or content relationship");
-    expect(COMPANION_INSTRUCTIONS).toContain("Never use _reason to paraphrase the operation");
-    expect(COMPANION_INSTRUCTIONS).toContain("If there is no useful non-redundant reason, do not propose");
+    expect(COMPANION_INSTRUCTIONS).toContain("All available write tools execute immediately");
+    expect(COMPANION_INSTRUCTIONS).not.toContain("user must confirm the suggestion card");
     expect(COMPANION_INSTRUCTIONS).toContain("[Note title](#memo=memo_abc123)");
     expect(COMPANION_INSTRUCTIONS).toContain("Do not drop memo_");
     expect(COMPANION_INSTRUCTIONS).toContain("not as a heading");
@@ -383,30 +382,29 @@ describe("actual AI SDK companion runtime", () => {
     expect(COMPANION_INSTRUCTIONS).toContain("use_note_template");
     expect(COMPANION_INSTRUCTIONS).toContain("AI instructions");
     expect(COMPANION_INSTRUCTIONS).toContain("cannot empty the trash");
-    expect(COMPANION_INSTRUCTIONS).toContain("delete_note_template");
+    expect(COMPANION_INSTRUCTIONS).toContain("delete note templates");
   });
 
-  test("the real tool loop persists a proposal but exposes no execute-write tool", async () => {
+  test("the real tool loop applies tag writes immediately without a confirmation card", async () => {
     const { db, notes, row, complete, context } = await organizationFixture();
     const calls = [
       { toolName: "search_memos", input: JSON.stringify({ query: "Idea" }) },
       { toolName: "get_memo", input: JSON.stringify({ memoId: notes[0].id }) },
-      { toolName: "add_tags_to_memos", input: JSON.stringify({ memoIds: [notes[0].id], tags: ["idea"], _reason: "An actionable idea" }) },
+      { toolName: "add_tags_to_memos", input: JSON.stringify({ memoIds: [notes[0].id], tags: ["idea"] }) },
     ];
     const model = new MockLanguageModelV4({ doStream: async () => {
       const call = calls.shift();
       return { stream: simulateReadableStream({ chunks: call ? [
         { type: "tool-call", toolCallId: crypto.randomUUID(), ...call }, { ...finish, finishReason: { unified: "tool-calls" } },
-      ] : [{ type: "text-start", id: "1" }, { type: "text-delta", id: "1", delta: "Please review the card." }, { type: "text-end", id: "1" }, finish] }) };
+      ] : [{ type: "text-start", id: "1" }, { type: "text-delta", id: "1", delta: "Tagged." }, { type: "text-end", id: "1" }, finish] }) };
     } });
     const result = await streamCompanion({ db, context, scope, input: input({ id: row.id, threadId: row.thread_id, allowNotes: true }), model,
       memories: [], history: [], revision: 0, signal: new AbortController().signal, sources: [], assertActive: async () => {} });
-    expect(await result.text).toBe("Please review the card.");
-    expect(JSON.stringify(model.doStreamCalls.at(-1).prompt)).toContain("awaiting_user_confirmation");
+    expect(await result.text).toBe("Tagged.");
     expect(model.doStreamCalls[0].tools.map(t => t.name).sort()).toEqual(COMPANION_MCP_TOOLS.map(t => t.name).sort());
-    expect((await getMemoDetail(db, scope.workspaceId, notes[0].id)).tags).toEqual(["existing"]);
+    expect((await getMemoDetail(db, scope.workspaceId, notes[0].id)).tags).toEqual(["existing", "idea"]);
     await complete();
-    expect((await listCompanionActions(db, scope))[0]).toMatchObject({ status: "pending", plan: { kind: "tool", toolName: "add_tags_to_memos", arguments: { tags: ["idea"] } } });
+    expect(await listCompanionActions(db, scope)).toEqual([]);
   });
 
   test("truncated notes cannot be used for a write proposal", async () => {

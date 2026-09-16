@@ -158,6 +158,17 @@ describe("shared companion MCP adapter", () => {
     expect((await getMemoDetail(f.db, scope.workspaceId, f.notes[0].id, true)).isDeleted).toBe(true);
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
   });
+  test("move, tag, and notebook writes execute immediately without a confirmation card", async () => {
+    const f = await setup();
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    expect(await tools.add_tags_to_memos.execute({ memoIds: [f.notes[1].id], tags: ["new"] })).toMatchObject({ applied: true });
+    expect((await getMemoDetail(f.db, scope.workspaceId, f.notes[1].id)).tags).toEqual(["old", "new"]);
+    expect(await tools.move_memos.execute({ memoIds: [f.notes[1].id], notebookId: "target" })).toMatchObject({ applied: true });
+    expect((await getMemoDetail(f.db, scope.workspaceId, f.notes[1].id)).notebookId).toBe("target");
+    expect(await tools.create_notebook.execute({ name: "Inbox Two" })).toMatchObject({ applied: true });
+    expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
+    await expect(tools.merge_memos.execute({ memoIds: f.notes.map(note => note.id) })).rejects.toMatchObject({ code: "companion_action_unread" });
+  });
   test("create_diagram_memo immediately creates an editable mind map, not Markdown", async () => {
     const f = await setup();
     const sources = [];
@@ -237,9 +248,10 @@ describe("shared companion MCP adapter", () => {
     expect(JSON.stringify(repeated).length).toBeLessThan(JSON.stringify(first).length / 10);
     const second = await tools.get_memo.execute({ memoId: f.notes[1].id });
     expect(second.content).toHaveLength(6000); expect(second.truncated).toBe(false);
-    expect(await tools.merge_memos.execute({ memoIds: f.notes.map(note => note.id), _reason: "Same idea" })).toHaveProperty("proposalId");
-    await updateMemoRecord(f.db, scope.workspaceId, f.notes[0].id, { contentMarkdown: "changed" }, actor, "owner");
-    expect(await tools.get_memo.execute({ memoId: f.notes[0].id })).toHaveProperty("error");
+    const merged = await tools.merge_memos.execute({ memoIds: f.notes.map(note => note.id) });
+    expect(merged).toMatchObject({ applied: true });
+    expect((await getMemoDetail(f.db, scope.workspaceId, f.notes[0].id, true)).isDeleted).toBe(true);
+    expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
   });
   test("a truncated read cannot become a complete source through the duplicate-read optimization", async () => {
     const f = await setup();
