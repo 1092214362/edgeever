@@ -1,5 +1,5 @@
 {
-  "version": "1.75.0",
+  "version": "1.75.1",
   "changes": {
     "en-US": [
       "Give Agent mode a run timeline, @-pinned notes, resumable turns, and date-aware recent-note search. Fold thinking and tool details into one card after the answer, and keep note links working even when the memo_ prefix is missing.",
