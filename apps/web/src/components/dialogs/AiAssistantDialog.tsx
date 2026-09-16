@@ -64,6 +64,7 @@ import {
   type TargetLanguage,
 } from "@/lib/ai-assistant";
 import { CompanionChat } from "@/components/CompanionChat";
+import { parseDiagramDocument } from "@edgeever/shared";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   clampFloatingPanelPosition,
@@ -621,6 +622,7 @@ export const AiAssistantDialog = ({
   }, [handleDragEnd, handleDragMove, open]);
 
   const chatting = mode === "ask";
+  const openDiagram = useMemo(() => parseDiagramDocument(contentMarkdown), [contentMarkdown]);
   const selectMode = (next: AiAssistantMode) => {
     setMode(next);
     writeStoredAiAssistantMode(next);
@@ -704,7 +706,21 @@ export const AiAssistantDialog = ({
           {chatting ? (
             <CompanionChat
               available={companionAvailable}
-              focus={{ memoId, notebookId, notebookTitle, title, selectionMarkdown }}
+              focus={{
+                memoId,
+                notebookId,
+                notebookTitle,
+                title,
+                selectionMarkdown,
+                ...(openDiagram
+                  ? { diagramKind: openDiagram.kind }
+                  : contentMarkdown.trim()
+                    ? {
+                      contentMarkdown: contentMarkdown.trim().slice(0, 4000),
+                      ...(contentMarkdown.trim().length > 4000 ? { contentTruncated: true } : {}),
+                    }
+                    : {}),
+              }}
               placeholder={t("aiAssistant.modes.askPlaceholder")}
               beforeApply={beforeCompanionApply ?? (async () => undefined)}
               onNotesChanged={onCompanionNotesChanged ?? (async () => undefined)}

@@ -49,9 +49,9 @@ async function setup() {
 
 describe("shared companion MCP adapter", () => {
   test("reuses the exact reviewed MCP definitions, with no administration or upload tools", () => {
-    expect(COMPANION_MCP_TOOLS).toHaveLength(30);
+    expect(COMPANION_MCP_TOOLS).toHaveLength(43);
     for (const definition of COMPANION_MCP_TOOLS) expect(MCP_TOOLS.includes(definition)).toBe(true);
-    for (const name of ["upload_memo_image", "upload_memo_attachment", "create_ai_instruction", "empty_trash", "share_memo"]) {
+    for (const name of ["upload_memo_image", "upload_memo_attachment", "empty_trash", "share_memo"]) {
       expect(() => validateCompanionTool(name, {})).toThrow();
     }
     expect(() => validateCompanionTool("create_memo", { notebookId: "ideas", unexpected: true })).toThrow();
@@ -115,7 +115,7 @@ describe("shared companion MCP adapter", () => {
   test("read and dry-run tools reuse MCP without writing or requiring a proposal", async () => {
     const f = await setup();
     const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
-    expect(Object.keys(tools)).toHaveLength(30);
+    expect(Object.keys(tools)).toHaveLength(43);
     expect(await tools.get_memo.execute({ memoId: f.notes[0].id })).toMatchObject({ content: "One original content" });
     expect(await tools.trash_memos.execute({ memoIds: [f.notes[0].id], dryRun: true })).toMatchObject({ dryRun: true });
     expect(await getMemoDetail(f.db, scope.workspaceId, f.notes[0].id)).not.toBeNull();
@@ -132,9 +132,14 @@ describe("shared companion MCP adapter", () => {
     expect(tools.search_memos).toBeTruthy();
     expect(tools.create_memo).toBeUndefined();
     expect(tools.create_diagram_memo).toBeUndefined();
+    expect(tools.update_diagram).toBeUndefined();
     expect(tools.get_diagram).toBeTruthy();
     expect(tools.update_memo).toBeUndefined();
     expect(tools.merge_memos).toBeUndefined();
+    expect(tools.list_note_templates).toBeTruthy();
+    expect(tools.get_ai_instruction).toBeTruthy();
+    expect(tools.use_note_template).toBeUndefined();
+    expect(tools.create_ai_instruction).toBeUndefined();
     expect(await tools.get_memo.execute({ memoId: f.notes[0].id })).toMatchObject({ content: "One original content" });
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
   });
@@ -176,10 +181,48 @@ describe("shared companion MCP adapter", () => {
     expect(parseDiagramDocument(memo.contentMarkdown)).toMatchObject({ kind: "mind-map" });
     expect(memo.contentMarkdown).not.toContain("## RAG");
     expect(sources.map(source => source.id)).toContain(created.id);
-    expect(await tools.get_diagram.execute({ memoId: created.id })).toMatchObject({
-      memo: { id: created.id },
-      diagram: { kind: "mind-map" },
+    const diagramMemo = await tools.get_memo.execute({ memoId: created.id });
+    expect(diagramMemo).toMatchObject({
+      diagramKind: "mind-map",
+      message: expect.stringContaining("update_diagram"),
     });
+    expect(JSON.stringify(diagramMemo)).not.toContain("edgeever-diagram-v1");
+    expect(diagramMemo.content).toBeUndefined();
+    expect(() => validateCompanionTool("update_diagram", {
+      memoId: created.id, expectedRevision: 0,
+      operations: [{ op: "add_node", node: { id: "eval", label: "评估", parentId: "root" } }],
+    })).not.toThrow();
+    const editor = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    await expect(editor.update_diagram.execute({
+      memoId: created.id, expectedRevision: 0,
+      operations: [{ op: "add_node", node: { id: "eval", label: "评估", parentId: "root" } }],
+    })).rejects.toMatchObject({ code: "companion_action_unread" });
+    const graph = await editor.get_diagram.execute({ memoId: created.id });
+    expect(graph).toMatchObject({ memo: { id: created.id }, diagram: { kind: "mind-map" } });
+    const updated = await editor.update_diagram.execute({
+      memoId: created.id, expectedRevision: graph.memo.revision,
+      operations: [{ op: "add_node", node: { id: "eval", label: "评估", parentId: "root" } }],
+    });
+    expect(updated).toMatchObject({ applied: true, id: created.id, nodeCount: 4 });
+    expect(parseDiagramDocument((await getMemoDetail(f.db, scope.workspaceId, created.id)).contentMarkdown).nodes.map(node => node.id))
+      .toContain("eval");
+    expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
+  });
+  test("note templates and AI instructions execute immediately including deletes", async () => {
+    const f = await setup();
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    const template = await tools.create_note_template.execute({ name: "Weekly", contentMarkdown: "Agenda body" });
+    expect(template).toMatchObject({ applied: true });
+    const templateId = template.template?.id;
+    expect(templateId).toBeTruthy();
+    const used = await tools.use_note_template.execute({ templateId, notebookId: "ideas" });
+    expect(used).toMatchObject({ applied: true });
+    const usedId = used.memo?.id ?? used.id;
+    expect(await getMemoDetail(f.db, scope.workspaceId, usedId)).toMatchObject({ contentMarkdown: "Agenda body" });
+    const instruction = await tools.create_ai_instruction.execute({ name: "Tighten", instruction: "Make it shorter." });
+    expect(instruction).toMatchObject({ applied: true });
+    expect(await tools.delete_note_template.execute({ templateId })).toMatchObject({ applied: true });
+    expect(f.sqlite.query("SELECT COUNT(*) AS n FROM memo_templates WHERE id = ?").get(templateId).n).toBe(0);
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
   });
   test("repeated complete reads return a reference without consuming the note budget again", async () => {

@@ -78,6 +78,17 @@ describe("companion turn context", () => {
       message: "帮我新建一个RAG原理的思维导图。",
       focus: { memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示" },
     }))).toContain("use this open notebook");
+    expect(companionUserContent(input({
+      message: "根据这篇做思维导图",
+      focus: {
+        memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示", title: "RAG 原理",
+        contentMarkdown: "检索、增强、生成是 RAG 的三步。",
+      },
+    }))).toContain("检索、增强、生成是 RAG 的三步。");
+    expect(companionUserContent(input({
+      message: "给这张图加一个评估节点",
+      focus: { memoId: "memo_1", notebookId: "nb_demo_features", title: "RAG 原理", diagramKind: "mind-map" },
+    }))).toContain("editable mind-map");
     expect(companionUserContent(input({ message: "What did I write?" }))).toBe("What did I write?");
     expect(companionTurnInstructions(input({ allowNotes: true, allowWrites: false }))).toContain("read-only");
     expect(companionTurnInstructions(input({ allowNotes: true }))).toBe("");
@@ -365,7 +376,14 @@ describe("actual AI SDK companion runtime", () => {
     expect(COMPANION_INSTRUCTIONS).toContain("after you have already searched");
     expect(COMPANION_INSTRUCTIONS).toContain("create_diagram_memo");
     expect(COMPANION_INSTRUCTIONS).toContain("思维导图");
+    expect(COMPANION_INSTRUCTIONS).toContain("update_diagram");
+    expect(COMPANION_INSTRUCTIONS).toContain("这篇");
     expect(COMPANION_INSTRUCTIONS).not.toContain("You cannot create or edit diagrams");
+    expect(COMPANION_INSTRUCTIONS).not.toContain("You cannot edit existing diagrams");
+    expect(COMPANION_INSTRUCTIONS).toContain("use_note_template");
+    expect(COMPANION_INSTRUCTIONS).toContain("AI instructions");
+    expect(COMPANION_INSTRUCTIONS).toContain("cannot empty the trash");
+    expect(COMPANION_INSTRUCTIONS).toContain("delete_note_template");
   });
 
   test("the real tool loop persists a proposal but exposes no execute-write tool", async () => {
