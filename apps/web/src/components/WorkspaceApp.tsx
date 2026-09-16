@@ -226,7 +226,7 @@ export const WorkspaceApp = ({
   const autoSelectedDemoNotebookRef = useRef(false);
   const [createdMemoEditId, setCreatedMemoEditId] = useState<string | null>(null);
   const pendingCreatedMemoIdRef = useRef<string | null>(null);
-  const pendingQuickSwitcherMemoIdRef = useRef<string | null>(null);
+  const pendingQuickSwitcherMemoIdRef = useRef<string | null>(null); // also companion/plugin opens not yet in the list
   const creatingMemoSelectionRef = useRef(false);
   const memoDocumentActionIdRef = useRef(0);
   const [memoDocumentActionRequest, setMemoDocumentActionRequest] = useState<MemoDocumentActionRequest | null>(null);
@@ -2188,7 +2188,7 @@ export const WorkspaceApp = ({
     navigateWorkspaceHome();
     setMemoView("notebook");
     setSelectedTag(null);
-    setSelectedNotebookId(notebookId);
+    if (notebookId) setSelectedNotebookId(notebookId);
     setSearch("");
     setMemoFilterMode("all");
     setRightView("editor");
@@ -2196,6 +2196,7 @@ export const WorkspaceApp = ({
     clearMemoSelection();
     clearPendingCreatedMemo();
     setCreatedMemoEditId(null);
+    pendingQuickSwitcherMemoIdRef.current = memoId;
     setSelectedMemoId(memoId);
     setActivePane("editor");
     if (options?.search) {
