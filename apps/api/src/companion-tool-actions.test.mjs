@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { createSelfHostedStorageAdapter } from "./self-hosted-storage-adapter.ts";
 import { registerCompanionRoutes } from "./companion-routes.ts";
 import { beginCompanionTurn, checkpointCompanionTurn, clearCompanionHistory, saveCompanionMemory } from "./companion-service.ts";
-import { createMemoRecord, getMemoDetail, updateMemoRecord } from "./memo-service.ts";
+import { createMemoRecord, getMemoDetail, normalizeSearchTimeBound, updateMemoRecord } from "./memo-service.ts";
 import { companionWorkspaceCursor, proposeCompanionToolAction } from "./companion-tool-actions.ts";
 import { getCompanionAction, applyCompanionAction, dismissCompanionAction } from "./companion-actions.ts";
 import { COMPANION_MCP_TOOLS, validateCompanionTool } from "./companion-tool-catalog.ts";
@@ -237,5 +237,36 @@ describe("shared companion MCP adapter", () => {
     await expect(applyCompanionAction(racingDb, scope, id, { ...f.context, env: { storage: { ...f.storage, db: racingDb } } }))
       .rejects.toMatchObject({ code: "companion_action_conflict" });
     expect((await getMemoDetail(f.db, scope.workspaceId, f.notes[0].id)).contentMarkdown).toBe("One original content");
+  });
+
+  test("search and list results keep timestamps and accept a date-only createdAfter", async () => {
+    expect(normalizeSearchTimeBound("2026-09-09", "after")).toBe("2026-09-09T00:00:00.000Z");
+    expect(normalizeSearchTimeBound("2026-09-09", "before")).toBe("2026-09-09T23:59:59.999Z");
+    expect(() => validateCompanionTool("search_memos", { createdAfter: "2026-09-09" })).not.toThrow();
+    const f = await setup();
+    f.sqlite.query("UPDATE memos SET created_at = '2020-01-01T00:00:00.000Z', updated_at = '2020-01-01T00:00:00.000Z' WHERE id = ?")
+      .run(f.notes[0].id);
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    const listed = await tools.search_memos.execute({ createdAfter: "2026-01-01" });
+    expect(listed.memos.map(memo => memo.id)).toEqual([f.notes[1].id]);
+    expect(listed.memos[0]).toMatchObject({
+      createdAt: f.notes[1].createdAt,
+      updatedAt: f.notes[1].updatedAt,
+      notebookName: "ideas",
+    });
+    expect(listed.hasMore).toBe(false);
+    const page = await tools.search_memos.execute({ createdAfter: "2000-01-01", limit: 1 });
+    expect(page.memos).toHaveLength(1);
+    expect(page.hasMore).toBe(true);
+    expect(await tools.list_memos.execute({})).toMatchObject({
+      memos: expect.arrayContaining([expect.objectContaining({
+        id: f.notes[1].id, createdAt: f.notes[1].createdAt, updatedAt: f.notes[1].updatedAt,
+      })]),
+    });
+    expect(await tools.get_memo.execute({ memoId: f.notes[1].id })).toMatchObject({
+      createdAt: f.notes[1].createdAt, updatedAt: f.notes[1].updatedAt,
+    });
+    const missed = await tools.search_memos.execute({ query: "最近一周" });
+    expect(missed.memos).toEqual([]);
   });
 });

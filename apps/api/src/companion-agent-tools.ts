@@ -35,8 +35,8 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
   const toolHints: Record<string, string> = {
     find_notebooks: " Use this whenever the user names a notebook. Notebook names are not IDs.",
     list_notebooks: " Use this to list every notebook name. Do not guess names from the open note.",
-    list_memos: " To list a named notebook, call find_notebooks first and pass that id. Without notebookId this lists the whole workspace. If hasMore is true, say the list is incomplete.",
-    search_memos: " Searches note titles and bodies, not notebook names. Do not pass notebookId unless find_notebooks or list_notebooks returned it. For notes in a named notebook, find_notebooks then list_memos.",
+    list_memos: " To list a named notebook, call find_notebooks first and pass that id. Without notebookId this lists the whole workspace, newest updated first. For newly created notes in a time range, use search_memos with createdAfter. If hasMore is true, say the list is incomplete.",
+    search_memos: " Searches note titles and bodies, not notebook names. query is optional. For recently created or added notes, pass createdAfter (YYYY-MM-DD or ISO date-time) and omit query; never put this week/最近/新增 in query. For recently edited notes, use updatedAfter. Do not pass notebookId unless find_notebooks or list_notebooks returned it. For notes in a named notebook, find_notebooks then list_memos. If hasMore is true, say the list is incomplete.",
     list_tags: " Use this when the user names a tag.",
   };
   let notebookNames: Map<string, string> | undefined;
@@ -83,7 +83,11 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           return { id: parameters_.memoId, revision: inspected.get(String(parameters_.memoId)), alreadyRead: true,
             message: "Use the complete get_memo result already returned in this run." };
         }
-        if (definition.name === "search_memos") parameters_.limit = Math.min(Number(parameters_.limit ?? 8), 8);
+        let searchLimit: number | undefined;
+        if (definition.name === "search_memos") {
+          searchLimit = Math.min(Number(parameters_.limit ?? 20), 20);
+          parameters_.limit = searchLimit + 1;
+        }
         if (definition.name === "list_memos") {
           parameters_.limit = Math.min(Number(parameters_.limit ?? 20), 20);
           parameters_.includeContent = false;
@@ -100,18 +104,26 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           remember(memo);
           if (content.length === memo.contentMarkdown.length) inspected.set(memo.id, memo.revision); else inspected.delete(memo.id);
           return { id: memo.id, title: memo.title, notebookId: memo.notebookId, tags: memo.tags, revision: memo.revision,
+            createdAt: memo.createdAt, updatedAt: memo.updatedAt,
             content, truncated: content.length !== memo.contentMarkdown.length };
         }
-        if (definition.name === "search_memos" || definition.name === "list_memos") return {
-          ...result as object,
-          memos: await Promise.all((result as { memos: MemoSummary[] }).memos.map(async memo => ({
-            ...remember(memo),
-            notebookId: memo.notebookId,
-            notebookName: await notebookName(memo.notebookId),
-            tags: memo.tags,
-            excerpt: takeNoteText(memo.excerpt, 180),
-          }))),
-        };
+        if (definition.name === "search_memos" || definition.name === "list_memos") {
+          const listed = result as { memos: MemoSummary[]; hasMore?: boolean };
+          const memos = searchLimit === undefined ? listed.memos : listed.memos.slice(0, searchLimit);
+          return {
+            ...listed,
+            hasMore: searchLimit === undefined ? Boolean(listed.hasMore) : listed.memos.length > memos.length,
+            memos: await Promise.all(memos.map(async memo => ({
+              ...remember(memo),
+              notebookId: memo.notebookId,
+              notebookName: await notebookName(memo.notebookId),
+              tags: memo.tags,
+              createdAt: memo.createdAt,
+              updatedAt: memo.updatedAt,
+              excerpt: takeNoteText(memo.excerpt, 180),
+            }))),
+          };
+        }
         const serialized = JSON.stringify(result);
         const text = serialized.slice(0, Math.min(8000, metadataRemaining));
         metadataRemaining -= text.length;

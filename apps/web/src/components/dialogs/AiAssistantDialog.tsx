@@ -672,9 +672,11 @@ export const AiAssistantDialog = ({
               <Sparkles className="h-5 w-5 shrink-0 text-emerald-600" />
               <span className="truncate text-sm font-semibold text-slate-950">{t("aiAssistant.title")}</span>
               <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                {t(usesComposerAsSource
-                  ? "aiAssistant.inputScope"
-                  : hasSelection ? "aiAssistant.selectedScope" : "aiAssistant.noteScope")}
+                {t(chatting
+                  ? "aiAssistant.workspaceScope"
+                  : usesComposerAsSource
+                    ? "aiAssistant.inputScope"
+                    : hasSelection ? "aiAssistant.selectedScope" : "aiAssistant.noteScope")}
               </span>
               <GripHorizontal aria-hidden="true" className="ml-auto h-4 w-4 shrink-0 text-slate-300" />
             </div>

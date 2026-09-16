@@ -351,9 +351,13 @@ describe("actual AI SDK companion runtime", () => {
     expect(COMPANION_INSTRUCTIONS).toContain("Never use _reason to paraphrase the operation");
     expect(COMPANION_INSTRUCTIONS).toContain("If there is no useful non-redundant reason, do not propose");
     expect(COMPANION_INSTRUCTIONS).toContain("[Note title](#memo=NOTE_ID)");
+    expect(COMPANION_INSTRUCTIONS).toContain("not as a heading");
     expect(COMPANION_INSTRUCTIONS).toContain("Do not paste note bodies");
     expect(COMPANION_INSTRUCTIONS).toContain("find_notebooks");
     expect(COMPANION_INSTRUCTIONS).toContain("Do not ask permission to search");
+    expect(COMPANION_INSTRUCTIONS).toContain("createdAfter");
+    expect(COMPANION_INSTRUCTIONS).toContain("Do not ask which notebook or tag first");
+    expect(COMPANION_INSTRUCTIONS).toContain("after you have already searched");
   });
 
   test("the real tool loop persists a proposal but exposes no execute-write tool", async () => {
