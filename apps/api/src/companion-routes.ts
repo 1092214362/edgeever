@@ -13,8 +13,8 @@ import { beginCompanionTurn, checkpointCompanionTurn, clearCompanionHistory, com
   forgetCompanionMemory, getCompanionTurn, listCompanionMemories, listCompanionTurns, mapCompanionTurn,
   resumeCompanionTurn, saveCompanionMemory, importCompanionMemories, turnAnswers, turnInputFromRow, type CompanionScope, type TurnRow } from "./companion-service";
 import { parseJsonArray, parseJsonObject } from "./companion-tool-receipts";
-import type { CompanionRunState, streamCompanion } from "./companion-runtime";
-import { prepareCompanionTurn } from "./companion-runtime";
+import type { streamCompanion } from "./companion-runtime";
+import { prepareCompanionTurn, type CompanionRunState } from "./companion-prepare";
 import { executeCompanionTurnTool, parseCompanionAgentSession } from "./companion-agent-tools";
 import { applyCompanionAction, dismissCompanionAction, listCompanionActions } from "./companion-actions";
 import { acknowledgeDiscovery, rememberDiscoveryFeedback, checkDiscoveries, completeDiscoveryGeneration, discoveryPreparePayload, getDiscoverySettings, listDiscoveries, saveDiscoverySettings, startDiscoveryCheck } from "./companion-discovery";

@@ -1,9 +1,8 @@
-import { jsonSchema, tool, type ToolSet } from "ai";
 import type { CompanionSource, CompanionTodo, CompanionToolCall, CompanionToolDefinition, CompanionTurnInput, MemoDetail, MemoSummary } from "@edgeever/shared";
 import type { DatabaseAdapter } from "./storage-contract";
 import type { AppContext } from "./api-context";
 import type { CompanionScope } from "./companion-service";
-import type { CompanionRunState } from "./companion-runtime";
+import type { CompanionRunState } from "./companion-prepare";
 import { COMPANION_MCP_TOOLS, validateCompanionTool } from "./companion-tool-catalog";
 import { companionWorkspaceCursor, proposeCompanionToolAction } from "./companion-tool-actions";
 import { describeCompanionTool } from "./companion-tool-receipts";
@@ -151,9 +150,11 @@ export function companionToolDefinitions(input: CompanionTurnInput): CompanionTo
   ];
 }
 
+type CompanionExecutableTools = Record<string, { execute: (input: Record<string, unknown>) => Promise<unknown> }>;
+
 export function createCompanionTools(args: { db: DatabaseAdapter; scope: CompanionScope; input: CompanionTurnInput;
   context?: AppContext; signal: AbortSignal; assertActive: () => Promise<void>; sources: CompanionSource[];
-  run?: CompanionRunState; session?: CompanionAgentSession }): ToolSet {
+  run?: CompanionRunState; session?: CompanionAgentSession }): CompanionExecutableTools {
   if (!args.input.allowNotes || !args.context) return {};
   const session = args.session ?? emptyCompanionAgentSession();
   const inspected = new Map(Object.entries(session.inspected));
@@ -187,13 +188,8 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
   const mcpTools = Object.fromEntries(catalog.map(definition => {
     const readOnly = definition.annotations.readOnlyHint;
     const autoApply = AUTO_APPLY_WRITES.has(definition.name);
-    return [definition.name, tool({
-      description: companionMcpDescription(definition),
-      inputSchema: jsonSchema<Record<string, unknown>>((readOnly || autoApply ? definition.inputSchema : {
-        ...definition.inputSchema, properties: { ...definition.inputSchema.properties, _reason: { type: "string", minLength: 1, maxLength: 400 } },
-        required: [...(definition.inputSchema.required ?? []), "_reason"],
-      }) as Parameters<typeof jsonSchema>[0]),
-      execute: async input => {
+    return [definition.name, {
+      execute: async (input: Record<string, unknown>) => {
         args.signal.throwIfAborted();
         await args.assertActive();
         if (++session.calls > 16) throw new Error("Tool call limit reached.");
@@ -361,14 +357,13 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           throw error;
         }
       },
-    })];
+    }];
   }));
   return {
     ...mcpTools,
-    todo_write: tool({
-      description: "Replace the task list for this run. Use for multi-step work (≥3 steps). Keep at most one item in_progress.",
-      inputSchema: jsonSchema<{ todos: CompanionTodo[] }>(TODO_WRITE_SCHEMA as Parameters<typeof jsonSchema>[0]),
-      execute: async ({ todos }) => {
+    todo_write: {
+      execute: async (input: Record<string, unknown>) => {
+        const todos = (Array.isArray(input.todos) ? input.todos : []) as CompanionTodo[];
         args.signal.throwIfAborted();
         await args.assertActive();
         if (!args.run) return { todos: [] };
@@ -381,13 +376,12 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
         await args.run.onProgress?.();
         return { todos: args.run.todos };
       },
-    }),
-    ask_user_question: tool({
-      description: "Ask the user 1-3 structured questions when you cannot proceed without a choice (notebook, notes, or strategy). Do not use this to narrate writes you can already perform. Stop after calling it.",
-      inputSchema: jsonSchema<{ questions: Array<{ id: string; prompt: string; inputType: "free_text" | "single_select" | "multi_select"; options?: Array<{ id: string; label: string }> }> }>(
-        ASK_USER_QUESTION_SCHEMA as Parameters<typeof jsonSchema>[0],
-      ),
-      execute: async ({ questions }) => {
+    },
+    ask_user_question: {
+      execute: async (input: Record<string, unknown>) => {
+        const questions = (Array.isArray(input.questions) ? input.questions : []) as Array<{
+          id: string; prompt: string; inputType: "free_text" | "single_select" | "multi_select"; options?: Array<{ id: string; label: string }>;
+        }>;
         args.signal.throwIfAborted();
         await args.assertActive();
         if (!args.run) return { waiting: false };
@@ -402,7 +396,7 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
         await args.run.onProgress?.();
         return { waiting: true, message: "Stop. Wait for the user's answers in the next message." };
       },
-    }),
+    },
   };
 }
 
@@ -416,10 +410,5 @@ export async function executeCompanionTurnTool(args: {
   if (!selected || typeof selected.execute !== "function") {
     throw new AppError("companion_tool_unavailable", "This tool is not available to the companion.", 400);
   }
-  return selected.execute(args.toolInput, {
-    toolCallId: crypto.randomUUID(),
-    messages: [],
-    abortSignal: args.signal,
-    context: undefined,
-  } as never);
+  return selected.execute(args.toolInput);
 }
