@@ -4,6 +4,17 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { MAX_AI_TAG_SUGGESTIONS, type AiProvider } from "@edgeever/shared";
 import { generateText, streamText } from "ai";
 
+export const openaiCompatibleHeaders = (baseUrl: string) => {
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    if (host === "openrouter.ai" || host.endsWith(".openrouter.ai")) {
+      return { "HTTP-Referer": "https://edgeever.org", "X-Title": "EdgeEver" };
+    }
+  } catch {
+    // Invalid URLs are rejected by the provider factory.
+  }
+};
+
 export const createAiModel = (config: {
   provider: AiProvider;
   baseUrl: string;
@@ -21,6 +32,7 @@ export const createAiModel = (config: {
         baseURL: config.baseUrl,
         apiKey: config.apiKey,
         includeUsage: true,
+        headers: openaiCompatibleHeaders(config.baseUrl),
       })(config.modelId);
   }
 };

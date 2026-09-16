@@ -23,6 +23,21 @@ const fail = (c: AppContext, error: unknown) => {
   return apiError(c, "companion_failed", "The companion is unavailable. Please retry later.", 503);
 };
 
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" ? value as Record<string, unknown> : null;
+
+export const companionGenerationFailure = (error: unknown): { code: string } => {
+  if (error instanceof AppError) return { code: error.code };
+  const record = asRecord(error);
+  const status = typeof record?.statusCode === "number" ? record.statusCode
+    : typeof record?.status === "number" ? record.status : undefined;
+  if (status === 401 || status === 403) return { code: "ai_credentials_rejected" };
+  if (status === 402) return { code: "ai_provider_payment_required" };
+  if (status === 429) return { code: "ai_provider_rate_limited" };
+  if (status === 400) return { code: "ai_provider_request_rejected" };
+  return { code: "companion_generation_failed" };
+};
+
 const streamCompanionTurn = (
   c: AppContext,
   dependencies: { stream?: typeof streamCompanion },
@@ -117,7 +132,7 @@ const streamCompanionTurn = (
         }
         const finished = await getCompanionTurn(db, scope, row.id);
         if (status === "interrupted" && finished) send({ type: "done", turn: mapCompanionTurn(finished) });
-        else send({ type: "error", code: error instanceof AppError ? error.code : "companion_generation_failed" });
+        else send({ type: "error", ...companionGenerationFailure(error) });
       } finally {
         stop.abort();
         clearTimeout(timeout);

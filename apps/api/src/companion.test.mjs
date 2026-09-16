@@ -352,7 +352,18 @@ describe("companion HTTP contracts", () => {
     const payload = input();
     const result = await (await request("turns", "POST", payload)).text();
     expect(result).not.toContain("provider-secret");
+    expect(parseEvents(result).some(event => event.type === "error" && event.code === "companion_generation_failed")).toBe(true);
     expect((await getCompanionTurn(db, scope, payload.id))).toMatchObject({ status: "failed", response: "partial response" });
+  });
+  test("maps provider HTTP 400 without leaking the response body", async () => {
+    const { request } = fixture({ stream: async () => ({ totalUsage: Promise.resolve({}), fullStream: (async function* () {
+      const error = new Error("Invalid schema sk-secret");
+      error.statusCode = 400;
+      throw error;
+    })() }) });
+    const result = await (await request("turns", "POST", input())).text();
+    expect(result).not.toContain("sk-secret");
+    expect(parseEvents(result).some(event => event.type === "error" && event.code === "ai_provider_request_rejected")).toBe(true);
   });
   test("concurrent memory change prevents final outdated output", async () => {
     const { request, db } = fixture({ stream: async () => ({ totalUsage: Promise.resolve({}), fullStream: (async function* () {
