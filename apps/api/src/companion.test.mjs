@@ -74,6 +74,10 @@ describe("companion turn context", () => {
       message: "学习资料里面有哪些笔记?",
       focus: { memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示" },
     }))).toContain("not a search filter");
+    expect(companionUserContent(input({
+      message: "帮我新建一个RAG原理的思维导图。",
+      focus: { memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示" },
+    }))).toContain("use this open notebook");
     expect(companionUserContent(input({ message: "What did I write?" }))).toBe("What did I write?");
     expect(companionTurnInstructions(input({ allowNotes: true, allowWrites: false }))).toContain("read-only");
     expect(companionTurnInstructions(input({ allowNotes: true }))).toBe("");
@@ -358,6 +362,9 @@ describe("actual AI SDK companion runtime", () => {
     expect(COMPANION_INSTRUCTIONS).toContain("createdAfter");
     expect(COMPANION_INSTRUCTIONS).toContain("Do not ask which notebook or tag first");
     expect(COMPANION_INSTRUCTIONS).toContain("after you have already searched");
+    expect(COMPANION_INSTRUCTIONS).toContain("create_diagram_memo");
+    expect(COMPANION_INSTRUCTIONS).toContain("思维导图");
+    expect(COMPANION_INSTRUCTIONS).not.toContain("You cannot create or edit diagrams");
   });
 
   test("the real tool loop persists a proposal but exposes no execute-write tool", async () => {

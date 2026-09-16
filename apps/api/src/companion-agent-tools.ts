@@ -9,7 +9,7 @@ import { executeWorkspaceTool } from "./mcp-tool-executor";
 import { getMemoDetail } from "./memo-service";
 import { AppError } from "./app-error";
 
-const AUTO_APPLY_WRITES = new Set(["create_memo", "update_memo", "trash_memos"]);
+const AUTO_APPLY_WRITES = new Set(["create_memo", "create_diagram_memo", "update_memo", "trash_memos"]);
 
 export function createCompanionTools(args: { db: DatabaseAdapter; scope: CompanionScope; input: CompanionTurnInput;
   context?: AppContext; signal: AbortSignal; assertActive: () => Promise<void>; sources: CompanionSource[] }): ToolSet {
@@ -38,6 +38,9 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
     list_memos: " To list a named notebook, call find_notebooks first and pass that id. Without notebookId this lists the whole workspace, newest updated first. For newly created notes in a time range, use search_memos with createdAfter. If hasMore is true, say the list is incomplete.",
     search_memos: " Searches note titles and bodies, not notebook names. query is optional. For recently created or added notes, pass createdAfter (YYYY-MM-DD or ISO date-time) and omit query; never put this week/最近/新增 in query. For recently edited notes, use updatedAfter. Do not pass notebookId unless find_notebooks or list_notebooks returned it. For notes in a named notebook, find_notebooks then list_memos. If hasMore is true, say the list is incomplete.",
     list_tags: " Use this when the user names a tag.",
+    create_memo: " For prose Markdown notes only. Never use this for 思维导图/mind maps, 流程图/flowcharts, or 架构图; use create_diagram_memo.",
+    create_diagram_memo: " Create an editable visual diagram note. kind=mind-map for 思维导图/mind map, flowchart for 流程图, architecture for 架构图. For mind maps, give a root and children with parentId; omit node type. If the user did not name a notebook, use the open notebook id from Focus DATA.",
+    get_diagram: " Read an existing editable diagram as a semantic graph. Do not use get_memo when you only need the diagram structure.",
   };
   let notebookNames: Map<string, string> | undefined;
   const notebookName = async (id: string) => {
@@ -92,9 +95,27 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           parameters_.limit = Math.min(Number(parameters_.limit ?? 20), 20);
           parameters_.includeContent = false;
         }
+        if (definition.name === "get_diagram") parameters_.includeLayout = false;
         const result = await executeWorkspaceTool(args.context!, args.context!.get("auth"), definition.name, parameters_);
         if (autoApply && parameters_.dryRun !== true) {
           cursor = await companionWorkspaceCursor(args.db, args.scope.workspaceId);
+          if (definition.name === "create_diagram_memo") {
+            const created = result as { memo: MemoDetail; diagramKind?: string; diagram?: { nodes?: unknown[] } };
+            remember(created.memo);
+            return {
+              applied: true,
+              id: created.memo.id,
+              title: created.memo.title,
+              notebookId: created.memo.notebookId,
+              notebookName: await notebookName(created.memo.notebookId),
+              revision: created.memo.revision,
+              diagramKind: created.diagramKind,
+              nodeCount: Array.isArray(created.diagram?.nodes) ? created.diagram.nodes.length : undefined,
+            };
+          }
+          if (definition.name === "create_memo" && result && typeof result === "object" && "memo" in result) {
+            remember((result as { memo: MemoDetail }).memo);
+          }
           return { applied: true, ...(typeof result === "object" && result ? result as object : { result }) };
         }
         if (current !== await companionWorkspaceCursor(args.db, args.scope.workspaceId)) return { error: "Notes changed during this read. Start a fresh request." };

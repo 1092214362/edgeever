@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { createSelfHostedStorageAdapter } from "./self-hosted-storage-adapter.ts";
 import { registerCompanionRoutes } from "./companion-routes.ts";
 import { beginCompanionTurn, checkpointCompanionTurn, clearCompanionHistory, saveCompanionMemory } from "./companion-service.ts";
+import { parseDiagramDocument } from "@edgeever/shared";
 import { createMemoRecord, getMemoDetail, normalizeSearchTimeBound, updateMemoRecord } from "./memo-service.ts";
 import { companionWorkspaceCursor, proposeCompanionToolAction } from "./companion-tool-actions.ts";
 import { getCompanionAction, applyCompanionAction, dismissCompanionAction } from "./companion-actions.ts";
@@ -48,7 +49,7 @@ async function setup() {
 
 describe("shared companion MCP adapter", () => {
   test("reuses the exact reviewed MCP definitions, with no administration or upload tools", () => {
-    expect(COMPANION_MCP_TOOLS).toHaveLength(28);
+    expect(COMPANION_MCP_TOOLS).toHaveLength(30);
     for (const definition of COMPANION_MCP_TOOLS) expect(MCP_TOOLS.includes(definition)).toBe(true);
     for (const name of ["upload_memo_image", "upload_memo_attachment", "create_ai_instruction", "empty_trash", "share_memo"]) {
       expect(() => validateCompanionTool(name, {})).toThrow();
@@ -114,7 +115,7 @@ describe("shared companion MCP adapter", () => {
   test("read and dry-run tools reuse MCP without writing or requiring a proposal", async () => {
     const f = await setup();
     const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
-    expect(Object.keys(tools)).toHaveLength(28);
+    expect(Object.keys(tools)).toHaveLength(30);
     expect(await tools.get_memo.execute({ memoId: f.notes[0].id })).toMatchObject({ content: "One original content" });
     expect(await tools.trash_memos.execute({ memoIds: [f.notes[0].id], dryRun: true })).toMatchObject({ dryRun: true });
     expect(await getMemoDetail(f.db, scope.workspaceId, f.notes[0].id)).not.toBeNull();
@@ -130,6 +131,8 @@ describe("shared companion MCP adapter", () => {
     expect(tools.get_memo).toBeTruthy();
     expect(tools.search_memos).toBeTruthy();
     expect(tools.create_memo).toBeUndefined();
+    expect(tools.create_diagram_memo).toBeUndefined();
+    expect(tools.get_diagram).toBeTruthy();
     expect(tools.update_memo).toBeUndefined();
     expect(tools.merge_memos).toBeUndefined();
     expect(await tools.get_memo.execute({ memoId: f.notes[0].id })).toMatchObject({ content: "One original content" });
@@ -148,6 +151,35 @@ describe("shared companion MCP adapter", () => {
     expect(await getMemoDetail(f.db, scope.workspaceId, f.notes[0].id)).toMatchObject({ title: "Changed", contentMarkdown: "Exact replacement" });
     expect(await tools.trash_memos.execute({ memoIds: [f.notes[0].id] })).toMatchObject({ applied: true });
     expect((await getMemoDetail(f.db, scope.workspaceId, f.notes[0].id, true)).isDeleted).toBe(true);
+    expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
+  });
+  test("create_diagram_memo immediately creates an editable mind map, not Markdown", async () => {
+    const f = await setup();
+    const sources = [];
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources });
+    expect(tools.create_diagram_memo).toBeTruthy();
+    expect(tools.get_diagram).toBeTruthy();
+    const created = await tools.create_diagram_memo.execute({
+      notebookId: "ideas",
+      title: "RAG 原理思维导图",
+      kind: "mind-map",
+      nodes: [
+        { id: "root", label: "RAG" },
+        { id: "retrieve", label: "检索", parentId: "root" },
+        { id: "generate", label: "生成", parentId: "root" },
+      ],
+    });
+    expect(created).toMatchObject({ applied: true, title: "RAG 原理思维导图", diagramKind: "mind-map", nodeCount: 3 });
+    expect(created.id).toBeTruthy();
+    expect(JSON.stringify(created)).not.toContain("edgeever-diagram-v1");
+    const memo = await getMemoDetail(f.db, scope.workspaceId, created.id);
+    expect(parseDiagramDocument(memo.contentMarkdown)).toMatchObject({ kind: "mind-map" });
+    expect(memo.contentMarkdown).not.toContain("## RAG");
+    expect(sources.map(source => source.id)).toContain(created.id);
+    expect(await tools.get_diagram.execute({ memoId: created.id })).toMatchObject({
+      memo: { id: created.id },
+      diagram: { kind: "mind-map" },
+    });
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
   });
   test("repeated complete reads return a reference without consuming the note budget again", async () => {
