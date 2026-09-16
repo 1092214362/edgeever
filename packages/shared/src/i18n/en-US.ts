@@ -184,6 +184,7 @@ export const enUS = {
     },
     continue: "Continue unfinished work",
     process: "Thinking",
+    trace: "Run · {{count}} steps",
   },
   common: {
     appName: "EdgeEver",

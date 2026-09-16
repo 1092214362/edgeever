@@ -10,7 +10,6 @@ import { api, ApiRequestError } from "@/lib/api";
 import { companionLocale } from "@/lib/companion-locale";
 import { CompanionActionCard } from "./CompanionActionCard";
 import { CompanionNoteText } from "./CompanionNoteText";
-import { CompanionProcess } from "./CompanionProcess";
 import { CompanionQuestionForm } from "./CompanionQuestionForm";
 import { CompanionRunTimeline } from "./CompanionRunTimeline";
 
@@ -310,9 +309,15 @@ export function CompanionChat({
             })}
           </ul>
         ) : null}
-        <CompanionProcess text={turn.process ?? ""} expanded={turn.status === "running" && !turn.response} />
-        <CompanionRunTimeline tools={turn.tools ?? []} todos={turn.todos ?? []} busy={busy || Boolean(running)}
-          onOpenNote={onOpenNote} onNotesChanged={onNotesChanged} />
+        <CompanionRunTimeline
+          process={turn.process ?? ""}
+          tools={turn.tools ?? []}
+          todos={turn.todos ?? []}
+          expanded={turn.status === "running"}
+          busy={busy || Boolean(running)}
+          onOpenNote={onOpenNote}
+          onNotesChanged={onNotesChanged}
+        />
         {turn.response ? <CompanionNoteText text={turn.response} sources={turn.sources} onOpenNote={onOpenNote} /> : null}
         {turn.status === "interrupted" && turn.questions?.length && !running ? (
           <CompanionQuestionForm questions={turn.questions} busy={busy} onSubmit={answers => resume(turn, answers)} />

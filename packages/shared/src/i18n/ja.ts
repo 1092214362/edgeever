@@ -184,6 +184,7 @@ export const ja = {
     },
     continue: "未完了の作業を続ける",
     process: "思考過程",
+    trace: "過程 · {{count}} 手",
   },
   common: {
     appName: "EdgeEver",

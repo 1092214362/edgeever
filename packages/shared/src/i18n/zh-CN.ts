@@ -184,6 +184,7 @@ export const zhCN = {
     },
     continue: "继续未完成的工作",
     process: "思考过程",
+    trace: "过程 · {{count}} 步",
   },
   common: {
     appName: "EdgeEver",
