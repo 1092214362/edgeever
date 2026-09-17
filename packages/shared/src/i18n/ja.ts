@@ -1012,7 +1012,7 @@ export const ja = {
   aiAssistant: {
     title: "AI ノートアシスタント",
     modes: {
-      instruction: "指示モード",
+      instruction: "Q&A モード",
       ask: "Agent モード",
       askHint: "ノートの検索と整理ができます。削除はゴミ箱へ、編集は履歴から戻せます。",
       askPlaceholder: "ノートに尋ねる、または Agent に整理を依頼…",
