@@ -262,7 +262,7 @@ export const enUS = {
     desktopInstanceUrl: "Instance URL",
     desktopInstanceContinue: "Continue",
     desktopChangeInstance: "Change instance URL",
-    desktopInstanceUrlInvalid: "Enter a valid instance URL beginning with http:// or https://.",
+    desktopInstanceUrlInvalid: "Enter a valid instance URL.",
     instanceUrlPlaceholder: "https://demo.edgeever.org",
   },
   nav: {

@@ -4,7 +4,7 @@ import {
   type EdgeEverClientRequestContext,
 } from "@edgeever/client";
 import type { AuthSession } from "@edgeever/shared";
-import { resolveInstanceUrlInput } from "@edgeever/shared";
+import { normalizeInstanceUrl } from "@edgeever/shared";
 import { createClientUuid } from "./client-id";
 
 export { ApiRequestError };
@@ -121,7 +121,7 @@ export class DesktopInstanceUrlError extends Error {
 }
 
 export const saveDesktopApiBaseUrl = async (value: string) => {
-  const normalized = resolveInstanceUrlInput(value).replace(/\/$/, "");
+  const normalized = normalizeInstanceUrl(value);
   let parsed: URL;
   try {
     parsed = new URL(normalized);

@@ -262,7 +262,7 @@ export const ja = {
     desktopInstanceUrl: "インスタンス URL",
     desktopInstanceContinue: "続ける",
     desktopChangeInstance: "インスタンス URL を変更",
-    desktopInstanceUrlInvalid: "http:// または https:// で始まる有効なインスタンス URL を入力してください。",
+    desktopInstanceUrlInvalid: "有効なインスタンス URL を入力してください。",
     instanceUrlPlaceholder: "https://demo.edgeever.org",
   },
   nav: {

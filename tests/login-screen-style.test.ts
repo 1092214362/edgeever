@@ -11,4 +11,10 @@ describe("login screen chrome", () => {
     expect(loginScreen).toContain("backdrop-blur-md");
     expect(loginScreen).not.toContain("slate-900-rgb");
   });
+
+  test("accepts instance hosts without a protocol", () => {
+    expect(loginScreen).toContain("normalizeInstanceUrl");
+    expect(loginScreen).toContain('inputMode="url"');
+    expect(loginScreen).not.toContain('type="url"');
+  });
 });

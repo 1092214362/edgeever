@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { LockKeyhole } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { resolveInstanceUrlInput } from "@edgeever/shared";
+import { normalizeInstanceUrl } from "@edgeever/shared";
 import { Button } from "@/components/ui/button";
 import { GitHubRepositoryLink } from "@/components/GitHubRepositoryLink";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ export const LoginScreen = ({ error, instanceUrl: initialInstanceUrl, isSubmitti
     }
 
     onSubmit({
-      ...(initialInstanceUrl !== undefined ? { instanceUrl: resolveInstanceUrlInput(instanceUrl) } : {}),
+      ...(initialInstanceUrl !== undefined ? { instanceUrl: normalizeInstanceUrl(instanceUrl) } : {}),
       username: username.trim(),
       password,
     });
@@ -83,11 +83,14 @@ export const LoginScreen = ({ error, instanceUrl: initialInstanceUrl, isSubmitti
             <label className="block">
               <span className="mb-2 block text-sm font-semibold text-slate-700">{t("login.desktopInstanceUrl")}</span>
               <Input
+                autoCapitalize="none"
                 autoComplete="url"
+                autoCorrect="off"
                 className="h-11 rounded-lg bg-slate-50/50 px-3.5 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-emerald-500/20"
+                inputMode="url"
                 placeholder={t("login.instanceUrlPlaceholder")}
                 required
-                type="url"
+                spellCheck={false}
                 value={instanceUrl}
                 onChange={(event) => setInstanceUrl(event.target.value)}
               />
