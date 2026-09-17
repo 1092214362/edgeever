@@ -102,14 +102,14 @@ export const clearCachedDesktopSession = () => {
 };
 
 export const getConfiguredDesktopApiBaseUrl = () => {
-  if (typeof window === "undefined") return "";
+  if (typeof window === "undefined" || !window.edgeeverDesktop?.isAvailable) return "";
 
   try {
     const savedUrl = (window.localStorage.getItem(DESKTOP_API_BASE_URL_STORAGE_KEY) ?? "").trim();
     if (savedUrl) return savedUrl.replace(/\/$/, "");
   } catch {}
 
-  const bridgeUrl = (window.edgeeverDesktop?.apiBaseUrl ?? "").trim();
+  const bridgeUrl = (window.edgeeverDesktop.apiBaseUrl ?? "").trim();
   return bridgeUrl.replace(/\/$/, "");
 };
 

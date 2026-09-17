@@ -147,6 +147,14 @@ describe("desktop instance setup", () => {
     window.edgeeverDesktop.apiBaseUrl = "";
   });
 
+  test("ignores a leftover desktop instance URL in the browser", () => {
+    storage.set(DESKTOP_API_BASE_URL_STORAGE_KEY, "https://example.workers.dev");
+    window.edgeeverDesktop.isAvailable = false;
+    expect(getConfiguredDesktopApiBaseUrl()).toBe("");
+    window.edgeeverDesktop.isAvailable = true;
+    expect(getConfiguredDesktopApiBaseUrl()).toBe("https://example.workers.dev");
+  });
+
   test("preserves the desktop token when refreshing the same authenticated session", async () => {
     await cacheDesktopSession({
       authRequired: true,
