@@ -256,6 +256,7 @@ import {
   isCreatedMemoEditorFocused,
   isEditorReady,
   MemoSaveRequestError,
+  releaseEditorMedia,
   resetEditorDocument,
   shouldRetryCreatedMemoFocus,
   MOBILE_DRAFT_PERSIST_DELAY_MS,
@@ -2071,6 +2072,7 @@ const RichEditorPane = ({
       setSaveState("idle");
       setStorageSaveError(false);
       if (isEditorReady(currentEditor)) {
+        releaseEditorMedia(currentEditor);
         currentEditor.commands.clearContent();
       }
       return;
@@ -2085,6 +2087,7 @@ const RichEditorPane = ({
       clearMarkdownSnapshot();
       const immediateDraft = resolveEditorDraftState({ memo, draft: null, queuedUpdate: null });
       editingMemoIdRef.current = memo.id;
+      setImagePreview(null);
       setHasUnsavedChanges(false);
       setSaveState("idle");
       setSaveConflictInfo(null);
@@ -2271,6 +2274,7 @@ const RichEditorPane = ({
           }
         } catch (err) {
           console.error("Failed to set TipTap contentJson, falling back to markdownToDoc:", err);
+          releaseEditorMedia(currentEditor);
           currentEditor.commands.setContent(markdownToDoc(nextMarkdown));
         }
 

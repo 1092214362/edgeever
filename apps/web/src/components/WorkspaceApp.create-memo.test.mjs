@@ -37,6 +37,10 @@ describe("desktop create-note wiring", () => {
     expect(workspaceSource).toContain("queryClient.prefetchQuery");
   });
 
+  test("evicts idle memo bodies when switching notes", () => {
+    expect(workspaceSource).toContain("evictIdleMemoDetails(queryClient, detailMemoId)");
+  });
+
   test("restores the last desktop memo after a renderer hibernate reload", () => {
     expect(workspaceSource).toContain("readDesktopWorkspaceRestoreState");
     expect(workspaceSource).toContain("writeDesktopWorkspaceRestoreState");

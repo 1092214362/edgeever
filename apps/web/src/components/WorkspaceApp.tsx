@@ -78,6 +78,7 @@ import { useBrowserBackLayer } from "@/lib/app-hooks";
 import { updateMemoSummaryInLists, type MemoListQueryData } from "@/lib/memo-list-cache";
 import {
   cacheMemoDetail,
+  evictIdleMemoDetails,
   clearTrashMemoLists,
   collectMemoSummariesFromCache,
   decrementNotebookMemoCounts,
@@ -1146,6 +1147,9 @@ export const WorkspaceApp = ({
       queryFn: () => repository.getMemo(memoId, memoView === "trash"),
     });
   }, [memoView, queryClient, repository]);
+  useEffect(() => {
+    evictIdleMemoDetails(queryClient, detailMemoId);
+  }, [detailMemoId, queryClient]);
 
   useEffect(() => {
     const handleMemoDetailRefreshed = (event: Event) => {
