@@ -135,6 +135,7 @@
     "@radix-ui/react-toggle-group": "^1.1.19",
     "@radix-ui/react-tooltip": "^1.2.16",
     "@tanstack/react-query": "latest",
+    "@tanstack/react-virtual": "^3.14.13",
     "@tiptap/core": "3.31.0",
     "@tiptap/extension-image": "3.31.0",
     "@tiptap/extension-list": "3.31.0",
