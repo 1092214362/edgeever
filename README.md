@@ -25,7 +25,7 @@ Many long-time **Evernote** users simply want a **reliable, open, and fast** per
 * **Obsidian**: Open files, closed-source core. Official Sync is paid and third-party sync is tedious; storing images and attachments alongside notes quickly bloats vaults, making mobile sync sluggish and leaving orphaned files behind; and it is overly heavy for lightweight, capture-anywhere use.
 * **Memos & Stream Notes**: Clean and simple, but their social-timeline layouts differ fundamentally from the structured productivity of a classic three-pane workflow.
 
-**EdgeEver fills this gap**: The entire stack is open source, including sync and self-hosting. It keeps the three-pane layout you know, stays light and responsive on the desktop, and ships native AI agents with zero-cost deployment.
+**EdgeEver fills this gap**: The entire stack is open source, including sync and self-hosting. It keeps the three-pane layout you know, stays silky-smooth and lightweight even with 10,000+ notes, and ships native AI agents with zero-cost deployment.
 
 > 💡 **Recommended Workflow:**
 > Capture inspiration seamlessly across all devices and organize deeply in the classic three-pane view. Powered by native MCP, it not only lets AI agents retrieve and synthesize your knowledge, but also connects with your favorite productivity tools like Notion and Feishu. Publish anywhere with one-click formatting—100% self-hosted at zero cost, building an open and truly owned second brain.
