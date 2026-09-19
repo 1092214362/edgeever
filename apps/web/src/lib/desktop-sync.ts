@@ -60,6 +60,24 @@ export const isStagedResourceReferenced = (payloads: unknown[], stagedId: string
   return payloads.some((payload) => valueReferencesStagedResource(payload, placeholder));
 };
 
+const stagedIdsReferencedByLocalMemos = async (rewrites: StagedResourceRewrite[]) => {
+  const referenced = new Set<string>();
+  for (const rewrite of rewrites) {
+    const stagedId = rewrite.placeholder.startsWith("edgeever-staged://")
+      ? rewrite.placeholder.slice("edgeever-staged://".length)
+      : rewrite.placeholder;
+    try {
+      const local = await request("memo.get", { memoId: rewrite.memoId, includeDeleted: true });
+      if (isStagedResourceReferenced([local.memo.contentJson, local.memo.contentMarkdown], stagedId)) {
+        referenced.add(stagedId);
+      }
+    } catch {
+      referenced.add(stagedId);
+    }
+  }
+  return referenced;
+};
+
 const remapStagedResourceMemoIds = async (memoIdMappings: ReadonlyMap<string, string>) => {
   if (memoIdMappings.size === 0) return;
   // Keep sync compatible with a renderer hot-reload or an older native shell
@@ -633,7 +651,23 @@ export const syncDesktopData = () => {
       mergeMemoIdMappings(memoIdMappings, outbox.memoIdMappings);
       mergeSyncedMemos(syncedMemos, outbox.syncedMemos);
       if (stagedResources.failed === 0 && outbox.failed === 0 && outbox.conflicted === 0 && creates.conflicted === 0) {
-        await removeSyncedStagedResources(stagedResources.stagedIds);
+        const stillReferenced = await stagedIdsReferencedByLocalMemos(stagedResources.rewrites);
+        if (stillReferenced.size > 0) {
+          try {
+            await patchCreatedMemoResources(stagedResources.rewrites.filter((rewrite) => {
+              const stagedId = rewrite.placeholder.slice("edgeever-staged://".length);
+              return stillReferenced.has(stagedId);
+            }));
+          } catch {
+            // Keep the staged files so a later save can finish rewriting the note.
+          }
+        }
+        const remainingReferenced = stillReferenced.size > 0
+          ? await stagedIdsReferencedByLocalMemos(stagedResources.rewrites)
+          : stillReferenced;
+        await removeSyncedStagedResources(
+          stagedResources.stagedIds.filter((stagedId) => !remainingReferenced.has(stagedId)),
+        );
       }
       phase = "read_status";
       const remaining = await request("sync.status", {});
