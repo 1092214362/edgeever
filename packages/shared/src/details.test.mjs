@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { flattenDetailsForLinearHtml, wrapDetailsContentHtml } from "./details.ts";
+import { DETAILS_EDITOR_CSS, flattenDetailsForLinearHtml, wrapDetailsContentHtml } from "./details.ts";
 
 describe("details HTML helpers", () => {
   test("wraps GitHub details bodies for the TipTap schema", () => {
@@ -24,5 +24,18 @@ describe("details HTML helpers", () => {
     expect(root.querySelector("details")).toBeNull();
     expect(root.textContent).toContain("提示");
     expect(root.textContent).toContain("hidden");
+  });
+});
+
+describe("details editor chrome", () => {
+  test("keeps a collapsed fold as a disclosure line instead of a filled card", () => {
+    expect(DETAILS_EDITOR_CSS).toContain("width: 1.6em");
+    expect(DETAILS_EDITOR_CSS).toContain("height: 1.6em");
+    expect(DETAILS_EDITOR_CSS).toContain("align-items: center");
+    expect(DETAILS_EDITOR_CSS).toContain("justify-content: center");
+    expect(DETAILS_EDITOR_CSS).toContain("display: none !important");
+    expect(DETAILS_EDITOR_CSS).toContain("font-weight: 500");
+    expect(DETAILS_EDITOR_CSS).not.toContain("border-radius: 10px");
+    expect(DETAILS_EDITOR_CSS).not.toContain("border-left: 2px solid");
   });
 });

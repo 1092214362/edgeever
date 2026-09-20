@@ -155,40 +155,52 @@ export const DETAILS_EDITOR_CSS = `
 .edgeever-editor-content [data-type="details"] {
   display: flex;
   align-items: flex-start;
-  gap: 0.2rem;
-  margin: 0.7em 0;
-  padding: 0.45rem 0.7rem 0.55rem 0.3rem;
-  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, currentColor 4%, transparent);
+  gap: 0.1em;
+  margin: 0.15em 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 .ProseMirror [data-type="details"] > button,
 .edgeever-editor-content [data-type="details"] > button {
+  display: inline-flex;
   flex: 0 0 auto;
-  width: 1.55rem;
-  height: 1.55rem;
-  margin-top: 0.05rem;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.6em;
+  height: 1.6em;
+  margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 4px;
   background: transparent;
   color: #16a06e;
+  font: inherit;
+  line-height: 0;
   cursor: pointer;
+}
+.ProseMirror [data-type="details"] > button:hover,
+.edgeever-editor-content [data-type="details"] > button:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.ProseMirror [data-type="details"] > button:focus-visible,
+.edgeever-editor-content [data-type="details"] > button:focus-visible {
+  outline: 2px solid color-mix(in srgb, #16a06e 55%, transparent);
+  outline-offset: 1px;
 }
 .ProseMirror [data-type="details"] > button::before,
 .edgeever-editor-content [data-type="details"] > button::before {
   content: "";
-  display: block;
-  width: 0.42rem;
-  height: 0.42rem;
-  margin: 0.38rem auto 0;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
+  width: 0.32em;
+  height: 0.32em;
+  margin: 0;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
   transform: rotate(-45deg);
 }
 .ProseMirror [data-type="details"].is-open > button::before,
 .edgeever-editor-content [data-type="details"].is-open > button::before {
-  margin-top: 0.22rem;
   transform: rotate(45deg);
 }
 .ProseMirror [data-type="details"] > div,
@@ -199,7 +211,11 @@ export const DETAILS_EDITOR_CSS = `
 .ProseMirror summary,
 .edgeever-editor-content summary {
   display: block;
-  font-weight: 650;
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: inherit;
   list-style: none;
   cursor: text;
 }
@@ -207,9 +223,13 @@ export const DETAILS_EDITOR_CSS = `
 .edgeever-editor-content summary::-webkit-details-marker {
   display: none;
 }
-.ProseMirror [data-type="detailsContent"],
-.edgeever-editor-content [data-type="detailsContent"] {
-  margin-top: 0.35rem;
+.ProseMirror [data-type="details"]:not(.is-open) [data-type="detailsContent"],
+.edgeever-editor-content [data-type="details"]:not(.is-open) [data-type="detailsContent"] {
+  display: none !important;
+}
+.ProseMirror [data-type="details"].is-open [data-type="detailsContent"],
+.edgeever-editor-content [data-type="details"].is-open [data-type="detailsContent"] {
+  margin-top: 0.15em;
 }
 `;
 

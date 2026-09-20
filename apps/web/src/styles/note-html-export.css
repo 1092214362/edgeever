@@ -145,20 +145,19 @@ body {
 }
 
 .edgeever-html-content details {
-  margin: 0.75rem 0;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #f8fafc;
+  margin: 0.2em 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .edgeever-html-content summary {
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .edgeever-html-content details > :not(summary) {
-  margin-top: 0.5rem;
+  margin-top: 0.15em;
 }
 
 .edgeever-html-content blockquote {
