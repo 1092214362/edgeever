@@ -25,7 +25,7 @@ import {
   Pilcrow,
   Quote,
   Sigma,
-  Table2,
+  Table,
 } from "lucide-react";
 import {
   Command,
@@ -123,7 +123,7 @@ export const createSlashCommandItems = (labels: SlashCommandLabels): SlashComman
   { id: "code-block", command: "code", group: "basic", icon: Braces, label: labels.items["code-block"], keywords: ["代码"] },
   { id: "divider", command: "divider", group: "insert", icon: BetweenHorizontalStart, label: labels.items.divider, keywords: ["rule", "分割", "分隔"] },
   { id: "fold", command: "fold", group: "insert", icon: ChevronsDownUp, label: labels.items.fold, keywords: ["collapse", "spoiler", "折叠", "折りたたみ"] },
-  { id: "table", command: "table", group: "insert", icon: Table2, label: labels.items.table, keywords: ["表格"] },
+  { id: "table", command: "table", group: "insert", icon: Table, label: labels.items.table, keywords: ["表格"] },
   { id: "inline-math", command: "math", group: "insert", icon: Sigma, label: labels.items["inline-math"], keywords: ["latex", "formula", "katex", "公式", "数学", "数式"] },
   { id: "block-math", command: "equation", group: "insert", icon: Sigma, label: labels.items["block-math"], keywords: ["latex", "formula", "display", "katex", "块级公式", "独立公式", "数式"] },
   { id: "attachment", command: "upload", group: "insert", icon: FileUp, label: labels.items.attachment, keywords: ["file", "attachment", "文件", "上传", "附件"] },
