@@ -79,7 +79,7 @@ export type SlashCommandActions = {
   openAttachmentPicker: () => void;
   openExternalLinkPicker: () => void;
   openNoteLinkPicker: () => void;
-  openMathFormula: (kind: "inline" | "block") => void;
+  openMathFormula: (kind: "inline" | "block", range?: { from: number; to: number }) => void;
 };
 
 export type SlashCommandItem = {
@@ -256,11 +256,11 @@ const runSlashCommand = ({
     case "table": chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); break;
     case "inline-math":
       chain.run();
-      window.requestAnimationFrame(() => actions.openMathFormula("inline"));
+      actions.openMathFormula("inline", { from: range.from, to: range.from });
       break;
     case "block-math":
       chain.run();
-      window.requestAnimationFrame(() => actions.openMathFormula("block"));
+      actions.openMathFormula("block", { from: range.from, to: range.from });
       break;
     case "current-date": chain.insertContent(formatCurrentDate(new Date())).run(); break;
     case "current-time": chain.insertContent(formatCurrentTime(new Date())).run(); break;

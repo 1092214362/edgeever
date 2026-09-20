@@ -603,7 +603,8 @@ const RichEditorPane = ({
   const mobileSaveTimerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openExternalLinkDialogRef = useRef<() => void>(() => undefined);
-  const openMathFormulaRef = useRef<(kind?: "inline" | "block") => void>(() => undefined);
+  const openMathFormulaRef = useRef<(kind?: "inline" | "block", range?: { from: number; to: number }) => void>(() => undefined);
+  const mathFormulaDraftRef = useRef<MathFormulaDraft | null>(null);
   const mathClickRef = useRef<(node: { attrs: Record<string, unknown> }, pos: number, kind: "inline" | "block") => void>(() => undefined);
   const mathematicsExtensionsRef = useRef(createEdgeEverMathematics({
     onInlineClick: (node, pos) => mathClickRef.current(node, pos, "inline"),
@@ -684,7 +685,7 @@ const RichEditorPane = ({
       openAttachmentPicker: () => fileInputRef.current?.click(),
       openExternalLinkPicker: () => openExternalLinkDialogRef.current(),
       openNoteLinkPicker: () => setNoteLinkPickerOpen(true),
-      openMathFormula: (kind) => openMathFormulaRef.current(kind),
+      openMathFormula: (kind, range) => openMathFormulaRef.current(kind, range),
     };
   }
   const slashCommandExtensionRef = useRef<ReturnType<typeof createSlashCommandExtension> | null>(null);
@@ -1379,25 +1380,31 @@ const RichEditorPane = ({
 
   openExternalLinkDialogRef.current = openExternalLinkDialog;
 
-  const openMathFormula = useCallback((kind: "inline" | "block" = "inline") => {
+  const openMathFormula = useCallback((kind: "inline" | "block" = "inline", range?: { from: number; to: number }) => {
     if (effectiveReadOnly || !isEditorReady(editor) || useMarkdownSourceEditor || useMobilePlainTextEditor) {
       return;
     }
 
-    const existing = resolveMathFormulaTarget(editor);
-    if (existing) {
-      setMathFormulaDraft(existing);
-      setMathFormulaOpen(true);
-      return;
+    if (!range) {
+      const existing = resolveMathFormulaTarget(editor);
+      if (existing) {
+        mathFormulaDraftRef.current = existing;
+        setMathFormulaDraft(existing);
+        setMathFormulaOpen(true);
+        return;
+      }
     }
 
-    const { from, to } = editor.state.selection;
-    setMathFormulaDraft({
+    const from = range?.from ?? editor.state.selection.from;
+    const to = range?.to ?? editor.state.selection.to;
+    const draft: MathFormulaDraft = {
       kind,
-      latex: selectedTextAsLatex(editor),
+      latex: range ? "" : selectedTextAsLatex(editor),
       from,
       to,
-    });
+    };
+    mathFormulaDraftRef.current = draft;
+    setMathFormulaDraft(draft);
     setMathFormulaOpen(true);
   }, [editor, effectiveReadOnly, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
@@ -1406,12 +1413,13 @@ const RichEditorPane = ({
     if (effectiveReadOnly || !isEditorReady(editor) || useMarkdownSourceEditor || useMobilePlainTextEditor) {
       return;
     }
-    const existing = resolveMathFormulaTarget(editor, pos);
-    setMathFormulaDraft(existing ?? {
+    const existing = resolveMathFormulaTarget(editor, pos) ?? {
       kind,
       latex: String(_node.attrs.latex ?? ""),
       pos,
-    });
+    };
+    mathFormulaDraftRef.current = existing;
+    setMathFormulaDraft(existing);
     setMathFormulaOpen(true);
   };
 
@@ -3467,15 +3475,24 @@ const RichEditorPane = ({
         onOpenChange={setMathFormulaOpen}
         onApply={(draft) => {
           if (!isEditorReady(editor) || effectiveReadOnly) return;
-          editor.commands.focus();
-          applyMathFormula(editor, draft);
+          const stored = mathFormulaDraftRef.current;
+          applyMathFormula(editor, {
+            ...draft,
+            from: stored?.from ?? draft.from,
+            to: stored?.to ?? draft.to,
+            pos: stored?.pos ?? draft.pos,
+          });
+          editor.chain().focus(stored?.from ?? draft.from ?? null, { scrollIntoView: true }).run();
         }}
         onRemove={
           mathFormulaDraft && typeof mathFormulaDraft.pos === "number"
             ? () => {
               if (!isEditorReady(editor) || effectiveReadOnly) return;
-              editor.commands.focus();
-              deleteMathFormula(editor, { kind: mathFormulaDraft.kind, pos: mathFormulaDraft.pos as number });
+              const stored = mathFormulaDraftRef.current;
+              const pos = stored?.pos ?? mathFormulaDraft.pos;
+              if (typeof pos !== "number") return;
+              deleteMathFormula(editor, { kind: stored?.kind ?? mathFormulaDraft.kind, pos });
+              editor.chain().focus(pos, { scrollIntoView: true }).run();
             }
             : undefined
         }

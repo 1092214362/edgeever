@@ -79,6 +79,25 @@ describe("math formula commands", () => {
     editor.destroy();
   });
 
+  test("inserts at the stored caret even if the live selection moved to the end", () => {
+    const editor = createEditor({
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "ab" }] },
+        { type: "paragraph", content: [{ type: "text", text: "cd" }] },
+      ],
+    });
+    editor.commands.setTextSelection(2);
+    editor.commands.setTextSelection(editor.state.doc.content.size);
+    expect(applyMathFormula(editor, { kind: "inline", latex: "x", from: 2, to: 2 })).toBe(true);
+    expect(editor.getJSON().content[0].content).toEqual([
+      { type: "text", text: "a" },
+      { type: "inlineMath", attrs: { latex: "x" } },
+      { type: "text", text: "b" },
+    ]);
+    editor.destroy();
+  });
+
   test("rejects empty latex", () => {
     const editor = createEditor({
       type: "doc",

@@ -47,14 +47,12 @@ export const applyMathFormula = (editor: Editor, draft: MathFormulaDraft) => {
   }
 
   const from = draft.from ?? editor.state.selection.from;
-  const to = draft.to ?? editor.state.selection.to;
-  const chain = editor.chain();
-  if (to > from) {
-    chain.deleteRange({ from, to });
-  }
-  return draft.kind === "inline"
-    ? chain.insertInlineMath({ latex, pos: from }).run()
-    : chain.insertBlockMath({ latex, pos: from }).run();
+  const to = draft.to ?? from;
+  const content = draft.kind === "inline"
+    ? { type: INLINE_MATH_NODE_TYPE, attrs: { latex } }
+    : { type: BLOCK_MATH_NODE_TYPE, attrs: { latex } };
+
+  return editor.chain().insertContentAt(from === to ? from : { from, to }, content).run();
 };
 
 export const deleteMathFormula = (editor: Editor, target: Pick<MathFormulaTarget, "kind" | "pos">) => {
