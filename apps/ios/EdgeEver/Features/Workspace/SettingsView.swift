@@ -598,6 +598,18 @@ struct SettingsView: View {
         return String(format: "%g", Double(rounded))
     }
 
+    private var currentDeviceModel: String {
+        var info = utsname()
+        uname(&info)
+        let machine = withUnsafePointer(to: &info.machine) { pointer in
+            pointer.withMemoryRebound(to: CChar.self, capacity: Int(_SYS_NAMELEN)) {
+                String(cString: $0)
+            }
+        }
+        let trimmed = machine.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? env.preferences.t("未知", en: "Unknown") : trimmed
+    }
+
     private var clientSystemInfoItems: [SystemInfoItem] {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
@@ -610,6 +622,10 @@ struct SettingsView: View {
             SystemInfoItem(label: env.preferences.t("客户端", en: "Client"), value: env.preferences.t("移动应用", en: "Mobile app")),
             SystemInfoItem(label: env.preferences.t("系统", en: "System"), value: "iOS"),
             SystemInfoItem(label: env.preferences.t("系统版本", en: "System version"), value: UIDevice.current.systemVersion),
+            SystemInfoItem(
+                label: env.preferences.t("设备型号", en: "Device model", ja: "機種"),
+                value: currentDeviceModel
+            ),
             SystemInfoItem(
                 label: env.preferences.t("屏幕分辨率", en: "Screen resolution", ja: "画面解像度"),
                 value: currentClientDisplaySize

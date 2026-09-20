@@ -219,6 +219,10 @@ const getWebSystemInfoGroups = (
             ?? t("systemInfo.unknown"),
         },
         {
+          label: t("systemInfo.deviceModel"),
+          value: diagnostics.clientRuntime?.deviceModel ?? t("systemInfo.unknown"),
+        },
+        {
           label: t("systemInfo.architecture"),
           value: diagnostics.clientRuntime?.architecture ?? t("systemInfo.unknown"),
           mono: true,
@@ -228,13 +232,13 @@ const getWebSystemInfoGroups = (
           value: diagnostics.clientRuntime?.engine
             ?? (clientKind === "desktopApp" ? t("systemInfo.unknown") : detectBrowser(userAgent) ?? t("systemInfo.unknown")),
         },
+        { label: t("systemInfo.language"), value: navigator.language || language, mono: true },
         {
           label: t("systemInfo.screenResolution"),
           value: displaySize ?? t("systemInfo.unknown"),
           mono: true,
-          colSpan: "two",
+          colSpan: "full",
         },
-        { label: t("systemInfo.language"), value: navigator.language || language, mono: true },
         { label: t("systemInfo.timeZone"), value: timeZone, mono: true, colSpan: "double-sm" },
       ],
     },

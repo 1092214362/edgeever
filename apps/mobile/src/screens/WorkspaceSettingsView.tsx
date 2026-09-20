@@ -21,6 +21,18 @@ const useMobileLocalePreference = () => useMobileLocale().preference;
 
 const MOBILE_APP_VERSION = Constants.expoConfig?.version ?? "0.1.2";
 
+const readMobileDeviceModel = () => {
+  if (Platform.OS !== "android") return null;
+  const { Brand, Manufacturer, Model } = Platform.constants;
+  const model = typeof Model === "string" ? Model.trim() : "";
+  const manufacturer = typeof Manufacturer === "string" && Manufacturer.trim()
+    ? Manufacturer.trim()
+    : typeof Brand === "string" ? Brand.trim() : "";
+  if (!model) return manufacturer || null;
+  if (!manufacturer || model.toLowerCase().startsWith(manufacturer.toLowerCase())) return model;
+  return `${manufacturer} ${model}`;
+};
+
 const formatExecutionEnvironment = (environment: string | null | undefined, localePreference: MobileLocaleMode = "system") => {
   const english = isEnglishMobileLocale(localePreference);
 
@@ -527,6 +539,7 @@ const getMobileSystemInfoText = (localePreference: MobileLocaleMode) =>
         mobileApp: "Mobile app",
         platformVersion: "System version",
         requestLatency: "Health check time",
+        deviceModel: "Device model",
         screenResolution: "Screen resolution",
         screenResolutionValue: "{{screen}} @{{dpr}}x (window {{windowSize}})",
         timeZone: "Time zone",
@@ -573,6 +586,7 @@ const getMobileSystemInfoText = (localePreference: MobileLocaleMode) =>
         mobileApp: "移动应用",
         platformVersion: "系统版本",
         requestLatency: "健康检查耗时",
+        deviceModel: "设备型号",
         screenResolution: "屏幕分辨率",
         screenResolutionValue: "{{screen}} @{{dpr}}x（窗口 {{windowSize}}）",
         timeZone: "时区",
@@ -718,6 +732,7 @@ const getMobileSystemInfoGroups = (
         { label: copy.client, value: copy.mobileApp },
         { label: copy.platform, value: platformName },
         { label: copy.platformVersion, value: String(Platform.Version) },
+        { label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown },
         {
           fullWidth: true,
           label: copy.screenResolution,
