@@ -1934,6 +1934,7 @@ export const enUS = {
     decreaseListIndent: "Decrease list level (Shift + Tab)",
     listIndentHint: "Tab increases level · Shift + Tab decreases level",
     quote: "Quote",
+    fold: "Fold",
     codeBlock: "Code block",
     copyCode: "Copy code",
     codeCopied: "Copied",

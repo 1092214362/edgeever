@@ -270,6 +270,24 @@
   font-weight: 700;
 }
 
+.edgeever-print-content details {
+  break-inside: avoid-page;
+  margin: 4mm 0;
+  padding: 3mm 3.5mm;
+  border: 0.3mm solid #cbd5e1;
+  border-radius: 2mm;
+}
+
+.edgeever-print-content summary {
+  font-weight: 700;
+}
+
+.edgeever-print-content details > :not(summary),
+.edgeever-print-content [data-type="detailsContent"],
+.edgeever-print-content [data-type="detailsContent"][hidden] {
+  display: block !important;
+}
+
 .edgeever-print-content [data-edgeever-theme-block] {
   break-inside: avoid-page;
   margin: 5mm 0;

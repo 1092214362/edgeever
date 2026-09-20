@@ -1934,6 +1934,7 @@ export const ja = {
     decreaseListIndent: "リスト階層を下げる（Shift + Tab）",
     listIndentHint: "Tab で階層を上げる · Shift + Tab で階層を下げる",
     quote: "引用",
+    fold: "折りたたみ",
     codeBlock: "コードブロック",
     copyCode: "コードをコピー",
     codeCopied: "コピーしました",

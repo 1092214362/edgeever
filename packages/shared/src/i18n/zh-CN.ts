@@ -1932,6 +1932,7 @@ export const zhCN = {
     decreaseListIndent: "减少列表层级（Shift + Tab）",
     listIndentHint: "Tab 增加层级，Shift + Tab 减少层级",
     quote: "引用",
+    fold: "折叠块",
     codeBlock: "代码块",
     copyCode: "复制代码",
     codeCopied: "已复制",

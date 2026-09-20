@@ -694,6 +694,66 @@ textarea {
   white-space: pre-wrap;
 }
 
+.ProseMirror [data-type="details"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0.7em 0;
+  padding: 0.45rem 0.7rem 0.55rem 0.3rem;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.ProseMirror [data-type="details"] > button {
+  flex: 0 0 auto;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin-top: 0.05rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #16a06e;
+  cursor: pointer;
+}
+
+.ProseMirror [data-type="details"] > button::before {
+  content: "";
+  display: block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin: 0.38rem auto 0;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+.ProseMirror [data-type="details"].is-open > button::before {
+  margin-top: 0.22rem;
+  transform: rotate(45deg);
+}
+
+.ProseMirror [data-type="details"] > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.ProseMirror summary {
+  display: block;
+  font-weight: 650;
+  list-style: none;
+  cursor: text;
+}
+
+.ProseMirror summary::-webkit-details-marker {
+  display: none;
+}
+
+.ProseMirror [data-type="detailsContent"] {
+  margin-top: 0.35rem;
+}
+
 .edgeever-public-share .ProseMirror {
   min-height: 0;
   padding: 8px 20px 40px;

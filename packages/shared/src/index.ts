@@ -31,6 +31,7 @@ export * from "./schemas";
 export * from "./sharing";
 export * from "./sync";
 export * from "./desktop-rpc";
+export * from "./details";
 export * from "./deployment-metadata";
 export * from "./diagram";
 export * from "./diagram-palette";
