@@ -1,4 +1,4 @@
-import { summarizeSyncQueue } from "@edgeever/shared";
+import { summarizeSyncQueue, type ClientDisplaySizeInput } from "@edgeever/shared";
 import { api, getConfiguredDesktopApiBaseUrl } from "./api";
 import { localDb } from "./local-db";
 import { createLocalDataScope } from "./local-mirror";
@@ -59,6 +59,17 @@ const browserOperatingSystem = (userAgent: string, platform: string, platformVer
   if (/Mac/i.test(source)) return `macOS ${platformVersion || mac?.[1]?.replaceAll("_", ".") || ""}`.trim();
   if (/Linux/i.test(source)) return "Linux";
   return null;
+};
+
+export const readBrowserClientDisplaySize = (): ClientDisplaySizeInput | null => {
+  if (typeof window === "undefined" || typeof screen === "undefined") return null;
+  return {
+    devicePixelRatio: Number(window.devicePixelRatio) || 1,
+    screenHeight: Number(screen.height),
+    screenWidth: Number(screen.width),
+    windowHeight: Number(window.innerHeight),
+    windowWidth: Number(window.innerWidth),
+  };
 };
 
 const desktopOperatingSystem = (platform: string, version: string) => {

@@ -1191,6 +1191,8 @@ export const enUS = {
     runtimeEngine: "Runtime engine",
     language: "Language",
     timeZone: "Time zone",
+    screenResolution: "Screen resolution",
+    screenResolutionValue: "{{screen}} @{{dpr}}x (window {{windowSize}})",
     instanceConnection: "Instance connection",
     requestLatency: "Health check time",
     lastSuccessfulSync: "Last successful sync",

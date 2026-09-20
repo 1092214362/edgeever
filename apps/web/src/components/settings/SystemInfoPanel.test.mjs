@@ -30,6 +30,14 @@ describe("system information diagnostic fields", () => {
     expect(syncIssueSource.replaceAll("getShareableWebSystemInfoItems", "")).not.toContain("getWebSystemInfoItems");
   });
 
+  test("includes current screen resolution with window size", () => {
+    expect(source).toContain('t("systemInfo.screenResolution")');
+    expect(source).toContain('t("systemInfo.screenResolutionValue", parts)');
+    expect(source).toContain("readBrowserClientDisplaySize");
+    expect(source).toContain("getClientDisplaySizeParts");
+    expect(source).toContain('window.addEventListener("resize", onResize)');
+  });
+
   test("distinguishes empty sync from never synced", () => {
     expect(source).not.toContain('t("systemInfo.authMode")');
     expect(source).toContain('t("systemInfo.nothingToSync")');

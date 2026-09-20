@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "
 import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import type { InstanceHealth } from "@edgeever/client";
-import { buildGitHubFeedbackUrl, isClientAheadOfInstance, type AuthUser } from "@edgeever/shared";
+import { buildGitHubFeedbackUrl, formatClientDisplaySize, isClientAheadOfInstance, type AuthUser } from "@edgeever/shared";
 import { useQuery } from "@tanstack/react-query";
-import { BackHandler, Linking, Modal, Platform, ScrollView, Switch, View } from "react-native";
+import { BackHandler, Dimensions, Linking, Modal, PixelRatio, Platform, ScrollView, Switch, View } from "react-native";
 import { Activity, ActivityIndicator, Check, ChevronDown, ChevronLeft, ChevronRight, Cloud, Copy, ExternalLink, Image as ImageIcon, Info, LogOut, MessageSquare, MonitorSmartphone, Moon, RefreshCw, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "../components/icons";
 import { Pressable, Text } from "../components/LocalizedText";
 import { useMobileLocale } from "../lib/mobile-locale";
@@ -527,6 +527,8 @@ const getMobileSystemInfoText = (localePreference: MobileLocaleMode) =>
         mobileApp: "Mobile app",
         platformVersion: "System version",
         requestLatency: "Health check time",
+        screenResolution: "Screen resolution",
+        screenResolutionValue: "{{screen}} @{{dpr}}x (window {{windowSize}})",
         timeZone: "Time zone",
         openUpdate: "Get update",
         title: "System info",
@@ -571,6 +573,8 @@ const getMobileSystemInfoText = (localePreference: MobileLocaleMode) =>
         mobileApp: "移动应用",
         platformVersion: "系统版本",
         requestLatency: "健康检查耗时",
+        screenResolution: "屏幕分辨率",
+        screenResolutionValue: "{{screen}} @{{dpr}}x（窗口 {{windowSize}}）",
         timeZone: "时区",
         openUpdate: "前往更新",
         title: "系统信息",
@@ -714,6 +718,17 @@ const getMobileSystemInfoGroups = (
         { label: copy.client, value: copy.mobileApp },
         { label: copy.platform, value: platformName },
         { label: copy.platformVersion, value: String(Platform.Version) },
+        {
+          fullWidth: true,
+          label: copy.screenResolution,
+          value: formatClientDisplaySize({
+            devicePixelRatio: PixelRatio.get(),
+            screenHeight: Dimensions.get("screen").height,
+            screenWidth: Dimensions.get("screen").width,
+            windowHeight: Dimensions.get("window").height,
+            windowWidth: Dimensions.get("window").width,
+          }, copy.screenResolutionValue) || copy.unknown,
+        },
         { label: copy.language, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
         { label: copy.timeZone, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
         { label: copy.installMode, value: formatExecutionEnvironment(Constants.executionEnvironment, localePreference) },

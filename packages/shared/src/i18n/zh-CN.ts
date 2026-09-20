@@ -1191,6 +1191,8 @@ export const zhCN = {
     runtimeEngine: "运行引擎",
     language: "语言",
     timeZone: "时区",
+    screenResolution: "屏幕分辨率",
+    screenResolutionValue: "{{screen}} @{{dpr}}x（窗口 {{windowSize}}）",
     instanceConnection: "实例连接",
     requestLatency: "健康检查耗时",
     lastSuccessfulSync: "最近成功同步",

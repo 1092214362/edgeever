@@ -12,6 +12,7 @@ export * from "./attachment-metadata";
 export * from "./mobile-content-compatibility";
 export * from "./native-attachment-content";
 export * from "./backup";
+export * from "./client-display-size";
 export * from "./github-feedback";
 export * from "./image-display";
 export * from "./image-gallery";
