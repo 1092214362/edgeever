@@ -11,6 +11,7 @@ on:
           - inspect
           - start
           - monitor
+          - describe
           - store-status
         default: inspect
       workflow_id:
@@ -67,6 +68,14 @@ jobs:
                 args+=(--workflow-id "$XCODE_CLOUD_WORKFLOW_ID")
               fi
               python3 scripts/xcode-cloud-control.py "${args[@]}"
+              ;;
+            describe)
+              if [[ -z "$XCODE_CLOUD_BUILD_RUN_ID" ]]; then
+                echo "::error::build_run_id is required in describe mode"
+                exit 1
+              fi
+              python3 scripts/xcode-cloud-control.py describe \
+                --build-run-id "$XCODE_CLOUD_BUILD_RUN_ID"
               ;;
             monitor)
               if [[ -z "$XCODE_CLOUD_BUILD_RUN_ID" ]]; then

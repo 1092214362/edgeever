@@ -18,6 +18,8 @@ describe("Xcode Cloud control", () => {
 
     expect(script).toContain('sub.add_parser("start"');
     expect(script).toContain('sub.add_parser("wait"');
+    expect(script).toContain('sub.add_parser("describe"');
+    expect(script).toContain("/issues?limit=50");
     expect(script).toContain("--wait-valid");
     expect(script).toContain("--require-sha");
     expect(script).toContain("sourceBranchOrTag");
@@ -30,6 +32,7 @@ describe("Xcode Cloud control", () => {
     expect(workflow).toContain("git diff --name-only");
 
     expect(cloudWorkflow).toContain("scripts/xcode-cloud-control.py");
+    expect(cloudWorkflow).toContain("describe");
     expect(cloudWorkflow).not.toContain("submit-review");
     expect(cloudWorkflow).not.toContain('APP_STORE_BUILD_NUMBER: "49"');
   });
