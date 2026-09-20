@@ -44,6 +44,7 @@ describe("system information diagnostic fields", () => {
     expect(source).toContain("readBrowserClientDisplaySize");
     expect(source).toContain("getClientDisplaySizeParts");
     expect(source).toContain('window.addEventListener("resize", onResize)');
+    expect(readFileSync(new URL("../../lib/system-diagnostics.ts", import.meta.url), "utf8")).toContain("toDevicePixelScreenSize");
   });
 
   test("distinguishes empty sync from never synced", () => {

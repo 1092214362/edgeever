@@ -23,6 +23,21 @@ export const formatDevicePixelRatio = (value: number) => {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 };
 
+const scaleCssPixelsToDevicePixels = (cssPixels: number, devicePixelRatio: number) => {
+  if (!Number.isFinite(cssPixels) || cssPixels <= 0) return cssPixels;
+  if (!Number.isFinite(devicePixelRatio) || devicePixelRatio <= 0) return cssPixels;
+  return cssPixels * devicePixelRatio;
+};
+
+// Browser `screen` APIs report CSS pixels; system info shows the device-pixel panel size.
+export const toDevicePixelScreenSize = (input: ClientDisplaySizeInput): ClientDisplaySizeInput => ({
+  devicePixelRatio: input.devicePixelRatio,
+  screenHeight: scaleCssPixelsToDevicePixels(input.screenHeight, input.devicePixelRatio),
+  screenWidth: scaleCssPixelsToDevicePixels(input.screenWidth, input.devicePixelRatio),
+  windowHeight: input.windowHeight,
+  windowWidth: input.windowWidth,
+});
+
 export const getClientDisplaySizeParts = (
   input: ClientDisplaySizeInput,
 ): ClientDisplaySizeParts | null => {

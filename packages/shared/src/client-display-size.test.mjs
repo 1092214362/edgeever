@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatClientDisplaySize, formatDevicePixelRatio, getClientDisplaySizeParts } from "./client-display-size";
+import { formatClientDisplaySize, formatDevicePixelRatio, getClientDisplaySizeParts, toDevicePixelScreenSize } from "./client-display-size";
 
 const chineseTemplate = "{{screen}} @{{dpr}}x（窗口 {{windowSize}}）";
 const englishTemplate = "{{screen}} @{{dpr}}x (window {{windowSize}})";
@@ -47,6 +47,29 @@ describe("client display size formatting", () => {
       windowHeight: 799.6,
       windowWidth: 1279.4,
     }, chineseTemplate)).toBe("1512×981 @2x（窗口 1279×800）");
+  });
+
+  test("scales CSS screen size to device pixels and keeps window size in CSS pixels", () => {
+    expect(toDevicePixelScreenSize({
+      devicePixelRatio: 2,
+      screenHeight: 1080,
+      screenWidth: 1920,
+      windowHeight: 925,
+      windowWidth: 1920,
+    })).toEqual({
+      devicePixelRatio: 2,
+      screenHeight: 2160,
+      screenWidth: 3840,
+      windowHeight: 925,
+      windowWidth: 1920,
+    });
+    expect(formatClientDisplaySize(toDevicePixelScreenSize({
+      devicePixelRatio: 2,
+      screenHeight: 1080,
+      screenWidth: 1920,
+      windowHeight: 925,
+      windowWidth: 1920,
+    }), chineseTemplate)).toBe("3840×2160 @2x（窗口 1920×925）");
   });
 
   test("returns null when a display metric is missing", () => {
