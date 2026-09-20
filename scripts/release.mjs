@@ -67,9 +67,10 @@ const usage = `Usage:
     --label bug \\
     --change-en "English user-facing change" \\
     --change-zh "中文用户更新说明" \\
+    --change-locale "ja:日本語のユーザー向け説明" \\
     --change-commit "abcdef1"
 
-Repeat --change-en, --change-zh, and --change-commit for multiple paired release bullets.
+Repeat --change-en, --change-zh, --change-locale ja:, and --change-commit for multiple paired release bullets.
 Use comma-separated SHAs when one bullet covers multiple commits. Every other
 commit requires --ignore-commit "abcdef1:reason".
 
@@ -80,7 +81,7 @@ Options:
   --label <label>            Required Issue label; may be repeated
   --change-en <text>         Required English release bullet; may be repeated
   --change-zh <text>         Required Chinese release bullet; may be repeated
-  --change-locale <tag:text> Optional localized bullet; repeat once per change and locale
+  --change-locale <tag:text> Required Japanese bullet as ja: or ja-JP:; other locales optional
   --change-commit <sha,...>  Commits covered by the corresponding bilingual bullet
   --ignore-commit <sha:why>  Explicitly exclude a non-user-facing commit; may be repeated
   --install-desktop          Install and launch the final DMG after publication
@@ -188,6 +189,11 @@ export const parseReleaseArgs = (argv) => {
     if (changes.length !== options.changesEn.length) {
       throw new Error(`--change-locale ${locale} must provide one translation for every release change.`);
     }
+  }
+  if (!localizedChanges.ja && !localizedChanges["ja-JP"]) {
+    throw new Error(
+      "--change-locale ja is required because the App Store listing includes Japanese What's New.",
+    );
   }
   options.localizedChanges = localizedChanges;
   return options;

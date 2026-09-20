@@ -290,6 +290,7 @@ describe("release automation", () => {
       "--label", "maintenance",
       "--change-en", "Update the release flow.",
       "--change-zh", "更新发布流程。",
+      "--change-locale", "ja:リリースフローを更新します。",
       "--change-commit", "abc1234",
     ])).toMatchObject({ installDesktop: false });
     expect(parseReleaseArgs([
@@ -298,9 +299,29 @@ describe("release automation", () => {
       "--label", "maintenance",
       "--change-en", "Update the release flow.",
       "--change-zh", "更新发布流程。",
+      "--change-locale", "ja:リリースフローを更新します。",
       "--change-commit", "abc1234",
       "--install-desktop",
     ])).toMatchObject({ installDesktop: true });
+  });
+
+  test("requires Japanese App Store What's New", () => {
+    expect(() =>
+      parseReleaseArgs([
+        "--issue-title",
+        "Missing Japanese notes",
+        "--bump",
+        "patch",
+        "--label",
+        "bug",
+        "--change-en",
+        "Fix a bug.",
+        "--change-zh",
+        "修复问题。",
+        "--change-commit",
+        "abc1234",
+      ]),
+    ).toThrow("--change-locale ja is required");
   });
 
   test("rejects mismatched bilingual changes", () => {
