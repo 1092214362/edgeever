@@ -27,7 +27,7 @@ describe("Xcode Cloud control", () => {
 
     expect(workflow).toContain(".edgeever-ci/scripts/xcode-cloud-control.py");
     expect(workflow).toContain("--wait-valid");
-    expect(workflow).toContain("--require-sha");
+    expect(workflow).toContain("git diff --name-only");
 
     expect(cloudWorkflow).toContain("scripts/xcode-cloud-control.py");
     expect(cloudWorkflow).not.toContain("submit-review");
