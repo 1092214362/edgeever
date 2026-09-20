@@ -78,7 +78,8 @@ describe("store delivery command", () => {
     expect(workflow).toContain("--wait-valid");
     expect(workflow).not.toContain("--require-sha");
     expect(workflow).not.toContain("--git-ref");
-    expect(workflow).toContain("git diff --name-only \"$source_sha\" HEAD -- apps/ios packages/shared");
+    expect(workflow).toContain("git show \"$source_sha:apps/ios/Config/Version.xcconfig\"");
+    expect(workflow).toContain("cloud_version");
     expect(workflow).toContain("grep -E '^(build_number|app_store_build_id|build_run_id|source_sha|processing_state)='");
     expect(workflow).toContain('refs/tags/${RELEASE_TAG}');
     expect(workflow).toContain(

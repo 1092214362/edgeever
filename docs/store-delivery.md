@@ -141,7 +141,7 @@ On macOS beta hosts, archives must go through **Xcode Cloud** so
 `BuildMachineOSBuild` is a release OS image — see
 [iOS Xcode Cloud](ios-xcode-cloud.md). The store-delivery workflow starts that
 Manual Archive workflow on its configured default branch, requires the Cloud
-source to match the Release tag's iOS runtime tree, waits until App Store Connect marks the
+source's `MARKETING_VERSION` to match the Release tag, waits until App Store Connect marks the
 build Valid, then Fastlane (`apps/ios` `submit_review`) submits App Review and
 configures automatic release after approval. Pass `--ios-build-number` only to
 reuse an already uploaded build. Missing metadata, agreements, review
