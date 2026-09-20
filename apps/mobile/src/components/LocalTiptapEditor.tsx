@@ -2970,6 +2970,7 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   :root {
     color-scheme: ${theme};
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "chws" 1;
     /* Match PC/Web memo body (MEMO_CONTENT_STYLE) so notes don't feel oversized on phone. */
     --editor-body-font-size: ${bodyFontSize}px;
     --editor-body-line-height: ${bodyLineHeight};
@@ -3084,6 +3085,7 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
     line-height: var(--editor-body-line-height);
     overflow-wrap: anywhere;
     word-break: break-word;
+    font-feature-settings: "chws" 1;
     caret-color: ${options?.viewer ? "transparent" : "#0f766e"};
   }
   .edgeever-viewer-content { -webkit-user-select: text; user-select: text; cursor: text; }
