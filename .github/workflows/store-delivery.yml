@@ -352,10 +352,13 @@ jobs:
           };
           write("notes_en", join(summary.changes?.["en-US"]));
           write("notes_zh", join(summary.changes?.["zh-CN"]));
-          write(
-            "notes_ja",
-            join(summary.changes?.ja || summary.changes?.["ja-JP"]),
-          );
+          const notesJa = join(summary.changes?.ja || summary.changes?.["ja-JP"]);
+          if (!notesJa) {
+            throw new Error(
+              "release-summary.json is missing Japanese What's New (ja or ja-JP). Pass --change-locale ja:...",
+            );
+          }
+          write("notes_ja", notesJa);
           NODE
 
       - name: Set up Ruby and fastlane

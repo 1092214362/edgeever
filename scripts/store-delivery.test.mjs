@@ -86,6 +86,7 @@ describe("store delivery command", () => {
       "APP_STORE_BUILD_NUMBER: ${{ steps.ios_build.outputs.build_number }}",
     );
     expect(workflow).toContain("APP_STORE_RELEASE_NOTES_EN:");
+    expect(workflow).toContain("missing Japanese What's New");
     expect(workflow).not.toContain(
       "Pass ios_build_number; do not build from apps/mobile or EAS.",
     );
@@ -111,6 +112,7 @@ describe("store delivery command", () => {
       "utf8",
     );
     expect(fastfile).toContain("precheck_include_in_app_purchases: false");
+    expect(fastfile).toContain("APP_STORE_RELEASE_NOTES_JA is required");
   });
 
   test("replaces the GitHub APK with the Play-signed universal APK", () => {
