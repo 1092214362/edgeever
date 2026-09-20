@@ -1192,7 +1192,7 @@ export const enUS = {
     language: "Language",
     timeZone: "Time zone",
     screenResolution: "Screen resolution",
-    screenResolutionValue: "{{screen}} @{{dpr}}x (window {{windowSize}})",
+    screenResolutionValue: "{{screen}} @{{dpr}}x",
     deviceModel: "Device model",
     instanceConnection: "Instance connection",
     requestLatency: "Health check time",

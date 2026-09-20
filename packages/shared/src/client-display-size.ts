@@ -2,14 +2,11 @@ export type ClientDisplaySizeInput = {
   devicePixelRatio: number;
   screenHeight: number;
   screenWidth: number;
-  windowHeight: number;
-  windowWidth: number;
 };
 
 export type ClientDisplaySizeParts = {
   dpr: string;
   screen: string;
-  windowSize: string;
 };
 
 const formatDisplayPixels = (value: number) => {
@@ -34,8 +31,6 @@ export const toDevicePixelScreenSize = (input: ClientDisplaySizeInput): ClientDi
   devicePixelRatio: input.devicePixelRatio,
   screenHeight: scaleCssPixelsToDevicePixels(input.screenHeight, input.devicePixelRatio),
   screenWidth: scaleCssPixelsToDevicePixels(input.screenWidth, input.devicePixelRatio),
-  windowHeight: input.windowHeight,
-  windowWidth: input.windowWidth,
 });
 
 export const getClientDisplaySizeParts = (
@@ -43,14 +38,11 @@ export const getClientDisplaySizeParts = (
 ): ClientDisplaySizeParts | null => {
   const screenWidth = formatDisplayPixels(input.screenWidth);
   const screenHeight = formatDisplayPixels(input.screenHeight);
-  const windowWidth = formatDisplayPixels(input.windowWidth);
-  const windowHeight = formatDisplayPixels(input.windowHeight);
   const dpr = formatDevicePixelRatio(input.devicePixelRatio);
-  if (!screenWidth || !screenHeight || !windowWidth || !windowHeight || !dpr) return null;
+  if (!screenWidth || !screenHeight || !dpr) return null;
   return {
     dpr,
     screen: `${screenWidth}×${screenHeight}`,
-    windowSize: `${windowWidth}×${windowHeight}`,
   };
 };
 
@@ -62,6 +54,5 @@ export const formatClientDisplaySize = (
   if (!parts) return null;
   return template
     .replaceAll("{{screen}}", parts.screen)
-    .replaceAll("{{dpr}}", parts.dpr)
-    .replaceAll("{{windowSize}}", parts.windowSize);
+    .replaceAll("{{dpr}}", parts.dpr);
 };

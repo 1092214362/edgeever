@@ -37,7 +37,7 @@ describe("system information diagnostic fields", () => {
     expect(feedbackSource).toContain("clientRuntime: clientRuntimeQuery.data");
   });
 
-  test("includes current screen resolution with window size", () => {
+  test("includes current screen resolution", () => {
     expect(source).toContain('t("systemInfo.screenResolution")');
     expect(source).toContain('t("systemInfo.screenResolutionValue", parts)');
     expect(source).toMatch(/systemInfo\.screenResolution[\s\S]{0,220}colSpan: "full"/);

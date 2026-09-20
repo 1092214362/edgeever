@@ -70,8 +70,6 @@ export const readBrowserClientDisplaySize = (): ClientDisplaySizeInput | null =>
     devicePixelRatio: Number(window.devicePixelRatio) || 1,
     screenHeight: Number(screen.height),
     screenWidth: Number(screen.width),
-    windowHeight: Number(window.innerHeight),
-    windowWidth: Number(window.innerWidth),
   });
 };
 

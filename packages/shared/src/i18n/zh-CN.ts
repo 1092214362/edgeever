@@ -1192,7 +1192,7 @@ export const zhCN = {
     language: "语言",
     timeZone: "时区",
     screenResolution: "屏幕分辨率",
-    screenResolutionValue: "{{screen}} @{{dpr}}x（窗口 {{windowSize}}）",
+    screenResolutionValue: "{{screen}} @{{dpr}}x",
     deviceModel: "设备型号",
     instanceConnection: "实例连接",
     requestLatency: "健康检查耗时",

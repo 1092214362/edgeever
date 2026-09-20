@@ -1192,7 +1192,7 @@ export const ja = {
     language: "言語",
     timeZone: "タイムゾーン",
     screenResolution: "画面解像度",
-    screenResolutionValue: "{{screen}} @{{dpr}}x（ウィンドウ {{windowSize}}）",
+    screenResolutionValue: "{{screen}} @{{dpr}}x",
     deviceModel: "機種",
     instanceConnection: "インスタンス接続",
     requestLatency: "ヘルスチェック時間",
