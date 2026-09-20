@@ -8,6 +8,8 @@
 
 简体中文 | [繁體中文](README.zh-TW.md) | [English](README.md) | [日本語](README.ja.md)
 
+[微信群](#wechat-group)
+
 > **EdgeEver：开源、原生支持 AI、可自由部署的自托管知识库与「印象笔记」替代方案。**
 
 EdgeEver 是一款现代化的开源笔记与个人知识库工作区。它为你找回经典印象笔记的三栏高效体验，同时具备完全开放的数据架构与原生 AI Agent 联动能力，让个人知识沉淀更轻量、更自由。
@@ -155,7 +157,9 @@ EdgeEver 官方容器镜像托管于 GitHub Container Registry（GHCR）。部�
 - Bug、功能建议和部署问题请优先提交 [GitHub Issues](https://github.com/tianma-if/edgeever/issues)，方便后续用户检索和复用解决方案。
 - 贡献代码前请阅读[贡献代码须知](CONTRIBUTING.zh-CN.md)。如果您的 Fork 同时用于部署 EdgeEver，请将 `main` 分支仅用于部署；从官方 `upstream/main` 新建独立分支，在该分支中同步上游、开发并提交 Pull Request，不要在部署用的 `main` 上开发或执行 Sync fork。
 
-### 微信交流群
+<hr>
+
+<h3 id="wechat-group">微信交流群</h3>
 
 欢迎加入 EdgeEver AI 交流群，这里聚集了大量 Vibe Coding 与 AI 玩家。一起交流 EdgeEver 体验、AI Agent 实战落地、高性价比/免费 AI 资源及自动化工作流。
 
