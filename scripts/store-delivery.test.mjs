@@ -76,6 +76,8 @@ describe("store delivery command", () => {
     );
     expect(workflow).toContain(".edgeever-ci/scripts/xcode-cloud-control.py");
     expect(workflow).toContain("--wait-valid");
+    expect(workflow).toContain("--require-sha");
+    expect(workflow).not.toContain("--git-ref");
     expect(workflow).toContain("grep -E '^(build_number|app_store_build_id|build_run_id|source_sha|processing_state)='");
     expect(workflow).toContain('refs/tags/${RELEASE_TAG}');
     expect(workflow).toContain(

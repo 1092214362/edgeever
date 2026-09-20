@@ -309,8 +309,10 @@ jobs:
           test -n "$ASC_API_KEY_BASE64"
           python3 -m pip install --quiet PyJWT cryptography
           log_file="$RUNNER_TEMP/xcode-cloud-control.log"
+          # Manual Xcode Cloud workflows reject tags that are not in the start
+          # condition. Start the Archive workflow on its configured default
+          # (main) and require the immutable Release commit.
           python3 .edgeever-ci/scripts/xcode-cloud-control.py start \
-            --git-ref "refs/tags/${RELEASE_TAG}" \
             --require-sha "$(git rev-parse HEAD)" \
             --wait \
             --wait-valid |

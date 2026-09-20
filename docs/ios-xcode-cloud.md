@@ -91,8 +91,11 @@ Rules:
 ## Routine: ship a store binary
 
 Formal Releases do this automatically when `apps/ios` or the shared editor
-runtime changed: `bun run release` bumps `MARKETING_VERSION`, starts Xcode Cloud
-for the Release tag, waits until the build is **Valid**, and submits App Review.
+runtime changed: `bun run release` bumps `MARKETING_VERSION`, starts the Manual
+Xcode Cloud Archive workflow, requires the source commit to match the Release
+tag, waits until the build is **Valid**, and submits App Review. The Cloud
+workflow stays Manual, so Apple rejects starting it on a tag that is not in
+the start condition.
 
 To retry or ship iOS without a new GitHub Release:
 
