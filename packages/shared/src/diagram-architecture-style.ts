@@ -38,7 +38,7 @@ export const ARCHITECTURE_ACCENTS: Record<ArchitectureComponentShape, string> = 
   external: "#64748B",
 };
 
-const ARCHITECTURE_SHAPE_RESOURCE: Record<ArchitectureComponentShape, ArchitectureResourceIcon> = {
+export const ARCHITECTURE_SHAPE_RESOURCE: Record<ArchitectureComponentShape, ArchitectureResourceIcon> = {
   client: "client",
   frontend: "webApp",
   service: "service",

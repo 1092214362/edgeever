@@ -336,7 +336,12 @@ describe("diagram editor canvas surface", () => {
     expect(source).toContain('resourceIcon: architectureResourceIcon(item)');
     expect(source).toContain('...(data?.resourceIcon ? { resourceIcon: data.resourceIcon } : {})');
     expect(source).toContain('architectureNodeVisual(node.shape, appearance, size, node.resourceIcon)');
-    expect(source).toContain('inferArchitectureResourceIcon(node.label, t)');
+    expect(source).toContain('labelKey: "diagram.architectureResources.gpu"');
+    expect(source).toContain('labelKey: "diagram.architectureResources.cpu"');
+    expect(source).toContain('labelKey: "diagram.architectureResources.memory"');
+    expect(source).toContain("ARCHITECTURE_RESOURCE_ALIASES");
+    expect(source).toContain("<ArchitectureIconPicker");
+    expect(source).toContain("updateSelectedResourceIcon");
     expect(source).not.toContain('.render({}, null).props.iconNode');
     expect(source).not.toContain('className="line-clamp-2"');
   });
