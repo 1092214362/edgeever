@@ -53,7 +53,7 @@ describe("demo seed catalog", () => {
       const diagram = parseDiagramDocument(memo?.markdown);
       expect(diagram).toMatchObject({ kind: "architecture" });
       expect(diagram?.nodes).toHaveLength(20);
-      expect(diagram?.edges).toHaveLength(15);
+      expect(diagram?.edges).toHaveLength(9);
 
       const boundaries = new Map(
         diagram?.nodes.filter((node) => node.shape === "boundary").map((node) => [node.id, node]),
