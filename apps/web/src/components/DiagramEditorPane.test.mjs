@@ -161,8 +161,8 @@ describe("diagram editor canvas surface", () => {
     expect(source).not.toContain('t("diagram.saved")');
   });
 
-  test("uses an engineering dot grid for architecture diagrams and a clean grid-free canvas for others", () => {
-    expect(source).toContain('document.kind === "architecture"');
+  test("uses an engineering dot grid for structured diagrams and a clean grid-free canvas for mind-maps", () => {
+    expect(source).toContain('kind === "architecture" || kind === "flowchart"');
     expect(source).toContain("graph.clearGrid();");
     expect(source).toContain("graph.drawGrid");
   });

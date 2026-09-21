@@ -8,6 +8,9 @@ export type { ArchitectureIconElement };
 
 export const ARCHITECTURE_LABEL_FONT =
   'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+export const ARCHITECTURE_NODE_FONT_SIZE = 12;
+export const ARCHITECTURE_NODE_FONT_WEIGHT = 550;
+export const ARCHITECTURE_NODE_LINE_HEIGHT = 17;
 
 export const ARCHITECTURE_ICON_SIZE = 24;
 export const ARCHITECTURE_ICON_FRAME = 34;
@@ -231,10 +234,10 @@ export const architectureNodeVisual = (
     },
     label: {
       fill: paint.text,
-      fontSize: boundary ? 12 : 13,
-      fontWeight: boundary ? 650 : 600,
+      fontSize: boundary ? 12 : ARCHITECTURE_NODE_FONT_SIZE,
+      fontWeight: boundary ? 650 : ARCHITECTURE_NODE_FONT_WEIGHT,
       fontFamily: ARCHITECTURE_LABEL_FONT,
-      lineHeight: 18,
+      lineHeight: boundary ? 18 : ARCHITECTURE_NODE_LINE_HEIGHT,
       ...(boundary
         ? { refX: 20, refY: 20, textAnchor: "start" as const, textVerticalAnchor: "middle" as const }
         : { refX: 54, refY: "50%", textAnchor: "start" as const, textVerticalAnchor: "middle" as const }),

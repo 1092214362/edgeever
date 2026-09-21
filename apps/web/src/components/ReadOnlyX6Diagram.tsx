@@ -47,7 +47,7 @@ export const ReadOnlyX6Diagram = ({
       container,
       width: measureWidth(),
       height: Math.max(1, container.clientHeight),
-      grid: diagram.kind === "architecture" ? {
+      grid: (diagram.kind === "architecture" || diagram.kind === "flowchart") ? {
         size: 20,
         visible: true,
         type: "dot",
@@ -111,6 +111,7 @@ export const ReadOnlyX6Diagram = ({
       <div
         aria-label={diagramTitle(diagram, locale)}
         className="edgeever-x6-diagram"
+        data-diagram-kind={diagram.kind}
         key={diagram.kind}
         ref={containerRef}
         role="img"
