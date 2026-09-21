@@ -1,3 +1,4 @@
+import { serializeDiagramDocument, type DiagramDocument } from "@edgeever/shared";
 import {
   decodeDemoAttachment,
   DEMO_ATTACHMENT_MARKDOWN_EN,
@@ -16,6 +17,90 @@ export const DEMO_SEED_NOTEBOOKS = [
   { id: "nb_demo_features", parentId: "nb_projects", name: "功能演示", slug: "demo-features", icon: "notebook", color: "#0891b2", sortOrder: 21 },
   { id: "nb_demo_features_en", parentId: "nb_projects", name: "Feature Demos", slug: "feature-demos", icon: "notebook", color: "#0e7490", sortOrder: 22 },
 ];
+
+export const DEMO_ARCHITECTURE_DIAGRAM_ZH: DiagramDocument = {
+  schemaVersion: 2,
+  kind: "architecture",
+  nodes: [
+    { id: "boundary-clients", label: "全端客户端矩阵", x: 40, y: 48, width: 220, height: 490, shape: "boundary" },
+    { id: "boundary-cloud", label: "Serverless 核心服务层", x: 320, y: 48, width: 500, height: 490, shape: "boundary" },
+    { id: "boundary-ai", label: "AI 智能体与外部生态", x: 880, y: 48, width: 220, height: 490, shape: "boundary" },
+
+    { id: "client-web", label: "Web / PWA\n离线草稿 & 增量同步", x: 68, y: 104, width: 164, height: 68, shape: "frontend", resourceIcon: "webApp", parentId: "boundary-clients" },
+    { id: "client-desktop", label: "macOS / Windows\n桌面客户端", x: 68, y: 200, width: 164, height: 68, shape: "client", resourceIcon: "client", parentId: "boundary-clients" },
+    { id: "client-mobile", label: "iOS / Android\n原生客户端", x: 68, y: 296, width: 164, height: 68, shape: "client", resourceIcon: "mobileApp", parentId: "boundary-clients" },
+    { id: "client-clipper", label: "浏览器剪藏扩展\nChrome / Edge", x: 68, y: 392, width: 164, height: 68, shape: "client", resourceIcon: "website", parentId: "boundary-clients" },
+
+    { id: "srv-api", label: "Hono API 引擎\nCloudflare Workers", x: 352, y: 140, width: 164, height: 68, shape: "service", resourceIcon: "serverless", parentId: "boundary-cloud" },
+    { id: "srv-mcp", label: "原生 MCP 端点\n/mcp 智能体服务", x: 352, y: 320, width: 164, height: 68, shape: "service", resourceIcon: "mcpServer", parentId: "boundary-cloud" },
+    { id: "db-d1", label: "D1 SQLite 数据库\n双向同步与版本链", x: 616, y: 140, width: 164, height: 72, shape: "database", resourceIcon: "relationalDatabase", parentId: "boundary-cloud" },
+    { id: "db-r2", label: "R2 对象存储\n图片与多媒体附件", x: 616, y: 260, width: 164, height: 68, shape: "storage", resourceIcon: "objectStorage", parentId: "boundary-cloud" },
+    { id: "db-vector", label: "向量检索与缓存\n语义索引层", x: 616, y: 380, width: 164, height: 72, shape: "database", resourceIcon: "vectorDatabase", parentId: "boundary-cloud" },
+
+    { id: "ai-coding", label: "Claude / Cursor\n编码智能体", x: 908, y: 140, width: 164, height: 68, shape: "service", resourceIcon: "largeLanguageModel", parentId: "boundary-ai" },
+    { id: "ai-antigravity", label: "Antigravity Agent\n系统级协同", x: 908, y: 240, width: 164, height: 68, shape: "service", resourceIcon: "aiAgent", parentId: "boundary-ai" },
+    { id: "ai-inline", label: "行内智能助手\nBYOK 密钥直连", x: 908, y: 340, width: 164, height: 68, shape: "service", resourceIcon: "modelGateway", parentId: "boundary-ai" },
+  ],
+  edges: [
+    { id: "edge-web-api", source: "client-web", target: "srv-api", label: "HTTPS / 同步游标", kind: "request" },
+    { id: "edge-desktop-api", source: "client-desktop", target: "srv-api", kind: "request" },
+    { id: "edge-mobile-api", source: "client-mobile", target: "srv-api", kind: "request" },
+    { id: "edge-clipper-api", source: "client-clipper", target: "srv-api", kind: "request" },
+
+    { id: "edge-api-d1", source: "srv-api", target: "db-d1", label: "事务与版本读写", kind: "data" },
+    { id: "edge-api-r2", source: "srv-api", target: "db-r2", label: "S3 资源存取", kind: "data" },
+    { id: "edge-api-vec", source: "srv-api", target: "db-vector", kind: "data" },
+
+    { id: "edge-mcp-d1", source: "srv-mcp", target: "db-d1", kind: "data" },
+    { id: "edge-mcp-vec", source: "srv-mcp", target: "db-vector", kind: "data" },
+
+    { id: "edge-coding-mcp", source: "ai-coding", target: "srv-mcp", label: "MCP Tools / SSE", kind: "request", bidirectional: true },
+    { id: "edge-antigravity-mcp", source: "ai-antigravity", target: "srv-mcp", kind: "request", bidirectional: true },
+    { id: "edge-inline-client", source: "ai-inline", target: "client-web", label: "端侧隐私直连", kind: "async" },
+  ],
+};
+
+export const DEMO_ARCHITECTURE_DIAGRAM_EN: DiagramDocument = {
+  schemaVersion: 2,
+  kind: "architecture",
+  nodes: [
+    { id: "boundary-clients", label: "Client Matrix", x: 40, y: 48, width: 220, height: 490, shape: "boundary" },
+    { id: "boundary-cloud", label: "Serverless Core Engine", x: 320, y: 48, width: 500, height: 490, shape: "boundary" },
+    { id: "boundary-ai", label: "AI Agents & Ecosystem", x: 880, y: 48, width: 220, height: 490, shape: "boundary" },
+
+    { id: "client-web", label: "Web / PWA\nOffline Drafts & Sync", x: 68, y: 104, width: 164, height: 68, shape: "frontend", resourceIcon: "webApp", parentId: "boundary-clients" },
+    { id: "client-desktop", label: "macOS / Windows\nDesktop App", x: 68, y: 200, width: 164, height: 68, shape: "client", resourceIcon: "client", parentId: "boundary-clients" },
+    { id: "client-mobile", label: "iOS / Android\nNative App", x: 68, y: 296, width: 164, height: 68, shape: "client", resourceIcon: "mobileApp", parentId: "boundary-clients" },
+    { id: "client-clipper", label: "Web Clipper\nChrome / Edge", x: 68, y: 392, width: 164, height: 68, shape: "client", resourceIcon: "website", parentId: "boundary-clients" },
+
+    { id: "srv-api", label: "Hono API Engine\nCloudflare Workers", x: 352, y: 140, width: 164, height: 68, shape: "service", resourceIcon: "serverless", parentId: "boundary-cloud" },
+    { id: "srv-mcp", label: "Native MCP Endpoint\n/mcp Agent Service", x: 352, y: 320, width: 164, height: 68, shape: "service", resourceIcon: "mcpServer", parentId: "boundary-cloud" },
+    { id: "db-d1", label: "D1 SQLite Database\nSync & Revisions", x: 616, y: 140, width: 164, height: 72, shape: "database", resourceIcon: "relationalDatabase", parentId: "boundary-cloud" },
+    { id: "db-r2", label: "R2 Object Storage\nImages & Attachments", x: 616, y: 260, width: 164, height: 68, shape: "storage", resourceIcon: "objectStorage", parentId: "boundary-cloud" },
+    { id: "db-vector", label: "Vector Search & Cache\nSemantic Index Layer", x: 616, y: 380, width: 164, height: 72, shape: "database", resourceIcon: "vectorDatabase", parentId: "boundary-cloud" },
+
+    { id: "ai-coding", label: "Claude / Cursor\nCoding Agents", x: 908, y: 140, width: 164, height: 68, shape: "service", resourceIcon: "largeLanguageModel", parentId: "boundary-ai" },
+    { id: "ai-antigravity", label: "Antigravity Agent\nSystem Co-pilot", x: 908, y: 240, width: 164, height: 68, shape: "service", resourceIcon: "aiAgent", parentId: "boundary-ai" },
+    { id: "ai-inline", label: "Inline AI Assistant\nBYOK Privacy Direct", x: 908, y: 340, width: 164, height: 68, shape: "service", resourceIcon: "modelGateway", parentId: "boundary-ai" },
+  ],
+  edges: [
+    { id: "edge-web-api", source: "client-web", target: "srv-api", label: "HTTPS / Sync Cursor", kind: "request" },
+    { id: "edge-desktop-api", source: "client-desktop", target: "srv-api", kind: "request" },
+    { id: "edge-mobile-api", source: "client-mobile", target: "srv-api", kind: "request" },
+    { id: "edge-clipper-api", source: "client-clipper", target: "srv-api", kind: "request" },
+
+    { id: "edge-api-d1", source: "srv-api", target: "db-d1", label: "Transactions & Log", kind: "data" },
+    { id: "edge-api-r2", source: "srv-api", target: "db-r2", label: "S3 Asset Access", kind: "data" },
+    { id: "edge-api-vec", source: "srv-api", target: "db-vector", kind: "data" },
+
+    { id: "edge-mcp-d1", source: "srv-mcp", target: "db-d1", kind: "data" },
+    { id: "edge-mcp-vec", source: "srv-mcp", target: "db-vector", kind: "data" },
+
+    { id: "edge-coding-mcp", source: "ai-coding", target: "srv-mcp", label: "MCP Tools / SSE", kind: "request", bidirectional: true },
+    { id: "edge-antigravity-mcp", source: "ai-antigravity", target: "srv-mcp", kind: "request", bidirectional: true },
+    { id: "edge-inline-client", source: "ai-inline", target: "client-web", label: "Client-side BYOK", kind: "async" },
+  ],
+};
 
 export const DEMO_SEED_MEMOS_ZH = [
   {
@@ -219,6 +304,14 @@ sequenceDiagram
 > 6. 随时在侧边栏或设置中点击 **“恢复 Demo 数据”**，一键重置演示工作区。
 `,
   },
+  {
+    id: "memo_demo_architecture",
+    notebookId: "nb_demo_features",
+    title: "🏗️ 架构全景：EdgeEver 全端协同与云原生 Serverless 架构图",
+    tags: ["architecture", "diagram", "serverless", "cloud-native", "mcp"],
+    isPinned: false,
+    markdown: serializeDiagramDocument(DEMO_ARCHITECTURE_DIAGRAM_ZH),
+  },
 ];
 
 export const DEMO_SEED_REVISIONS = [
@@ -237,6 +330,20 @@ export const DEMO_SEED_REVISIONS = [
     title: "🌿 Welcome to EdgeEver: Modern Open-Source Knowledge Base for Geeks & Creators",
     markdown:
       "## 🌿 Welcome to EdgeEver (Initial Draft)\n\n- Classic Evernote 3-pane layout & Serverless self-hosted\n- Visual table editing & Markdown source toggle\n- Native MCP & AI agent synergy",
+  },
+  {
+    id: "rev_demo_architecture_1",
+    memoId: "memo_demo_architecture",
+    revision: 1,
+    title: "🏗️ 架构全景：EdgeEver 全端协同与云原生 Serverless 架构图",
+    markdown: serializeDiagramDocument(DEMO_ARCHITECTURE_DIAGRAM_ZH),
+  },
+  {
+    id: "rev_demo_architecture_1_en",
+    memoId: "memo_demo_architecture_en",
+    revision: 1,
+    title: "🏗️ System Topology: EdgeEver Multi-Client & Serverless Architecture",
+    markdown: serializeDiagramDocument(DEMO_ARCHITECTURE_DIAGRAM_EN),
   },
 ];
 
@@ -438,6 +545,10 @@ Export your entire library at any time from **Profile → Import and export**. T
 > 6. Click **"Reset Demo Data"** in settings or the sidebar anytime to restore the demo workspace.
 `,
   },
+  memo_demo_architecture: {
+    title: "🏗️ System Topology: EdgeEver Multi-Client & Serverless Architecture",
+    markdown: serializeDiagramDocument(DEMO_ARCHITECTURE_DIAGRAM_EN),
+  },
 } as const;
 
 export const DEMO_SEED_MEMOS_EN = DEMO_SEED_MEMOS_ZH.map((memo) => {
@@ -451,13 +562,13 @@ export const DEMO_SEED_MEMOS_EN = DEMO_SEED_MEMOS_ZH.map((memo) => {
     id: `${memo.id}_en`,
     notebookId: "nb_demo_features_en",
     title: english.title,
-    markdown: `${english.markdown}${DEMO_ATTACHMENT_MARKDOWN_EN}`,
+    markdown: memo.id === "memo_demo_overview" ? `${english.markdown}${DEMO_ATTACHMENT_MARKDOWN_EN}` : english.markdown,
   };
 }).filter((memo): memo is NonNullable<typeof memo> => memo !== null);
 
 export const DEMO_SEED_MEMOS_ZH_WITH_ATTACHMENTS = DEMO_SEED_MEMOS_ZH.map((memo) => ({
   ...memo,
-  markdown: `${memo.markdown}${DEMO_ATTACHMENT_MARKDOWN_ZH}`,
+  markdown: memo.id === "memo_demo_overview" ? `${memo.markdown}${DEMO_ATTACHMENT_MARKDOWN_ZH}` : memo.markdown,
 }));
 
 export const DEMO_SEED_MEMOS = [...DEMO_SEED_MEMOS_ZH_WITH_ATTACHMENTS, ...DEMO_SEED_MEMOS_EN];

@@ -161,11 +161,10 @@ describe("diagram editor canvas surface", () => {
     expect(source).not.toContain('t("diagram.saved")');
   });
 
-  test("uses a clean grid-free canvas for both diagram types", () => {
-    expect(source).toContain("grid: false");
+  test("uses an engineering dot grid for architecture diagrams and a clean grid-free canvas for others", () => {
+    expect(source).toContain('document.kind === "architecture"');
     expect(source).toContain("graph.clearGrid();");
-    expect(source).not.toContain("diagramGrid");
-    expect(source).not.toContain("graph.drawGrid");
+    expect(source).toContain("graph.drawGrid");
   });
 
   test("uses restrained rounded edges and fits the complete diagram without clipping", () => {

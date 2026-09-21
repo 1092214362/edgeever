@@ -16,6 +16,8 @@ describe("demo seed catalog", () => {
     expect(memoIds.size).toBe(DEMO_SEED_MEMOS.length);
     expect(memoIds.has("memo_demo_overview")).toBe(true);
     expect(memoIds.has("memo_demo_overview_en")).toBe(true);
+    expect(memoIds.has("memo_demo_architecture")).toBe(true);
+    expect(memoIds.has("memo_demo_architecture_en")).toBe(true);
     for (const memo of DEMO_SEED_MEMOS) {
       expect(notebookIds.has(memo.notebookId)).toBe(true);
     }

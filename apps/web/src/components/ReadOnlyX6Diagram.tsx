@@ -47,8 +47,15 @@ export const ReadOnlyX6Diagram = ({
       container,
       width: measureWidth(),
       height: Math.max(1, container.clientHeight),
-      background: { color: cells.canvas },
-      grid: false,
+      grid: diagram.kind === "architecture" ? {
+        size: 20,
+        visible: true,
+        type: "dot",
+        args: {
+          color: theme === "dark" ? "rgba(255, 255, 255, 0.12)" : "rgba(15, 23, 42, 0.08)",
+          thickness: 1.2,
+        },
+      } : false,
       interacting: false,
       panning: { enabled: true },
       mousewheel: { enabled: true, minScale: 0.1, maxScale: 2.5 },

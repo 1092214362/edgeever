@@ -1,5 +1,6 @@
 import { flowchartNodePresentation } from "./diagram-node-presentation";
 import {
+  ARCHITECTURE_LABEL_FONT,
   architectureEdgeVisual,
   architectureNodeVisual,
   resolveArchitectureSurface,
@@ -208,17 +209,31 @@ export const diagramDocumentToX6Cells = (
       labels: edge.label ? [{ attrs: {
         label: {
           text: edge.label,
-          fill: flowchartSurface?.process.text ?? architectureSurface?.nodes.service.text ?? palette.nodeText,
-          fontSize: 12,
+          fill: document.kind === "architecture"
+            ? (appearance === "dark" ? "#E2E8F0" : "#334155")
+            : (flowchartSurface?.process.text ?? architectureSurface?.nodes.service.text ?? palette.nodeText),
+          fontSize: document.kind === "architecture" ? 11 : 12,
+          fontWeight: document.kind === "architecture" ? 500 : 400,
           lineHeight: 16,
-          fontFamily: FLOWCHART_LABEL_FONT,
+          fontFamily: document.kind === "architecture" ? ARCHITECTURE_LABEL_FONT : FLOWCHART_LABEL_FONT,
           textWrap: { width: 140, height: 512 },
         },
         body: {
-          ref: "label", refWidth: 1, refHeight: 1, refWidth2: 12, refHeight2: 8, refX: -6, refY: -4,
-          fill: flowchartSurface?.canvas ?? architectureSurface?.canvas ?? palette.canvas,
-          stroke: flowchartSurface?.process.stroke ?? architectureSurface?.nodes.service.stroke ?? palette.nodeStroke,
-          strokeWidth: 1, rx: 5, ry: 5,
+          ref: "label", refWidth: 1, refHeight: 1,
+          refWidth2: document.kind === "architecture" ? 14 : 12,
+          refHeight2: document.kind === "architecture" ? 6 : 8,
+          refX: document.kind === "architecture" ? -7 : -6,
+          refY: document.kind === "architecture" ? -3 : -4,
+          fill: document.kind === "architecture"
+            ? (appearance === "dark" ? "rgba(15, 23, 42, 0.92)" : "rgba(255, 255, 255, 0.96)")
+            : (flowchartSurface?.canvas ?? architectureSurface?.canvas ?? palette.canvas),
+          stroke: document.kind === "architecture"
+            ? (architectureEdge?.stroke ?? (appearance === "dark" ? "rgba(148, 163, 184, 0.3)" : "rgba(203, 213, 225, 0.8)"))
+            : (flowchartSurface?.process.stroke ?? architectureSurface?.nodes.service.stroke ?? palette.nodeStroke),
+          strokeWidth: 1,
+          rx: document.kind === "architecture" ? 6 : 5,
+          ry: document.kind === "architecture" ? 6 : 5,
+          ...(document.kind === "architecture" ? { style: { filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.05))" } } : {}),
         },
       } }] : undefined,
     };
