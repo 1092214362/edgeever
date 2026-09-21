@@ -947,6 +947,11 @@ const suspendScrollerAutoResize = (
     if (!isCurrent()) return;
     scroller.enableAutoResize();
     scroller.updateScroller();
+    // Scroller.update() can retain the pre-insert paper size even though the
+    // model already contains the new cell. Refit from model geometry before
+    // restoring the viewport anchor so the new node and the existing diagram
+    // cannot be clipped until the editor is reloaded.
+    ensureDiagramPaperContainsNodes(graph);
     if (!restoreAnchor || !anchorView || !anchorBefore) return;
     const keepAnchor = () => {
       if (!isCurrent() || !anchorView || !anchorBefore) return;

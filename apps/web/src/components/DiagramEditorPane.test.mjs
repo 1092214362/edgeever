@@ -54,6 +54,9 @@ describe("diagram editor keyboard workflow", () => {
       source.indexOf("const suspendScrollerAutoResize"),
       source.indexOf("const nodeEditorState"),
     );
+    expect(settleHelper.indexOf("ensureDiagramPaperContainsNodes(graph)")).toBeGreaterThan(
+      settleHelper.indexOf("scroller.updateScroller()"),
+    );
     expect(settleHelper).not.toContain("graph.centerPoint");
     expect(settleHelper).toContain("anchorAfter.left - anchorBefore.left");
     expect(settleHelper).toContain("anchorAfter.top - anchorBefore.top");
