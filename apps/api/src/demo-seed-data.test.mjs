@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parseDiagramDocument } from "@edgeever/shared";
+import { computeDiagramLayoutResult } from "../../../packages/shared/src/diagram-layout.ts";
 import {
   decodeDemoAttachment,
   DEMO_SEED_ATTACHMENT_RESOURCES,
@@ -68,6 +69,20 @@ describe("demo seed catalog", () => {
         expect(node.y).toBeGreaterThanOrEqual(boundary.y);
         expect(node.x + node.width).toBeLessThanOrEqual(boundary.x + boundary.width);
         expect(node.y + node.height).toBeLessThanOrEqual(boundary.y + boundary.height);
+      }
+    }
+  });
+
+  test("persists the architecture examples in their automatic layout", () => {
+    for (const memoId of ["memo_demo_architecture", "memo_demo_architecture_en"]) {
+      const memo = DEMO_SEED_MEMOS.find((candidate) => candidate.id === memoId);
+      const diagram = parseDiagramDocument(memo?.markdown);
+      expect(diagram).toMatchObject({ kind: "architecture" });
+      if (!diagram) continue;
+
+      const layout = computeDiagramLayoutResult(diagram);
+      for (const node of diagram.nodes) {
+        expect({ x: node.x, y: node.y, width: node.width, height: node.height }).toEqual(layout.nodes[node.id]);
       }
     }
   });
