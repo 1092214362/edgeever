@@ -550,6 +550,22 @@ export const updateIosMarketingVersion = (contents, nextVersion) => {
   return updated;
 };
 
+export const updateIosProjectMarketingVersion = (contents, nextVersion) => {
+  const updated = String(contents).replace(
+    /MARKETING_VERSION = [^;]+;/g,
+    `MARKETING_VERSION = ${nextVersion};`,
+  );
+  const matches = updated.match(
+    new RegExp(`MARKETING_VERSION = ${nextVersion.replaceAll(".", "\\.")};`, "g"),
+  );
+  if (!matches || matches.length < 2) {
+    throw new Error(
+      "Unable to update apps/ios/EdgeEver.xcodeproj/project.pbxproj MARKETING_VERSION.",
+    );
+  }
+  return updated;
+};
+
 const updateReleaseVersions = ({
   nextVersion,
   desktopRebuild,
@@ -587,11 +603,19 @@ const updateReleaseVersions = ({
 
   if (iosRebuild) {
     const iosVersionPath = "apps/ios/Config/Version.xcconfig";
+    const iosProjectPath = "apps/ios/EdgeEver.xcodeproj/project.pbxproj";
     writeFileSync(
       iosVersionPath,
       updateIosMarketingVersion(readFileSync(iosVersionPath, "utf8"), nextVersion),
     );
-    changedPaths.push(iosVersionPath);
+    writeFileSync(
+      iosProjectPath,
+      updateIosProjectMarketingVersion(
+        readFileSync(iosProjectPath, "utf8"),
+        nextVersion,
+      ),
+    );
+    changedPaths.push(iosVersionPath, iosProjectPath);
   }
   return changedPaths;
 };

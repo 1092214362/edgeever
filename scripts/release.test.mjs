@@ -11,6 +11,7 @@ import {
   nextVersion,
   parseReleaseCheckpoint,
   updateIosMarketingVersion,
+  updateIosProjectMarketingVersion,
   parseReleaseArgs,
   playDeliveryResumeAction,
   playDeliveryFailureStrategy,
@@ -121,6 +122,19 @@ describe("release automation", () => {
         "1.79.0",
       ),
     ).toContain("MARKETING_VERSION = 1.79.0");
+  });
+
+  test("keeps the generated iOS project aligned with the Release tag", () => {
+    const updated = updateIosProjectMarketingVersion(
+      [
+        "MARKETING_VERSION = 1.79.0;",
+        "MARKETING_VERSION = 1.79.0;",
+      ].join("\n"),
+      "1.80.0",
+    );
+
+    expect(updated.match(/MARKETING_VERSION = 1\.80\.0;/g)).toHaveLength(2);
+    expect(updated).not.toContain("MARKETING_VERSION = 1.79.0;");
   });
 
   test("restores an exact Draft checkpoint without exposing it in Issue text", () => {
