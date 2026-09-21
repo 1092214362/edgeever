@@ -313,6 +313,7 @@ describe("diagram editor canvas surface", () => {
     expect(source).toContain('t("diagram.componentSearch")');
     expect(source).toContain('labelKey: "diagram.componentCategoryExperience"');
     expect(source).toContain('labelKey: "diagram.componentCategoryServices"');
+    expect(source).toContain('labelKey: "diagram.componentCategoryAi"');
     expect(source).toContain('labelKey: "diagram.componentCategoryDatabases"');
     expect(source).toContain('labelKey: "diagram.componentCategoryStorage"');
     expect(source).toContain('labelKey: "diagram.componentCategoryMiddleware"');
@@ -320,6 +321,10 @@ describe("diagram editor canvas surface", () => {
     expect(source).toContain('labelKey: "diagram.componentCategorySecurity"');
     expect(source).toContain('labelKey: "diagram.componentCategoryObservability"');
     expect(source).toContain('labelKey: "diagram.componentCategoryExternal"');
+    expect(source).toContain('labelKey: "diagram.architectureResources.largeLanguageModel"');
+    expect(source).toContain('labelKey: "diagram.architectureResources.vectorDatabase"');
+    expect(source).toContain('labelKey: "diagram.architectureResources.aiAgent"');
+    expect(source).toContain('labelKey: "diagram.architectureResources.mcpServer"');
     expect(source).toContain("<Collapsible key={category.id} defaultOpen>");
     expect(source).toContain("category.items.filter");
     expect(source).toContain('className="grid grid-cols-7 gap-1 px-1 pb-2"');
