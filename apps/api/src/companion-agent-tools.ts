@@ -14,6 +14,19 @@ const AUTO_APPLY_WRITES = new Set(
   COMPANION_MCP_TOOLS.filter(tool => !tool.annotations.readOnlyHint).map(tool => tool.name),
 );
 
+type ExplicitDiagramKind = "mind-map" | "flowchart" | "architecture";
+
+const EXPLICIT_DIAGRAM_KIND_PATTERNS: Array<[ExplicitDiagramKind, RegExp]> = [
+  ["mind-map", /(?:思维导图|思維導圖|心智图|心智圖|腦圖|mind[ -]?map|マインドマップ)/iu],
+  ["flowchart", /(?:流程图|流程圖|flow[ -]?chart|フローチャート)/iu],
+  ["architecture", /(?:架构图|架構圖|architectur(?:e|al)[ -]?diagram|アーキテクチャ図)/iu],
+];
+
+export const explicitDiagramKind = (message: string): ExplicitDiagramKind | undefined => {
+  const matches = EXPLICIT_DIAGRAM_KIND_PATTERNS.filter(([, pattern]) => pattern.test(message));
+  return matches.length === 1 ? matches[0][0] : undefined;
+};
+
 export type CompanionAgentSession = {
   calls: number;
   consecutiveErrors: number;
@@ -131,12 +144,24 @@ const companionMcpDescription = (definition: (typeof COMPANION_MCP_TOOLS)[number
 
 export function companionToolDefinitions(input: CompanionTurnInput): CompanionToolDefinition[] {
   if (!input.allowNotes) return [];
+  const requestedDiagramKind = explicitDiagramKind(input.message);
   return [
-    ...companionMcpCatalog(input).map(definition => ({
-      name: definition.name,
-      description: companionMcpDescription(definition),
-      inputSchema: definition.inputSchema as Record<string, unknown>,
-    })),
+    ...companionMcpCatalog(input).map(definition => {
+      const inputSchema = definition.inputSchema as Record<string, unknown>;
+      if (definition.name !== "create_diagram_memo" || !requestedDiagramKind) {
+        return { name: definition.name, description: companionMcpDescription(definition), inputSchema };
+      }
+      const properties = inputSchema.properties as Record<string, unknown>;
+      const kind = properties.kind as Record<string, unknown>;
+      return {
+        name: definition.name,
+        description: `${companionMcpDescription(definition)} The user explicitly requested kind=${requestedDiagramKind}; use exactly that kind.`,
+        inputSchema: {
+          ...inputSchema,
+          properties: { ...properties, kind: { ...kind, enum: [requestedDiagramKind] } },
+        },
+      };
+    }),
     {
       name: "todo_write",
       description: "Replace the task list for this run. Use for multi-step work (≥3 steps). Keep at most one item in_progress.",
@@ -200,6 +225,11 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
         try {
         const { _reason, ...parameters } = input;
         const { args: parameters_ } = validateCompanionTool(definition.name, parameters);
+        const requestedDiagramKind = explicitDiagramKind(args.input.message);
+        if (definition.name === "create_diagram_memo" && requestedDiagramKind && parameters_.kind !== requestedDiagramKind) {
+          throw new AppError("invalid_params",
+            `The user explicitly requested ${requestedDiagramKind}; create_diagram_memo.kind must be ${requestedDiagramKind}.`, 400);
+        }
         const previous = () => new Map([...inspected].map(([id, revision]) => [id, { revision, title: args.sources.find(source => source.id === id)?.title }]));
         const done = async (payload: unknown) => {
           if (call.status === "running") {
