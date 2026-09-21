@@ -47,6 +47,28 @@ describe("demo seed catalog", () => {
     }
   });
 
+  test("keeps every architecture component inside its labeled system boundary", () => {
+    for (const memoId of ["memo_demo_architecture", "memo_demo_architecture_en"]) {
+      const memo = DEMO_SEED_MEMOS.find((candidate) => candidate.id === memoId);
+      const diagram = parseDiagramDocument(memo?.markdown);
+      expect(diagram).toMatchObject({ kind: "architecture" });
+      expect(diagram?.nodes).toHaveLength(20);
+      expect(diagram?.edges).toHaveLength(15);
+
+      const boundaries = new Map(
+        diagram?.nodes.filter((node) => node.shape === "boundary").map((node) => [node.id, node]),
+      );
+      for (const node of diagram?.nodes.filter((candidate) => candidate.parentId) ?? []) {
+        const boundary = boundaries.get(node.parentId);
+        expect(boundary).toBeDefined();
+        expect(node.x).toBeGreaterThanOrEqual(boundary.x);
+        expect(node.y).toBeGreaterThanOrEqual(boundary.y);
+        expect(node.x + node.width).toBeLessThanOrEqual(boundary.x + boundary.width);
+        expect(node.y + node.height).toBeLessThanOrEqual(boundary.y + boundary.height);
+      }
+    }
+  });
+
   test("keeps every seeded resource decodable and owned by a seeded memo", () => {
     const memoIds = new Set(DEMO_SEED_MEMOS.map((memo) => memo.id));
     const resourceIds = new Set();
