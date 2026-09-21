@@ -219,6 +219,29 @@ describe("shared companion MCP adapter", () => {
       .toContain("eval");
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
   });
+  test("create_diagram_memo keeps generated edge IDs out of Agent input", async () => {
+    const f = await setup();
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    const input = {
+      notebookId: "ideas",
+      title: "Service architecture",
+      kind: "architecture",
+      nodes: [
+        { id: "web", label: "Web", type: "frontend" },
+        { id: "api", label: "API", type: "service" },
+      ],
+      edges: [{ source: "web", target: "api", type: "request" }],
+    };
+    expect(() => validateCompanionTool("create_diagram_memo", {
+      ...input,
+      edges: [{ id: "edge-1", source: "web", target: "api", type: "request" }],
+    })).toThrow();
+    const created = await tools.create_diagram_memo.execute(input);
+    expect(created).toMatchObject({ applied: true, diagramKind: "architecture", nodeCount: 2 });
+    const diagram = parseDiagramDocument((await getMemoDetail(f.db, scope.workspaceId, created.id)).contentMarkdown);
+    expect(diagram.edges).toMatchObject([{ source: "web", target: "api", kind: "request" }]);
+    expect(diagram.edges[0].id).toBeTruthy();
+  });
   test("note templates and AI instructions execute immediately including deletes", async () => {
     const f = await setup();
     const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
