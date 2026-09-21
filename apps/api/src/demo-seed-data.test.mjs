@@ -42,7 +42,10 @@ describe("demo seed catalog", () => {
       for (const [kind, memoId] of examples) {
         const memo = DEMO_SEED_MEMOS.find((candidate) => candidate.id === memoId);
         expect(memo).toBeDefined();
-        expect(parseDiagramDocument(memo?.markdown)).toMatchObject({ kind });
+        const diagram = parseDiagramDocument(memo?.markdown);
+        expect(diagram).toMatchObject({ kind });
+        const cellIds = [...(diagram?.nodes ?? []), ...(diagram?.edges ?? [])].map((cell) => cell.id);
+        expect(new Set(cellIds).size).toBe(cellIds.length);
       }
     }
   });
