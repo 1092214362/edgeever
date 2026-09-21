@@ -102,6 +102,130 @@ export const DEMO_ARCHITECTURE_DIAGRAM_EN: DiagramDocument = {
   ],
 };
 
+export const DEMO_FLOWCHART_DIAGRAM_ZH: DiagramDocument = {
+  schemaVersion: 1,
+  kind: "flowchart",
+  theme: "mint",
+  nodes: [
+    { id: "capture", label: "捕捉灵感", x: 72, y: 176, width: 136, height: 48, shape: "terminator" },
+    { id: "enrich", label: "补充正文、标签与附件", x: 264, y: 168, width: 184, height: 64, shape: "process" },
+    { id: "organized", label: "已经适合归档？", x: 516, y: 164, width: 164, height: 72, shape: "decision" },
+    { id: "inbox", label: "放入“等待分类”", x: 516, y: 304, width: 164, height: 56, shape: "process" },
+    { id: "notebook", label: "归入项目或主题笔记本", x: 748, y: 168, width: 184, height: 64, shape: "process" },
+    { id: "ai", label: "AI 提炼摘要与行动项", x: 748, y: 304, width: 184, height: 64, shape: "process" },
+    { id: "publish", label: "发布、分享或持续迭代", x: 1000, y: 176, width: 184, height: 48, shape: "terminator" },
+  ],
+  edges: [
+    { id: "capture-enrich", source: "capture", target: "enrich" },
+    { id: "enrich-organized", source: "enrich", target: "organized" },
+    { id: "organized-notebook", source: "organized", target: "notebook", label: "是" },
+    { id: "organized-inbox", source: "organized", target: "inbox", label: "否" },
+    { id: "inbox-ai", source: "inbox", target: "ai", label: "稍后整理" },
+    { id: "notebook-publish", source: "notebook", target: "publish" },
+    { id: "ai-publish", source: "ai", target: "publish" },
+  ],
+};
+
+export const DEMO_FLOWCHART_DIAGRAM_EN: DiagramDocument = {
+  schemaVersion: 1,
+  kind: "flowchart",
+  theme: "mint",
+  nodes: [
+    { id: "capture", label: "Capture an idea", x: 72, y: 176, width: 136, height: 48, shape: "terminator" },
+    { id: "enrich", label: "Add content, tags & files", x: 264, y: 168, width: 184, height: 64, shape: "process" },
+    { id: "organized", label: "Ready to organize?", x: 516, y: 164, width: 164, height: 72, shape: "decision" },
+    { id: "inbox", label: "Keep in Inbox", x: 516, y: 304, width: 164, height: 56, shape: "process" },
+    { id: "notebook", label: "Move to a project or topic", x: 748, y: 168, width: 184, height: 64, shape: "process" },
+    { id: "ai", label: "Let AI extract summary & actions", x: 748, y: 304, width: 184, height: 64, shape: "process" },
+    { id: "publish", label: "Publish, share, or iterate", x: 1000, y: 176, width: 184, height: 48, shape: "terminator" },
+  ],
+  edges: [
+    { id: "capture-enrich", source: "capture", target: "enrich" },
+    { id: "enrich-organized", source: "enrich", target: "organized" },
+    { id: "organized-notebook", source: "organized", target: "notebook", label: "Yes" },
+    { id: "organized-inbox", source: "organized", target: "inbox", label: "Not yet" },
+    { id: "inbox-ai", source: "inbox", target: "ai", label: "Review later" },
+    { id: "notebook-publish", source: "notebook", target: "publish" },
+    { id: "ai-publish", source: "ai", target: "publish" },
+  ],
+};
+
+export const DEMO_MIND_MAP_DIAGRAM_ZH: DiagramDocument = {
+  schemaVersion: 1,
+  kind: "mind-map",
+  theme: "brand",
+  structure: "map",
+  nodes: [
+    { id: "root", label: "我的第二大脑", x: 72, y: 216, width: 152, height: 52, shape: "topic" },
+    { id: "capture", label: "采集", x: 304, y: 72, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "organize", label: "组织", x: 304, y: 176, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "connect", label: "连接", x: 304, y: 280, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "create", label: "创造", x: 304, y: 384, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "capture-clip", label: "网页剪藏", x: 520, y: 32, width: 112, height: 36, shape: "topic", parentId: "capture" },
+    { id: "capture-quick", label: "随手记录", x: 520, y: 88, width: 112, height: 36, shape: "topic", parentId: "capture" },
+    { id: "capture-files", label: "图片与附件", x: 520, y: 144, width: 112, height: 36, shape: "topic", parentId: "capture" },
+    { id: "organize-notebooks", label: "树状笔记本", x: 520, y: 200, width: 112, height: 36, shape: "topic", parentId: "organize" },
+    { id: "organize-tags", label: "标签与搜索", x: 520, y: 256, width: 112, height: 36, shape: "topic", parentId: "organize" },
+    { id: "connect-links", label: "双向链接", x: 520, y: 312, width: 112, height: 36, shape: "topic", parentId: "connect" },
+    { id: "connect-mcp", label: "MCP 智能体", x: 520, y: 368, width: 112, height: 36, shape: "topic", parentId: "connect" },
+    { id: "create-writing", label: "沉浸写作", x: 520, y: 424, width: 112, height: 36, shape: "topic", parentId: "create" },
+    { id: "create-share", label: "发布与分享", x: 520, y: 480, width: 112, height: 36, shape: "topic", parentId: "create" },
+  ],
+  edges: [
+    { id: "root-capture", source: "root", target: "capture" },
+    { id: "root-organize", source: "root", target: "organize" },
+    { id: "root-connect", source: "root", target: "connect" },
+    { id: "root-create", source: "root", target: "create" },
+    { id: "capture-clip", source: "capture", target: "capture-clip" },
+    { id: "capture-quick", source: "capture", target: "capture-quick" },
+    { id: "capture-files", source: "capture", target: "capture-files" },
+    { id: "organize-notebooks", source: "organize", target: "organize-notebooks" },
+    { id: "organize-tags", source: "organize", target: "organize-tags" },
+    { id: "connect-links", source: "connect", target: "connect-links" },
+    { id: "connect-mcp", source: "connect", target: "connect-mcp" },
+    { id: "create-writing", source: "create", target: "create-writing" },
+    { id: "create-share", source: "create", target: "create-share" },
+  ],
+};
+
+export const DEMO_MIND_MAP_DIAGRAM_EN: DiagramDocument = {
+  schemaVersion: 1,
+  kind: "mind-map",
+  theme: "brand",
+  structure: "map",
+  nodes: [
+    { id: "root", label: "My Second Brain", x: 72, y: 216, width: 152, height: 52, shape: "topic" },
+    { id: "capture", label: "Capture", x: 304, y: 72, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "organize", label: "Organize", x: 304, y: 176, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "connect", label: "Connect", x: 304, y: 280, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "create", label: "Create", x: 304, y: 384, width: 112, height: 42, shape: "topic", parentId: "root" },
+    { id: "capture-clip", label: "Web clipping", x: 520, y: 32, width: 112, height: 36, shape: "topic", parentId: "capture" },
+    { id: "capture-quick", label: "Quick notes", x: 520, y: 88, width: 112, height: 36, shape: "topic", parentId: "capture" },
+    { id: "capture-files", label: "Images & files", x: 520, y: 144, width: 112, height: 36, shape: "topic", parentId: "capture" },
+    { id: "organize-notebooks", label: "Notebook tree", x: 520, y: 200, width: 112, height: 36, shape: "topic", parentId: "organize" },
+    { id: "organize-tags", label: "Tags & search", x: 520, y: 256, width: 112, height: 36, shape: "topic", parentId: "organize" },
+    { id: "connect-links", label: "Backlinks", x: 520, y: 312, width: 112, height: 36, shape: "topic", parentId: "connect" },
+    { id: "connect-mcp", label: "MCP agents", x: 520, y: 368, width: 112, height: 36, shape: "topic", parentId: "connect" },
+    { id: "create-writing", label: "Focused writing", x: 520, y: 424, width: 112, height: 36, shape: "topic", parentId: "create" },
+    { id: "create-share", label: "Publish & share", x: 520, y: 480, width: 112, height: 36, shape: "topic", parentId: "create" },
+  ],
+  edges: [
+    { id: "root-capture", source: "root", target: "capture" },
+    { id: "root-organize", source: "root", target: "organize" },
+    { id: "root-connect", source: "root", target: "connect" },
+    { id: "root-create", source: "root", target: "create" },
+    { id: "capture-clip", source: "capture", target: "capture-clip" },
+    { id: "capture-quick", source: "capture", target: "capture-quick" },
+    { id: "capture-files", source: "capture", target: "capture-files" },
+    { id: "organize-notebooks", source: "organize", target: "organize-notebooks" },
+    { id: "organize-tags", source: "organize", target: "organize-tags" },
+    { id: "connect-links", source: "connect", target: "connect-links" },
+    { id: "connect-mcp", source: "connect", target: "connect-mcp" },
+    { id: "create-writing", source: "create", target: "create-writing" },
+    { id: "create-share", source: "create", target: "create-share" },
+  ],
+};
+
 export const DEMO_SEED_MEMOS_ZH = [
   {
     id: "memo_demo_overview",
@@ -311,6 +435,22 @@ sequenceDiagram
     tags: ["architecture", "diagram", "serverless", "cloud-native", "mcp"],
     isPinned: false,
     markdown: serializeDiagramDocument(DEMO_ARCHITECTURE_DIAGRAM_ZH),
+  },
+  {
+    id: "memo_demo_flowchart",
+    notebookId: "nb_demo_features",
+    title: "🔀 知识工作流：从捕捉灵感到发布分享的流程图",
+    tags: ["flowchart", "diagram", "workflow", "knowledge-management"],
+    isPinned: false,
+    markdown: serializeDiagramDocument(DEMO_FLOWCHART_DIAGRAM_ZH),
+  },
+  {
+    id: "memo_demo_mind_map",
+    notebookId: "nb_demo_features",
+    title: "🧠 第二大脑：个人知识管理体系思维导图",
+    tags: ["mind-map", "diagram", "second-brain", "knowledge-management"],
+    isPinned: false,
+    markdown: serializeDiagramDocument(DEMO_MIND_MAP_DIAGRAM_ZH),
   },
 ];
 
@@ -548,6 +688,14 @@ Export your entire library at any time from **Profile → Import and export**. T
   memo_demo_architecture: {
     title: "🏗️ System Topology: EdgeEver Multi-Client & Serverless Architecture",
     markdown: serializeDiagramDocument(DEMO_ARCHITECTURE_DIAGRAM_EN),
+  },
+  memo_demo_flowchart: {
+    title: "🔀 Knowledge Workflow: From Capturing Ideas to Publishing",
+    markdown: serializeDiagramDocument(DEMO_FLOWCHART_DIAGRAM_EN),
+  },
+  memo_demo_mind_map: {
+    title: "🧠 Second Brain: A Personal Knowledge System Mind Map",
+    markdown: serializeDiagramDocument(DEMO_MIND_MAP_DIAGRAM_EN),
   },
 } as const;
 

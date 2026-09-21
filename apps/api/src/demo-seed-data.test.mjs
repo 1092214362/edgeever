@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { parseDiagramDocument } from "@edgeever/shared";
 import {
   decodeDemoAttachment,
   DEMO_SEED_ATTACHMENT_RESOURCES,
@@ -18,11 +19,31 @@ describe("demo seed catalog", () => {
     expect(memoIds.has("memo_demo_overview_en")).toBe(true);
     expect(memoIds.has("memo_demo_architecture")).toBe(true);
     expect(memoIds.has("memo_demo_architecture_en")).toBe(true);
+    expect(memoIds.has("memo_demo_flowchart")).toBe(true);
+    expect(memoIds.has("memo_demo_flowchart_en")).toBe(true);
+    expect(memoIds.has("memo_demo_mind_map")).toBe(true);
+    expect(memoIds.has("memo_demo_mind_map_en")).toBe(true);
     for (const memo of DEMO_SEED_MEMOS) {
       expect(notebookIds.has(memo.notebookId)).toBe(true);
     }
     for (const revision of DEMO_SEED_REVISIONS) {
       expect(memoIds.has(revision.memoId)).toBe(true);
+    }
+  });
+
+  test("seeds one editable example for every native diagram kind in each language", () => {
+    for (const suffix of ["", "_en"]) {
+      const examples = [
+        ["architecture", `memo_demo_architecture${suffix}`],
+        ["flowchart", `memo_demo_flowchart${suffix}`],
+        ["mind-map", `memo_demo_mind_map${suffix}`],
+      ];
+
+      for (const [kind, memoId] of examples) {
+        const memo = DEMO_SEED_MEMOS.find((candidate) => candidate.id === memoId);
+        expect(memo).toBeDefined();
+        expect(parseDiagramDocument(memo?.markdown)).toMatchObject({ kind });
+      }
     }
   });
 
