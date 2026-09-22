@@ -33,7 +33,7 @@
 				<key>NSExtensionActivationSupportsFileWithMaxCount</key>
 				<integer>8</integer>
 			</dict>
-		</key>
+		</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>
 		<key>NSExtensionPrincipalClass</key>

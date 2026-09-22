@@ -27,6 +27,7 @@ sed \
   -e "s/__MARKETING_VERSION__/${version}/g" \
   -e "s/__BUILD_VERSION__/${version}/g" \
   "$source_directory/Info.plist" > "$appex/Contents/Info.plist"
+plutil -lint "$appex/Contents/Info.plist" >/dev/null
 swiftc \
   -O \
   -target "$target" \
