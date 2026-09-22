@@ -44,6 +44,7 @@ import {
   writeEditorBodyFontPreference,
   type EditorBodyFontChoice,
 } from "@/lib/editor-body-font";
+import { syncPublishedNoteBodyFont } from "@/lib/published-note-body-font";
 import { ShortcutSettingsItem } from "./ShortcutSettingsItem";
 import { CustomEditorThemeDialog } from "./CustomEditorThemeDialog";
 import {
@@ -207,6 +208,7 @@ export const PreferenceCard = ({
     setEditorBodyFont(preference);
     writeEditorBodyFontPreference(preference);
     applyEditorBodyFontPreference(preference);
+    void syncPublishedNoteBodyFont();
   };
 
   return (
