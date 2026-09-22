@@ -62,5 +62,7 @@ describe("system information copy feedback", () => {
     expect(source).toContain("systemInfo.copySucceeded");
     expect(source).toContain("systemInfo.copyFailed");
     expect(source).toContain('copyState === "error"');
+    expect(source).toContain("formatSystemInfoClipboard");
+    expect(source).toContain("copyHtmlToClipboard");
   });
 });

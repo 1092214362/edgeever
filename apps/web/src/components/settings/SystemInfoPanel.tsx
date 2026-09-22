@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useDeployedUpdateNotice } from "@/hooks/useDeployedUpdateNotice";
 import { detectWebClientKind } from "@/lib/client-environment";
 import { api, getConfiguredDesktopApiBaseUrl, type InstanceHealth } from "@/lib/api";
+import { copyHtmlToClipboard } from "@/lib/clipboard";
 import { resolveSystemInfoDeploymentMetadata } from "@/lib/deployment-metadata";
 import { resolveDeploymentPlatform } from "@/lib/instance-runtime";
 import {
@@ -18,9 +19,9 @@ import {
   type ClientRuntimeDiagnostics,
   type ClientSyncDiagnostics,
 } from "@/lib/system-diagnostics";
+import { formatSystemInfoClipboard } from "@/lib/system-info-clipboard";
 import { cn } from "@/lib/utils";
 import { getReleaseTagForVersion, isClientAheadOfInstance } from "@/lib/version-check";
-import { copyTextToClipboard } from "./settings-utils";
 
 export type SystemInfoItem = {
   label: string;
@@ -393,10 +394,19 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
     : "https://github.com/tianma-if/edgeever/releases/latest";
 
   const handleCopy = async () => {
-    const text = infoGroups
-      .map((group) => [group.title, ...group.items.map((item) => `${item.label}: ${item.value}`)].join("\n"))
-      .join("\n\n");
-    const copied = await copyTextToClipboard(text);
+    const clipboard = formatSystemInfoClipboard({
+      title: t("systemInfo.title"),
+      fieldLabel: t("systemInfo.copyFieldLabel"),
+      valueLabel: t("systemInfo.copyValueLabel"),
+      groups: infoGroups,
+    });
+    let copied = false;
+    try {
+      await copyHtmlToClipboard(clipboard.html, clipboard.plainText);
+      copied = true;
+    } catch {
+      copied = false;
+    }
     setCopyState(copied ? "copied" : "error");
     if (copyResetTimeoutRef.current !== null) window.clearTimeout(copyResetTimeoutRef.current);
     copyResetTimeoutRef.current = window.setTimeout(() => {
