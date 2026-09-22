@@ -103,6 +103,7 @@ import {
   putLocalMemo,
   putLocalNotebook,
 } from "@/lib/local-mirror";
+import { isNotebookNotEmptyError } from "@/lib/notebook-delete";
 import { getPersistentDataScopeOrigin } from "@/lib/app-page-path";
 import { createRepository } from "@/lib/repository";
 import { notifyRepositoryMutation } from "@/lib/repository-events";
@@ -1214,6 +1215,15 @@ export const WorkspaceApp = ({
       }
       await queryClient.invalidateQueries({ queryKey: ["notebooks"] });
       await queryClient.invalidateQueries({ queryKey: ["memos"] });
+    },
+    onError: (error) => {
+      setNotebookDeleteConfirmation(null);
+      setAppNoticeDialog({
+        title: t("workspaceDialogs.deleteNotebookFailedTitle"),
+        description: isNotebookNotEmptyError(error)
+          ? t("workspaceDialogs.deleteNotebookNotEmpty")
+          : t("workspaceDialogs.deleteNotebookFailed"),
+      });
     },
   });
 
