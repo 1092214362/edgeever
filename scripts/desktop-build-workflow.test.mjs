@@ -29,7 +29,12 @@ describe("desktop release workflow", () => {
     expect(desktopBuilderConfig).toContain("schemes:\n      - edgeever");
     expect(desktopBuilderConfig).not.toContain("edgeever-app");
     expect(desktopBuilderConfig).toContain("PlugIns/EdgeEverShare.appex");
-    expect(desktopBuilderConfig).toContain("afterSign: ./scripts/sign-share-extension.cjs");
+    expect(desktopBuilderConfig).toContain("sign: ./scripts/sign-share-extension.cjs");
+    expect(desktopBuilderConfig).not.toContain("afterSign:");
+    const shareSigner = readFileSync(new URL("../apps/desktop/scripts/sign-share-extension.cjs", import.meta.url), "utf8");
+    expect(shareSigner).toContain("await sign(opts)");
+    expect(shareSigner).toContain('"runtime"');
+    expect(shareSigner).toContain('"--timestamp"');
   });
 
   test("gates Draft release assets on the full project suite in Ubuntu", () => {
