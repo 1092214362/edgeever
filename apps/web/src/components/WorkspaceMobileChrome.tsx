@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Boxes, ChevronDown, ChevronRight, FileText, Home, Network, Plus, Search, UserRound, Workflow, X } from "lucide-react";
+import { Boxes, ChevronDown, ChevronRight, FileText, Home, Network, Plus, Search, Table, UserRound, Workflow, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -11,7 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import type { DiagramKind, Notebook } from "@edgeever/shared";
+import type { NoteCreateKind, Notebook } from "@edgeever/shared";
 import type { MobileBottomNavItem, NotebookNode } from "@/lib/app-helpers";
 import {
   buildNotebookTree,
@@ -58,7 +58,7 @@ export const MobileBottomNav = ({
   activeItem: MobileBottomNavItem;
   canCreateMemo: boolean;
   isCreating: boolean;
-  onCreateMemo: (kind?: DiagramKind) => void;
+  onCreateMemo: (kind?: NoteCreateKind) => void;
   onHome: () => void;
   onOpenSettings: () => void;
 }) => {
@@ -89,6 +89,13 @@ export const MobileBottomNav = ({
             <DropdownMenuItem onSelect={() => onCreateMemo("mind-map")}><Network className="h-4 w-4" />{t("diagram.mindMap")}</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onCreateMemo("flowchart")}><Workflow className="h-4 w-4" />{t("diagram.flowchart")}</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onCreateMemo("architecture")}><Boxes className="h-4 w-4" />{t("diagram.architecture")}</DropdownMenuItem>
+            <DropdownMenuItem className="gap-2" onSelect={() => onCreateMemo("table")}>
+              <Table className="h-4 w-4" />
+              <span className="min-w-0 flex-1 truncate">{t("structuredTable.name")}</span>
+              <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-200/80 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold leading-none tracking-wide text-emerald-700">
+                Beta
+              </span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <MobileBottomNavButton active={activeItem === "settings"} icon={<UserRound className="h-5 w-5" />} label={t("nav.mine")} onClick={onOpenSettings} />

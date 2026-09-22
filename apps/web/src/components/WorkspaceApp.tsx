@@ -46,7 +46,7 @@ import {
 } from "@/lib/mobile-editor";
 import { cn } from "@/lib/utils";
 import { isBrowserOffline, isBrowserOnline } from "@/lib/network-status";
-import { createDefaultDiagramDocument, diagramFallbackMarkdown, getNotebookDescendantIds, markdownToDoc, parseDiagramDocument, serializeDiagramDocument, type DiagramKind, type Notebook, type AuthUser, type MemoSummary, type MemoDetail, type MemoTemplate as SavedMemoTemplate } from "@edgeever/shared";
+import { createDefaultDiagramDocument, createDefaultTableDocument, diagramFallbackMarkdown, getNotebookDescendantIds, markdownToDoc, parseDiagramDocument, parseTableDocument, serializeDiagramDocument, serializeTableDocument, tableFallbackMarkdown, type NoteCreateKind, type Notebook, type AuthUser, type MemoSummary, type MemoDetail, type MemoTemplate as SavedMemoTemplate } from "@edgeever/shared";
 import { toggleMobileMemoSelection } from "@edgeever/shared/mobile-ui";
 import type {
   Pane,
@@ -139,6 +139,7 @@ import { findMatchingMemoResource } from "@/lib/staged-resource-repair";
 
 const EditorPane = lazy(() => import("./EditorPane").then((module) => ({ default: module.EditorPane })));
 const DiagramEditorPane = lazy(() => import("./DiagramEditorPane"));
+const TableEditorPane = lazy(() => import("./TableEditorPane"));
 const AssetsPane = lazy(() => import("./AssetsPane").then((module) => ({ default: module.AssetsPane })));
 const SettingsPane = lazy(() => import("./SettingsPane").then((module) => ({ default: module.SettingsPane })));
 const PluginMarketplacePane = lazy(() => import("./PluginMarketplacePane").then((module) => ({ default: module.PluginMarketplacePane })));
@@ -1230,7 +1231,7 @@ export const WorkspaceApp = ({
 
   const revealCreatedMemo = (memo: MemoDetail) => {
     const targetNotebookId = memo.notebookId;
-    const isDiagram = Boolean(parseDiagramDocument(memo.contentMarkdown));
+    const isStructuredNote = Boolean(parseDiagramDocument(memo.contentMarkdown) || parseTableDocument(memo.contentMarkdown));
 
     setMemoView("notebook");
     setSearch("");
@@ -1252,11 +1253,11 @@ export const WorkspaceApp = ({
     navigateWorkspaceHome();
     setRightView("editor");
     pendingCreatedMemoIdRef.current = memo.id;
-    setCreatedMemoEditId(isDiagram ? null : memo.id);
+    setCreatedMemoEditId(isStructuredNote ? null : memo.id);
     setSelectedMemoId(memo.id);
     setActivePane("editor");
 
-    if (!isDesktopViewport() && !isDiagram) {
+    if (!isDesktopViewport() && !isStructuredNote) {
       openStandaloneMobileEditor(memo.id);
     }
   };
@@ -1618,6 +1619,7 @@ export const WorkspaceApp = ({
     : null;
   const selectedMemo = memoQuery.data?.memo ?? cachedSelectedMemo;
   const selectedDiagram = parseDiagramDocument(selectedMemo?.contentMarkdown);
+  const selectedTable = parseTableDocument(selectedMemo?.contentMarkdown);
   const desktopNotebookSidebarCollapsed = Boolean(isDesktop && notebookSidebarCollapsed);
   const desktopFocusModeActive = Boolean(
     isDesktop && desktopFocusMode && rightView === "editor" && selectedMemo && !memoSelectionModeActive
@@ -1875,7 +1877,7 @@ export const WorkspaceApp = ({
     for (const payload of pending) void handleImportWeChatChat(payload);
   }, [handleImportWeChatChat]);
 
-  const handleCreateMemo = (kind?: DiagramKind) => {
+  const handleCreateMemo = (kind?: NoteCreateKind) => {
     const targetNotebookId = createMemoNotebookId;
 
     if (!targetNotebookId || memoView === "trash") {
@@ -1892,6 +1894,25 @@ export const WorkspaceApp = ({
     setTemplatesOpen(false);
     setMobileBottomNavActive("home");
     creatingMemoSelectionRef.current = true;
+    if (kind === "table") {
+      const table = createDefaultTableDocument({
+        name: t("structuredTable.defaultFields.name"),
+        status: t("structuredTable.defaultFields.status"),
+        date: t("structuredTable.defaultFields.date"),
+        sample: t("structuredTable.defaultFields.sample"),
+        notStarted: t("structuredTable.defaultFields.notStarted"),
+        inProgress: t("structuredTable.defaultFields.inProgress"),
+        done: t("structuredTable.defaultFields.done"),
+      });
+      createMemoMutation.mutate({
+        notebookId: targetNotebookId,
+        title: t("structuredTable.name"),
+        contentJson: markdownToDoc(tableFallbackMarkdown(table)),
+        contentMarkdown: serializeTableDocument(table),
+        tags: [],
+      });
+      return;
+    }
     const diagram = kind ? createDefaultDiagramDocument(kind) : null;
     createMemoMutation.mutate({
       notebookId: targetNotebookId,
@@ -3332,6 +3353,26 @@ export const WorkspaceApp = ({
                           onToggleDesktopFocusMode={toggleDesktopFocusMode}
                           onOpenExecutionCenter={handleOpenExecutionCenter}
                           
+                        />
+                      ) : selectedMemo && selectedTable ? (
+                        <TableEditorPane
+                          key={selectedMemo.id}
+                          memo={selectedMemo}
+                          repository={repository}
+                          readOnly={memoView === "trash" || selectedMemo.isDeleted}
+                          onBackToList={() => {
+                            clearPendingCreatedMemo();
+                            setActivePane("memos");
+                          }}
+                          onSaved={async (memo) => {
+                            await putLocalMemo(localDataScope, memo);
+                            cacheMemoDetail(queryClient, memo, memoView);
+                            updateMemoSummaryInLists(queryClient, memoToSummary(memo));
+                            await Promise.all([
+                              queryClient.invalidateQueries({ queryKey: ["memos"], refetchType: "inactive" }),
+                              queryClient.invalidateQueries({ queryKey: ["notebooks"], refetchType: "inactive" }),
+                            ]);
+                          }}
                         />
                       ) : (
                       <EditorPane
