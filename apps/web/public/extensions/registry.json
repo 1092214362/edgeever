@@ -1,11 +1,16 @@
 {
   "registryVersion": "1",
-  "updatedAt": "2026-09-12T06:37:45.000Z",
+  "updatedAt": "2026-09-22T02:19:28.000Z",
   "entries": [
     {
       "id": "org.edgeever.tasks",
       "name": "EdgeEver Tasks",
       "description": "Collects Markdown tasks across notes and links every task back to its source.",
+      "locales": {
+        "zh-CN": {
+          "description": "汇总所有笔记中的 Markdown 任务，并将每项任务链接回原笔记。"
+        }
+      },
       "author": "EdgeEver",
       "publisher": "edgeever",
       "category": "Productivity",
@@ -27,6 +32,11 @@
       "id": "org.edgeever.plugins.ai-rss",
       "name": "EdgeEver AI RSS",
       "description": "AI-generated daily digests from curated RSS and Atom feeds, saved directly to EdgeEver notes.",
+      "locales": {
+        "zh-CN": {
+          "description": "根据精选的 RSS 和 Atom 订阅源生成 AI 每日摘要，并直接保存到 EdgeEver 笔记。"
+        }
+      },
       "author": "EdgeEver",
       "publisher": "edgeever",
       "category": "News & AI",

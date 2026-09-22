@@ -26,6 +26,9 @@ describe("bundled plugin marketplace", () => {
     expect(registry.entries.map((entry) => entry.id)).not.toContain("org.edgeever.examples.recent-notes");
     expect(registry.entries.map((entry) => entry.id)).not.toContain("org.edgeever.themes.nord-emerald");
     for (const entry of registry.entries) {
+      if (entry.publisher === "edgeever") {
+        expect(entry.locales?.["zh-CN"]?.description).toBeTruthy();
+      }
       if (entry.distribution.type !== "manifest") continue;
       const relativeManifestPath = entry.distribution.manifestUrl.replace(/^\/extensions\//, "");
       const manifestFileUrl = new URL(`../../../public/extensions/${relativeManifestPath}`, import.meta.url);
