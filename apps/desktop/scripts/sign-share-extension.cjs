@@ -4,7 +4,8 @@ const { createRequire } = require("node:module");
 const { join } = require("node:path");
 
 const builderRequire = createRequire(require.resolve("electron-builder/package.json"));
-const { sign } = builderRequire("@electron/osx-sign");
+// `sign` is the legacy callback API and returns before signing finishes.
+const { signApp } = builderRequire("@electron/osx-sign");
 
 const codesign = (args) => {
   const result = spawnSync("codesign", args, { encoding: "utf8" });
@@ -23,7 +24,7 @@ const signingIdentity = (identity) => {
 // This replaces mac.sign so the share extension is Developer ID signed, timestamped,
 // and hardened before notarization. The outer app is sealed again afterwards.
 module.exports = async function signMacApp(opts) {
-  await sign(opts);
+  await signApp(opts);
   const appexPath = join(opts.app, "Contents", "PlugIns", "EdgeEverShare.appex");
   if (!existsSync(appexPath)) {
     throw new Error(`macOS share extension is missing from the app bundle: ${appexPath}`);

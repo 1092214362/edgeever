@@ -32,7 +32,8 @@ describe("desktop release workflow", () => {
     expect(desktopBuilderConfig).toContain("sign: ./scripts/sign-share-extension.cjs");
     expect(desktopBuilderConfig).not.toContain("afterSign:");
     const shareSigner = readFileSync(new URL("../apps/desktop/scripts/sign-share-extension.cjs", import.meta.url), "utf8");
-    expect(shareSigner).toContain("await sign(opts)");
+    expect(shareSigner).toContain("await signApp(opts)");
+    expect(shareSigner).not.toContain("await sign(opts)");
     expect(shareSigner).toContain('"runtime"');
     expect(shareSigner).toContain('"--timestamp"');
   });
