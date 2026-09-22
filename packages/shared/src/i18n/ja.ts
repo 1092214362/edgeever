@@ -804,7 +804,6 @@ export const ja = {
       version: "バージョン",
       source: "出典",
       installedAt: "インストール日時",
-      permissions: "宣言された能力（参考情報）",
       networkHosts: "宣言されたウェブサイト（旧メタデータ）",
     },
     updates: {

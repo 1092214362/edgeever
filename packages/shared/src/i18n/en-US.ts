@@ -804,7 +804,6 @@ export const enUS = {
       version: "Version",
       source: "Source",
       installedAt: "Installed",
-      permissions: "Declared capabilities (informational)",
       networkHosts: "Declared websites (legacy metadata)",
     },
     updates: {

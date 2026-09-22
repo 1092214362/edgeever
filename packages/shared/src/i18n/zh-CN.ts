@@ -804,7 +804,6 @@ export const zhCN = {
       version: "版本",
       source: "来源",
       installedAt: "安装时间",
-      permissions: "能力声明（仅供参考）",
       networkHosts: "声明的网站（旧版元数据）",
     },
     updates: {
