@@ -133,6 +133,7 @@ import { EditorPaneErrorBoundary, EditorRecoveryPane } from "./EditorPaneErrorBo
 import { isMarkdownFile, readMarkdownFile } from "@/lib/markdown-file-import";
 import { compressImageForUpload } from "@/lib/image-compression";
 import { createScreenshotMemo, screenshotFileFromImportPayload, screenshotImportDedupeKey, screenshotImportGate } from "@/lib/screenshot-import";
+import { createWeChatChatMemo } from "@/lib/wechat-chat-import";
 import { isDesktopResourceRuntime, stageDesktopResource, toDesktopResourceUrl } from "@/lib/desktop-resources";
 import { findMatchingMemoResource } from "@/lib/staged-resource-repair";
 
@@ -1763,6 +1764,117 @@ export const WorkspaceApp = ({
   const handleImportScreenshotRef = useRef(handleImportScreenshot);
   handleImportScreenshotRef.current = handleImportScreenshot;
 
+  const pendingWeChatImportsRef = useRef<Array<{
+    ok: boolean;
+    reason?: string;
+    importId?: string;
+    title?: string;
+    markdown?: string;
+    media?: Array<{ id: string; filename: string; mimeType: string; byteSize: number }>;
+  }>>([]);
+
+  const handleImportWeChatChat = useCallback(async (payload: {
+    ok: boolean;
+    reason?: string;
+    importId?: string;
+    title?: string;
+    markdown?: string;
+    media?: Array<{ id: string; filename: string; mimeType: string; byteSize: number }>;
+  }) => {
+    const bridge = window.edgeeverDesktop;
+    const finish = () => {
+      if (payload.importId && bridge?.finishWeChatImport) void bridge.finishWeChatImport(payload.importId);
+    };
+    if (!payload.ok || !payload.importId || !payload.markdown) {
+      finish();
+      setAppNoticeDialog({
+        title: t("memoList.importWeChatFailedTitle"),
+        description: payload.reason === "unrecognized"
+          ? t("memoList.importWeChatUnrecognized")
+          : t("memoList.importWeChatFailed"),
+      });
+      return;
+    }
+    const notebookId = selectedNotebookId && notebooks.some((notebook) => notebook.id === selectedNotebookId) && memoView !== "trash"
+      ? selectedNotebookId
+      : defaultMemoNotebookId;
+    if (!notebookId) {
+      pendingWeChatImportsRef.current.push(payload);
+      return;
+    }
+    const importId = payload.importId;
+    const markdown = payload.markdown;
+    setTemplatesOpen(false);
+    setMobileBottomNavActive("home");
+    creatingMemoSelectionRef.current = true;
+    try {
+      const memo = await createWeChatChatMemo({
+        notebookId,
+        title: payload.title?.trim() || "",
+        markdown,
+        media: payload.media ?? [],
+        createMemo: (input) => repository.createMemo(input),
+        readMedia: async (item) => {
+          const file = await bridge?.readWeChatImportMedia?.(importId, item.id);
+          if (!file?.bytes?.byteLength) throw new Error("Missing WeChat attachment");
+          const bytes = file.bytes;
+          const copy = new ArrayBuffer(bytes.byteLength);
+          new Uint8Array(copy).set(bytes);
+          return new File([copy], file.filename || item.filename, { type: file.mimeType || item.mimeType });
+        },
+        prepareFile: async (file) => (imageCompressionEnabled && file.type.startsWith("image/")
+          ? (await compressImageForUpload(file)).file
+          : file),
+        uploadResource: async (memoId, uploadFile) => {
+          try {
+            const { resource } = await repository.uploadMemoResource(memoId, uploadFile);
+            return { url: toDesktopResourceUrl(resource.url) };
+          } catch (error) {
+            if (!isDesktopResourceRuntime()) throw error;
+            const listed = await repository.listResources().catch(() => ({ resources: [] as Array<{ memoId?: string; url: string; filename?: string | null; kind?: string | null }> }));
+            const existing = findMatchingMemoResource(
+              listed.resources.filter((resource) => resource.memoId === memoId),
+              uploadFile.name,
+              uploadFile.type.startsWith("image/") ? "image" : "attachment",
+            );
+            if (existing) return { url: toDesktopResourceUrl(existing.url) };
+            const staged = await stageDesktopResource(memoId, uploadFile);
+            if (!staged) throw error;
+            return { url: `edgeever-staged://${staged.id}` };
+          }
+        },
+        updateMemo: (created, content) => repository.updateMemo(created, {
+          expectedRevision: created.revision,
+          expectedContentHash: created.contentHash,
+          editSessionId: `wechat:${created.id}`,
+          title: created.title ?? payload.title ?? "",
+          contentJson: content.contentJson,
+          contentMarkdown: content.contentMarkdown,
+          tags: created.tags,
+        }),
+        deleteMemo: (memoId) => repository.deleteMemo(memoId, true),
+      });
+      await putLocalMemo(localDataScope, memo);
+      revealCreatedMemo(memo);
+    } catch {
+      creatingMemoSelectionRef.current = false;
+      setAppNoticeDialog({
+        title: t("memoList.importWeChatFailedTitle"),
+        description: t("memoList.importWeChatFailed"),
+      });
+    } finally {
+      finish();
+    }
+  }, [defaultMemoNotebookId, imageCompressionEnabled, localDataScope, memoView, notebooks, repository, selectedNotebookId, t]);
+
+  const handleImportWeChatChatRef = useRef(handleImportWeChatChat);
+  handleImportWeChatChatRef.current = handleImportWeChatChat;
+
+  useEffect(() => {
+    const pending = pendingWeChatImportsRef.current.splice(0);
+    for (const payload of pending) void handleImportWeChatChat(payload);
+  }, [handleImportWeChatChat]);
+
   const handleCreateMemo = (kind?: DiagramKind) => {
     const targetNotebookId = createMemoNotebookId;
 
@@ -2424,6 +2536,10 @@ export const WorkspaceApp = ({
         }
       }
     });
+    // The Markdown listener is what marks the renderer ready, so register this first.
+    const removeWeChatListener = bridge.onImportWeChatChat?.((payload) => {
+      void handleImportWeChatChatRef.current(payload);
+    }) ?? (() => {});
     const removeMarkdownListener = bridge.onImportMarkdown((payload) => {
       const notebookId = selectedNotebookId && notebooks.some((notebook) => notebook.id === selectedNotebookId)
         ? selectedNotebookId
@@ -2437,6 +2553,7 @@ export const WorkspaceApp = ({
     }) ?? (() => {});
     return () => {
       removeCommandListener();
+      removeWeChatListener();
       removeMarkdownListener();
       removeScreenshotListener();
     };

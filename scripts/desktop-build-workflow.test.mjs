@@ -28,6 +28,8 @@ describe("desktop release workflow", () => {
     ].join("\n"));
     expect(desktopBuilderConfig).toContain("schemes:\n      - edgeever");
     expect(desktopBuilderConfig).not.toContain("edgeever-app");
+    expect(desktopBuilderConfig).toContain("PlugIns/EdgeEverShare.appex");
+    expect(desktopBuilderConfig).toContain("afterSign: ./scripts/sign-share-extension.cjs");
   });
 
   test("gates Draft release assets on the full project suite in Ubuntu", () => {
@@ -124,6 +126,8 @@ describe("desktop release workflow", () => {
     expect(packagedStartupVerifier).toContain('"renderer.origin-ready"');
     expect(packagedStartupVerifier).toContain('startsWith("edgeever-app://app/")');
     expect(desktopPackageVerifier).toContain("isVisualCppRuntimeDll");
+    expect(desktopPackageVerifier).toContain("EdgeEverShare.appex");
+    expect(desktopPackageVerifier).toContain("com\\.apple\\.share-services");
     expect(cargoConfig).toContain('target.x86_64-pc-windows-msvc');
     expect(cargoConfig).toContain('target-feature=+crt-static');
     expect(desktopBuilderConfig).toContain([

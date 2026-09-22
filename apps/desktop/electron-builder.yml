@@ -54,6 +54,10 @@ mac:
   category: public.app-category.productivity
   icon: assets/icon.icns
   minimumSystemVersion: "13.0"
+  afterSign: ./scripts/sign-share-extension.cjs
+  extraFiles:
+    - from: share-extension/dist/EdgeEverShare.appex
+      to: PlugIns/EdgeEverShare.appex
   extendInfo:
     NSScreenCaptureUsageDescription: "EdgeEver captures a screenshot and saves it as a note."
   target:

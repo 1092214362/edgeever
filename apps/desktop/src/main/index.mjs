@@ -10,6 +10,7 @@ import { SidecarRpcClient } from "./rpc.mjs";
 import { resourceRequestHeaders } from "./resource-request.mjs";
 import { downloadContentDispositionFromRequest, isSafeResourceId, parseByteRangeHeader, resourceIdFromRequest } from "./resource-url.mjs";
 import { isSupportedAssociatedFile } from "./file-association.mjs";
+import { createWeChatShareController } from "./wechat-share-import.mjs";
 import { accountDataDirectory, accountScopeKey } from "./account-scope.mjs";
 import { rotateDiagnosticLog } from "./diagnostic-log.mjs";
 import { restrictDirectory, restrictFile } from "./file-permissions.mjs";
@@ -675,17 +676,54 @@ const flushPendingScheduledTaskRuns = () => {
   }
 };
 
+const pendingWeChatImports = [];
+let wechatShareController = null;
+
+const wechatShare = () => {
+  wechatShareController ??= createWeChatShareController({
+    downloadsPath: () => app.getPath("downloads"),
+    tempPath: () => app.getPath("temp"),
+    sendToRenderer: (payload) => {
+      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isLoading() || !rendererReady) {
+        pendingWeChatImports.push(payload);
+        return;
+      }
+      mainWindow.webContents.send("desktop:import-wechat-chat", payload);
+    },
+    onActivity: () => {
+      if (process.platform === "darwin") app.show();
+      showWindow(mainWindow);
+    },
+    writeDiagnostic: (event, details) => { void writeDiagnostic(event, details); },
+  });
+  return wechatShareController;
+};
+
+const flushPendingWeChatImports = () => {
+  if (!rendererReady || !mainWindow || mainWindow.isDestroyed()) return;
+  while (pendingWeChatImports.length > 0) {
+    mainWindow.webContents.send("desktop:import-wechat-chat", pendingWeChatImports.shift());
+  }
+};
+
+const handleProtocolUrl = (target) => {
+  if (typeof target !== "string" || !target.startsWith("edgeever://")) return;
+  try {
+    const url = new URL(target);
+    if (url.hostname === "wechat-import") {
+      void wechatShare().importFromProtocolUrl(target);
+      return;
+    }
+    const memoMatch = url.pathname.match(/^\/memo\/([^/]+)$/);
+    if (memoMatch) sendDesktopCommand(`open-memo:${decodeURIComponent(memoMatch[1])}`);
+  } catch {
+    // Ignore malformed protocol invocations.
+  }
+};
+
 const handleOpenTarget = (commandLine) => {
   const target = commandLine.find((value) => value.startsWith("edgeever://"));
-  if (target) {
-    try {
-      const url = new URL(target);
-      const memoMatch = url.pathname.match(/^\/memo\/([^/]+)$/);
-      if (memoMatch) sendDesktopCommand(`open-memo:${decodeURIComponent(memoMatch[1])}`);
-    } catch {
-      // Ignore malformed protocol invocations.
-    }
-  }
+  if (target) handleProtocolUrl(target);
   const associatedFile = commandLine.find((value) => !value.startsWith("-") && isSupportedAssociatedFile(value));
   if (associatedFile) void importMarkdownFile(associatedFile);
 };
@@ -1480,6 +1518,7 @@ const startApplication = async () => {
     flushPendingDesktopCommands();
     flushPendingMarkdownImport();
     flushPendingScreenshotImport();
+    flushPendingWeChatImports();
     flushPendingScheduledTaskRuns();
   });
   ipcMain.on("desktop:renderer-bootstrap-ready", (event) => {
@@ -1757,6 +1796,12 @@ const startApplication = async () => {
       bytes: new Uint8Array(await response.arrayBuffer()),
     };
   });
+  ipcMain.handle("desktop:read-wechat-import-media", async (_event, importId, mediaId) => (
+    wechatShare().readMedia(importId, mediaId)
+  ));
+  ipcMain.handle("desktop:finish-wechat-import", async (_event, importId) => {
+    await wechatShare().finish(importId);
+  });
   ipcMain.handle("desktop:remove-staged-resource", async (_event, id) => {
     if (!isSafeResourceId(id)) throw new Error("Invalid staged resource id");
     const directory = stagedResourceDirectory();
@@ -1776,11 +1821,24 @@ const startApplication = async () => {
   await confirmMacInstallation();
   configureAutoUpdater();
   handleOpenTarget(process.argv);
+  protocolUrlsReady = true;
+  while (pendingProtocolUrls.length > 0) handleProtocolUrl(pendingProtocolUrls.shift());
   app.on("activate", () => {
     if (!showWindow(mainWindow)) void createWindow();
     void checkForDesktopUpdate("activate");
   });
 };
+
+const pendingProtocolUrls = [];
+let protocolUrlsReady = false;
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  if (!protocolUrlsReady) {
+    pendingProtocolUrls.push(url);
+    return;
+  }
+  handleProtocolUrl(url);
+});
 
 void app.whenReady().then(startApplication).catch((error) => {
   void showMainStartupFailure(error).catch((dialogError) => {
