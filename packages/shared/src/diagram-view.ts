@@ -1,6 +1,7 @@
 import { flowchartNodePresentation } from "./diagram-node-presentation";
 import {
   ARCHITECTURE_LABEL_FONT,
+  architectureEdgePorts,
   architectureEdgeVisual,
   architectureNodeVisual,
   resolveArchitectureSurface,
@@ -166,8 +167,12 @@ export const diagramDocumentToX6Cells = (
       ?? mindEdge?.stroke
       ?? flowchartSurface?.edge
       ?? palette.flowEdge;
-    const orthogonalPorts = (document.kind === "flowchart" || document.kind === "architecture") && sourceNode && targetNode
-      ? flowchartEdgePorts(sourceNode, targetNode)
+    const orthogonalPorts = sourceNode && targetNode
+      ? document.kind === "architecture"
+        ? architectureEdgePorts(sourceNode, targetNode)
+        : document.kind === "flowchart"
+          ? flowchartEdgePorts(sourceNode, targetNode)
+          : null
       : null;
     const orthogonalStraight = Boolean(orthogonalPorts && sourceNode && targetNode && flowchartEdgeIsStraight(sourceNode, targetNode));
     return {

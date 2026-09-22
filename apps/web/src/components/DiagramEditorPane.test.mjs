@@ -187,7 +187,7 @@ describe("diagram editor canvas surface", () => {
     expect(source).toContain('{ fill: "none" }');
     expect(source).toContain('if (kind !== "mind-map") edge.attr("line/fill", "none")');
     expect(source).toContain("FLOWCHART_EDGE_ROUTER");
-    expect(source).toContain("applyFlowchartEdgePorts(graph)");
+    expect(source).toContain("applyOrthogonalEdgePorts(graph, document.kind)");
     expect(source).toContain("flowchartEdgeIsStraight");
     expect(source).toContain('showTheme={document.kind !== "architecture"}');
     expect(source).toContain('themeCatalog={document.kind === "flowchart" ? "flowchart" : "mind-map"}');

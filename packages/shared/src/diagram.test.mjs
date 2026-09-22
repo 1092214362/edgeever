@@ -164,6 +164,19 @@ describe("diagram document", () => {
     expect(fallback).toContain("classDef archDatabase");
   });
 
+  test("projects forward diagonal architecture edges through horizontal ports", () => {
+    const document = createDefaultDiagramDocument("architecture");
+    const edge = document.edges[0];
+    const source = document.nodes.find((node) => node.id === edge.source);
+    const target = document.nodes.find((node) => node.id === edge.target);
+    Object.assign(source, { x: 194, y: 711, width: 170, height: 64 });
+    Object.assign(target, { x: 446, y: 658, width: 170, height: 68 });
+
+    const projectedEdge = diagramDocumentToX6Cells(document, "light").edges[0];
+    expect(projectedEdge.source.port).toBe("right");
+    expect(projectedEdge.target.port).toBe("left");
+  });
+
   test("keeps legacy architecture nodes valid and projects resource-specific icons", () => {
     const legacy = createDefaultDiagramDocument("architecture");
     expect(legacy.nodes.every((node) => node.resourceIcon === undefined)).toBe(true);

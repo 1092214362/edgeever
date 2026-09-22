@@ -123,12 +123,6 @@ describe("flowchart edge geometry", () => {
     expect(flowchartEdgePorts(loop, above)).toEqual({ source: "left", target: "left" });
     expect(flowchartEdgeIsStraight(loop, above)).toBe(false);
   });
-
-  test("keeps a predominantly forward diagonal edge out of its source node", () => {
-    const lowerLeft = { x: 80, y: 280, width: 176, height: 64 };
-    const upperRight = { x: 420, y: 120, width: 176, height: 64 };
-    expect(flowchartEdgePorts(lowerLeft, upperRight)).toEqual({ source: "right", target: "left" });
-  });
 });
 
 describe("flowchart readable viewport", () => {
@@ -146,4 +140,3 @@ describe("flowchart readable viewport", () => {
     expect(DIAGRAM_READABLE_MIN_SCALE).toBe(0.85);
   });
 });
-

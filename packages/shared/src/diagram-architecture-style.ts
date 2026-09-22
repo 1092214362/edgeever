@@ -17,6 +17,24 @@ export const ARCHITECTURE_ICON_FRAME = 34;
 export const ARCHITECTURE_ICON_INSET = 10;
 
 export type ArchitectureAppearance = "light" | "dark";
+export type ArchitectureEdgePortName = "top" | "right" | "bottom" | "left";
+export type ArchitectureEdgeBox = { x: number; y: number; width: number; height: number };
+
+export const architectureEdgePorts = (
+  source: ArchitectureEdgeBox,
+  target: ArchitectureEdgeBox,
+): { source: ArchitectureEdgePortName; target: ArchitectureEdgePortName } => {
+  const sourceRight = source.x + source.width;
+  const targetRight = target.x + target.width;
+  if (target.x >= sourceRight) return { source: "right", target: "left" };
+  if (targetRight <= source.x) return { source: "top", target: "top" };
+
+  const sourceCenterY = source.y + source.height / 2;
+  const targetCenterY = target.y + target.height / 2;
+  return targetCenterY >= sourceCenterY
+    ? { source: "bottom", target: "top" }
+    : { source: "top", target: "bottom" };
+};
 
 export type ArchitectureComponentShape = Exclude<
   DiagramNodeShape,
