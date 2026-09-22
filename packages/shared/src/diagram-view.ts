@@ -1,5 +1,7 @@
 import { flowchartNodePresentation } from "./diagram-node-presentation";
 import {
+  ARCHITECTURE_EDGE_LABEL_FONT_SIZE,
+  ARCHITECTURE_EDGE_LABEL_LINE_HEIGHT,
   ARCHITECTURE_LABEL_FONT,
   architectureEdgePorts,
   architectureEdgeVisual,
@@ -7,6 +9,8 @@ import {
   resolveArchitectureSurface,
 } from "./diagram-architecture-style";
 import {
+  FLOWCHART_EDGE_LABEL_FONT_SIZE,
+  FLOWCHART_EDGE_LABEL_LINE_HEIGHT,
   FLOWCHART_EDGE_ROUTER,
   FLOWCHART_LABEL_FONT,
   flowchartEdgeIsStraight,
@@ -18,6 +22,8 @@ import type { DiagramDocument, DiagramTheme } from "./diagram";
 import { buildDiagramPalette } from "./diagram-palette";
 import {
   MIND_MAP_CONNECTOR_NAME,
+  MIND_MAP_EDGE_LABEL_FONT_SIZE,
+  MIND_MAP_EDGE_LABEL_LINE_HEIGHT,
   mindMapBranchSides,
   mindMapEdgeLineAttrs,
   mindMapEdgeTerminal,
@@ -219,9 +225,17 @@ export const diagramDocumentToX6Cells = (
             : document.kind === "flowchart"
               ? (appearance === "dark" ? "#E2E8F0" : "#475569")
               : (flowchartSurface?.process.text ?? architectureSurface?.nodes.service.text ?? palette.nodeText),
-          fontSize: (document.kind === "architecture" || document.kind === "flowchart") ? 11 : 12,
+          fontSize: document.kind === "architecture"
+            ? ARCHITECTURE_EDGE_LABEL_FONT_SIZE
+            : document.kind === "flowchart"
+              ? FLOWCHART_EDGE_LABEL_FONT_SIZE
+              : MIND_MAP_EDGE_LABEL_FONT_SIZE,
           fontWeight: (document.kind === "architecture" || document.kind === "flowchart") ? 500 : 400,
-          lineHeight: 16,
+          lineHeight: document.kind === "architecture"
+            ? ARCHITECTURE_EDGE_LABEL_LINE_HEIGHT
+            : document.kind === "flowchart"
+              ? FLOWCHART_EDGE_LABEL_LINE_HEIGHT
+              : MIND_MAP_EDGE_LABEL_LINE_HEIGHT,
           fontFamily: document.kind === "architecture" ? ARCHITECTURE_LABEL_FONT : FLOWCHART_LABEL_FONT,
           textWrap: { width: 140, height: 512 },
         },

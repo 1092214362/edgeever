@@ -84,10 +84,14 @@ import {
 import { useTranslation } from "react-i18next";
 import {
   ARCHITECTURE_DIAGRAM_SCHEMA_VERSION,
+  ARCHITECTURE_EDGE_LABEL_FONT_SIZE,
+  ARCHITECTURE_EDGE_LABEL_LINE_HEIGHT,
   DIAGRAM_SCHEMA_VERSION,
   diagramFallbackMarkdown,
   markdownToDoc,
   MIND_MAP_CONNECTOR_NAME,
+  MIND_MAP_EDGE_LABEL_FONT_SIZE,
+  MIND_MAP_EDGE_LABEL_LINE_HEIGHT,
   MIND_MAP_HORIZONTAL_GAP,
   mindMapTopicMarkup,
   MIND_MAP_VERTICAL_GAP,
@@ -118,6 +122,8 @@ import {
   isArchitectureNodeShape,
   resolveArchitectureSurface,
   diagramReaderFocusNode,
+  FLOWCHART_EDGE_LABEL_FONT_SIZE,
+  FLOWCHART_EDGE_LABEL_LINE_HEIGHT,
   FLOWCHART_EDGE_ROUTER,
   FLOWCHART_LABEL_FONT,
   flowchartEdgeIsStraight,
@@ -1236,10 +1242,10 @@ const diagramEdgeLabel = (
         label: {
           text,
           fill: appearance === "dark" ? "#E2E8F0" : "#334155",
-          fontSize: 11,
+          fontSize: ARCHITECTURE_EDGE_LABEL_FONT_SIZE,
           fontWeight: 500,
           fontFamily: ARCHITECTURE_LABEL_FONT,
-          lineHeight: 16,
+          lineHeight: ARCHITECTURE_EDGE_LABEL_LINE_HEIGHT,
           textWrap: { width: 140, height: 512 },
         },
         body: {
@@ -1267,10 +1273,10 @@ const diagramEdgeLabel = (
         label: {
           text,
           fill: appearance === "dark" ? "#E2E8F0" : "#475569",
-          fontSize: 11,
+          fontSize: FLOWCHART_EDGE_LABEL_FONT_SIZE,
           fontWeight: 500,
           fontFamily: FLOWCHART_LABEL_FONT,
-          lineHeight: 16,
+          lineHeight: FLOWCHART_EDGE_LABEL_LINE_HEIGHT,
           textWrap: { width: 140, height: 512 },
         },
         body: {
@@ -1295,7 +1301,13 @@ const diagramEdgeLabel = (
   return {
     position: { distance: 0.5, offset: 0 },
     attrs: {
-      label: { text, fill: palette.nodeText, fontSize: 12, lineHeight: 16, textWrap: { width: 140, height: 512 } },
+      label: {
+        text,
+        fill: palette.nodeText,
+        fontSize: MIND_MAP_EDGE_LABEL_FONT_SIZE,
+        lineHeight: MIND_MAP_EDGE_LABEL_LINE_HEIGHT,
+        textWrap: { width: 140, height: 512 },
+      },
       body: { ref: "label", refWidth: 1, refHeight: 1, refWidth2: 12, refHeight2: 8, refX: -6, refY: -4,
         fill: palette.canvas,
         stroke: palette.nodeStroke, strokeWidth: 1, rx: 4, ry: 4 },
