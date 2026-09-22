@@ -99,7 +99,10 @@ struct ActiveNotebook {
     slug: Option<String>,
 }
 
-fn active_notebook_tree(database: &Connection, notebook_id: &str) -> Result<Vec<ActiveNotebook>, String> {
+fn active_notebook_tree(
+    database: &Connection,
+    notebook_id: &str,
+) -> Result<Vec<ActiveNotebook>, String> {
     let mut statement = database
         .prepare(
             "WITH RECURSIVE tree(id, depth) AS (
@@ -125,7 +128,8 @@ fn active_notebook_tree(database: &Connection, notebook_id: &str) -> Result<Vec<
             })
         })
         .map_err(|e| e.to_string())?;
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
 }
 
 pub(crate) fn delete_notebook(database: &Connection, params: &Value) -> Result<Value, String> {
@@ -159,7 +163,10 @@ pub(crate) fn delete_notebook(database: &Connection, params: &Value) -> Result<V
         }
         return Ok(json!({ "ok": true }));
     }
-    if tree.iter().any(|notebook| is_inbox_notebook(&notebook.id, notebook.slug.as_deref())) {
+    if tree
+        .iter()
+        .any(|notebook| is_inbox_notebook(&notebook.id, notebook.slug.as_deref()))
+    {
         return Err("inbox_not_deletable".to_owned());
     }
 
@@ -185,7 +192,9 @@ pub(crate) fn delete_notebook(database: &Connection, params: &Value) -> Result<V
     }
 
     let ids: Vec<String> = tree.iter().map(|notebook| notebook.id.clone()).collect();
-    let tx = database.unchecked_transaction().map_err(|e| e.to_string())?;
+    let tx = database
+        .unchecked_transaction()
+        .map_err(|e| e.to_string())?;
     for id in &ids {
         tx.execute(
             "UPDATE notebooks

@@ -50,11 +50,13 @@ extraResources:
     filter:
       - edgeever-sidecar
       - edgeever-sidecar.exe
+# Top-level hook. electron-builder rejects afterSign under mac, and the
+# script itself returns immediately on Windows and Linux.
+afterSign: ./scripts/sign-share-extension.cjs
 mac:
   category: public.app-category.productivity
   icon: assets/icon.icns
   minimumSystemVersion: "13.0"
-  afterSign: ./scripts/sign-share-extension.cjs
   extraFiles:
     - from: share-extension/dist/EdgeEverShare.appex
       to: PlugIns/EdgeEverShare.appex
