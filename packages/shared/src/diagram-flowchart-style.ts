@@ -20,8 +20,16 @@ export const flowchartEdgePorts = (
   const targetCenter = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
   const dx = targetCenter.x - sourceCenter.x;
   const dy = targetCenter.y - sourceCenter.y;
-  if (dy < -source.height) return { source: "left", target: "left" };
-  if (dx < -source.width) return { source: "top", target: "top" };
+  // Treat an edge as a return path only when the backwards displacement is
+  // also its dominant axis. A left-to-right architecture edge may legitimately
+  // point a little upward; routing that edge through two left ports makes the
+  // path double back through its source node.
+  if (dy < -source.height && Math.abs(dy) >= Math.abs(dx)) {
+    return { source: "left", target: "left" };
+  }
+  if (dx < -source.width && Math.abs(dx) >= Math.abs(dy)) {
+    return { source: "top", target: "top" };
+  }
   if (Math.abs(dy) >= Math.abs(dx)) {
     return dy >= 0
       ? { source: "bottom", target: "top" }
