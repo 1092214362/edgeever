@@ -311,10 +311,11 @@ export const ja = {
     unsaved: "未保存の変更",
     back: "ノート一覧に戻る",
     editField: "フィールド {{name}} を編集",
-    openForm: "フォーム",
+    openForm: "フォーム収集",
+    openFormTooltip: "フォームのリンクを共有して回答を収集し、自動的にテーブルレコードとして追加します。",
     form: {
-      title: "フォーム入力",
-      description: "このリンクを共有すると、相手は1行だけ追加できます。既存の行は見えません。",
+      title: "フォーム収集",
+      description: "フォームのリンクを共有して回答してもらうと、提出内容が新しい行として自動追加されます。回答者は既存のデータを閲覧できません。",
       enabled: "回答を受け付ける",
       link: "フォームのリンク",
       copy: "リンクをコピー",
@@ -1705,7 +1706,7 @@ export const ja = {
     restoreConfirmTitle: "この履歴の版を復元",
     restoreConfirmDescription: "現在の内容はこの履歴の版で置き換えられます。復元後も新しい版は作成されます。",
     restoreConfirmLabel: "復元",
-    formActor: "フォーム入力",
+    formActor: "フォーム送信",
   },
   pdfViewer: {
     loading: "PDF を読み込み中…",

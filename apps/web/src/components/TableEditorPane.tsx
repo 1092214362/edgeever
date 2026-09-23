@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
-import { ChevronLeft, ClipboardList, Download, Paperclip, Plus, TableProperties, Trash2, X } from "lucide-react";
+import { ChevronLeft, Download, Form, Paperclip, Plus, TableProperties, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   addTableField,
@@ -638,10 +638,15 @@ export const TableEditorPane = ({
         </div>
         <span className="text-xs text-slate-500">{countLabel}</span>
         {saveLabel ? <span className={saveError ? "text-xs text-rose-600" : "text-xs text-slate-400"}>{saveLabel}</span> : null}
-        <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={() => setFormOpen(true)}>
-          <ClipboardList className="h-4 w-4" />
-          {t("structuredTable.openForm")}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={() => setFormOpen(true)}>
+              <Form className="h-4 w-4" />
+              {t("structuredTable.openForm")}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t("structuredTable.openFormTooltip")}</TooltipContent>
+        </Tooltip>
         <Button type="button" variant="outline" size="sm" onClick={exportCsv}>
           <Download className="h-4 w-4" />
           {t("structuredTable.exportCsv")}

@@ -311,10 +311,11 @@ export const zhCN = {
     unsaved: "有未保存的修改",
     back: "返回笔记列表",
     editField: "编辑字段 {{name}}",
-    openForm: "表单录入",
+    openForm: "表单收集",
+    openFormTooltip: "分享表单链接收集填写，提交后自动沉淀为表格记录",
     form: {
-      title: "表单录入",
-      description: "把链接发给别人，对方只能填写并提交一行，看不到表里已有的记录。",
+      title: "表单收集",
+      description: "分享表单链接给他人填写，提交内容会自动追加为一条新记录，填写人无法查看已有数据。",
       enabled: "接受填写",
       link: "表单链接",
       copy: "复制链接",
@@ -1705,7 +1706,7 @@ export const zhCN = {
     restoreConfirmTitle: "恢复到这个历史版本",
     restoreConfirmDescription: "当前内容会被这个历史版本替换，恢复后仍会产生新的历史记录。",
     restoreConfirmLabel: "恢复",
-    formActor: "表单录入",
+    formActor: "表单提交",
   },
   pdfViewer: {
     loading: "正在加载 PDF…",

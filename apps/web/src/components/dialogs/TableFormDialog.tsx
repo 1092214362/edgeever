@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ClipboardList, Copy } from "lucide-react";
+import { Check, Copy, Form } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TableField, TableFormFieldSetting, TableFormUpdateInput } from "@edgeever/shared";
@@ -225,7 +225,7 @@ export const TableFormDialog = ({
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         {saveMutation.isSuccess && !error ? <p className="text-sm text-emerald-700">{t("structuredTable.form.saved")}</p> : null}
         <Button type="button" onClick={() => save(false)} disabled={saveMutation.isPending || formQuery.isLoading}>
-          <ClipboardList className="h-4 w-4" />
+          <Form className="h-4 w-4" />
           {saveMutation.isPending ? t("structuredTable.form.saving") : t("structuredTable.form.save")}
         </Button>
       </DialogContent>
