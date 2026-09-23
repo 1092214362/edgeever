@@ -74,6 +74,9 @@ bun run release -- \
   GitHub Release 保持已发布，跟踪 Issue 保持已关闭；用
   `bun run publish:stores -- --release vX.Y.Z --platform ios` 重试即可。详见
   [移动端商店交付](store-delivery.zh-CN.md)。
+- 公开发布后的桌面和 Android 审计通过 Release API URL 读取资产文件名。
+  Draft 刚公开时，`gh release view --json assets` 可能持续返回空列表；如果把
+  这个空列表当成资产缺失，发布会被退回 Draft。
 - 重建后的桌面资产上传到 Draft 后，本地发布命令只签署
   `latest-windows.json`，私钥不会进入 GitHub Actions。第二次桌面工作流会重新
   下载 Windows 安装包、`latest.yml`、清单、签名和校验和文件并独立审计，通过后

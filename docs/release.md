@@ -87,6 +87,10 @@ actually needed.
   Issue closed; retry with
   `bun run publish:stores -- --release vX.Y.Z --platform ios`. See
   [Mobile Store Delivery](store-delivery.md).
+- Published desktop and Android audits read asset names from the release API
+  URL. `gh release view --json assets` can stay empty after a draft is
+  published, and treating that empty list as a missing asset set returns the
+  Release to Draft.
 - After rebuilt desktop assets are uploaded to the Draft, the local release
   command signs only `latest-windows.json`; the private key never enters GitHub
   Actions. A second desktop workflow run downloads the Windows installer,
