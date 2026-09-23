@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
-import { ChevronLeft, Download, Form, Paperclip, Plus, TableProperties, Trash2, X } from "lucide-react";
+import { ChevronLeft, Download, Form, Paperclip, Plus, RefreshCw, TableProperties, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   addTableField,
@@ -394,6 +394,8 @@ export const TableEditorPane = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshingRef = useRef(false);
   const formQuery = useQuery({
     queryKey: ["table-form", memo.id],
     queryFn: () => api.getTableForm(memo.id),
@@ -411,7 +413,7 @@ export const TableEditorPane = ({
   const pendingUploadIdsRef = useRef(new Set<string>());
   const savedSnapshotRef = useRef(parsed ? snapshotOf(memo.title ?? "", parsed) : "");
   const saveRef = useRef<() => void>(() => undefined);
-  memoRef.current = memo;
+  if (memo.revision >= memoRef.current.revision) memoRef.current = memo;
   titleRef.current = title;
   documentRef.current = document;
   editingRef.current = editing;
@@ -604,6 +606,40 @@ export const TableEditorPane = ({
   const fieldLimitReached = document.fields.length >= TABLE_FIELD_LIMIT;
   const recordLimitReached = document.records.length >= TABLE_RECORD_LIMIT;
 
+  const refreshBlocked = refreshing || saving || dirty || Boolean(editing) || isLocalMemoId(memo.id);
+  const refreshTable = async () => {
+    if (refreshBlocked || refreshingRef.current) return;
+    refreshingRef.current = true;
+    setRefreshing(true);
+    setSaveError(null);
+    try {
+      const latest = (await api.getMemo(memo.id)).memo;
+      if (latest.revision < memoRef.current.revision) return;
+      const next = parseTableDocument(latest.contentMarkdown);
+      if (!next) {
+        setSaveError(t("structuredTable.unreadable"));
+        return;
+      }
+      const nextTitle = latest.title ?? "";
+      setTitle(nextTitle);
+      titleRef.current = nextTitle;
+      setDocument(next);
+      documentRef.current = next;
+      savedSnapshotRef.current = snapshotOf(nextTitle, next);
+      setDirty(false);
+      setSaveFailed(false);
+      setEditing(null);
+      editingRef.current = null;
+      memoRef.current = latest;
+      await onSaved(latest).catch(() => undefined);
+    } catch (error) {
+      setSaveError(error instanceof Error && error.message ? error.message : t("structuredTable.refreshError"));
+    } finally {
+      refreshingRef.current = false;
+      setRefreshing(false);
+    }
+  };
+
   const exportCsv = () => {
     const blob = new Blob([tableDocumentToCsv(document, visibleRecords)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -647,6 +683,24 @@ export const TableEditorPane = ({
         </div>
         <span className="text-xs text-slate-500">{countLabel}</span>
         {saveLabel ? <span className={saveError ? "text-xs text-rose-600" : "text-xs text-slate-400"}>{saveLabel}</span> : null}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={refreshBlocked}
+                aria-label={t("structuredTable.refresh")}
+                onClick={() => { void refreshTable(); }}
+              >
+                <RefreshCw className={refreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+                {t("structuredTable.refresh")}
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{t(dirty || editing ? "structuredTable.unsaved" : "structuredTable.refreshTooltip")}</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

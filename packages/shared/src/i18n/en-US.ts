@@ -315,6 +315,9 @@ export const enUS = {
     openFormTooltip: "Share a form link to collect responses as table records.",
     formLive: "Collecting",
     formLiveTooltip: "Accepting responses. Open to copy the link or stop collection.",
+    refresh: "Refresh",
+    refreshTooltip: "Reload this table",
+    refreshError: "Couldn't reload the table",
     form: {
       title: "Form Collection",
       description: "Share a form link for others to fill out. Submissions are added as new table records, and respondents cannot view existing rows.",

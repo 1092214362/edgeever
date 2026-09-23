@@ -315,6 +315,9 @@ export const ja = {
     openFormTooltip: "フォームのリンクを共有して回答を収集し、自動的にテーブルレコードとして追加します。",
     formLive: "収集中",
     formLiveTooltip: "回答を受け付けています。開くとリンクのコピーや受付停止ができます。",
+    refresh: "更新",
+    refreshTooltip: "このテーブルを読み込み直す",
+    refreshError: "テーブルを読み込めませんでした",
     form: {
       title: "フォーム収集",
       description: "フォームのリンクを共有して回答してもらうと、提出内容が新しい行として自動追加されます。回答者は既存のデータを閲覧できません。",
