@@ -327,7 +327,7 @@ export const zhCN = {
       regenerate: "重新生成密码",
       formTitle: "表单标题",
       formDescription: "说明",
-      submitLabel: "提交按钮",
+      submitLabel: "按钮上的文字",
       submitDefault: "提交",
       fields: "出现在表单里的字段",
       required: "必填",

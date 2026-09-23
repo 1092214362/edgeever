@@ -327,7 +327,7 @@ export const enUS = {
       regenerate: "Generate a new password",
       formTitle: "Form title",
       formDescription: "Description",
-      submitLabel: "Submit button",
+      submitLabel: "Text on the button",
       submitDefault: "Submit",
       fields: "Fields on the form",
       required: "Required",

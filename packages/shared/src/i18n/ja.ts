@@ -327,7 +327,7 @@ export const ja = {
       regenerate: "パスワードを再生成",
       formTitle: "フォームのタイトル",
       formDescription: "説明",
-      submitLabel: "送信ボタン",
+      submitLabel: "ボタンに表示する文字",
       submitDefault: "送信",
       fields: "フォームに表示するフィールド",
       required: "必須",
