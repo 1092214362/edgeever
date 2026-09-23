@@ -1,8 +1,13 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import type { PluginManifest, PluginSettingField, PluginSettingValue } from "@edgeever/plugin-api";
 import type { EdgeEverPluginHost } from "@/lib/plugins/plugin-host";
+import {
+  createPluginSettingWriteQueue,
+  pluginSettingLoadSignature,
+  revertBooleanSettingAfterFailedWrite,
+} from "./plugin-settings-commit";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -163,6 +168,10 @@ export const PluginSettingsSection = ({ host, manifest }: { host: EdgeEverPlugin
   const formId = useId();
   const fields = manifest.settings?.fields ?? [];
   const fieldGroups = groupPluginSettingFields(fields);
+  const fieldLoadSignature = pluginSettingLoadSignature(fields);
+  const fieldsRef = useRef(fields);
+  fieldsRef.current = fields;
+  const settingWrites = useRef(createPluginSettingWriteQueue()).current;
   const [values, setValues] = useState<Record<string, PluginSettingValue | "">>({});
   const [configuredSecrets, setConfiguredSecrets] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(fields.length > 0);
@@ -174,11 +183,12 @@ export const PluginSettingsSection = ({ host, manifest }: { host: EdgeEverPlugin
 
   useEffect(() => {
     let active = true;
-    setLoading(fields.length > 0);
+    const currentFields = fieldsRef.current;
+    setLoading(currentFields.length > 0);
     setMessage(null);
     setError(null);
     setLoadError(null);
-    void Promise.all(fields.map(async (field) => {
+    void Promise.all(currentFields.map(async (field) => {
       if (field.type === "secret") return { key: field.key, value: "" as const, configured: await host.hasSettingValue(manifest.id, field.key) };
       return { key: field.key, value: await host.getSettingValue(manifest.id, field.key) ?? "", configured: false };
     })).then((loaded) => {
@@ -192,13 +202,27 @@ export const PluginSettingsSection = ({ host, manifest }: { host: EdgeEverPlugin
       setLoading(false);
     });
     return () => { active = false; };
-  }, [host, manifest.id, manifest.version, manifest.settings, loadAttempt]);
+  }, [host, manifest.id, manifest.version, fieldLoadSignature, loadAttempt]);
 
   if (fields.length === 0) return null;
 
   const clearFeedback = () => {
     setMessage(null);
     setError(null);
+  };
+
+  const persistBooleanSetting = (key: string, value: boolean) => {
+    void settingWrites.enqueue(key, async () => {
+      try {
+        await host.setSettingValue(manifest.id, key, value);
+      } catch (writeError) {
+        setValues((current) => ({
+          ...current,
+          [key]: revertBooleanSettingAfterFailedWrite(current[key] ?? "", value),
+        }));
+        setError(writeError instanceof Error ? writeError.message : String(writeError));
+      }
+    });
   };
 
   const save = async () => {
@@ -221,6 +245,10 @@ export const PluginSettingsSection = ({ host, manifest }: { host: EdgeEverPlugin
         }
         if (value === "") {
           await host.removeSettingValue(manifest.id, field.key);
+          continue;
+        }
+        if (typeof value === "boolean") {
+          await settingWrites.enqueue(field.key, () => host.setSettingValue(manifest.id, field.key, value));
           continue;
         }
         await host.setSettingValue(manifest.id, field.key, value);
@@ -267,6 +295,9 @@ export const PluginSettingsSection = ({ host, manifest }: { host: EdgeEverPlugin
                       onChange={(nextValue) => {
                         clearFeedback();
                         setValues((current) => ({ ...current, [field.key]: nextValue }));
+                        if (field.type === "boolean" && typeof nextValue === "boolean") {
+                          persistBooleanSetting(field.key, nextValue);
+                        }
                       }}
                     />
                   );
