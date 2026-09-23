@@ -1838,6 +1838,10 @@ const startApplication = async () => {
   handleOpenTarget(process.argv);
   protocolUrlsReady = true;
   while (pendingProtocolUrls.length > 0) handleProtocolUrl(pendingProtocolUrls.shift());
+  if (process.platform === "darwin" && app.isPackaged) {
+    void wechatShare().importPending();
+    setInterval(() => { void wechatShare().importPending(); }, 2_000).unref();
+  }
   app.on("activate", () => {
     if (!showWindow(mainWindow)) void createWindow();
     void checkForDesktopUpdate("activate");
