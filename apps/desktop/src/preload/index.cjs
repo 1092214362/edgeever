@@ -108,7 +108,8 @@ contextBridge.exposeInMainWorld("edgeeverDesktop", Object.freeze({
     mimeType: file.mimeType,
     bytes: normalizeIpcBytes(file.bytes),
   })),
-  finishWeChatImport: (importId) => ipcRenderer.invoke("desktop:finish-wechat-import", importId),
+  finishWeChatImport: (importId, success) => ipcRenderer.invoke("desktop:finish-wechat-import", importId, success),
+  retryWeChatImport: (importId) => ipcRenderer.invoke("desktop:retry-wechat-import", importId),
   onImportWeChatChat: (callback) => {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on("desktop:import-wechat-chat", listener);

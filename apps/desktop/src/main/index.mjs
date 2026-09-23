@@ -1801,9 +1801,10 @@ const startApplication = async () => {
   ipcMain.handle("desktop:read-wechat-import-media", async (_event, importId, mediaId) => (
     wechatShare().readMedia(importId, mediaId)
   ));
-  ipcMain.handle("desktop:finish-wechat-import", async (_event, importId) => {
-    await wechatShare().finish(importId);
+  ipcMain.handle("desktop:finish-wechat-import", async (_event, importId, success) => {
+    await wechatShare().finish(importId, success === true);
   });
+  ipcMain.handle("desktop:retry-wechat-import", (_event, importId) => wechatShare().retry(importId));
   ipcMain.handle("desktop:remove-staged-resource", async (_event, id) => {
     if (!isSafeResourceId(id)) throw new Error("Invalid staged resource id");
     const directory = stagedResourceDirectory();

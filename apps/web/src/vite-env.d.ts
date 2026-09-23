@@ -87,7 +87,8 @@ interface EdgeEverDesktopBridge {
   onImportMarkdown(callback: (payload: { name: string; content: string }) => void): () => void;
   onImportScreenshot?(callback: (payload: { captureId?: string; name: string; type: string; title?: string; bytes: Uint8Array }) => void): () => void;
   readWeChatImportMedia?(importId: string, mediaId: string): Promise<{ filename: string; mimeType: string; bytes: Uint8Array }>;
-  finishWeChatImport?(importId: string): Promise<void>;
+  finishWeChatImport?(importId: string, success: boolean): Promise<void>;
+  retryWeChatImport?(importId: string): Promise<boolean>;
   onImportWeChatChat?(callback: (payload: {
     ok: boolean;
     reason?: string;

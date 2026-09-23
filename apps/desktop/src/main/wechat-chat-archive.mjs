@@ -159,13 +159,16 @@ const isMessageHeader = (lines, index) =>
 
 const parseMessages = (text) => {
   const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
-  const messages = [];
+  const sections = [];
   let index = 0;
   while (index < lines.length) {
     while (index < lines.length && lines[index].trim() === "") index += 1;
     if (index >= lines.length) break;
     if (!isMessageHeader(lines, index)) {
-      index += 1;
+      const start = index;
+      while (index < lines.length && !isMessageHeader(lines, index)) index += 1;
+      const raw = lines.slice(start, index).join("\n").trim();
+      if (raw) sections.push({ raw: raw.split("\n") });
       continue;
     }
     const sender = lines[index].slice(1).trim();
@@ -185,9 +188,9 @@ const parseMessages = (text) => {
       body.push(lines[index]);
       index += 1;
     }
-    messages.push({ sender, time, body });
+    sections.push({ sender, time, body });
   }
-  return messages;
+  return sections;
 };
 
 const parseLink = (line) => {
@@ -234,7 +237,7 @@ const titleTimestamp = (time) => {
 const archiveTitle = (archiveName, messages) => {
   const base = posix.basename(archiveName || "").replace(/\.(?:zip|txt)$/i, "").trim();
   if (!base || base === "聊天记录") {
-    const timestamp = titleTimestamp(messages[0]?.time);
+    const timestamp = titleTimestamp(messages.find((message) => message.time)?.time);
     if (timestamp) return `聊天记录 · ${timestamp}`;
   }
   return base || "聊天记录";
@@ -283,6 +286,7 @@ export const wechatChatNoteFromArchive = (bytes, archiveName = TRANSCRIPT_NAME) 
   const messages = parseMessages(text);
   const sections = messages.length > 0
     ? messages.map((message) => {
+      if (message.raw) return renderBody(message.raw, mediaByName);
       const body = renderBody(message.body, mediaByName);
       const header = `**${escapeMarkdownText(message.sender)}** · ${escapeMarkdownText(message.time)}`;
       return body ? `${header}\n\n${body}` : header;
