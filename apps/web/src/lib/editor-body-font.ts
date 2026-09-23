@@ -5,7 +5,9 @@ export const EDITOR_BODY_FONT_CHOICES = [
   "system",
   "wenkai",
   "wenkai-screen",
+  "zhuque",
   "source-han-serif",
+  "neo-zhi-song",
   "source-han-sans",
   "source-serif",
   "custom",
@@ -24,7 +26,9 @@ const CJK_FALLBACK =
 const BUNDLED_FONT_STACKS: Record<Exclude<EditorBodyFontChoice, "system" | "custom">, string> = {
   wenkai: `"EdgeEver Kai", ${CJK_FALLBACK}`,
   "wenkai-screen": `"EdgeEver Kai Screen", ${CJK_FALLBACK}`,
+  zhuque: `"EdgeEver Fangsong", ${CJK_FALLBACK}`,
   "source-han-serif": `"Source Serif 4", "EdgeEver Song", ${CJK_FALLBACK}`,
+  "neo-zhi-song": `"EdgeEver Zhi Song", ${CJK_FALLBACK}`,
   "source-han-sans": `"EdgeEver Hei", ${CJK_FALLBACK}`,
   "source-serif": `"Source Serif 4", ${CJK_FALLBACK}`,
 };

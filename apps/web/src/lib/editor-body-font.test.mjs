@@ -71,7 +71,9 @@ describe("editor body font preference", () => {
     expect(resolveEditorBodyFontStack({ choice: "system", customFamily: "" })).toBeNull();
     expect(resolveEditorBodyFontStack({ choice: "wenkai", customFamily: "" })).toContain("EdgeEver Kai");
     expect(resolveEditorBodyFontStack({ choice: "wenkai-screen", customFamily: "" })).toContain("EdgeEver Kai Screen");
+    expect(resolveEditorBodyFontStack({ choice: "zhuque", customFamily: "" })).toContain("EdgeEver Fangsong");
     expect(resolveEditorBodyFontStack({ choice: "source-han-serif", customFamily: "" })).toContain("EdgeEver Song");
+    expect(resolveEditorBodyFontStack({ choice: "neo-zhi-song", customFamily: "" })).toContain("EdgeEver Zhi Song");
     expect(resolveEditorBodyFontStack({ choice: "source-han-serif", customFamily: "" })).toContain("Source Serif 4");
     expect(resolveEditorBodyFontStack({ choice: "source-han-sans", customFamily: "" })).toContain("EdgeEver Hei");
     expect(resolveEditorBodyFontStack({ choice: "source-serif", customFamily: "" })).toContain("Source Serif 4");
