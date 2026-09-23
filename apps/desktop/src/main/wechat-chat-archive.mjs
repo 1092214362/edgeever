@@ -220,8 +220,23 @@ const renderBody = (lines, mediaByName) => lines.map((line) => {
   return escapeMarkdownText(line);
 }).join("\n\n");
 
-const archiveTitle = (archiveName) => {
-  const base = posix.basename(archiveName || "").replace(/\.zip$/i, "").trim();
+const titleTimestamp = (time) => {
+  const match = /^(\d{4})年(\d{1,2})月(\d{1,2})日 (\d{1,2}):(\d{2})(?::\d{2})?$/.exec(time || "");
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)));
+  if (parsed.getUTCFullYear() !== Number(year) || parsed.getUTCMonth() + 1 !== Number(month)
+    || parsed.getUTCDate() !== Number(day) || parsed.getUTCHours() !== Number(hour)
+    || parsed.getUTCMinutes() !== Number(minute)) return null;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")} ${hour.padStart(2, "0")}:${minute}`;
+};
+
+const archiveTitle = (archiveName, messages) => {
+  const base = posix.basename(archiveName || "").replace(/\.(?:zip|txt)$/i, "").trim();
+  if (!base || base === "聊天记录") {
+    const timestamp = titleTimestamp(messages[0]?.time);
+    if (timestamp) return `聊天记录 · ${timestamp}`;
+  }
   return base || "聊天记录";
 };
 
@@ -277,7 +292,7 @@ export const wechatChatNoteFromArchive = (bytes, archiveName = TRANSCRIPT_NAME) 
   const markdown = [...sections, ...unused].filter(Boolean).join("\n\n").trim();
   if (!markdown) throw new WeChatArchiveError("unrecognized");
   return {
-    title: archiveTitle(archiveName),
+    title: archiveTitle(archiveName, messages),
     markdown,
     media: items.map(({ id, filename, mimeType, bytes: mediaBytes }) => ({
       id,
