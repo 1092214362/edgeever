@@ -759,7 +759,7 @@ export const zhCN = {
       start: "靠左显示",
     },
     editorBodyFontTitle: "笔记正文字体",
-    editorBodyFontDescription: "只改变本机的笔记正文。",
+    editorBodyFontDescription: "仅在当前设备生效，不影响公开分享与导出排版。",
     editorBodyFonts: {
       system: "跟随系统",
       wenkai: "霞鹜文楷",
@@ -773,8 +773,9 @@ export const zhCN = {
     },
     editorBodyFontCustomLabel: "字体名称",
     editorBodyFontCustomPlaceholder: "例如 LXGW WenKai",
+    editorBodyFontSuggestions: "常用字体推荐",
     uiFontTitle: "界面字体",
-    uiFontDescription: "只改变本机的界面文字。",
+    uiFontDescription: "仅调整当前设备的操作界面文字，不影响笔记内容。",
     editorThemes: {
       default: "原生主题",
       letter: "日暖素笺",

@@ -759,7 +759,7 @@ export const ja = {
       start: "左揃え",
     },
     editorBodyFontTitle: "ノート本文のフォント",
-    editorBodyFontDescription: "この端末のノート本文だけを変えます。",
+    editorBodyFontDescription: "この端末の本文表示のみに適用され、共有やエクスポートには影響しません。",
     editorBodyFonts: {
       system: "システム",
       wenkai: "霞鹜文楷",
@@ -773,8 +773,9 @@ export const ja = {
     },
     editorBodyFontCustomLabel: "フォント名",
     editorBodyFontCustomPlaceholder: "LXGW WenKai",
+    editorBodyFontSuggestions: "定番フォント",
     uiFontTitle: "画面のフォント",
-    uiFontDescription: "この端末の画面の文字だけを変えます。",
+    uiFontDescription: "この端末の操作画面フォントのみを変更し、ノート内容には影響しません。",
     editorThemes: {
       default: "標準テーマ",
       letter: "あたたかな紙",

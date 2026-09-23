@@ -759,7 +759,7 @@ export const enUS = {
       start: "Align left",
     },
     editorBodyFontTitle: "Note text font",
-    editorBodyFontDescription: "Changes note text on this device.",
+    editorBodyFontDescription: "Applies only to this device; shared and exported notes remain unchanged.",
     editorBodyFonts: {
       system: "System",
       wenkai: "LXGW WenKai",
@@ -773,8 +773,9 @@ export const enUS = {
     },
     editorBodyFontCustomLabel: "Font name",
     editorBodyFontCustomPlaceholder: "LXGW WenKai",
+    editorBodyFontSuggestions: "Common fonts",
     uiFontTitle: "Interface font",
-    uiFontDescription: "Changes interface text on this device.",
+    uiFontDescription: "Adjusts interface chrome on this device without altering note contents.",
     editorThemes: {
       default: "Native theme",
       letter: "Warm Page",

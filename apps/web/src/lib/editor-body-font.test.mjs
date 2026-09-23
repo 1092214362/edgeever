@@ -3,6 +3,7 @@ import {
   EDITOR_BODY_FONT_CUSTOM_STORAGE_KEY,
   EDITOR_BODY_FONT_STORAGE_KEY,
   applyEditorBodyFontPreference,
+  getFontChoicePreviewStack,
   readEditorBodyFontPreference,
   resolveEditorBodyFontStack,
   sanitizeEditorBodyFontFamily,
@@ -103,5 +104,12 @@ describe("editor body font preference", () => {
     applyEditorBodyFontPreference({ choice: "system", customFamily: "" });
     expect(dataset.editorBodyFont).toBeUndefined();
     expect(style.has("--editor-body-font-family")).toBe(false);
+  });
+
+  test("returns font preview stacks for bundled choices", () => {
+    expect(getFontChoicePreviewStack("system")).toBeUndefined();
+    expect(getFontChoicePreviewStack("custom")).toBeUndefined();
+    expect(getFontChoicePreviewStack("wenkai")).toContain("EdgeEver Kai");
+    expect(getFontChoicePreviewStack("zhuque")).toContain("EdgeEver Fangsong");
   });
 });

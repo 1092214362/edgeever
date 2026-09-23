@@ -20,6 +20,11 @@ describe("editor body font preference", () => {
     expect(fontFaces).toContain("zhi-song.woff2?url");
     expect(preferenceCard).toContain('t("settings.uiFontTitle")');
     expect(preferenceCard).toContain("applyUiFontPreference");
+    expect(preferenceCard).toContain("getFontChoicePreviewStack");
+    expect(preferenceCard).toContain("BookOpenText");
+    expect(preferenceCard).toContain("AppWindow");
+    expect(preferenceCard).toContain("CUSTOM_FONT_SUGGESTIONS");
+    expect(preferenceCard).toContain('t("settings.editorBodyFontSuggestions")');
     expect(editorFonts).toContain("html[data-editor-body-font] .edgeever-editor .ProseMirror");
     expect(editorFonts).toContain("html[data-ui-font]");
     expect(editorFonts).toContain("html[data-ui-font]:not([data-editor-body-font]) .edgeever-editor[data-editor-theme=\"default\"] .ProseMirror");
