@@ -10,6 +10,9 @@ globalThis.window = {
   edgeeverDesktop: {
     isAvailable: true,
     listStagedResources: async () => [],
+    listStagedResourceAliases: async (memoId) => memoId === "memo_alias"
+      ? [{ id: "stage_exact", memoId, resourceId: "res_exact" }]
+      : [],
     sidecarRequest: async (method, params) => {
       lastRequest = { method, params };
       if (method === "memo.get") {
@@ -129,6 +132,38 @@ describe("desktop repository memo saves", () => {
     expect(lastRequest.params.contentMarkdown).toContain("/api/v1/resources/res_shot/blob");
     expect(lastRequest.params.contentMarkdown).not.toContain("edgeever-staged://");
     expect(lastRequest.params.contentJson.content[0].attrs.src).toBe("/api/v1/resources/res_shot/blob");
+  });
+
+  test("uses the durable ID mapping when a stale editor saves an image", async () => {
+    await createDesktopRepository().updateMemo(
+      { id: "memo_alias", revision: 2, contentHash: "base-hash" },
+      {
+        title: "Image",
+        contentJson: { type: "doc", content: [{ type: "image", attrs: {
+          alt: "unrelated-original-name.jpg", src: "edgeever-staged://stage_exact",
+        } }] },
+        contentMarkdown: "![unrelated-original-name.jpg](edgeever-staged://stage_exact)",
+        tags: [],
+      },
+    );
+    expect(lastRequest.params.contentJson.content[0].attrs.src).toBe("/api/v1/resources/res_exact/blob");
+    expect(lastRequest.params.contentMarkdown).toContain("/api/v1/resources/res_exact/blob");
+  });
+
+  test("refuses to save a deleted temporary image with no durable mapping", async () => {
+    lastRequest = null;
+    await expect(createDesktopRepository().updateMemo(
+      { id: "memo_unknown", revision: 2, contentHash: "base-hash" },
+      {
+        title: "Image",
+        contentJson: { type: "doc", content: [{ type: "image", attrs: {
+          alt: "missing.jpg", src: "edgeever-staged://stage_missing",
+        } }] },
+        contentMarkdown: "![missing.jpg](edgeever-staged://stage_missing)",
+        tags: [],
+      },
+    )).rejects.toThrow("missing staged resource");
+    expect(lastRequest?.method).not.toBe("memo.update");
   });
 });
 

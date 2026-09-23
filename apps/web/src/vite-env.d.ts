@@ -72,6 +72,8 @@ interface EdgeEverDesktopBridge {
   completeStagedResource(id: string): Promise<{ id: string }>;
   abortStagedResource(id: string): Promise<void>;
   listStagedResources(): Promise<Array<{ id: string; memoId: string; name: string; type: string; size: number }>>;
+  listStagedResourceAliases?(memoId?: string): Promise<Array<{ id: string; memoId: string; resourceId: string }>>;
+  recordStagedResourceAlias?(id: string, uploadedUrl: string): Promise<{ id: string; resourceId: string }>;
   remapStagedResourceMemoIds?(mappings: Array<[string, string]>): Promise<{ updated: number }>;
   readStagedResource(id: string): Promise<{ name: string; type: string; bytes: Uint8Array }>;
   readStagedResourcePart(id: string, start: number, length: number): Promise<ArrayBuffer>;
