@@ -142,11 +142,6 @@ curl -fsSL https://edgeever.org/install.sh | bash
 此指令會自動拉取最新映像、產生管理員密碼、使用 Docker Compose 啟動
 EdgeEver，並設定每日自動更新。手動部署與設定說明見 [Docker 部署文件](docs/deploy-docker.zh-CN.md)。
 
-EdgeEver 官方容器映像託管於 GitHub Container Registry（GHCR）。部分中國大陸
-網路環境可能出現連線緩慢或逾時。如果無法正常拉取，請在部署前自行設定可用的
-網路代理或可信的映像加速服務。第三方網路及映像服務的可用性與安全性由
-使用者自行評估。
-
 ---
 
 ## 多帳號登入

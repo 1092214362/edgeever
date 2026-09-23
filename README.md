@@ -144,13 +144,6 @@ curl -fsSL https://edgeever.org/install.sh | bash
 The command pulls the latest image, generates an administrator password, starts
 EdgeEver with Docker Compose, and schedules daily automatic updates.
 
-The official EdgeEver container image is hosted on GitHub Container Registry
-(GHCR). Some network environments in mainland China may experience slow
-connections or timeouts. If the image cannot be pulled normally, configure an
-available network proxy or a trusted registry mirror before deployment. Users
-are responsible for evaluating the availability and security of
-third-party network and registry services.
-
 See the [Docker deployment guide](docs/deploy-docker.md) for manual deployment and configuration.
 
 ---

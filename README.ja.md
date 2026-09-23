@@ -141,8 +141,6 @@ curl -fsSL https://edgeever.org/install.sh | bash
 
 このコマンドは最新イメージを引き、管理者パスワードを生成し、Docker Compose で EdgeEver を起動し、毎日の自動更新を設定します。
 
-公式コンテナイメージは GitHub Container Registry（GHCR）にあります。中国本土などの一部ネットワークでは遅い、またはタイムアウトすることがあります。引き出せない場合は、導入前に使えるネットワークプロキシか信頼できるレジストリミラーを設定してください。第三者のネットワークやレジストリの可用性と安全性は、利用者自身が判断してください。
-
 手動導入と設定は [Docker deployment guide](docs/deploy-docker.md) を見てください。
 
 ---
