@@ -1,7 +1,42 @@
-import type { PluginSettingValue } from "@edgeever/plugin-api";
+import type { PluginSettingField, PluginSettingValue } from "@edgeever/plugin-api";
 
 export const pluginSettingLoadSignature = (fields: readonly { key: string; type: string; default?: unknown }[]) =>
   fields.map((field) => `${field.key}\0${field.type}\0${JSON.stringify(field.default ?? null)}`).join("\n");
+
+export type PluginSettingWritePlan =
+  | { action: "set"; value: PluginSettingValue }
+  | { action: "remove" }
+  | { action: "keep"; error: "required" | "invalid" | null };
+
+/** Decide what must be stored for the value currently shown in one setting control. */
+export const planPluginSettingWrite = (
+  field: PluginSettingField,
+  value: PluginSettingValue | "",
+): PluginSettingWritePlan => {
+  if (field.type === "secret") {
+    return typeof value === "string" && value !== "" ? { action: "set", value } : { action: "keep", error: null };
+  }
+  if (field.type === "boolean") {
+    return typeof value === "boolean" ? { action: "set", value } : { action: "keep", error: "invalid" };
+  }
+  if (field.type === "number") {
+    if (value === "") return { action: "keep", error: null };
+    if (typeof value !== "number" || !Number.isFinite(value)) return { action: "keep", error: "invalid" };
+    if (field.min !== undefined && value < field.min) return { action: "keep", error: "invalid" };
+    if (field.max !== undefined && value > field.max) return { action: "keep", error: "invalid" };
+    return { action: "set", value };
+  }
+  if (field.type === "select") {
+    if (value === "") return field.required ? { action: "keep", error: "required" } : { action: "remove" };
+    if (typeof value !== "string" || !field.options.some((option) => option.value === value)) {
+      return { action: "keep", error: "invalid" };
+    }
+    return { action: "set", value };
+  }
+  if (typeof value !== "string") return { action: "keep", error: "invalid" };
+  if (!value.trim()) return field.required ? { action: "keep", error: "required" } : { action: "remove" };
+  return { action: "set", value };
+};
 
 export const revertBooleanSettingAfterFailedWrite = (
   current: PluginSettingValue | "",

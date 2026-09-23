@@ -902,6 +902,7 @@ export const enUS = {
       saveFailed: "Saving did not complete. Check your settings and try again: {{message}}",
       saved: "Settings saved on this device.",
       required: "{{name}} is required.",
+      invalid: "{{name}} cannot be saved yet.",
       secretConfigured: "Configured — leave blank to keep unchanged",
       none: "None",
       viewList: "View list",

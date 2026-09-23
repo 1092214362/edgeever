@@ -902,6 +902,7 @@ export const ja = {
       saveFailed: "保存が完了しませんでした。設定を確認して再試行してください：{{message}}",
       saved: "設定をこの端末に保存しました。",
       required: "{{name}} は必須です。",
+      invalid: "{{name}} はまだ保存できません。",
       secretConfigured: "設定済み — 空欄のままなら変更しません",
       none: "なし",
       viewList: "一覧を見る",

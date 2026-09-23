@@ -902,6 +902,7 @@ export const zhCN = {
       saveFailed: "保存未完成，请检查并重试：{{message}}",
       saved: "设置已保存到当前设备。",
       required: "{{name}} 为必填项。",
+      invalid: "{{name}} 的当前值还不能保存。",
       secretConfigured: "已配置，留空表示保持不变",
       none: "无",
       viewList: "查看列表",
