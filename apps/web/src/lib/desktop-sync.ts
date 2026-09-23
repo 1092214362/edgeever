@@ -17,6 +17,7 @@ import {
 } from "@edgeever/shared";
 import { api, ApiRequestError } from "@/lib/api";
 import { isDesktopResourceRuntime, mapMarkdownResourceUrls, mapTiptapResourceUrls, toApiResourceUrl } from "@/lib/desktop-resources";
+import { readEmergencyDraft } from "@/lib/emergency-draft";
 import { notebookDeleteIdsFromPayload } from "@/lib/notebook-delete";
 import { notifyMemoIdRemapped, notifyMemoSyncAcknowledged } from "@/lib/sync-events";
 
@@ -82,6 +83,41 @@ const stagedIdsReferencedByLocalMemos = async (rewrites: StagedResourceRewrite[]
     }
   }
   return referenced;
+};
+
+export const stagedIdsReferencedByUnsavedContent = (
+  rewrites: StagedResourceRewrite[],
+  values: unknown[],
+) => new Set(rewrites
+  .filter((rewrite) => isStagedResourceReferenced(values, rewrite.placeholder.slice("edgeever-staged://".length)))
+  .map((rewrite) => rewrite.placeholder.slice("edgeever-staged://".length)));
+
+const stagedIdsReferencedByRenderer = async (rewrites: StagedResourceRewrite[]) => {
+  if (rewrites.length === 0) return new Set<string>();
+  const memoIds = [...new Set(rewrites.map((rewrite) => rewrite.memoId))];
+  try {
+    const { localDb } = await import("@/lib/local-db");
+    const [drafts, queued] = await Promise.all([
+      localDb.drafts.bulkGet(memoIds),
+      localDb.syncQueue.where("memoId").anyOf(memoIds).toArray(),
+    ]);
+    const visibleSources = typeof document === "undefined" ? [] : [
+      ...Array.from(document.querySelectorAll("[src], [href]"), (element) => (
+        element.getAttribute("src") ?? element.getAttribute("href")
+      )),
+      ...Array.from(document.querySelectorAll("textarea"), (element) => element.value),
+    ];
+    return stagedIdsReferencedByUnsavedContent(rewrites, [
+      ...drafts,
+      ...queued.map((item) => item.payload),
+      ...memoIds.map((memoId) => readEmergencyDraft(memoId)),
+      ...visibleSources,
+    ]);
+  } catch {
+    // If drafts cannot be inspected, keep the bytes until a later sync can
+    // prove that no editor can save the old staged URL again.
+    return new Set(rewrites.map((rewrite) => rewrite.placeholder.slice("edgeever-staged://".length)));
+  }
 };
 
 const remapStagedResourceMemoIds = async (memoIdMappings: ReadonlyMap<string, string>) => {
@@ -748,9 +784,10 @@ export const syncDesktopData = () => {
         const remainingReferenced = stillReferenced.size > 0
           ? await stagedIdsReferencedByLocalMemos(stagedResources.rewrites)
           : stillReferenced;
-        await removeSyncedStagedResources(
-          stagedResources.stagedIds.filter((stagedId) => !remainingReferenced.has(stagedId)),
-        );
+        const rendererReferenced = await stagedIdsReferencedByRenderer(stagedResources.rewrites);
+        await removeSyncedStagedResources(stagedResources.stagedIds.filter((stagedId) => (
+          !remainingReferenced.has(stagedId) && !rendererReferenced.has(stagedId)
+        )));
       }
       phase = "read_status";
       const remaining = await request("sync.status", {});
