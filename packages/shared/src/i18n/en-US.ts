@@ -313,6 +313,8 @@ export const enUS = {
     editField: "Edit field {{name}}",
     openForm: "Form Collection",
     openFormTooltip: "Share a form link to collect responses as table records.",
+    formLive: "Collecting",
+    formLiveTooltip: "Accepting responses. Open to copy the link or stop collection.",
     form: {
       title: "Form Collection",
       description: "Share a form link for others to fill out. Submissions are added as new table records, and respondents cannot view existing rows.",

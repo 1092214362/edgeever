@@ -313,6 +313,8 @@ export const zhCN = {
     editField: "编辑字段 {{name}}",
     openForm: "表单收集",
     openFormTooltip: "分享表单链接收集填写，提交后自动沉淀为表格记录",
+    formLive: "收集中",
+    formLiveTooltip: "正在接受填写。点开可以复制链接或停止收集。",
     form: {
       title: "表单收集",
       description: "分享表单链接给他人填写，提交内容会自动追加为一条新记录，填写人无法查看已有数据。",

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import { ChevronLeft, Download, Form, Paperclip, Plus, TableProperties, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -393,6 +394,14 @@ export const TableEditorPane = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const formQuery = useQuery({
+    queryKey: ["table-form", memo.id],
+    queryFn: () => api.getTableForm(memo.id),
+    enabled: !isLocalMemoId(memo.id),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const formAccepting = formQuery.data?.form?.enabled === true;
   const [editSessionReady, setEditSessionReady] = useState(false);
   const memoRef = useRef(memo);
   const titleRef = useRef(title);
@@ -640,12 +649,19 @@ export const TableEditorPane = ({
         {saveLabel ? <span className={saveError ? "text-xs text-rose-600" : "text-xs text-slate-400"}>{saveLabel}</span> : null}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={() => setFormOpen(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={readOnly}
+              className={formAccepting ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800" : undefined}
+              onClick={() => setFormOpen(true)}
+            >
               <Form className="h-4 w-4" />
-              {t("structuredTable.openForm")}
+              {t(formAccepting ? "structuredTable.formLive" : "structuredTable.openForm")}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{t("structuredTable.openFormTooltip")}</TooltipContent>
+          <TooltipContent>{t(formAccepting ? "structuredTable.formLiveTooltip" : "structuredTable.openFormTooltip")}</TooltipContent>
         </Tooltip>
         <Button type="button" variant="outline" size="sm" onClick={exportCsv}>
           <Download className="h-4 w-4" />
