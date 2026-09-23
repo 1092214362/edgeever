@@ -329,7 +329,6 @@ export const ja = {
       submitDefault: "送信",
       fields: "フォームに表示するフィールド",
       required: "必須",
-      save: "フォームを保存",
       saving: "保存中",
       saved: "フォームを保存しました",
       needField: "フィールドを1つ以上選んでください",

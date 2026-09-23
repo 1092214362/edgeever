@@ -329,7 +329,6 @@ export const zhCN = {
       submitDefault: "提交",
       fields: "出现在表单里的字段",
       required: "必填",
-      save: "保存表单",
       saving: "保存中",
       saved: "表单已保存",
       needField: "至少选择一个字段",

@@ -329,7 +329,6 @@ export const enUS = {
       submitDefault: "Submit",
       fields: "Fields on the form",
       required: "Required",
-      save: "Save form",
       saving: "Saving",
       saved: "Form saved",
       needField: "Choose at least one field",
