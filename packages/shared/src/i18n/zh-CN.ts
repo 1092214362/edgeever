@@ -766,6 +766,8 @@ export const zhCN = {
     },
     editorBodyFontCustomLabel: "字体名称",
     editorBodyFontCustomPlaceholder: "例如 LXGW WenKai",
+    uiFontTitle: "界面字体",
+    uiFontDescription: "只改变本机的界面文字。",
     editorThemes: {
       default: "原生主题",
       letter: "日暖素笺",

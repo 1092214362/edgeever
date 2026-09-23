@@ -766,6 +766,8 @@ export const ja = {
     },
     editorBodyFontCustomLabel: "フォント名",
     editorBodyFontCustomPlaceholder: "LXGW WenKai",
+    uiFontTitle: "画面のフォント",
+    uiFontDescription: "この端末の画面の文字だけを変えます。",
     editorThemes: {
       default: "標準テーマ",
       letter: "あたたかな紙",

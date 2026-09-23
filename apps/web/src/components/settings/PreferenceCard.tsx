@@ -43,7 +43,9 @@ import {
   readEditorBodyFontPreference,
   writeEditorBodyFontPreference,
   type EditorBodyFontChoice,
+  type EditorBodyFontPreference,
 } from "@/lib/editor-body-font";
+import { applyUiFontPreference, readUiFontPreference, writeUiFontPreference } from "@/lib/ui-font";
 import { syncPublishedNoteBodyFont } from "@/lib/published-note-body-font";
 import { ShortcutSettingsItem } from "./ShortcutSettingsItem";
 import { CustomEditorThemeDialog } from "./CustomEditorThemeDialog";
@@ -58,6 +60,49 @@ import {
   type CustomEditorTheme,
   type ThemePreference,
 } from "../ThemeProvider";
+
+const FontChoiceFields = ({
+  label,
+  preference,
+  onChange,
+}: {
+  label: string;
+  preference: EditorBodyFontPreference;
+  onChange: (preference: EditorBodyFontPreference) => void;
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-80">
+      <Select
+        value={preference.choice}
+        onValueChange={(value) => onChange({ choice: value as EditorBodyFontChoice, customFamily: preference.customFamily })}
+      >
+        <SelectTrigger aria-label={label} className="h-9 bg-card">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="system">{t("settings.editorBodyFonts.system")}</SelectItem>
+          <SelectItem value="wenkai">{t("settings.editorBodyFonts.wenkai")}</SelectItem>
+          <SelectItem value="wenkai-screen">{t("settings.editorBodyFonts.wenkaiScreen")}</SelectItem>
+          <SelectItem value="source-han-serif">{t("settings.editorBodyFonts.sourceHanSerif")}</SelectItem>
+          <SelectItem value="source-han-sans">{t("settings.editorBodyFonts.sourceHanSans")}</SelectItem>
+          <SelectItem value="source-serif">{t("settings.editorBodyFonts.sourceSerif")}</SelectItem>
+          <SelectItem value="custom">{t("settings.editorBodyFonts.custom")}</SelectItem>
+        </SelectContent>
+      </Select>
+      {preference.choice === "custom" ? (
+        <Input
+          value={preference.customFamily}
+          aria-label={t("settings.editorBodyFontCustomLabel")}
+          placeholder={t("settings.editorBodyFontCustomPlaceholder")}
+          className="h-9"
+          maxLength={200}
+          onChange={(event) => onChange({ choice: "custom", customFamily: event.target.value })}
+        />
+      ) : null}
+    </div>
+  );
+};
 
 interface PreferenceCardProps {
   imageCompressionEnabled: boolean;
@@ -93,6 +138,7 @@ export const PreferenceCard = ({
   const [aiSelectionMenuEnabled, setAiSelectionMenuEnabled] = useState(readAiSelectionMenuPreference);
   const [aiSpaceShortcutEnabled, setAiSpaceShortcutEnabled] = useState(readAiSpaceShortcutPreference);
   const [editorBodyFont, setEditorBodyFont] = useState(readEditorBodyFontPreference);
+  const [uiFont, setUiFont] = useState(readUiFontPreference);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 640px)");
@@ -204,11 +250,17 @@ export const PreferenceCard = ({
     void changeAppLocalePreference(preference);
   };
 
-  const updateEditorBodyFont = (preference: { choice: EditorBodyFontChoice; customFamily: string }) => {
+  const updateEditorBodyFont = (preference: EditorBodyFontPreference) => {
     setEditorBodyFont(preference);
     writeEditorBodyFontPreference(preference);
     applyEditorBodyFontPreference(preference);
     void syncPublishedNoteBodyFont();
+  };
+
+  const updateUiFont = (preference: EditorBodyFontPreference) => {
+    setUiFont(preference);
+    writeUiFontPreference(preference);
+    applyUiFontPreference(preference);
   };
 
   return (
@@ -305,35 +357,26 @@ export const PreferenceCard = ({
               <div className={SETTINGS_ITEM_DESCRIPTION_CLASSNAME}>{t("settings.editorBodyFontDescription")}</div>
             </div>
           </div>
-          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-80">
-            <Select
-              value={editorBodyFont.choice}
-              onValueChange={(value) => updateEditorBodyFont({ choice: value as EditorBodyFontChoice, customFamily: editorBodyFont.customFamily })}
-            >
-              <SelectTrigger aria-label={t("settings.editorBodyFontTitle")} className="h-9 bg-card">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="system">{t("settings.editorBodyFonts.system")}</SelectItem>
-                <SelectItem value="wenkai">{t("settings.editorBodyFonts.wenkai")}</SelectItem>
-                <SelectItem value="wenkai-screen">{t("settings.editorBodyFonts.wenkaiScreen")}</SelectItem>
-                <SelectItem value="source-han-serif">{t("settings.editorBodyFonts.sourceHanSerif")}</SelectItem>
-                <SelectItem value="source-han-sans">{t("settings.editorBodyFonts.sourceHanSans")}</SelectItem>
-                <SelectItem value="source-serif">{t("settings.editorBodyFonts.sourceSerif")}</SelectItem>
-                <SelectItem value="custom">{t("settings.editorBodyFonts.custom")}</SelectItem>
-              </SelectContent>
-            </Select>
-            {editorBodyFont.choice === "custom" ? (
-              <Input
-                value={editorBodyFont.customFamily}
-                aria-label={t("settings.editorBodyFontCustomLabel")}
-                placeholder={t("settings.editorBodyFontCustomPlaceholder")}
-                className="h-9"
-                maxLength={200}
-                onChange={(event) => updateEditorBodyFont({ choice: "custom", customFamily: event.target.value })}
-              />
-            ) : null}
+          <FontChoiceFields
+            label={t("settings.editorBodyFontTitle")}
+            preference={editorBodyFont}
+            onChange={updateEditorBodyFont}
+          />
+        </div>
+
+        <div className="flex min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <Type className={SETTINGS_ITEM_ICON_CLASSNAME} />
+            <div className="min-w-0">
+              <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("settings.uiFontTitle")}</div>
+              <div className={SETTINGS_ITEM_DESCRIPTION_CLASSNAME}>{t("settings.uiFontDescription")}</div>
+            </div>
           </div>
+          <FontChoiceFields
+            label={t("settings.uiFontTitle")}
+            preference={uiFont}
+            onChange={updateUiFont}
+          />
         </div>
 
         {!isMobile && (

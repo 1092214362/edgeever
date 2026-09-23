@@ -766,6 +766,8 @@ export const enUS = {
     },
     editorBodyFontCustomLabel: "Font name",
     editorBodyFontCustomPlaceholder: "LXGW WenKai",
+    uiFontTitle: "Interface font",
+    uiFontDescription: "Changes interface text on this device.",
     editorThemes: {
       default: "Native theme",
       letter: "Warm Page",
