@@ -1716,7 +1716,11 @@ export const WorkspaceApp = ({
     setTemplatesOpen(false);
     setMobileBottomNavActive("home");
     creatingMemoSelectionRef.current = true;
+    let resumeDesktopSync: (() => void) | null = null;
     try {
+      if (isDesktopResourceRuntime()) {
+        resumeDesktopSync = await (await import("@/lib/desktop-sync")).pauseDesktopSyncForImport();
+      }
       const preparedFile = imageCompressionEnabled ? (await compressImageForUpload(file)).file : file;
       const memo = await createScreenshotMemo({
         notebookId,
@@ -1762,6 +1766,8 @@ export const WorkspaceApp = ({
         title: t("memoList.importScreenshotFailedTitle"),
         description: t("memoList.importScreenshotFailed"),
       });
+    } finally {
+      resumeDesktopSync?.();
     }
   }, [defaultMemoNotebookId, imageCompressionEnabled, localDataScope, memoView, notebooks, repository, selectedNotebookId, t]);
 
@@ -1809,7 +1815,11 @@ export const WorkspaceApp = ({
     creatingMemoSelectionRef.current = true;
     setWeChatImportsInProgress((count) => count + 1);
     let savedMemo: MemoDetail | null = null;
+    let resumeDesktopSync: (() => void) | null = null;
     try {
+      if (isDesktopResourceRuntime()) {
+        resumeDesktopSync = await (await import("@/lib/desktop-sync")).pauseDesktopSyncForImport();
+      }
       const memo = await createWeChatChatMemo({
         notebookId,
         title: payload.title?.trim() || "",
@@ -1867,6 +1877,7 @@ export const WorkspaceApp = ({
       }
       creatingMemoSelectionRef.current = false;
     } finally {
+      resumeDesktopSync?.();
       setWeChatImportsInProgress((count) => Math.max(0, count - 1));
     }
   }, [defaultMemoNotebookId, imageCompressionEnabled, localDataScope, memoView, notebooks, repository, selectedNotebookId, t]);
