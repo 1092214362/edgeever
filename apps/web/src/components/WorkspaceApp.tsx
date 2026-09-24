@@ -1754,7 +1754,9 @@ export const WorkspaceApp = ({
           contentMarkdown: content.contentMarkdown,
           tags: created.tags,
         }),
-        deleteMemo: (memoId) => repository.deleteMemo(memoId, true),
+        deleteMemo: (memoId) => isDesktopResourceRuntime()
+          ? import("@/lib/desktop-repository").then(({ cancelPendingDesktopImportMemo }) => cancelPendingDesktopImportMemo(memoId))
+          : repository.deleteMemo(memoId, true),
       });
       await putLocalMemo(localDataScope, memo);
       revealCreatedMemo(memo);
@@ -1864,7 +1866,9 @@ export const WorkspaceApp = ({
           contentMarkdown: content.contentMarkdown,
           tags: created.tags,
         }),
-        deleteMemo: (memoId) => repository.deleteMemo(memoId, true),
+        deleteMemo: (memoId) => isDesktopResourceRuntime()
+          ? import("@/lib/desktop-repository").then(({ cancelPendingDesktopImportMemo }) => cancelPendingDesktopImportMemo(memoId))
+          : repository.deleteMemo(memoId, true),
       });
       savedMemo = memo;
       await bridge?.finishWeChatImport?.(importId, true).catch(() => undefined);
