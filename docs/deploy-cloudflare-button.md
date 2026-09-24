@@ -24,24 +24,26 @@ This document provides a detailed step-by-step guide for deploying EdgeEver onli
 
 ### Step 2: Create Storage & Database Resources in Cloudflare
 
-Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/):
+Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/). Cloudflare may reorganize its sidebar; use the official [D1 getting started guide](https://developers.cloudflare.com/d1/get-started/) and [R2 getting started guide](https://developers.cloudflare.com/r2/get-started/) if an entry has moved:
 
 1. **Create a D1 Database**:
-   - Navigate to **Workers & Pages** -> **D1**, then click **Create database**.
+   - Under **Storage & databases**, open **D1 SQL Database** and click **Create database**.
    - Database name: exactly `edgeever`, then click **Create**.
 2. **Create an R2 Bucket** (for note attachments & images):
-   - Navigate to **Workers & Pages** -> **R2**, then click **Create bucket**.
+   - Under **Storage & databases**, open **R2** -> **Overview**. If R2 is not yet enabled, complete the subscription flow shown there; then click **Create bucket**.
    - Bucket name: exactly `edgeever-resources`, then click **Create bucket**.
 
 ---
 
 ### Step 3: Import the Project
 
-1. In Cloudflare Dashboard, navigate to **Workers & Pages** -> **Overview**, click **Create application** -> **Pages** / **Workers** (Import Git Repository).
-2. Click **Connect to Git**, authorize Cloudflare, and select your Forked `edgeever` repository.
+1. In the Cloudflare Dashboard, open **Workers & Pages**, click **Create application**, then click **Get started** next to **Import a repository**. This creates a Worker connected to your Git repository; see [Cloudflare's Workers Builds instructions](https://developers.cloudflare.com/workers/ci-cd/builds/#connect-a-new-worker) if the entry moves.
+2. Follow the prompts to connect your GitHub account, authorize access to your Fork, and select the Forked `edgeever` repository.
 3. Project settings:
-   - **Production branch**: `main`
-   - **Root directory**: Leave blank or default `/`
+   - **Git branch** (or **Production branch**): `main`
+   - **Root directory**: Leave blank to use the repository root
+   - **Deploy command**: Keep the default `npx wrangler deploy`
+   - **API token**: The automatically generated token may lack D1 permissions. Select or create a User API Token scoped to the target account with D1 read and edit permissions; if permissions are insufficient, correct them based on the build log and retry.
 
 The repository's deployment command creates the `DB` and `RESOURCES` bindings from the standard resource names. Do not edit `wrangler.toml` or add duplicate bindings in the Dashboard.
 
@@ -49,9 +51,9 @@ Existing deployments created from older instructions do not need to rename or mi
 
 ---
 
-### Step 4: Set the Administrator Password
+### Step 4: Create the Project and Set the Administrator Password
 
-Under the Worker's **Settings** -> **Variables and Secrets**, add this Secret:
+Click **Save and Deploy** to create the Worker project. On a new deployment, the first build fails its post-deployment verification because the authentication Secret has not been configured yet. Do not use the generated site URL at this point. In the new Worker's **Settings** -> **Variables and Secrets**, click **Add**, add this runtime Secret, and click **Deploy** to save it:
 
 | Type | Name | Value | Purpose |
 | :--- | :--- | :--- | :--- |
@@ -59,9 +61,11 @@ Under the Worker's **Settings** -> **Variables and Secrets**, add this Secret:
 
 `EDGE_EVER_AUTH_PASSWORD` is the variable name; the Secret value is the administrator login password you choose. It is a Worker runtime Secret, not a Workers Builds variable, so do not duplicate the password in build variables.
 
+Return to the Worker's build history and retry the failed build. Cloudflare applies the current build settings when retrying. Continue only after the build, deployment, and live health check succeed. If the first build succeeded, still confirm that this Secret is present.
+
 ---
 
-### Step 5: Start the Build
+### Step 5: Check the Build Result
 
 Keep the default deploy command filled in by Cloudflare:
 
@@ -69,7 +73,7 @@ Keep the default deploy command filled in by Cloudflare:
 Deploy command: npx wrangler deploy
 ```
 
-Click **Save and Deploy** to trigger the initial build. The repository's Wrangler compatibility entrypoint detects Workers Builds and routes the default command through EdgeEver's complete build, database migration, deployment, and live verification pipeline. You do not need to copy a custom command, and the D1 placeholder in `wrangler.toml` cannot be submitted to Cloudflare.
+The repository's Wrangler compatibility entrypoint detects Workers Builds and routes the default command through EdgeEver's complete build, database migration, deployment, and live verification pipeline. You do not need to copy a custom command, and the D1 placeholder in `wrangler.toml` cannot be submitted to Cloudflare.
 
 The deployment pipeline automatically looks up the D1 UUID by the `edgeever` database name. Keep the tracked `wrangler.toml` unchanged; deployment rejects instance-specific values committed there. The Workers Builds API token must have D1 read/edit permission.
 
@@ -109,7 +113,7 @@ You can also pick `stable` / `edge` when manually running the workflow.
 
 ## Advanced Configuration: Instance Settings
 
-Ordinary deployments do not need these settings. To customize an instance, add non-secret values under **Settings -> Builds -> Variables and secrets** instead of changing repository files:
+Ordinary deployments do not need these settings. To customize an instance, add non-secret values under the Worker's **Settings -> Build -> Build variables and secrets** instead of changing repository files:
 
 | Build variable | Purpose |
 | :--- | :--- |
