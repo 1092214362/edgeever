@@ -150,16 +150,16 @@ export const createWeChatShareController = ({
     if (!session) return;
     if (!success) {
       session.failed = true;
-      failedPaths.add(session.zipPath);
+      if (!session.preserveSource) failedPaths.add(session.zipPath);
       const failedEvent = session.payload?.kind === "file" ? "share-import.save-failed" : "wechat-import.save-failed";
       void writeDiagnostic(failedEvent);
       return;
     }
     sessions.delete(importId);
     preparedPaths.delete(session.zipPath);
-    completedPaths.add(session.zipPath);
+    if (!session.preserveSource) completedPaths.add(session.zipPath);
     failedPaths.delete(session.zipPath);
-    await removeImportedZip(session.zipPath, downloadsPath());
+    if (!session.preserveSource) await removeImportedZip(session.zipPath, downloadsPath());
     if (session.directory) await rm(session.directory, { recursive: true, force: true }).catch(() => {});
     const savedEvent = session.payload?.kind === "file" ? "share-import.saved" : "wechat-import.saved";
     void writeDiagnostic(savedEvent, { media: session.media.size });
@@ -187,7 +187,7 @@ export const createWeChatShareController = ({
     return { filename: media.filename, mimeType: media.mimeType, bytes };
   };
 
-  const prepareFileShare = (sourcePath, byteSize) => {
+  const prepareFileShare = (sourcePath, byteSize, { preserveSource = false } = {}) => {
     const filename = basename(sourcePath);
     const importId = randomUUID();
     const mimeType = mimeTypeForFilename(filename);
@@ -205,31 +205,16 @@ export const createWeChatShareController = ({
       zipPath: sourcePath,
       payload,
       failed: false,
+      preserveSource,
     });
-    preparedPaths.add(sourcePath);
+    if (!preserveSource) preparedPaths.add(sourcePath);
     sendToRenderer(payload);
     void writeDiagnostic("share-import.prepared", { bytes: byteSize });
   };
 
-  const importFromProtocolUrl = async (value) => {
-    const requestedPath = wechatImportFilePath(value);
-    if (!requestedPath) return;
-    let shareFile = false;
-    try {
-      shareFile = new URL(value).hostname === "share-import";
-    } catch {
-      return;
-    }
-    const downloads = downloadsPath();
-    let sourcePath = null;
+  const openSharedFile = async (sourcePath, { preserveSource }) => {
     let preparedDirectory = null;
     try {
-      sourcePath = shareFile
-        ? await assertIncomingFile(requestedPath, downloads)
-        : await assertIncomingZip(requestedPath, downloads);
-      if (inFlightPaths.has(sourcePath) || preparedPaths.has(sourcePath)
-        || completedPaths.has(sourcePath) || failedPaths.has(sourcePath)) return;
-      inFlightPaths.add(sourcePath);
       onActivity();
       const info = await stat(sourcePath);
       if (!info.isFile() || info.size <= 0) throw new ShareImportError("empty");
@@ -238,7 +223,7 @@ export const createWeChatShareController = ({
       if (isFileReferencePlaceholder(bytes)) throw new ShareImportError("unreadable");
       const note = wechatNoteFromBytes(bytes, basename(sourcePath));
       if (!note) {
-        prepareFileShare(sourcePath, bytes.length);
+        prepareFileShare(sourcePath, bytes.length, { preserveSource });
         return;
       }
       const importId = randomUUID();
@@ -270,8 +255,8 @@ export const createWeChatShareController = ({
         markdown: note.markdown,
         media: listed,
       };
-      sessions.set(importId, { directory, media, zipPath: sourcePath, payload, failed: false });
-      preparedPaths.add(sourcePath);
+      sessions.set(importId, { directory, media, zipPath: sourcePath, payload, failed: false, preserveSource });
+      if (!preserveSource) preparedPaths.add(sourcePath);
       preparedDirectory = null;
       sendToRenderer(payload);
       void writeDiagnostic("wechat-import.prepared", { media: listed.length, bytes: bytes.length });
@@ -280,12 +265,11 @@ export const createWeChatShareController = ({
       const reason = error instanceof WeChatArchiveError || error instanceof ShareImportError
         ? error.code
         : "failed";
-      if (reason === "unreadable" && sourcePath) {
-        await removeImportedZip(sourcePath, downloads);
-      } else if (sourcePath && reason !== "rejected-path") {
+      if (reason === "unreadable" && sourcePath && !preserveSource) {
+        await removeImportedZip(sourcePath, downloadsPath());
+      } else if (sourcePath && reason !== "rejected-path" && !preserveSource) {
         failedPaths.add(sourcePath);
       }
-      // A stale or malformed protocol URL is not a failed save attempt.
       if (reason === "rejected-path") {
         void writeDiagnostic("wechat-import.rejected", { reason });
         return;
@@ -301,8 +285,57 @@ export const createWeChatShareController = ({
       }
       sendToRenderer({ ok: false, reason: reason === "unrecognized" ? "unrecognized" : "failed" });
       void writeDiagnostic("wechat-import.rejected", { reason });
+    }
+  };
+
+  const importFromProtocolUrl = async (value) => {
+    const requestedPath = wechatImportFilePath(value);
+    if (!requestedPath) return;
+    let shareFile = false;
+    try {
+      shareFile = new URL(value).hostname === "share-import";
+    } catch {
+      return;
+    }
+    const downloads = downloadsPath();
+    let sourcePath = null;
+    try {
+      sourcePath = shareFile
+        ? await assertIncomingFile(requestedPath, downloads)
+        : await assertIncomingZip(requestedPath, downloads);
+      if (inFlightPaths.has(sourcePath) || preparedPaths.has(sourcePath)
+        || completedPaths.has(sourcePath) || failedPaths.has(sourcePath)) return;
+      inFlightPaths.add(sourcePath);
+      await openSharedFile(sourcePath, { preserveSource: false });
+    } catch (error) {
+      const reason = error instanceof WeChatArchiveError ? error.code : "failed";
+      if (reason !== "rejected-path" && sourcePath) failedPaths.add(sourcePath);
+      if (reason !== "rejected-path") {
+        sendToRenderer({ ok: false, reason: "failed" });
+      }
+      void writeDiagnostic("wechat-import.rejected", { reason });
     } finally {
       if (sourcePath) inFlightPaths.delete(sourcePath);
+    }
+  };
+
+  const localInFlight = new Set();
+  const importLocalFile = async (filePath) => {
+    if (typeof filePath !== "string" || !isAbsolute(filePath) || filePath.includes("\0")) return;
+    let sourcePath = null;
+    try {
+      sourcePath = await realpath(filePath);
+    } catch {
+      sendToRenderer({ ok: false, kind: "file", reason: "unreadable" });
+      void writeDiagnostic("share-import.rejected", { reason: "unreadable" });
+      return;
+    }
+    if (localInFlight.has(sourcePath)) return;
+    localInFlight.add(sourcePath);
+    try {
+      await openSharedFile(sourcePath, { preserveSource: true });
+    } finally {
+      localInFlight.delete(sourcePath);
     }
   };
 
@@ -322,5 +355,5 @@ export const createWeChatShareController = ({
     }
   };
 
-  return { importFromProtocolUrl, importPending, readMedia, finish, retry };
+  return { importFromProtocolUrl, importLocalFile, importPending, readMedia, finish, retry };
 };

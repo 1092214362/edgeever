@@ -439,4 +439,60 @@ describe("WeChat share handoff", () => {
     expect(sent).toHaveLength(0);
     expect((await readFile(outside)).toString()).toBe("secret");
   });
+
+  test("imports a local file from the Windows verb without deleting it", async () => {
+    const root = await mkdtemp(join(tmpdir(), "edgeever-wechat-share-"));
+    roots.push(root);
+    const filePath = join(root, "功能梳理表.xlsx");
+    await writeFile(filePath, Buffer.from("spreadsheet"));
+    const sent = [];
+    const controller = createWeChatShareController({
+      downloadsPath: () => join(root, "Downloads"),
+      tempPath: () => join(root, "temp"),
+      sendToRenderer: (payload) => sent.push(payload),
+    });
+    await controller.importLocalFile(filePath);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      ok: true,
+      kind: "file",
+      filename: "功能梳理表.xlsx",
+    });
+    const media = await controller.readMedia(sent[0].importId, SHARE_IMPORT_FILE_ID);
+    expect(Buffer.from(media.bytes).toString()).toBe("spreadsheet");
+    await controller.finish(sent[0].importId, true);
+    expect((await readFile(filePath)).toString()).toBe("spreadsheet");
+    await controller.importLocalFile(filePath);
+    expect(sent).toHaveLength(2);
+  });
+
+  test("keeps a local WeChat zip in place after preparing the chat", async () => {
+    const root = await mkdtemp(join(tmpdir(), "edgeever-wechat-share-"));
+    roots.push(root);
+    const zipPath = join(root, "聊天记录.zip");
+    await writeFile(zipPath, zipOf("聊天记录.txt", "·鱼\n2026年9月22日 22:15\n你好\n", "附件/readme.txt", "hello"));
+    const sent = [];
+    const controller = createWeChatShareController({
+      downloadsPath: () => join(root, "Downloads"),
+      tempPath: () => join(root, "temp"),
+      sendToRenderer: (payload) => sent.push(payload),
+    });
+    await controller.importLocalFile(zipPath);
+    expect(sent[0].ok).toBe(true);
+    expect(sent[0].kind).toBeUndefined();
+    expect(sent[0].markdown).toContain("你好");
+    await controller.finish(sent[0].importId, true);
+    expect((await stat(zipPath)).isFile()).toBe(true);
+  });
+
+  test("ignores a relative local path", async () => {
+    const sent = [];
+    const controller = createWeChatShareController({
+      downloadsPath: () => "/tmp/unused-downloads",
+      tempPath: () => "/tmp/unused-temp",
+      sendToRenderer: (payload) => sent.push(payload),
+    });
+    await controller.importLocalFile("功能梳理表.xlsx");
+    expect(sent).toHaveLength(0);
+  });
 });
