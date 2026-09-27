@@ -12,7 +12,7 @@
     "message": "Web Clipper"
   },
   "popupDescription": {
-    "message": "Clip the current page or selection. Right-click an image to save it, or right-click a post on X to save that post."
+    "message": "Clip the current page or selection. Right-click selected text to save that passage, right-click an image to save it, or right-click a post on X to save that post."
   },
   "saveCurrentPage": {
     "message": "Clip current page"
@@ -195,6 +195,24 @@
   },
   "emptyPageContent": {
     "message": "(No readable content was found on this page)"
+  },
+  "saveSelectionToEdgeEver": {
+    "message": "Save selection to EdgeEver"
+  },
+  "selectionSaveHint": {
+    "message": "Select text on a page, right-click, and choose “Save selection to EdgeEver”. It is saved as a new note in the default notebook selected below."
+  },
+  "savingSelection": {
+    "message": "Saving the selection…"
+  },
+  "selectionSaved": {
+    "message": "Saved the selection as a note."
+  },
+  "selectionEmpty": {
+    "message": "No text was selected, so nothing was saved."
+  },
+  "selectionNoteFallbackTitle": {
+    "message": "Selection"
   },
   "saveImageToEdgeEver": {
     "message": "Save image to EdgeEver"

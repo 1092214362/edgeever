@@ -23,6 +23,10 @@ import {
   type StoredImageFailure,
 } from "./image-clip";
 import {
+  selectionNoteMarkdown,
+  selectionNoteTitle,
+} from "./selection-clip";
+import {
   canonicalStatusUrl,
   isCapturedTweet,
   saveCapturedTweetNote,
@@ -35,6 +39,8 @@ type CapturedPage = {
   title: string;
   url: string;
   markdown: string;
+  plainText?: string;
+  kind?: "page" | "selection";
 };
 
 type PendingImageSave = {
@@ -49,6 +55,7 @@ type PendingImageSave = {
 };
 
 const IMAGE_MENU_ID = "save-image";
+const SELECTION_MENU_ID = "save-selection";
 const TWEET_MENU_ID = "save-tweet";
 const PENDING_IMAGE_SAVE_KEY = "pendingImageSave";
 const IMAGE_SAVE_WINDOW_KEY = "imageSaveWindowId";
@@ -94,17 +101,18 @@ const describeSaveError = (error: unknown) => {
   return t("saveFailedWithReason", message || t("saveFailed"));
 };
 
-const createMemo = async (settings: ExtensionSettings, page: CapturedPage) => {
+const notebookForClip = async (settings: ExtensionSettings) => {
   const notebooks = await listNotebooks(settings);
   const notebookId = settings.notebookId || notebooks.notebooks[0]?.id;
-  if (!notebookId) {
-    throw new Error(t("noAvailableNotebooks"));
-  }
+  if (!notebookId) throw new Error(t("noAvailableNotebooks"));
+  return notebookId;
+};
 
+const createMemo = async (settings: ExtensionSettings, page: CapturedPage) => {
   await edgeEverRequest(settings, "/api/v1/memos", {
     method: "POST",
     body: JSON.stringify({
-      notebookId,
+      notebookId: await notebookForClip(settings),
       title: page.title,
       contentMarkdown: toMarkdown(page),
       tags: ["web-clip"],
@@ -579,7 +587,122 @@ const saveTweetFromMenu = async (
   }
 };
 
+const isCapturedPage = (value: unknown): value is CapturedPage => {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Partial<CapturedPage>;
+  return typeof record.title === "string"
+    && typeof record.url === "string"
+    && typeof record.markdown === "string";
+};
+
+const readCapturedPage = async (tabId: number, frameId: number | null, mode: "page" | "selection") => {
+  const result = await new Promise<unknown>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pendingCapture = null;
+      reject(new Error(t("captureTimeout")));
+    }, 15_000);
+    pendingCapture = (page) => {
+      clearTimeout(timeout);
+      resolve(page);
+    };
+    const target = scriptTarget(tabId, frameId);
+    const inject = async () => {
+      await chrome.scripting.executeScript({
+        target,
+        func: (value: unknown) => {
+          (globalThis as { __edgeeverPageClipPayload?: unknown }).__edgeeverPageClipPayload = value;
+        },
+        args: [{ mode }],
+      });
+      await chrome.scripting.executeScript({
+        target,
+        files: ["assets/capture.js"],
+      });
+    };
+    void inject().catch((error: unknown) => {
+      clearTimeout(timeout);
+      pendingCapture = null;
+      reject(new Error(describeCaptureError(error)));
+    });
+  });
+  if (!isCapturedPage(result)) throw new Error(t("captureScriptFailed", t("captureUnknownError")));
+  return result;
+};
+
+const describeSelectionError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "";
+  if (
+    message === t("completePluginConfiguration")
+    || message === t("instancePermissionRequired")
+    || message === t("noAvailableNotebooks")
+    || message === t("selectionEmpty")
+    || message === t("captureTimeout")
+    || message === t("pageAccessDenied")
+  ) {
+    return message;
+  }
+  const captureScriptPrefix = t("captureScriptFailed", "\u0000").split("\u0000")[0] ?? "";
+  if (captureScriptPrefix && message.startsWith(captureScriptPrefix)) return message;
+  return describeSaveError(error);
+};
+
+const saveSelectionFromMenu = async (
+  info: { pageUrl?: string; frameId?: number; selectionText?: string },
+  tab?: { id?: number; url?: string; title?: string },
+) => {
+  const tabId = typeof tab?.id === "number" ? tab.id : null;
+  const frameId = typeof info.frameId === "number" ? info.frameId : null;
+  const pageUrl = tab?.url || info.pageUrl || "";
+  const pageTitle = tab?.title || "";
+  const browserSelection = (info.selectionText || "").replace(/\u00a0/g, " ").trim();
+  try {
+    const settings = await ensureClipperReady();
+    if (!tabId) throw new Error(t("selectionEmpty"));
+    await showFeedback(tabId, frameId, t("savingSelection"), "success");
+    let captured: CapturedPage | null = null;
+    try {
+      captured = await readCapturedPage(tabId, frameId, "selection");
+    } catch (error) {
+      if (!browserSelection) throw error;
+    }
+    const fromSelection = captured?.kind === "selection" ? captured : null;
+    const markdown = fromSelection?.markdown.trim() || browserSelection;
+    const plain = fromSelection?.plainText?.trim() || browserSelection || markdown;
+    if (!markdown.trim()) throw new Error(t("selectionEmpty"));
+    await edgeEverRequest(settings, "/api/v1/memos", {
+      method: "POST",
+      body: JSON.stringify({
+        notebookId: await notebookForClip(settings),
+        title: selectionNoteTitle(plain, pageTitle, t("selectionNoteFallbackTitle")),
+        contentMarkdown: selectionNoteMarkdown({
+          markdown,
+          pageUrl: fromSelection?.url || pageUrl,
+          capturedAt: new Date().toISOString(),
+          sourceLabel: t("sourceLabel"),
+          capturedAtLabel: t("capturedAtLabel"),
+        }),
+        tags: ["web-clip"],
+      }),
+    });
+    await showFeedback(tabId, frameId, t("selectionSaved"), "success");
+  } catch (error) {
+    const message = describeSelectionError(error);
+    if (message === t("completePluginConfiguration") || message === t("instancePermissionRequired")) {
+      await chrome.runtime.openOptionsPage();
+    }
+    await showFeedback(tabId, frameId, message, "error");
+  }
+};
+
 const registerClipMenus = () => {
+  chrome.contextMenus.create({
+    id: SELECTION_MENU_ID,
+    title: t("saveSelectionToEdgeEver"),
+    contexts: ["selection"],
+    documentUrlPatterns: ["http://*/*", "https://*/*"],
+  }, () => {
+    void chrome.runtime.lastError;
+  });
   chrome.contextMenus.create({
     id: IMAGE_MENU_ID,
     title: t("saveImageToEdgeEver"),
@@ -601,7 +724,11 @@ const registerClipMenus = () => {
 chrome.runtime.onInstalled.addListener(registerClipMenus);
 registerClipMenus();
 
-chrome.contextMenus.onClicked.addListener((info: { menuItemId?: string | number; srcUrl?: string; pageUrl?: string; frameId?: number }, tab?: { id?: number; url?: string; title?: string }) => {
+chrome.contextMenus.onClicked.addListener((info: { menuItemId?: string | number; srcUrl?: string; pageUrl?: string; frameId?: number; selectionText?: string }, tab?: { id?: number; url?: string; title?: string }) => {
+  if (info.menuItemId === SELECTION_MENU_ID) {
+    void enqueueClip(() => saveSelectionFromMenu(info, tab));
+    return;
+  }
   if (info.menuItemId === IMAGE_MENU_ID) {
     void enqueueClip(() => saveImageFromMenu(info, tab));
     return;
@@ -716,26 +843,7 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
           throw new Error(t("currentPageNotFound"));
         }
 
-        const page = await new Promise<CapturedPage>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            pendingCapture = null;
-            reject(new Error(t("captureTimeout")));
-          }, 15_000);
-
-          pendingCapture = (capturedPage) => {
-            clearTimeout(timeout);
-            resolve(capturedPage);
-          };
-
-          void chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ["assets/capture.js"],
-          }).catch((error: unknown) => {
-            clearTimeout(timeout);
-            pendingCapture = null;
-            reject(new Error(describeCaptureError(error)));
-          });
-        });
+        const page = await readCapturedPage(tab.id, null, "page");
         await createMemo(settings, page);
         sendResponse({ ok: true });
       } catch (error) {
