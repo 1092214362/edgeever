@@ -4311,6 +4311,12 @@ const RichEditorPane = ({
         </ClipboardCopyNotice>
       )}
 
+      {(wechatCopyState === "copied" || wechatCopyState === "error") && (
+        <ClipboardCopyNotice status={wechatCopyState === "copied" ? "copied" : "error"}>
+          {t(wechatCopyState === "copied" ? "editor.copiedToWeChat" : "editor.copyToWeChatFailed")}
+        </ClipboardCopyNotice>
+      )}
+
       {isMobileViewport && !mobileEditingActive && !readOnly && (
         <Button
           className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 h-12 w-12 rounded-full shadow-lg sm:hidden"
