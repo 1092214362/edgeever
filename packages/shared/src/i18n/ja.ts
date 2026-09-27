@@ -1958,7 +1958,7 @@ export const ja = {
     typeInput: "入力",
     clipboardReadFailed: "クリップボードを読み取れませんでした。ブラウザがクリップボードへのアクセスを許可しているか確認してください。",
     characterCount: "{{count}} 文字",
-    copyToWeChat: "体裁付きコピー / WeChat・WordPress・Substack 向けにコピー",
+    copyToWeChat: "書式付きコピー",
     phonePreview: "スマホプレビュー",
     showPhonePreview: "スマホプレビューを表示",
     hidePhonePreview: "スマホプレビューを隠す",

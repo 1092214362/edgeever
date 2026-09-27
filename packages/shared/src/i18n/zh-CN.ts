@@ -1956,7 +1956,7 @@ export const zhCN = {
     typeInput: "输入",
     clipboardReadFailed: "读取剪贴板失败。请确认浏览器允许剪贴板权限。",
     characterCount: "{{count}} 字",
-    copyToWeChat: "复制到公众号、WordPress、Substack 等平台",
+    copyToWeChat: "复制到公众号 / 博客",
     phonePreview: "手机预览",
     showPhonePreview: "显示手机预览",
     hidePhonePreview: "隐藏手机预览",

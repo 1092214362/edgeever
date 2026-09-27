@@ -1958,7 +1958,7 @@ export const enUS = {
     typeInput: "Type",
     clipboardReadFailed: "Could not read the clipboard. Check that your browser allows clipboard access.",
     characterCount: "{{count}} chars",
-    copyToWeChat: "Copy to WeChat, WordPress, Substack, and other platforms",
+    copyToWeChat: "Copy as Rich Text",
     phonePreview: "Phone preview",
     showPhonePreview: "Show phone preview",
     hidePhonePreview: "Hide phone preview",
