@@ -540,6 +540,7 @@ export const enUS = {
     theme: "Color scheme",
     themeGroupVivid: "Bright",
     themeGroupClassic: "Quiet",
+    themePlain: "Plain",
     themeBrand: "Forest",
     themeCosmos: "Cosmos",
     themeDune: "Dune",

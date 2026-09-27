@@ -540,6 +540,7 @@ export const zhCN = {
     theme: "配色",
     themeGroupVivid: "鲜亮",
     themeGroupClassic: "沉静",
+    themePlain: "素简",
     themeBrand: "森绿",
     themeCosmos: "夜航",
     themeDune: "砂丘",
