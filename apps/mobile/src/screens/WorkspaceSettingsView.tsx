@@ -66,6 +66,7 @@ type MobileSystemInfoItem = {
   fullWidth?: boolean;
   label: string;
   localOnly?: boolean;
+  mono?: boolean;
   value: string;
 };
 
@@ -481,18 +482,12 @@ const MobileSystemInfoSection = ({ group }: { group: MobileSystemInfoGroup }) =>
         </View>
       ) : null}
       <View style={styles.systemInfoRows}>
-        {layoutMobileSystemInfoRows(group.items, 3).map((rowItems, rowIndex, rows) => (
-          <View
-            key={`${group.id}-row-${rowIndex}`}
-            style={[styles.systemInfoRow, rowIndex === rows.length - 1 && styles.systemInfoRowLast]}
-          >
-            {rowItems.map((item, itemIndex) => (
-              <View
-                key={item.label}
-                style={[styles.systemInfoCell, itemIndex < rowItems.length - 1 && styles.systemInfoCellDivider]}
-              >
+        {layoutMobileSystemInfoRows(group.items, 3).map((rowItems, rowIndex) => (
+          <View key={`${group.id}-row-${rowIndex}`} style={styles.systemInfoRow}>
+            {rowItems.map((item) => (
+              <View key={item.label} style={styles.systemInfoCell}>
                 <Text style={styles.panelLabel}>{item.label}</Text>
-                <Text selectable style={styles.systemInfoListValue}>{item.value}</Text>
+                <Text selectable style={[styles.systemInfoListValue, item.mono && styles.systemInfoMonoValue]}>{item.value}</Text>
               </View>
             ))}
           </View>
@@ -721,12 +716,12 @@ const getMobileSystemInfoGroups = (
         ...(diagnostics.instanceUrl
           ? [{ fullWidth: true, label: copy.instanceUrl, localOnly: true, value: diagnostics.instanceUrl }]
           : []),
-        { label: copy.instanceVersion, value: instance?.version ? `v${instance.version.replace(/^v/, "")}` : copy.unknown },
-        { label: copy.databaseVersion, value: instance?.health.migration || copy.unknown },
+        { label: copy.instanceVersion, mono: true, value: instance?.version ? `v${instance.version.replace(/^v/, "")}` : copy.unknown },
+        { label: copy.databaseVersion, mono: true, value: instance?.health.migration || copy.unknown },
         { label: copy.databaseBackend, value: getMobileDatabaseBackend(instance?.health.storage?.database, copy.unknown) },
         { label: copy.deploymentPlatform, value: getMobileDeploymentPlatform(instance?.health.runtime, english) },
-        { fullWidth: true, label: copy.instanceBuild, value: instance?.health.build || copy.unknown },
-        { fullWidth: true, label: copy.newUploadObjectStorage, value: getMobileObjectStorage(instance?.health, english, copy.unknown) },
+        { label: copy.instanceBuild, mono: true, value: instance?.health.build || copy.unknown },
+        { label: copy.newUploadObjectStorage, value: getMobileObjectStorage(instance?.health, english, copy.unknown) },
         ...(instance?.health.objectStorageProvider === "s3"
           ? [{ fullWidth: true, label: copy.existingAttachments, value: copy.existingAttachmentsOriginalStorage }]
           : []),
@@ -740,14 +735,15 @@ const getMobileSystemInfoGroups = (
       description: copy.clientDescription,
       id: "client",
       items: [
-        { label: copy.version, value: `v${MOBILE_APP_VERSION}` },
+        { label: copy.version, mono: true, value: `v${MOBILE_APP_VERSION}` },
         { label: copy.build, value: __DEV__ ? copy.developmentBuild : copy.productionBuild },
         { label: copy.client, value: copy.mobileApp },
         { label: copy.platform, value: platformName },
-        { label: copy.platformVersion, value: Platform.OS === "android" ? `${Platform.constants.Release} (API ${Platform.Version})` : String(Platform.Version) },
-        { fullWidth: true, label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown },
+        { label: copy.platformVersion, mono: true, value: Platform.OS === "android" ? `${Platform.constants.Release} (API ${Platform.Version})` : String(Platform.Version) },
+        { label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown },
         {
           fullWidth: true,
+          mono: true,
           label: copy.screenResolution,
           value: formatClientDisplaySize(toDevicePixelScreenSize({
             devicePixelRatio: PixelRatio.get(),
@@ -755,8 +751,8 @@ const getMobileSystemInfoGroups = (
             screenWidth: Dimensions.get("screen").width,
           }), copy.screenResolutionValue) || copy.unknown,
         },
-        { label: copy.language, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
-        { label: copy.timeZone, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
+        { label: copy.language, mono: true, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
+        { label: copy.timeZone, mono: true, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
         { label: copy.installMode, value: formatExecutionEnvironment(Constants.executionEnvironment, localePreference) },
       ],
       title: copy.clientSection,
@@ -766,9 +762,9 @@ const getMobileSystemInfoGroups = (
       id: "connection",
       items: [
         { label: copy.instanceConnection, value: connectionValue },
-        { label: copy.requestLatency, value: instance ? `${instance.latencyMs} ms` : copy.unknown },
-        { label: copy.pendingSync, value: pendingSync === null ? copy.unknown : String(pendingSync) },
-        { label: copy.failedSync, value: failedSync === null ? copy.unknown : String(failedSync) },
+        { label: copy.requestLatency, mono: true, value: instance ? `${instance.latencyMs} ms` : copy.unknown },
+        { label: copy.pendingSync, mono: true, value: pendingSync === null ? copy.unknown : String(pendingSync) },
+        { label: copy.failedSync, mono: true, value: failedSync === null ? copy.unknown : String(failedSync) },
       ],
       title: copy.connectionSection,
     },
