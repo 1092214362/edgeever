@@ -1100,13 +1100,19 @@ const baseWorkspaceStyles = StyleSheet.create({
     minWidth: 0,
     gap: 2,
   },
+  systemInfoItemLabel: {
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: "500",
+  },
   systemInfoListValue: {
     color: "#0f172a",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "400",
   },
   systemInfoMonoValue: {
     fontFamily: "monospace",
+    fontSize: 10,
   },
   panelLinkRow: {
     alignItems: "center",

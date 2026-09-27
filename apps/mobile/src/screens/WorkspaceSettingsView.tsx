@@ -486,7 +486,7 @@ const MobileSystemInfoSection = ({ group }: { group: MobileSystemInfoGroup }) =>
           <View key={`${group.id}-row-${rowIndex}`} style={styles.systemInfoRow}>
             {rowItems.map((item) => (
               <View key={item.label} style={styles.systemInfoCell}>
-                <Text style={styles.panelLabel}>{item.label}</Text>
+                <Text style={styles.systemInfoItemLabel}>{item.label}</Text>
                 <Text selectable style={[styles.systemInfoListValue, item.mono && styles.systemInfoMonoValue]}>{item.value}</Text>
               </View>
             ))}
@@ -721,7 +721,7 @@ const getMobileSystemInfoGroups = (
         { label: copy.databaseBackend, value: getMobileDatabaseBackend(instance?.health.storage?.database, copy.unknown) },
         { label: copy.deploymentPlatform, value: getMobileDeploymentPlatform(instance?.health.runtime, english) },
         { label: copy.instanceBuild, mono: true, value: instance?.health.build || copy.unknown },
-        { label: copy.newUploadObjectStorage, value: getMobileObjectStorage(instance?.health, english, copy.unknown) },
+        { fullWidth: true, label: copy.newUploadObjectStorage, value: getMobileObjectStorage(instance?.health, english, copy.unknown) },
         ...(instance?.health.objectStorageProvider === "s3"
           ? [{ fullWidth: true, label: copy.existingAttachments, value: copy.existingAttachmentsOriginalStorage }]
           : []),
