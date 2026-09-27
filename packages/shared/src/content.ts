@@ -14,7 +14,7 @@ import {
 import { projectNativeUnknownContentForMarkdown } from "./mobile-content-compatibility";
 import { PluginEmbed, PLUGIN_EMBED_NODE_TYPE } from "./plugin-embed";
 import { NEW_IMAGE_WIDTH_PERCENT, parseImageWidth } from "./image-display";
-import { ImageGallery, IMAGE_GALLERY_NODE_TYPE, normalizeImageGalleries } from "./image-gallery";
+import { ImageGallery, IMAGE_GALLERY_NODE_TYPE, groupConsecutiveImagesIntoGalleries, normalizeImageGalleries } from "./image-gallery";
 import { EMPTY_EXTERNAL_LINK_NODE_TYPE } from "./empty-external-link";
 
 export { PluginEmbed, PLUGIN_EMBED_NODE_TYPE, pluginEmbedToMarkdown, normalizePluginEmbedAttributes } from "./plugin-embed";
@@ -143,7 +143,10 @@ export const markdownToDoc = (markdown: string): TiptapDoc => {
   }
 
   const parsed = markdownManager.parse(expandExtraBlankLinesForParse(normalized)) as TiptapDoc;
-  return { ...parsed, content: parsed.content.map(withDefaultImageWidths) };
+  return {
+    ...parsed,
+    content: groupConsecutiveImagesIntoGalleries(parsed.content.map(withDefaultImageWidths)),
+  };
 };
 
 const docContainsNodeType = (doc: TiptapDoc, nodeType: string): boolean => {
