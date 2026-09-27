@@ -747,11 +747,6 @@ export const zhCN = {
     systemLanguage: "跟随系统",
     imageCompressionTitle: "压缩笔记内图片",
     imageCompressionAria: "是否压缩笔记内图片",
-    aiTagPromptTitle: "AI 标签建议指令",
-    aiTagPromptDescription: "自定义 AI 如何根据笔记内容生成标签。此设置保存在工作区，各端共用。",
-    aiTagPromptRestore: "恢复默认指令",
-    aiTagPromptSaved: "AI 标签建议指令已保存。",
-    aiTagPromptFailed: "AI 标签建议指令保存失败。",
     aiSelectionMenuTitle: "选中文字时显示 AI 助手",
     aiSelectionMenuAria: "选中文字时是否显示 AI 助手入口",
     aiSpaceShortcutTitle: "空白段落按 Space 唤起 AI",
@@ -1374,10 +1369,6 @@ export const zhCN = {
     desktopUpdateRestart: "重启以更新",
     desktopUpdateInstalling: "正在重启并安装更新…",
     desktopUpdateFailed: "更新失败，请稍后重试。",
-  },
-  productHunt: {
-    title: "Product Hunt",
-    description: "为我们投票，让更多人发现 EdgeEver",
   },
   feedback: {
     title: "意见反馈",

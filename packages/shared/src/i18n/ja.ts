@@ -747,11 +747,6 @@ export const ja = {
     systemLanguage: "システムに合わせる",
     imageCompressionTitle: "ノート内の画像を圧縮",
     imageCompressionAria: "ノート内の画像を圧縮する",
-    aiTagPromptTitle: "AI タグ提案の指示",
-    aiTagPromptDescription: "ノート本文からタグをどう作るかをカスタマイズします。このワークスペース設定はすべてのクライアントで共有されます。",
-    aiTagPromptRestore: "デフォルトの指示に戻す",
-    aiTagPromptSaved: "AI タグ提案の指示を保存しました。",
-    aiTagPromptFailed: "AI タグ提案の指示を保存できませんでした。",
     aiSelectionMenuTitle: "文字選択時に AI アシスタントを表示",
     aiSelectionMenuAria: "文字選択時に AI アシスタント操作を表示する",
     aiSpaceShortcutTitle: "空のブロックで Space から AI を開く",
@@ -1374,10 +1369,6 @@ export const ja = {
     desktopUpdateRestart: "再起動して更新",
     desktopUpdateInstalling: "再起動して更新をインストールしています…",
     desktopUpdateFailed: "更新に失敗しました。しばらくしてから再試行してください。",
-  },
-  productHunt: {
-    title: "Product Hunt",
-    description: "EdgeEver に投票して、より多くの人に見つけてもらいましょう",
   },
   feedback: {
     title: "フィードバック",

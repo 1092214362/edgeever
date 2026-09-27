@@ -26,14 +26,12 @@ import { DesktopLocalDataCard } from "./settings/DesktopLocalDataCard";
 import { LoginDevicesCard } from "./settings/LoginDevicesCard";
 import { EvernoteImportGuideCard } from "./settings/EvernoteImportGuideCard";
 import { FeedbackLink } from "./settings/FeedbackLink";
-import { ProductHuntLink } from "./settings/ProductHuntLink";
 import { McpConfigCard } from "./settings/McpConfigCard";
 import { PreferenceCard } from "./settings/PreferenceCard";
 import { PasswordCard } from "./settings/PasswordCard";
 import { UserManagementCard } from "./settings/UserManagementCard";
 import { ObjectStorageCard } from "./settings/ObjectStorageCard";
 import { AiModelCard } from "./settings/AiModelCard";
-import { AiTagSuggestionPromptCard } from "./settings/AiTagSuggestionPromptCard";
 import { ThemeToggle } from "./ThemeToggle";
 import type { AuthUser } from "@edgeever/shared";
 import { contentEnterMotion } from "@/lib/motion";
@@ -127,11 +125,15 @@ export const SettingsPane = ({
           },
         ]
       : []),
-    {
-      key: "advanced",
-      label: t("settings.tabs.advanced"),
-      icon: Wrench,
-    },
+    ...(isOwner || canClearLocalData
+      ? [
+          {
+            key: "advanced" as const,
+            label: t("settings.tabs.advanced"),
+            icon: Wrench,
+          },
+        ]
+      : []),
     {
       key: "account",
       label: t("settings.tabs.account"),
@@ -177,7 +179,6 @@ export const SettingsPane = ({
               onEditorContentAlignmentChange={onEditorContentAlignmentChange}
             />
             <FeedbackLink className="hidden lg:flex" />
-            <ProductHuntLink className="hidden lg:flex" />
           </SettingsGroup>
         );
       case "users":
@@ -203,7 +204,6 @@ export const SettingsPane = ({
       case "advanced":
         return (
           <SettingsGroup>
-            <AiTagSuggestionPromptCard />
             {isOwner ? <ObjectStorageCard demoMode={demoMode} /> : null}
             {canClearLocalData ? <DesktopLocalDataCard /> : null}
           </SettingsGroup>
@@ -377,7 +377,6 @@ export const SettingsPane = ({
                   <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
                 </button>
                 <FeedbackLink />
-                <ProductHuntLink />
               </div>
             </div>
           ) : (

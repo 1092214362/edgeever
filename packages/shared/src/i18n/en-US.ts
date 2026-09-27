@@ -747,11 +747,6 @@ export const enUS = {
     systemLanguage: "Follow system",
     imageCompressionTitle: "Compress note images",
     imageCompressionAria: "Compress note images",
-    aiTagPromptTitle: "AI tag suggestion instruction",
-    aiTagPromptDescription: "Customize how AI derives tags from note content. This workspace setting is shared by every client.",
-    aiTagPromptRestore: "Restore default instruction",
-    aiTagPromptSaved: "The AI tag suggestion instruction was saved.",
-    aiTagPromptFailed: "Failed to save the AI tag suggestion instruction.",
     aiSelectionMenuTitle: "Show AI assistant when text is selected",
     aiSelectionMenuAria: "Show the AI assistant action when text is selected",
     aiSpaceShortcutTitle: "Open AI with Space in an empty block",
@@ -1374,10 +1369,6 @@ export const enUS = {
     desktopUpdateRestart: "Restart to Update",
     desktopUpdateInstalling: "Restarting to install update…",
     desktopUpdateFailed: "Update failed. Please try again later.",
-  },
-  productHunt: {
-    title: "Product Hunt",
-    description: "Upvote EdgeEver so more people can find it",
   },
   feedback: {
     title: "Feedback",
