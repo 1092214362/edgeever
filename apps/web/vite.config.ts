@@ -336,6 +336,15 @@ export default defineConfig({
               // Keep the graph atomic and defer the resulting chunk instead.
             },
             {
+              name: "vendor-infographic",
+              test: /node_modules[\\/]@antv[\\/]infographic[\\/]/,
+              priority: 39,
+              // AntV Infographic registers its template and shape catalogs through
+              // internal registries. Size-based splitting across chunks breaks
+              // initialization order, causing registry map lookups (e.g. .set)
+              // to fail on undefined during chunk evaluation. Keep this graph atomic.
+            },
+            {
               name: "vendor-prosemirror",
               test: /node_modules[\\/](prosemirror-|orderedmap|rope-sequence)[\\/]/,
               priority: 38,
