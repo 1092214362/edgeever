@@ -1,4 +1,5 @@
 import {
+  edgeEverFormRequest,
   edgeEverRequest,
   getInstanceOrigin,
   getSettings,
@@ -10,6 +11,7 @@ import {
   filenameForImage,
   imageFromBase64,
   imageFromBytes,
+  imageFromDataUrl,
   imageHostName,
   imageOriginPattern,
   isPageImageRead,
@@ -145,6 +147,23 @@ const imageNoteClient = (settings: ExtensionSettings): ImageNoteClient => ({
     `/api/v1/memos/${encodeURIComponent(memoId)}?permanent=1`,
     { method: "DELETE" },
   ),
+  createWithImage: async (body) => {
+    const buffer = new ArrayBuffer(body.bytes.byteLength);
+    new Uint8Array(buffer).set(body.bytes);
+    const form = new FormData();
+    form.append("notebookId", body.notebookId);
+    form.append("title", body.title);
+    form.append("contentMarkdown", body.contentMarkdown);
+    form.append("tags", JSON.stringify(body.tags));
+    form.append("file", new File([buffer], body.filename, { type: body.mimeType }));
+    const created = await edgeEverFormRequest<{ memo: { id: string }; resourceId: string }>(
+      settings,
+      "/api/v1/memos/with-image",
+      form,
+    );
+    if (!created.memo?.id || !created.resourceId) throw new Error("create-missing-id");
+    return { memoId: created.memo.id, resourceId: created.resourceId };
+  },
 });
 
 const scriptTarget = (tabId: number, frameId: number | null) =>
@@ -408,6 +427,15 @@ const saveImageFromMenu = async (
     await ensureClipperReady();
     if (!srcUrl) throw new Error(t("imageUnreadable"));
     await showFeedback(tabId, frameId, t("savingImage"), "success");
+    const inlineImage = imageFromDataUrl(srcUrl);
+    if (inlineImage && !("error" in inlineImage)) {
+      const settings = await ensureClipperReady();
+      await persistImage(settings, inlineImage, { srcUrl, pageUrl, pageTitle, alt: "" });
+      await chrome.storage.session.remove(PENDING_IMAGE_SAVE_KEY);
+      await showFeedback(tabId, frameId, t("imageSaved"), "success");
+      return;
+    }
+    if (inlineImage && "error" in inlineImage) throw new Error(imageFailureMessage(inlineImage.error));
     const urls = preferredImageUrls(srcUrl);
     let pageRead: PageImageRead | null = null;
     if (tabId) {
