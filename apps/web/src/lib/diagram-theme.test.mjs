@@ -39,7 +39,7 @@ describe("diagram appearance palettes", () => {
     expect(Object.keys(DIAGRAM_THEME_PALETTES)).toEqual(expect.arrayContaining([
       "plain", "brand", "cosmos", "dune", "slate", "prism", "sunrise", "marine", "blossom", "mint", "macaron",
     ]));
-    expect(resolveDiagramPalette("plain", "light").topicFill).toBe("#525252");
+    expect(resolveDiagramPalette("plain", "light").topicFill).toBe("#707070");
     const globals = readFileSync(new URL("../styles/globals.css", import.meta.url), "utf8");
     expect(globals).toContain(`--workspace-editor: ${DIAGRAM_CANVAS_LIGHT};`);
     expect(globals).toContain(`--workspace-editor: ${DIAGRAM_CANVAS_DARK};`);

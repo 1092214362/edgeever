@@ -81,7 +81,7 @@ describe("flowchart semantic paint", () => {
       FLOWCHART_SURFACES[theme].light.canvas,
       FLOWCHART_SURFACES[theme].dark.canvas,
     ]))).toEqual(new Set([DIAGRAM_CANVAS_LIGHT, DIAGRAM_CANVAS_DARK]));
-    expect(FLOWCHART_SURFACES.plain.light.terminator.fill).toBe("#525252");
+    expect(FLOWCHART_SURFACES.plain.light.terminator.fill).toBe("#707070");
     expect(FLOWCHART_SURFACES.brand.light.terminator.stroke).toBe("#16A06E");
     expect(new Set(FLOWCHART_SELECTABLE_THEMES.map((theme) => FLOWCHART_SURFACES[theme].light.terminator.stroke)).size).toBe(11);
     expect(resolveFlowchartSurface("light", "ink").terminator.stroke).toBe("#3A4656");

@@ -115,7 +115,7 @@ export const FLOWCHART_SURFACES: Record<FlowchartTheme, Record<FlowchartAppearan
       edge: "#737373",
       process: { fill: "#FFFFFF", stroke: "#D4D4D4", text: "#212121" },
       decision: { fill: "#F4F4F5", stroke: "#737373", text: "#212121" },
-      terminator: { fill: "#525252", stroke: "#525252", text: "#FFFFFF" },
+      terminator: { fill: "#707070", stroke: "#707070", text: "#FFFFFF" },
     },
     dark: {
       canvas: DIAGRAM_CANVAS_DARK,

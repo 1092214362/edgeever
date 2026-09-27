@@ -73,7 +73,7 @@ describe("diagram document", () => {
     expect(markdown).toContain("```mermaid\nflowchart TD");
     expect(markdown).toContain('n1["处理步骤"]');
     expect(markdown).toContain("classDef flowProcess fill:#FFFFFF,stroke:#D4D4D4,color:#212121");
-    expect(markdown).toContain("classDef flowTerminator fill:#525252,stroke:#525252,color:#FFFFFF");
+    expect(markdown).toContain("classDef flowTerminator fill:#707070,stroke:#707070,color:#FFFFFF");
     expect(markdown).toContain("class n1 flowProcess");
     expect(markdown).toContain("class n0 flowTerminator");
 
@@ -109,14 +109,14 @@ describe("diagram document", () => {
     expect(document.theme).toBe("plain");
     const plain = diagramDocumentToX6Cells(document, "light");
     expect(plain.canvas).toBe(DIAGRAM_CANVAS_LIGHT);
-    expect(plain.nodes[0].attrs.body.fill).toBe("#525252");
+    expect(plain.nodes[0].attrs.body.fill).toBe("#707070");
     expect(plain.nodes[0].attrs.label.fill).toBe("#FFFFFF");
     expect(plain.nodes[1].attrs.body.fill).toBe("#FFFFFF");
     expect(plain.nodes[1].attrs.body.stroke).toBe(plain.nodes[2].attrs.body.stroke);
     expect(plain.nodes.find((node) => node.id === "topic-1-a").attrs.underline.stroke).toBe("#737373");
     const unset = structuredClone(document);
     delete unset.theme;
-    expect(diagramDocumentToX6Cells(unset, "light").nodes[0].attrs.body.fill).toBe("#525252");
+    expect(diagramDocumentToX6Cells(unset, "light").nodes[0].attrs.body.fill).toBe("#707070");
 
     document.theme = "brand";
     const light = diagramDocumentToX6Cells(document, "light");
@@ -160,7 +160,7 @@ describe("diagram document", () => {
     expect(source).toContain("核心 &lt;主题&gt; &quot;A&amp;B&quot;");
     expect(source).toContain("n0 --- n1");
     expect(source).toContain("class n0 mindRoot");
-    expect(source).toContain("classDef mindRoot fill:#525252,stroke:#525252,color:#FFFFFF");
+    expect(source).toContain("classDef mindRoot fill:#707070,stroke:#707070,color:#FFFFFF");
   });
 
   test("round-trips architecture components, boundaries, and semantic connections", () => {

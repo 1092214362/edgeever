@@ -24,8 +24,8 @@ export const DIAGRAM_THEME_DEFINITIONS: Record<
   plain: {
     id: "plain",
     group: "classic",
-    colors: ["#525252", "#737373", "#8A8A8A", "#A3A3A3", "#D4D4D4", "#FFFFFF"],
-    accent: "#525252",
+    colors: ["#707070", "#8A8A8A", "#A3A3A3", "#BDBDBD", "#D4D4D4", "#FFFFFF"],
+    accent: "#707070",
   },
   brand: {
     id: "brand",
@@ -185,12 +185,12 @@ export const buildDiagramPalette = (theme: DiagramTheme | undefined, appearance:
       };
     }
     return {
-      topicFill: "#525252",
+      topicFill: "#707070",
       topicText: "#FFFFFF",
       nodeFill: "#FFFFFF",
       nodeText: "#212121",
       nodeStroke: "#D4D4D4",
-      topicStroke: "#525252",
+      topicStroke: "#707070",
       mindMapEdge: "#737373",
       flowEdge: "#737373",
       canvas: DIAGRAM_CANVAS_LIGHT,

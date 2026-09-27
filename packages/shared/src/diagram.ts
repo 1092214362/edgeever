@@ -375,7 +375,7 @@ export const diagramDocumentToMermaid = (document: DiagramDocument) => {
     const rootId = root ? nodeIds.get(root.id) : undefined;
     if (rootId) {
       const rootStyle = resolveDiagramTheme(document.theme) === "plain"
-        ? "fill:#525252,stroke:#525252,color:#FFFFFF,stroke-width:1.5px"
+        ? "fill:#707070,stroke:#707070,color:#FFFFFF,stroke-width:1.5px"
         : "fill:#16A06E,stroke:#12845B,color:#fff,stroke-width:1.5px";
       lines.push(`  classDef mindRoot ${rootStyle}`);
       lines.push(`  class ${rootId} mindRoot`);
