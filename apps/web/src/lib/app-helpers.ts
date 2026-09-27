@@ -383,11 +383,14 @@ export const writeDesktopReadingProtectionPreference = (enabled: boolean) => {
   }
 };
 
-export const readEditorOutlineCollapsedPreference = () => {
+export const readEditorOutlineCollapsedPreference = (options?: { defaultCollapsed?: boolean }) => {
   try {
-    return window.localStorage.getItem(EDITOR_OUTLINE_COLLAPSED_STORAGE_KEY) !== "false";
+    const value = window.localStorage.getItem(EDITOR_OUTLINE_COLLAPSED_STORAGE_KEY);
+    if (value === "false") return false;
+    if (value === "true") return true;
+    return options?.defaultCollapsed ?? true;
   } catch {
-    return true;
+    return options?.defaultCollapsed ?? true;
   }
 };
 

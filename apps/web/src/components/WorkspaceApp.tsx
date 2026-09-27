@@ -66,6 +66,7 @@ import {
   MIN_MEMO_LIST_WIDTH_PX,
   MAX_MEMO_LIST_WIDTH_PX,
   DEFAULT_MEMO_LIST_WIDTH_PX,
+  EDITOR_OUTLINE_COLLAPSED_STORAGE_KEY,
   isTextEntryTarget,
   getSearchShortcutScope,
   getShortcutActionForEvent,
@@ -474,6 +475,11 @@ export const WorkspaceApp = ({
       return { previousSelectedMemoId };
     },
     onSuccess: async () => {
+      try {
+        window.localStorage.removeItem(EDITOR_OUTLINE_COLLAPSED_STORAGE_KEY);
+      } catch {
+        // Local storage can be unavailable in private or restricted browser contexts.
+      }
       setDemoResetConfirmationOpen(false);
       queryClient.removeQueries({ queryKey: ["memo"] });
       await Promise.all([
@@ -3555,6 +3561,7 @@ export const WorkspaceApp = ({
                         />
                       ) : (
                       <EditorPane
+                      demoMode={demoMode}
                       onOpenExecutionCenter={handleOpenExecutionCenter}
                       memo={selectedMemo}
                       repository={repository}
