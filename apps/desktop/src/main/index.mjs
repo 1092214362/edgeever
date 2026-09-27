@@ -712,7 +712,7 @@ const handleProtocolUrl = (target) => {
   if (typeof target !== "string" || !target.startsWith("edgeever://")) return;
   try {
     const url = new URL(target);
-    if (url.hostname === "wechat-import") {
+    if (url.hostname === "wechat-import" || url.hostname === "share-import") {
       void wechatShare().importFromProtocolUrl(target);
       return;
     }
