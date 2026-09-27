@@ -3,6 +3,8 @@ import {
   ChevronRight,
   Database,
   Info,
+  Keyboard,
+  KeyRound,
   LayoutTemplate,
   Shield,
   SlidersHorizontal,
@@ -28,6 +30,7 @@ import { EvernoteImportGuideCard } from "./settings/EvernoteImportGuideCard";
 import { FeedbackLink } from "./settings/FeedbackLink";
 import { McpConfigCard } from "./settings/McpConfigCard";
 import { PreferenceCard } from "./settings/PreferenceCard";
+import { ShortcutSettingsItem } from "./settings/ShortcutSettingsItem";
 import { PasswordCard } from "./settings/PasswordCard";
 import { UserManagementCard } from "./settings/UserManagementCard";
 import { ObjectStorageCard } from "./settings/ObjectStorageCard";
@@ -65,7 +68,7 @@ const SettingsGroup = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
-type TabKey = "general" | "users" | "data" | "ai" | "advanced" | "account";
+type TabKey = "general" | "shortcuts" | "users" | "data" | "ai" | "mcp" | "advanced" | "account";
 
 interface TabItem {
   key: TabKey;
@@ -107,9 +110,19 @@ export const SettingsPane = ({
       icon: SlidersHorizontal,
     },
     {
+      key: "shortcuts",
+      label: t("settings.tabs.shortcuts"),
+      icon: Keyboard,
+    },
+    {
       key: "ai",
       label: t("settings.tabs.ai"),
       icon: Sparkles,
+    },
+    {
+      key: "mcp",
+      label: t("settings.tabs.mcp"),
+      icon: KeyRound,
     },
     {
       key: "data",
@@ -141,6 +154,8 @@ export const SettingsPane = ({
     },
   ];
 
+  const mobileTabItems = tabItems.filter((item) => item.key !== "shortcuts");
+
   const handleBack = () => {
     if (activeMobileTab !== null) {
       setActiveMobileTab(null);
@@ -169,17 +184,24 @@ export const SettingsPane = ({
     switch (key) {
       case "general":
         return (
-          <SettingsGroup>
+          <div className="grid gap-6">
             <PreferenceCard
               imageCompressionEnabled={imageCompressionEnabled}
               onImageCompressionChange={onImageCompressionChange}
-              shortcutSettings={shortcutSettings}
-              onShortcutSettingsChange={onShortcutSettingsChange}
               editorContentAlignment={editorContentAlignment}
               onEditorContentAlignmentChange={onEditorContentAlignmentChange}
             />
-            <FeedbackLink className="hidden lg:flex" />
-          </SettingsGroup>
+            <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-card lg:block">
+              <FeedbackLink />
+            </div>
+          </div>
+        );
+      case "shortcuts":
+        return (
+          <ShortcutSettingsItem
+            shortcutSettings={shortcutSettings}
+            onShortcutSettingsChange={onShortcutSettingsChange}
+          />
         );
       case "users":
         return isOwner ? (
@@ -198,6 +220,11 @@ export const SettingsPane = ({
         return (
           <SettingsGroup>
             <AiModelCard />
+          </SettingsGroup>
+        );
+      case "mcp":
+        return (
+          <SettingsGroup>
             <McpConfigCard />
           </SettingsGroup>
         );
@@ -335,7 +362,7 @@ export const SettingsPane = ({
                 </button>
               </div>
               <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-card">
-                {tabItems.map((item) => {
+                {mobileTabItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <button

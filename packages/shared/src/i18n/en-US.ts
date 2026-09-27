@@ -741,8 +741,11 @@ export const enUS = {
   settings: {
     title: "Me",
     subtitle: "Preferences, system info, MCP tokens, and sign-in session",
-    preferences: "Preferences",
-    preferencesDescription: "Customize interface appearance, editor typography, and shortcut preferences.",
+    groups: {
+      interface: "Interface",
+      reading: "Reading",
+      editing: "Editing",
+    },
     languageTitle: "Interface language",
     systemLanguage: "Follow system",
     imageCompressionTitle: "Compress note images",
@@ -878,7 +881,9 @@ export const enUS = {
     themeToggleToLight: "Switch to light mode",
     tabs: {
       general: "General",
+      shortcuts: "Shortcuts",
       ai: "AI Integrations",
+      mcp: "MCP",
       data: "Import & Export",
       advanced: "Advanced",
       account: "Login Settings",

@@ -741,8 +741,11 @@ export const zhCN = {
   settings: {
     title: "我的",
     subtitle: "个人偏好、系统信息、MCP Token 与登录会话",
-    preferences: "偏好设置",
-    preferencesDescription: "自定义界面显示、编辑器排版与快捷键操作偏好。",
+    groups: {
+      interface: "界面",
+      reading: "阅读",
+      editing: "编辑",
+    },
     languageTitle: "界面语言",
     systemLanguage: "跟随系统",
     imageCompressionTitle: "压缩笔记内图片",
@@ -878,7 +881,9 @@ export const zhCN = {
     themeToggleToLight: "切换到浅色模式",
     tabs: {
       general: "常规设置",
+      shortcuts: "快捷键",
       ai: "AI集成",
+      mcp: "MCP",
       data: "导入导出",
       advanced: "高级设置",
       account: "登录设置",

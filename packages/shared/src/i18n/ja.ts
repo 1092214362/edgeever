@@ -741,8 +741,11 @@ export const ja = {
   settings: {
     title: "マイ",
     subtitle: "設定、システム情報、MCP トークン、サインインセッション",
-    preferences: "設定",
-    preferencesDescription: "画面の見た目、エディタの書体、ショートカットの好みを調整します。",
+    groups: {
+      interface: "画面",
+      reading: "閲覧",
+      editing: "編集",
+    },
     languageTitle: "表示言語",
     systemLanguage: "システムに合わせる",
     imageCompressionTitle: "ノート内の画像を圧縮",
@@ -878,7 +881,9 @@ export const ja = {
     themeToggleToLight: "ライトモードに切り替え",
     tabs: {
       general: "一般",
+      shortcuts: "ショートカット",
       ai: "AI 連携",
+      mcp: "MCP",
       data: "インポートとエクスポート",
       advanced: "詳細",
       account: "ログイン設定",
