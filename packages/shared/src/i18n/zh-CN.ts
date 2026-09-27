@@ -884,7 +884,7 @@ export const zhCN = {
       general: "常规设置",
       shortcuts: "快捷键",
       ai: "AI集成",
-      mcp: "API Token",
+      mcp: "API / MCP",
       data: "导入导出",
       advanced: "高级设置",
       account: "登录设置",
