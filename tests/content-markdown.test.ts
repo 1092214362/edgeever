@@ -83,6 +83,7 @@ const answer = 42;
 
     const doc = markdownToDoc(markdown);
     expect(doc.content.map((node) => node.type)).toEqual(["codeBlock", "image"]);
+    expect(doc.content[1]?.attrs?.width).toBe(35);
     expect(docToMarkdown(doc)).toBe(markdown);
   });
 
