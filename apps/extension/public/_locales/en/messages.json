@@ -259,7 +259,7 @@
     "message": "Save this post to EdgeEver"
   },
   "tweetSaveHint": {
-    "message": "On X, right-click a post and choose “Save this post to EdgeEver”. The visible text and photos go into one new note in the same default notebook."
+    "message": "On X, right-click a post and choose “Save this post to EdgeEver”. The post text, including text behind Show more, and the photos go into one new note in the same default notebook."
   },
   "savingTweet": {
     "message": "Saving this post…"
