@@ -695,6 +695,18 @@ const saveSelectionFromMenu = async (
 };
 
 const registerClipMenus = () => {
+  // Chrome and Firefox fold an extension into a submenu when more than one of
+  // its items is visible. These contexts stay disjoint so each command remains
+  // on the top-level menu: a photo saves the image, selected words save the
+  // passage, and the rest of an X post saves the post. Recreate from scratch
+  // so a previous registration cannot keep an overlapping item.
+  chrome.contextMenus.removeAll(() => {
+    void chrome.runtime.lastError;
+    createClipMenus();
+  });
+};
+
+const createClipMenus = () => {
   chrome.contextMenus.create({
     id: SELECTION_MENU_ID,
     title: t("saveSelectionToEdgeEver"),
@@ -714,7 +726,7 @@ const registerClipMenus = () => {
   chrome.contextMenus.create({
     id: TWEET_MENU_ID,
     title: t("saveTweetToEdgeEver"),
-    contexts: ["page", "selection", "link", "image", "video"],
+    contexts: ["page", "video"],
     documentUrlPatterns: TWEET_DOCUMENT_PATTERNS,
   }, () => {
     void chrome.runtime.lastError;
