@@ -87,21 +87,25 @@ export const ShortcutSettingsItem = ({ shortcutSettings, onShortcutSettingsChang
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-card">
-      <div className="divide-y divide-slate-100">
-        {shortcutActionOptions.map((item) => {
+      <div className="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-2">
+        {shortcutActionOptions.map((item, index) => {
           const recording = recordingAction === item.value;
+          const lastAlone = index === shortcutActionOptions.length - 1 && shortcutActionOptions.length % 2 === 1;
 
           return (
             <div
               key={item.value}
-              className="flex min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              className={cn(
+                "flex h-12 items-center justify-between gap-3 bg-card px-4",
+                lastAlone && "sm:col-span-2",
+              )}
             >
-              <div className={cn("min-w-0", SETTINGS_ITEM_TITLE_CLASSNAME)}>{item.label}</div>
+              <div className={cn("min-w-0 truncate", SETTINGS_ITEM_TITLE_CLASSNAME)}>{item.label}</div>
               <Button
                 ref={recording ? captureButtonRef : null}
                 type="button"
                 variant={recording ? "solid" : "outline"}
-                className={cn("h-9 w-full min-w-32 px-3 font-mono text-xs font-normal sm:w-auto", !recording && "bg-card")}
+                className={cn("h-8 min-w-24 shrink-0 px-3 font-mono text-xs font-normal", !recording && "bg-card")}
                 onClick={() => {
                   setRecordingAction(item.value);
                   setCaptureMessage("");

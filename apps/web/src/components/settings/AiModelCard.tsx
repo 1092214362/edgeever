@@ -23,7 +23,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -224,8 +223,7 @@ export const AiModelCard = () => {
                   <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
                     <form className="grid gap-5" onSubmit={(event: FormEvent) => { event.preventDefault(); if (!canAddProvider) return; createMutation.mutate(); }}>
                       <DialogHeader>
-                        <DialogTitle>{t("aiModel.addProvider")}</DialogTitle>
-                        <DialogDescription>{t("aiModel.addProviderDescription")}</DialogDescription>
+                        <DialogTitle className="text-xs font-normal">{t("aiModel.addProvider")}</DialogTitle>
                       </DialogHeader>
                       {!encryptionConfigured ? (
                         <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
@@ -234,11 +232,11 @@ export const AiModelCard = () => {
                       ) : null}
                       <div className="grid gap-4 sm:grid-cols-2">
                         <Field label={t("aiModel.displayName")}>
-                          <Input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required maxLength={80} />
+                          <Input className="h-9 text-xs" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required maxLength={80} />
                         </Field>
                         <Field label={t("aiModel.provider")}>
                           <Select value={provider} onValueChange={(value) => handleProviderChange(value as AiProvider)}>
-                            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-9 text-xs font-normal"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="openai-compatible">{t("aiModel.providers.openai-compatible")}</SelectItem>
                               <SelectItem value="anthropic">{t("aiModel.providers.anthropic")}</SelectItem>
@@ -247,16 +245,16 @@ export const AiModelCard = () => {
                           </Select>
                         </Field>
                         <div className="sm:col-span-2">
-                          <Field label={t("aiModel.baseUrl")}><Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required inputMode="url" /></Field>
+                          <Field label={t("aiModel.baseUrl")}><Input className="h-9 text-xs" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required inputMode="url" /></Field>
                         </div>
                         <div className="sm:col-span-2">
                           <Field label={t("aiModel.apiKey")} hint={t("aiModel.apiKeyCreateHint")}>
-                            <Input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required autoComplete="new-password" />
+                            <Input className="h-9 text-xs" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required autoComplete="new-password" />
                           </Field>
                         </div>
                         <div className="sm:col-span-2">
-                          <Field label={t("aiModel.initialModelId")} hint={t("aiModel.initialModelIdHint")}>
-                            <Input value={initialModelId} onChange={(event) => setInitialModelId(event.target.value)} />
+                          <Field label={t("aiModel.initialModelId")}>
+                            <Input className="h-9 text-xs" value={initialModelId} onChange={(event) => setInitialModelId(event.target.value)} />
                           </Field>
                         </div>
                       </div>
@@ -266,9 +264,9 @@ export const AiModelCard = () => {
                         </p>
                       ) : null}
                       <DialogFooter className="gap-2 sm:space-x-0">
-                        <Button type="button" variant="outline" onClick={() => handleAddDialogChange(false)}>{t("common.cancel")}</Button>
+                        <Button type="button" variant="outline" className="text-xs font-normal" onClick={() => handleAddDialogChange(false)}>{t("common.cancel")}</Button>
                         <DisabledActionTooltip label={!canAddProvider ? addDisabledReason : undefined}>
-                          <Button type="submit" variant="solid" disabled={!canAddProvider || createMutation.isPending}>
+                          <Button type="submit" variant="solid" className="text-xs font-normal" disabled={!canAddProvider || createMutation.isPending}>
                             {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t("aiModel.createProvider")}
                           </Button>
                         </DisabledActionTooltip>
