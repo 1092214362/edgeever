@@ -883,7 +883,7 @@ export const enUS = {
       general: "General",
       shortcuts: "Shortcuts",
       ai: "AI Integrations",
-      mcp: "MCP",
+      mcp: "API Token",
       data: "Import & Export",
       advanced: "Advanced",
       account: "Login Settings",

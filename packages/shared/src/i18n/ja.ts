@@ -883,7 +883,7 @@ export const ja = {
       general: "一般",
       shortcuts: "ショートカット",
       ai: "AI 連携",
-      mcp: "MCP",
+      mcp: "API Token",
       data: "インポートとエクスポート",
       advanced: "詳細",
       account: "ログイン設定",

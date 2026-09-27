@@ -176,7 +176,7 @@ export const DataExportCard = ({ refreshWorkspaceAfterImport }: DataExportCardPr
                 <Upload className="h-4 w-4" />
                 {t("dataExport.importButton")}
               </Button>
-              <Button size="sm" className="text-xs font-normal" type="button" disabled={busy} onClick={() => void handleExport()}>
+              <Button size="sm" variant="outline" className="text-xs font-normal" type="button" disabled={busy} onClick={() => void handleExport()}>
                 <Download className="h-4 w-4" />
                 {t("dataExport.exportButton")}
               </Button>
