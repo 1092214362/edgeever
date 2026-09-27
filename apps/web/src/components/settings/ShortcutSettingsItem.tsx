@@ -11,10 +11,7 @@ import {
 } from "@/lib/app-helpers";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  SETTINGS_ITEM_DESCRIPTION_CLASSNAME,
-  SETTINGS_ITEM_TITLE_CLASSNAME,
-} from "./settings-ui";
+import { SETTINGS_ITEM_TITLE_CLASSNAME } from "./settings-ui";
 
 interface ShortcutSettingsItemProps {
   shortcutSettings: ShortcutSettings;
@@ -99,15 +96,12 @@ export const ShortcutSettingsItem = ({ shortcutSettings, onShortcutSettingsChang
               key={item.value}
               className="flex min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
-              <div className="min-w-0">
-                <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{item.label}</div>
-                <div className={SETTINGS_ITEM_DESCRIPTION_CLASSNAME}>{item.description}</div>
-              </div>
+              <div className={cn("min-w-0", SETTINGS_ITEM_TITLE_CLASSNAME)}>{item.label}</div>
               <Button
                 ref={recording ? captureButtonRef : null}
                 type="button"
                 variant={recording ? "solid" : "outline"}
-                className={cn("h-9 w-full min-w-32 px-3 font-mono text-xs sm:w-auto", !recording && "bg-card")}
+                className={cn("h-9 w-full min-w-32 px-3 font-mono text-xs font-normal sm:w-auto", !recording && "bg-card")}
                 onClick={() => {
                   setRecordingAction(item.value);
                   setCaptureMessage("");
@@ -125,7 +119,7 @@ export const ShortcutSettingsItem = ({ shortcutSettings, onShortcutSettingsChang
         </div>
       ) : null}
       <div className="flex justify-end border-t border-slate-100 px-4 py-3">
-        <Button type="button" variant="outline" className="h-9 px-3 text-xs" onClick={handleResetShortcuts}>
+        <Button type="button" variant="outline" className="h-9 px-3 text-xs font-normal" onClick={handleResetShortcuts}>
           <RotateCcw className="h-4 w-4" />
           {t("shortcuts.reset")}
         </Button>

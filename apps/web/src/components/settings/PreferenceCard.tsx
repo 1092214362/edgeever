@@ -44,7 +44,7 @@ import { CustomEditorThemeDialog } from "./CustomEditorThemeDialog";
 
 const PreferenceSection = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="grid gap-2">
-    <h2 className="px-1 text-xs font-medium leading-5 text-slate-500">{title}</h2>
+    <h2 className="px-1 text-xs font-normal leading-5 text-slate-500">{title}</h2>
     <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-card">
       {children}
     </div>

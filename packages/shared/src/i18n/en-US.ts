@@ -1047,7 +1047,6 @@ export const enUS = {
   },
   aiModel: {
     title: "External AI models",
-    description: "Connect external AI models for note processing. Configure once to share across all devices.",
     provider: "API protocol",
     providers: {
       "openai-compatible": "OpenAI-compatible",
@@ -1068,12 +1067,10 @@ export const enUS = {
     serviceActions: "Service actions",
     defaultSettingsTitle: "Usage settings",
     defaultModel: "Default model for note AI",
-    defaultModelHint: "The model the AI note assistant uses by default.",
     noDefaultModel: "No model selected",
     defaultUnavailable: "The service for the current default model is disabled. Enable it or choose another model.",
     noProviders: "No model services yet. Add OpenAI, OpenRouter, Anthropic, Gemini, or another compatible service to begin.",
     servicesTitle: "Model services",
-    serviceCount: "{{count}} services",
     defaultProviderName: "Model provider {{ordinal}}",
     addProvider: "Add model service",
     addProviderDescription: "Connect a model API, then discover or add more models after the service is created.",
@@ -1460,58 +1457,19 @@ export const enUS = {
     requireModifier: "Press a shortcut that includes Ctrl, ⌘, or Alt.",
     conflict: "This shortcut is already used by “{{label}}”.",
     actions: {
-      createMemo: {
-        label: "New note",
-        description: "Create a new note in the current notebook.",
-      },
-      createNotebook: {
-        label: "New notebook",
-        description: "Create a new notebook at the current level.",
-      },
-      focusSearch: {
-        label: "Search current note",
-        description: "Focus text search within the current note.",
-      },
-      focusGlobalSearch: {
-        label: "Search all notes",
-        description: "Focus list search to find content across all notes.",
-      },
-      focusReplace: {
-        label: "Replace text",
-        description: "Open replace in the current note.",
-      },
-      openQuickSwitcher: {
-        label: "Quick switcher",
-        description: "Search and open any note that is not in trash.",
-      },
-      openPreviousMemo: {
-        label: "Previous note",
-        description: "Open the previous note in the current list.",
-      },
-      openNextMemo: {
-        label: "Next note",
-        description: "Open the next note in the current list.",
-      },
-      openAiAssistant: {
-        label: "Open AI assistant",
-        description: "Open the inline AI composer at the current selection or cursor.",
-      },
-      saveAndSync: {
-        label: "Save and sync",
-        description: "Save the current note now and sync pending local changes.",
-      },
-      toggleReadingProtection: {
-        label: "Toggle reading protection",
-        description: "Switch notes between reading protection and editing on this device.",
-      },
-      toggleEditorMode: {
-        label: "Switch editor mode",
-        description: "Switch between Markdown source and rich text editing.",
-      },
-      toggleOutline: {
-        label: "Show/hide document outline",
-        description: "Show or hide the current note's document outline on desktop.",
-      },
+      createMemo: { label: "New note" },
+      createNotebook: { label: "New notebook" },
+      focusSearch: { label: "Search current note" },
+      focusGlobalSearch: { label: "Search all notes" },
+      focusReplace: { label: "Replace text" },
+      openQuickSwitcher: { label: "Quick switcher" },
+      openPreviousMemo: { label: "Previous note" },
+      openNextMemo: { label: "Next note" },
+      openAiAssistant: { label: "Open AI assistant" },
+      saveAndSync: { label: "Save and sync" },
+      toggleReadingProtection: { label: "Toggle reading protection" },
+      toggleEditorMode: { label: "Switch editor mode" },
+      toggleOutline: { label: "Show/hide document outline" },
     },
   },
   quickSwitcher: {

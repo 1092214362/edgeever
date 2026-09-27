@@ -1047,7 +1047,6 @@ export const ja = {
   },
   aiModel: {
     title: "外部 AI モデル",
-    description: "ノート処理用に外部 AI モデルを接続します。一度設定すれば、すべての端末で共有されます。",
     provider: "API プロトコル",
     providers: {
       "openai-compatible": "OpenAI 互換",
@@ -1068,12 +1067,10 @@ export const ja = {
     serviceActions: "サービス操作",
     defaultSettingsTitle: "利用設定",
     defaultModel: "ノート AI のデフォルトモデル",
-    defaultModelHint: "AI ノートアシスタントが既定で使うモデルです。",
     noDefaultModel: "モデル未選択",
     defaultUnavailable: "現在のデフォルトモデルのサービスは無効です。有効にするか、別のモデルを選んでください。",
     noProviders: "まだモデルサービスがありません。OpenAI、OpenRouter、Anthropic、Gemini、または互換サービスを追加して始めてください。",
     servicesTitle: "モデルサービス",
-    serviceCount: "{{count}} 件のサービス",
     defaultProviderName: "モデル提供元 {{ordinal}}",
     addProvider: "モデルサービスを追加",
     addProviderDescription: "モデル API を接続します。サービス作成後に、さらにモデルを検出または追加できます。",
@@ -1460,58 +1457,19 @@ export const ja = {
     requireModifier: "Ctrl、⌘、または Alt を含むショートカットを押してください。",
     conflict: "このショートカットはすでに「{{label}}」で使われています。",
     actions: {
-      createMemo: {
-        label: "新しいノート",
-        description: "現在のノートブックに新しいノートを作成します。",
-      },
-      createNotebook: {
-        label: "新しいノートブック",
-        description: "現在の階層に新しいノートブックを作成します。",
-      },
-      focusSearch: {
-        label: "現在のノートを検索",
-        description: "現在のノート内のテキスト検索にフォーカスします。",
-      },
-      focusGlobalSearch: {
-        label: "すべてのノートを検索",
-        description: "一覧検索にフォーカスし、すべてのノートの内容から探します。",
-      },
-      focusReplace: {
-        label: "テキストを置換",
-        description: "現在のノートで置換を開きます。",
-      },
-      openQuickSwitcher: {
-        label: "クイックスイッチャー",
-        description: "ゴミ箱にない任意のノートを検索して開きます。",
-      },
-      openPreviousMemo: {
-        label: "前のノート",
-        description: "現在の一覧で前のノートを開きます。",
-      },
-      openNextMemo: {
-        label: "次のノート",
-        description: "現在の一覧で次のノートを開きます。",
-      },
-      openAiAssistant: {
-        label: "AI アシスタントを開く",
-        description: "現在の選択範囲またはカーソル位置でインライン AI 入力を開きます。",
-      },
-      saveAndSync: {
-        label: "保存して同期",
-        description: "現在のノートをすぐに保存し、待機中のローカル変更を同期します。",
-      },
-      toggleReadingProtection: {
-        label: "閲覧保護を切り替え",
-        description: "この端末でノートの閲覧保護と編集を切り替えます。",
-      },
-      toggleEditorMode: {
-        label: "エディタモードを切り替え",
-        description: "Markdown ソースとリッチテキスト編集を切り替えます。",
-      },
-      toggleOutline: {
-        label: "ドキュメントアウトラインの表示/非表示",
-        description: "デスクトップで現在のノートのドキュメントアウトラインを表示または非表示にします。",
-      },
+      createMemo: { label: "新しいノート" },
+      createNotebook: { label: "新しいノートブック" },
+      focusSearch: { label: "現在のノートを検索" },
+      focusGlobalSearch: { label: "すべてのノートを検索" },
+      focusReplace: { label: "テキストを置換" },
+      openQuickSwitcher: { label: "クイックスイッチャー" },
+      openPreviousMemo: { label: "前のノート" },
+      openNextMemo: { label: "次のノート" },
+      openAiAssistant: { label: "AI アシスタントを開く" },
+      saveAndSync: { label: "保存して同期" },
+      toggleReadingProtection: { label: "閲覧保護を切り替え" },
+      toggleEditorMode: { label: "エディタモードを切り替え" },
+      toggleOutline: { label: "ドキュメントアウトラインの表示/非表示" },
     },
   },
   quickSwitcher: {

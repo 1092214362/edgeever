@@ -1047,7 +1047,6 @@ export const zhCN = {
   },
   aiModel: {
     title: "外部 AI 模型",
-    description: "连接外部 AI 模型用于笔记内容处理；配置一次，各端设备共享生效。",
     provider: "API 协议",
     providers: {
       "openai-compatible": "OpenAI 兼容协议",
@@ -1068,12 +1067,10 @@ export const zhCN = {
     serviceActions: "服务操作",
     defaultSettingsTitle: "使用设置",
     defaultModel: "笔记 AI 默认模型",
-    defaultModelHint: "AI 笔记助手处理内容时优先使用的模型。",
     noDefaultModel: "未选择模型",
     defaultUnavailable: "当前默认模型所在的服务已禁用，请启用该服务或选择其他模型。",
     noProviders: "暂无模型服务。添加 OpenAI、OpenRouter、Anthropic、Gemini 或其他兼容服务即可开始。",
     servicesTitle: "模型服务",
-    serviceCount: "{{count}} 个服务",
     defaultProviderName: "模型服务商{{ordinal}}",
     addProvider: "添加模型服务",
     addProviderDescription: "连接一个模型 API；创建后可以继续发现或添加更多模型。",
@@ -1460,58 +1457,19 @@ export const zhCN = {
     requireModifier: "请按下包含 Ctrl、⌘ 或 Alt 的组合键。",
     conflict: "这个组合键已用于「{{label}}」。",
     actions: {
-      createMemo: {
-        label: "新建笔记",
-        description: "在当前笔记本中创建一条新笔记。",
-      },
-      createNotebook: {
-        label: "新建笔记本",
-        description: "在当前层级创建一个新笔记本。",
-      },
-      focusSearch: {
-        label: "搜索当前笔记",
-        description: "聚焦当前笔记内的文本搜索。",
-      },
-      focusGlobalSearch: {
-        label: "全局搜索笔记",
-        description: "聚焦笔记列表搜索，在全部笔记内容中查找。",
-      },
-      focusReplace: {
-        label: "替换文本",
-        description: "在当前笔记中打开替换。",
-      },
-      openQuickSwitcher: {
-        label: "快速切换笔记",
-        description: "搜索并打开任意未删除的笔记。",
-      },
-      openPreviousMemo: {
-        label: "上一篇笔记",
-        description: "打开当前列表中的上一篇笔记。",
-      },
-      openNextMemo: {
-        label: "下一篇笔记",
-        description: "打开当前列表中的下一篇笔记。",
-      },
-      openAiAssistant: {
-        label: "打开 AI 助手",
-        description: "在当前选区或光标位置打开内联 AI 输入框。",
-      },
-      saveAndSync: {
-        label: "保存并同步",
-        description: "立即保存当前笔记，并同步等待中的本地更改。",
-      },
-      toggleReadingProtection: {
-        label: "切换阅读保护",
-        description: "在当前设备上切换笔记的阅读保护与编辑状态。",
-      },
-      toggleEditorMode: {
-        label: "切换编辑模式",
-        description: "在 Markdown 源码与富文本编辑模式之间切换。",
-      },
-      toggleOutline: {
-        label: "显示/隐藏文档大纲",
-        description: "在桌面端显示或隐藏当前笔记的文档大纲。",
-      },
+      createMemo: { label: "新建笔记" },
+      createNotebook: { label: "新建笔记本" },
+      focusSearch: { label: "搜索当前笔记" },
+      focusGlobalSearch: { label: "全局搜索笔记" },
+      focusReplace: { label: "替换文本" },
+      openQuickSwitcher: { label: "快速切换笔记" },
+      openPreviousMemo: { label: "上一篇笔记" },
+      openNextMemo: { label: "下一篇笔记" },
+      openAiAssistant: { label: "打开 AI 助手" },
+      saveAndSync: { label: "保存并同步" },
+      toggleReadingProtection: { label: "切换阅读保护" },
+      toggleEditorMode: { label: "切换编辑模式" },
+      toggleOutline: { label: "显示/隐藏文档大纲" },
     },
   },
   quickSwitcher: {
