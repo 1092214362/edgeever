@@ -650,22 +650,29 @@ const getMobileObjectStorage = (health: InstanceHealth | undefined, english: boo
 const layoutMobileSystemInfoRows = (items: MobileSystemInfoItem[], columns: number) => {
   const rows: MobileSystemInfoItem[][] = [];
   let buffer: MobileSystemInfoItem[] = [];
+  const pushBufferedRows = () => {
+    if (buffer.length === 0) return;
+    const rowCount = Math.ceil(buffer.length / columns);
+    const baseRowSize = Math.floor(buffer.length / rowCount);
+    const extraItems = buffer.length % rowCount;
+    let offset = 0;
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+      const rowSize = baseRowSize + (rowIndex < extraItems ? 1 : 0);
+      rows.push(buffer.slice(offset, offset + rowSize));
+      offset += rowSize;
+    }
+    buffer = [];
+  };
+
   for (const item of items) {
     if (item.fullWidth) {
-      if (buffer.length > 0) {
-        rows.push(buffer);
-        buffer = [];
-      }
+      pushBufferedRows();
       rows.push([item]);
       continue;
     }
     buffer.push(item);
-    if (buffer.length === columns) {
-      rows.push(buffer);
-      buffer = [];
-    }
   }
-  if (buffer.length > 0) rows.push(buffer);
+  pushBufferedRows();
   return rows;
 };
 
@@ -715,18 +722,14 @@ const getMobileSystemInfoGroups = (
           ? [{ fullWidth: true, label: copy.instanceUrl, localOnly: true, value: diagnostics.instanceUrl }]
           : []),
         { label: copy.instanceVersion, value: instance?.version ? `v${instance.version.replace(/^v/, "")}` : copy.unknown },
-        { label: copy.instanceBuild, value: instance?.health.build || copy.unknown },
         { label: copy.databaseVersion, value: instance?.health.migration || copy.unknown },
         { label: copy.databaseBackend, value: getMobileDatabaseBackend(instance?.health.storage?.database, copy.unknown) },
-        {
-          fullWidth: instance?.health.storage?.resources === "s3",
-          label: copy.newUploadObjectStorage,
-          value: getMobileObjectStorage(instance?.health, english, copy.unknown),
-        },
+        { label: copy.deploymentPlatform, value: getMobileDeploymentPlatform(instance?.health.runtime, english) },
+        { fullWidth: true, label: copy.instanceBuild, value: instance?.health.build || copy.unknown },
+        { fullWidth: true, label: copy.newUploadObjectStorage, value: getMobileObjectStorage(instance?.health, english, copy.unknown) },
         ...(instance?.health.objectStorageProvider === "s3"
           ? [{ fullWidth: true, label: copy.existingAttachments, value: copy.existingAttachmentsOriginalStorage }]
           : []),
-        { label: copy.deploymentPlatform, value: getMobileDeploymentPlatform(instance?.health.runtime, english) },
         ...(instance?.health.runtime === "self-hosted-bun"
           ? [{ fullWidth: true, label: copy.containerImageSource, value: getMobileContainerImageSource(instance.health.containerImageSource, english) }]
           : []),
