@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 import type { InstanceHealth } from "@edgeever/client";
 import { buildGitHubFeedbackUrl, formatClientDisplaySize, isClientAheadOfInstance, toDevicePixelScreenSize, type AuthUser } from "@edgeever/shared";
 import { useQuery } from "@tanstack/react-query";
-import { BackHandler, Dimensions, Linking, Modal, PixelRatio, Platform, ScrollView, Switch, useWindowDimensions, View } from "react-native";
+import { BackHandler, Dimensions, Linking, Modal, PixelRatio, Platform, ScrollView, Switch, View } from "react-native";
 import { Activity, ActivityIndicator, Check, ChevronDown, ChevronLeft, ChevronRight, Cloud, Copy, ExternalLink, Image as ImageIcon, Info, LogOut, MessageSquare, MonitorSmartphone, Moon, RefreshCw, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "../components/icons";
 import { Pressable, Text } from "../components/LocalizedText";
 import { useMobileLocale } from "../lib/mobile-locale";
@@ -461,10 +461,6 @@ const SystemInfoCard = ({
 };
 
 const MobileSystemInfoSection = ({ group }: { group: MobileSystemInfoGroup }) => {
-  const [contentWidth, setContentWidth] = useState(0);
-  const { fontScale } = useWindowDimensions();
-  const columns = contentWidth >= 480 * Math.max(1, fontScale) ? 2 : 1;
-
   return (
     <View style={styles.systemInfoSection}>
       <View style={styles.systemInfoSectionHeader}>
@@ -484,8 +480,8 @@ const MobileSystemInfoSection = ({ group }: { group: MobileSystemInfoGroup }) =>
           <Text style={styles.systemInfoNoticeText}>{group.notice}</Text>
         </View>
       ) : null}
-      <View onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)} style={styles.systemInfoRows}>
-        {layoutMobileSystemInfoRows(group.items, columns).map((rowItems, rowIndex, rows) => (
+      <View style={styles.systemInfoRows}>
+        {layoutMobileSystemInfoRows(group.items, 3).map((rowItems, rowIndex, rows) => (
           <View
             key={`${group.id}-row-${rowIndex}`}
             style={[styles.systemInfoRow, rowIndex === rows.length - 1 && styles.systemInfoRowLast]}
@@ -722,13 +718,17 @@ const getMobileSystemInfoGroups = (
         { label: copy.instanceBuild, value: instance?.health.build || copy.unknown },
         { label: copy.databaseVersion, value: instance?.health.migration || copy.unknown },
         { label: copy.databaseBackend, value: getMobileDatabaseBackend(instance?.health.storage?.database, copy.unknown) },
-        { label: copy.newUploadObjectStorage, value: getMobileObjectStorage(instance?.health, english, copy.unknown) },
+        {
+          fullWidth: instance?.health.storage?.resources === "s3",
+          label: copy.newUploadObjectStorage,
+          value: getMobileObjectStorage(instance?.health, english, copy.unknown),
+        },
         ...(instance?.health.objectStorageProvider === "s3"
-          ? [{ label: copy.existingAttachments, value: copy.existingAttachmentsOriginalStorage }]
+          ? [{ fullWidth: true, label: copy.existingAttachments, value: copy.existingAttachmentsOriginalStorage }]
           : []),
         { label: copy.deploymentPlatform, value: getMobileDeploymentPlatform(instance?.health.runtime, english) },
         ...(instance?.health.runtime === "self-hosted-bun"
-          ? [{ label: copy.containerImageSource, value: getMobileContainerImageSource(instance.health.containerImageSource, english) }]
+          ? [{ fullWidth: true, label: copy.containerImageSource, value: getMobileContainerImageSource(instance.health.containerImageSource, english) }]
           : []),
       ],
       title: copy.cloudSection,
@@ -742,7 +742,7 @@ const getMobileSystemInfoGroups = (
         { label: copy.client, value: copy.mobileApp },
         { label: copy.platform, value: platformName },
         { label: copy.platformVersion, value: Platform.OS === "android" ? `${Platform.constants.Release} (API ${Platform.Version})` : String(Platform.Version) },
-        { label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown },
+        { fullWidth: true, label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown },
         {
           fullWidth: true,
           label: copy.screenResolution,
