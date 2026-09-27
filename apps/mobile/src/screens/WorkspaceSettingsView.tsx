@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "
 import * as Clipboard from "expo-clipboard";
 import Constants from "expo-constants";
 import type { InstanceHealth } from "@edgeever/client";
-import { buildGitHubFeedbackUrl, formatClientDisplaySize, isClientAheadOfInstance, type AuthUser } from "@edgeever/shared";
+import { buildGitHubFeedbackUrl, formatClientDisplaySize, isClientAheadOfInstance, toDevicePixelScreenSize, type AuthUser } from "@edgeever/shared";
 import { useQuery } from "@tanstack/react-query";
-import { BackHandler, Dimensions, Linking, Modal, PixelRatio, Platform, ScrollView, Switch, View } from "react-native";
+import { BackHandler, Dimensions, Linking, Modal, PixelRatio, Platform, ScrollView, Switch, useWindowDimensions, View } from "react-native";
 import { Activity, ActivityIndicator, Check, ChevronDown, ChevronLeft, ChevronRight, Cloud, Copy, ExternalLink, Image as ImageIcon, Info, LogOut, MessageSquare, MonitorSmartphone, Moon, RefreshCw, ShieldCheck, SlidersHorizontal, Sun, UserRound } from "../components/icons";
 import { Pressable, Text } from "../components/LocalizedText";
 import { useMobileLocale } from "../lib/mobile-locale";
@@ -42,7 +42,7 @@ const formatExecutionEnvironment = (environment: string | null | undefined, loca
     case "storeClient":
       return english ? "Expo Go / development client" : "Expo Go / 开发客户端";
     case "bare":
-      return "Bare React Native";
+      return english ? "Native app" : "原生应用";
     default:
       return environment || getMobileSystemInfoText(localePreference).unknown;
   }
@@ -460,51 +460,59 @@ const SystemInfoCard = ({
   );
 };
 
-const MobileSystemInfoSection = ({ group }: { group: MobileSystemInfoGroup }) => (
-  <View style={styles.systemInfoSection}>
-    <View style={styles.systemInfoSectionHeader}>
-      {group.id === "cloud"
-        ? <Cloud color="#047857" size={16} />
-        : group.id === "client"
-          ? <MonitorSmartphone color="#047857" size={16} />
-          : <Activity color="#047857" size={16} />}
-      <View style={styles.systemInfoSectionCopy}>
-        <Text style={styles.systemInfoSectionTitle}>{group.title}</Text>
-        <Text style={styles.systemInfoSectionDescription}>{group.description}</Text>
-      </View>
-    </View>
-    {group.notice ? (
-      <View accessibilityLiveRegion="polite" style={styles.systemInfoNotice}>
-        <Info color="#94a3b8" size={14} />
-        <Text style={styles.systemInfoNoticeText}>{group.notice}</Text>
-      </View>
-    ) : null}
-    <View style={styles.systemInfoRows}>
-      {layoutMobileSystemInfoRows(group.items).map((rowItems, rowIndex, rows) => (
-        <View
-          key={`${group.id}-row-${rowIndex}`}
-          style={[styles.systemInfoRow, rowIndex === rows.length - 1 && styles.systemInfoRowLast]}
-        >
-          {rowItems.map((item, itemIndex) => (
-            <View
-              key={item.label}
-              style={[styles.systemInfoCell, itemIndex < rowItems.length - 1 && styles.systemInfoCellDivider]}
-            >
-              <Text numberOfLines={1} style={styles.panelLabel}>{item.label}</Text>
-              <Text numberOfLines={item.fullWidth ? 3 : 1} selectable style={styles.systemInfoListValue}>{item.value}</Text>
-            </View>
-          ))}
+const MobileSystemInfoSection = ({ group }: { group: MobileSystemInfoGroup }) => {
+  const [contentWidth, setContentWidth] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const columns = contentWidth >= 480 * Math.max(1, fontScale) ? 2 : 1;
+
+  return (
+    <View style={styles.systemInfoSection}>
+      <View style={styles.systemInfoSectionHeader}>
+        {group.id === "cloud"
+          ? <Cloud color="#047857" size={16} />
+          : group.id === "client"
+            ? <MonitorSmartphone color="#047857" size={16} />
+            : <Activity color="#047857" size={16} />}
+        <View style={styles.systemInfoSectionCopy}>
+          <Text style={styles.systemInfoSectionTitle}>{group.title}</Text>
+          <Text style={styles.systemInfoSectionDescription}>{group.description}</Text>
         </View>
-      ))}
+      </View>
+      {group.notice ? (
+        <View accessibilityLiveRegion="polite" style={styles.systemInfoNotice}>
+          <Info color="#94a3b8" size={14} />
+          <Text style={styles.systemInfoNoticeText}>{group.notice}</Text>
+        </View>
+      ) : null}
+      <View onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)} style={styles.systemInfoRows}>
+        {layoutMobileSystemInfoRows(group.items, columns).map((rowItems, rowIndex, rows) => (
+          <View
+            key={`${group.id}-row-${rowIndex}`}
+            style={[styles.systemInfoRow, rowIndex === rows.length - 1 && styles.systemInfoRowLast]}
+          >
+            {rowItems.map((item, itemIndex) => (
+              <View
+                key={item.label}
+                style={[styles.systemInfoCell, itemIndex < rowItems.length - 1 && styles.systemInfoCellDivider]}
+              >
+                <Text style={styles.panelLabel}>{item.label}</Text>
+                <Text selectable style={styles.systemInfoListValue}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 
 const getMobileSystemInfoText = (localePreference: MobileLocaleMode) =>
   isEnglishMobileLocale(localePreference)
     ? {
-        build: "Build",
+        build: "Build type",
+        developmentBuild: "Development",
+        productionBuild: "Production",
         client: "Client",
         clientAheadOfInstanceCloudflare: "This client is newer than the connected cloud instance. You can wait for the daily automatic instance update, or run the Update deployed EdgeEver workflow.",
         clientAheadOfInstanceDocker: "This client is newer than the connected cloud instance. You can wait for the daily automatic instance update, or run ./update.sh in the install directory (default ~/edgeever).",
@@ -551,7 +559,9 @@ const getMobileSystemInfoText = (localePreference: MobileLocaleMode) =>
         version: "Version",
       }
     : {
-        build: "构建",
+        build: "构建类型",
+        developmentBuild: "开发版",
+        productionBuild: "正式版",
         client: "客户端",
         clientAheadOfInstanceCloudflare: "当前客户端版本高于云端实例。可等待每天自动更新，或手动运行 Update deployed EdgeEver 工作流。",
         clientAheadOfInstanceDocker: "当前客户端版本高于云端实例。可等待每天自动更新，或在安装目录执行 ./update.sh（默认 ~/edgeever）。",
@@ -641,7 +651,7 @@ const getMobileObjectStorage = (health: InstanceHealth | undefined, english: boo
   }
 };
 
-const layoutMobileSystemInfoRows = (items: MobileSystemInfoItem[]) => {
+const layoutMobileSystemInfoRows = (items: MobileSystemInfoItem[], columns: number) => {
   const rows: MobileSystemInfoItem[][] = [];
   let buffer: MobileSystemInfoItem[] = [];
   for (const item of items) {
@@ -654,7 +664,7 @@ const layoutMobileSystemInfoRows = (items: MobileSystemInfoItem[]) => {
       continue;
     }
     buffer.push(item);
-    if (buffer.length === 3) {
+    if (buffer.length === columns) {
       rows.push(buffer);
       buffer = [];
     }
@@ -728,19 +738,19 @@ const getMobileSystemInfoGroups = (
       id: "client",
       items: [
         { label: copy.version, value: `v${MOBILE_APP_VERSION}` },
-        { label: copy.build, value: __DEV__ ? "development" : "production" },
+        { label: copy.build, value: __DEV__ ? copy.developmentBuild : copy.productionBuild },
         { label: copy.client, value: copy.mobileApp },
         { label: copy.platform, value: platformName },
-        { label: copy.platformVersion, value: String(Platform.Version) },
+        { label: copy.platformVersion, value: Platform.OS === "android" ? `${Platform.constants.Release} (API ${Platform.Version})` : String(Platform.Version) },
         { label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown },
         {
           fullWidth: true,
           label: copy.screenResolution,
-          value: formatClientDisplaySize({
+          value: formatClientDisplaySize(toDevicePixelScreenSize({
             devicePixelRatio: PixelRatio.get(),
             screenHeight: Dimensions.get("screen").height,
             screenWidth: Dimensions.get("screen").width,
-          }, copy.screenResolutionValue) || copy.unknown,
+          }), copy.screenResolutionValue) || copy.unknown,
         },
         { label: copy.language, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
         { label: copy.timeZone, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
