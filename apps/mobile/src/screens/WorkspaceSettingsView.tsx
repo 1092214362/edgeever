@@ -68,9 +68,11 @@ type MobileSystemInfoItem = {
   localOnly?: boolean;
   mono?: boolean;
   value: string;
+  wide?: boolean;
 };
 
 type MobileSystemInfoGroup = {
+  columns: number;
   description: string;
   id: "cloud" | "client" | "connection";
   items: MobileSystemInfoItem[];
@@ -482,10 +484,10 @@ const MobileSystemInfoSection = ({ group }: { group: MobileSystemInfoGroup }) =>
         </View>
       ) : null}
       <View style={styles.systemInfoRows}>
-        {layoutMobileSystemInfoRows(group.items, 3).map((rowItems, rowIndex) => (
+        {layoutMobileSystemInfoRows(group.items, group.columns).map((rowItems, rowIndex) => (
           <View key={`${group.id}-row-${rowIndex}`} style={styles.systemInfoRow}>
             {rowItems.map((item) => (
-              <View key={item.label} style={styles.systemInfoCell}>
+              <View key={item.label} style={[styles.systemInfoCell, item.wide && group.columns === 3 && styles.systemInfoWideCell]}>
                 <Text style={styles.systemInfoItemLabel}>{item.label}</Text>
                 <Text selectable style={[styles.systemInfoListValue, item.mono && styles.systemInfoMonoValue]}>{item.value}</Text>
               </View>
@@ -647,6 +649,23 @@ const layoutMobileSystemInfoRows = (items: MobileSystemInfoItem[], columns: numb
   let buffer: MobileSystemInfoItem[] = [];
   const pushBufferedRows = () => {
     if (buffer.length === 0) return;
+    if (columns === 3 && buffer.some((item) => item.wide)) {
+      let row: MobileSystemInfoItem[] = [];
+      let occupiedColumns = 0;
+      for (const item of buffer) {
+        const itemColumns = item.wide ? 2 : 1;
+        if (occupiedColumns + itemColumns > columns) {
+          rows.push(row);
+          row = [];
+          occupiedColumns = 0;
+        }
+        row.push(item);
+        occupiedColumns += itemColumns;
+      }
+      if (row.length > 0) rows.push(row);
+      buffer = [];
+      return;
+    }
     const rowCount = Math.ceil(buffer.length / columns);
     const baseRowSize = Math.floor(buffer.length / rowCount);
     const extraItems = buffer.length % rowCount;
@@ -709,6 +728,7 @@ const getMobileSystemInfoGroups = (
 
   return [
     {
+      columns: english ? 2 : 3,
       description: copy.cloudDescription,
       id: "cloud",
       notice: getMobileClientAheadNotice(copy, instance?.version, instance?.health.runtime),
@@ -720,7 +740,7 @@ const getMobileSystemInfoGroups = (
         { label: copy.databaseVersion, mono: true, value: instance?.health.migration || copy.unknown },
         { label: copy.databaseBackend, value: getMobileDatabaseBackend(instance?.health.storage?.database, copy.unknown) },
         { label: copy.deploymentPlatform, value: getMobileDeploymentPlatform(instance?.health.runtime, english) },
-        { label: copy.instanceBuild, mono: true, value: instance?.health.build || copy.unknown },
+        { label: copy.instanceBuild, mono: true, value: instance?.health.build || copy.unknown, wide: true },
         { fullWidth: true, label: copy.newUploadObjectStorage, value: getMobileObjectStorage(instance?.health, english, copy.unknown) },
         ...(instance?.health.objectStorageProvider === "s3"
           ? [{ fullWidth: true, label: copy.existingAttachments, value: copy.existingAttachmentsOriginalStorage }]
@@ -732,6 +752,7 @@ const getMobileSystemInfoGroups = (
       title: copy.cloudSection,
     },
     {
+      columns: english ? 2 : 3,
       description: copy.clientDescription,
       id: "client",
       items: [
@@ -739,8 +760,9 @@ const getMobileSystemInfoGroups = (
         { label: copy.build, value: __DEV__ ? copy.developmentBuild : copy.productionBuild },
         { label: copy.client, value: copy.mobileApp },
         { label: copy.platform, value: platformName },
-        { label: copy.platformVersion, mono: true, value: Platform.OS === "android" ? `${Platform.constants.Release} (API ${Platform.Version})` : String(Platform.Version) },
-        { label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown },
+        { label: copy.platformVersion, mono: true, value: Platform.OS === "android" ? `${Platform.constants.Release} (API ${Platform.Version})` : String(Platform.Version), wide: true },
+        { label: copy.deviceModel, value: readMobileDeviceModel() || copy.unknown, wide: true },
+        { label: copy.installMode, value: formatExecutionEnvironment(Constants.executionEnvironment, localePreference) },
         {
           fullWidth: true,
           mono: true,
@@ -751,13 +773,13 @@ const getMobileSystemInfoGroups = (
             screenWidth: Dimensions.get("screen").width,
           }), copy.screenResolutionValue) || copy.unknown,
         },
-        { label: copy.language, mono: true, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
-        { label: copy.timeZone, mono: true, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
-        { label: copy.installMode, value: formatExecutionEnvironment(Constants.executionEnvironment, localePreference) },
+        { fullWidth: true, label: copy.language, mono: true, value: localePreference === "system" ? `${resolvedLocale} (${copy.followSystem})` : resolvedLocale },
+        { fullWidth: true, label: copy.timeZone, mono: true, value: Intl.DateTimeFormat().resolvedOptions().timeZone || copy.unknown },
       ],
       title: copy.clientSection,
     },
     {
+      columns: 2,
       description: copy.connectionDescription,
       id: "connection",
       items: [
