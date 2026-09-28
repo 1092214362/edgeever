@@ -24,19 +24,16 @@
 
 ### 决策一：采用 ACP (Agent Client Protocol) 连接本地 Agent
 
-* **核心结论**：引入 **`@agentclientprotocol/sdk` (ACP)** 作为连接本地 Agent 的统一标准。（注：Vercel AI SDK Harness 专为云端沙箱设计，无法调度本机环境且不兼容边缘运行时，故不采用）。
-* **背景与定位**：由 Zed、Anthropic（Claude Code）、JetBrains 联合制定的开放标准，定位为 AI 时代“客户端与本地 AI Agent 间的 LSP（Language Server Protocol）”。
+* **核心结论**：桌面版以 **`@agentclientprotocol/sdk` (ACP)** 作为本地 Agent 的首选接入协议。AI SDK Harness 并非不能在本机运行，但其沙箱、会话和适配层不直接解决“调用用户电脑上已配置 Agent”的需求，本阶段不引入。
+* **背景与定位**：ACP 标准化客户端与 Agent 之间的会话、进度和权限交互，适合由 EdgeEver 桌面应用充当客户端。首版采用稳定的 ACP v1；是否支持某个 Agent，以具体 ACP 适配器和真实握手结果为准。[ACP 协议概览](https://agentclientprotocol.com/protocol/v1/overview)
 * **通信方式**：
-  * **本地子进程模式**：EdgeEver 桌面端（Node/Electron 宿主）通过 `stdio` 管道直接拉起本地 Agent（如 `antigravity`, `codex`, `claude-code`）；
-  * **本地网络模式**：本地 Agent 常驻守护进程时，前端通过 `WebSocket` / `HTTP` 连接 `http://127.0.0.1:<port>`；
-* **协议优势**：原生规范了会话生命周期、打字机流式、文件 Diff 审查确认、权限确认拦截与工具执行状态。
-* **本地 Agent 智能嗅探（Auto-Discovery）**：
-  * **免配置痛点**：用户安装了桌面 App（如 Antigravity、Codex App、WorkBuddy）后，登录态通常已保存在本地用户目录中（共享登录态），但 CLI 命令往往未注入全局 `$PATH`。
-  * **主动探测**：桌面端启动时自动按优先级扫描常见路径：
-    1. 检查系统环境变量 `$PATH`；
-    2. 扫描 macOS 默认 App 路径（如 `/Applications/<Agent>.app/Contents/...`）；
-    3. 检查用户主目录（如 `~/.local/bin/`、`~/.gemini/`、`~/.config/`）。
-  * **状态可视**：探测成功直接显示 `🟢 已检测到本地 Agent (已认证)` 供用户一键选用；未找到时提供友好的“一键安装 CLI”或路径浏览指引，杜绝繁琐的手工终端配置。
+  * **首版本地子进程模式**：Electron 主进程启动明确支持的 ACP 服务程序，通过 JSON-RPC over `stdio` 通信，渲染进程只通过受限的 preload / IPC 接口发送请求与接收事件。Codex 对应 [codex-acp](https://github.com/agentclientprotocol/codex-acp)，Antigravity 对应 [ACP 注册表中的适配器](https://github.com/agentclientprotocol/registry/blob/main/antigravity-acp/agent.json)；普通 `codex`、`agy` 命令或已打开的桌面 App 不能直接视为 ACP 服务。其他 Agent 逐个验证后再加入。
+  * **远程连接暂不纳入首版**：ACP 也面向远程场景，但 HTTP / WebSocket 的完整支持仍在演进；不让网页前端自行连接任意 `127.0.0.1` 端口。
+* **协议优势与边界**：ACP 提供 `initialize`、认证协商、会话创建与可选续接、进度通知、取消及权限请求等接口；具体能力取决于 Agent 握手声明，文件 Diff 也不等于 EdgeEver 笔记修改提案。
+* **本地 Agent 可用性验证**：
+  * 用户选择 Agent 时，先查找已知 ACP 适配器的可执行程序，允许手动指定路径；不扫描凭据目录，也不根据某个 App 是否安装推断登录状态。
+  * 通过 `initialize` 和必要的认证流程区分“程序存在”“需要登录”“可建立会话”“连接失败”。只有完成握手并成功建立会话才显示可用；复用本机登录态须逐个适配器实测。
+  * 首版提供安装与配置指引；自动下载或安装可执行程序留待来源校验、更新和跨平台策略明确之后。
 
 ---
 
@@ -51,7 +48,7 @@
     * `<Reasoning>` / `<Thinking>`：原生可折叠的深度思考折叠面板；
     * `<PromptInput>`：带快捷发送、换行、附件与自动高度调节的现代化输入框。
 * **EdgeEver 专有能力适配**：
-  * **修改拦截与 Diff 卡片**：将 `CompanionActionCard`（笔记创建/更新/删除审核）以 ToolCall 卡片插槽形式嵌入消息流。
+  * **修改拦截与 Diff 卡片**：保留 `CompanionActionCard` 作为业务卡片，只展示由 EdgeEver 后端创建并校验的待确认动作。ACP 工具事件与文件 Diff 可以展示执行进度，但不能直接转换成可应用的笔记动作。
   * **富文本渲染**：消息正文无缝保留现有的 `@streamdown/mermaid` 与 `@streamdown/math`，图表与公式继续保持高质量流式排版。
 
 ---
@@ -87,17 +84,9 @@
 
 ---
 
-### 决策五：三方模型 API 客户端直连优先原则（Client-Direct First）
+### 现有模型调用链路（不属于本次重构）
 
-* **核心原则**：**只要运行环境与网络支持，三方模型请求永远由客户端直接发起，坚决避免服务端做长连接中转代理。**
-* **架构价值**：
-  1. **零知识与极致隐私（Privacy-First）**：笔记正文与用户提示词直接发往用户配置的官方模型 API，不经过任何自建或托管服务端暂存或转发。
-  2. **降低流式延迟（Lowest Latency）**：去掉了 `客户端 -> EdgeEver 服务端 -> 模型厂商` 的中间转发跳数，首字打字机延迟（TTFT）大幅优化。
-  3. **保护服务器算力与带宽（Serverless-Friendly）**：彻底解耦 Cloudflare Workers / Docker 容器，服务端不被大并发的长连接 SSE 中继占用资源。
-* **分端落地机制**：
-  * **桌面端（Desktop App）**：通过主进程/直连网络通道彻底绕过浏览器同源策略（CORS），100% 直连所有主流厂商（OpenAI, Anthropic, Gemini, DeepSeek, Ollama 等）。
-  * **移动端（Mobile App）**：React Native / 原生网络栈无 CORS 限制，直接发起模型 API 请求。
-  * **Web 浏览器端**：支持 CORS 的模型 API（如 Gemini、部分兼容中转、本地 Ollama）直接发起前端 `fetch` 直连；仅在纯网页遇到严格 CORS 拦截时保留极轻量的预备协议（Prepare-Direct）。
+EdgeEver 的 `packages/client/src/index.ts` 已实现模型 API 直连、浏览器端 CORS 探测及服务端代理回退；Companion 也已有相应的准备、执行和检查点接口。本方案沿用这条链路，不新增“客户端永远直连”的原则，不改变凭据准备、服务端工具调用或回退行为。模型请求是否经过实例服务端，取决于运行环境、模型提供方和当前调用路径；隐私、延迟与带宽效果需按实际路径测量，不能一概保证。
 
 ---
 
@@ -110,7 +99,7 @@ flowchart TD
     subgraph UI_Presentation ["前端表现层 (apps/web)"]
         Sidebar["右侧伴随式侧栏 (AiSidebar)"]
         AiElements["Vercel ai-elements\n(Conversation, Message, Reasoning, PromptInput)"]
-        ActionSlot["业务插槽 (CompanionActionCard / ToolCall / Mermaid)"]
+        ActionSlot["业务插槽 (已校验的 CompanionActionCard / ACP 进度)"]
         InlineMenu["编辑器选区悬浮胶囊 (Quick Inline Actions)"]
     end
 
@@ -120,14 +109,14 @@ flowchart TD
     end
 
     subgraph Provider_Channel ["多通道执行驱动 (Execution Channels)"]
-        DirectModelChannel["通道 A: 客户端直连三方模型 (Client-Direct Stream)\n(OpenAI / Gemini / DeepSeek / Ollama)"]
-        LocalAgentChannel["通道 B: 本地 Agent 驱动 (Local ACP)\n(@agentclientprotocol/sdk / Localhost)"]
-        ServerFallbackChannel["通道 C: 服务端中继兜底 (仅受限 Web 环境)\n(Cloudflare Worker / Docker Proxy)"]
+        ExistingAiChannel["通道 A: 现有 AI / Companion 调用链路\n(沿用已有直连与代理回退)"]
+        LocalAgentChannel["通道 B: 桌面本机 ACP\n(Electron 主进程 / stdio)"]
+        ActionValidation["EdgeEver 后端动作校验与确认\n(本机 Agent 写入接口待设计)"]
     end
 
     subgraph External_Entities ["外部执行实体"]
-        ModelProviders["三方 AI 模型官方 API\n(零服务端中转 / 隐私直达)"]
-        LocalAgent["本地电脑 AI Agent\n(Codex / Antigravity / Claude Code)"]
+        ModelProviders["现有配置的模型提供方"]
+        LocalAgent["已验证的本机 ACP Agent\n(Codex / Antigravity 等)"]
     end
 
     Sidebar --> AiElements
@@ -136,12 +125,13 @@ flowchart TD
     Sidebar --> AgentManager
     ContextCollector --> AgentManager
 
-    AgentManager -->|优先直连| DirectModelChannel
-    AgentManager -->|本地 Agent| LocalAgentChannel
-    AgentManager -.->|受限环境兜底| ServerFallbackChannel
+    AgentManager -->|内置助手| ExistingAiChannel
+    AgentManager -->|仅桌面版、用户选择| LocalAgentChannel
 
-    DirectModelChannel --> ModelProviders
+    ExistingAiChannel -->|保持现状| ModelProviders
     LocalAgentChannel --> LocalAgent
+    LocalAgentChannel -.->|后续阶段：结构化提案| ActionValidation
+    ActionValidation -.->|有效待确认动作| ActionSlot
 ```
 
 ### 3.2 交互时序图（本地 Agent 调度示例）
@@ -152,21 +142,29 @@ sequenceDiagram
     actor User as 用户
     participant Editor as 笔记编辑器
     participant Sidebar as AI 助手右侧栏 (ai-elements)
-    participant Client as 本地 ACP 桥接器
-    participant Agent as 电脑本地 Agent (Antigravity/Codex)
+    participant Client as Electron 主进程 ACP 客户端
+    participant Agent as 已验证的本机 ACP Agent
+    participant API as EdgeEver 后端动作接口
 
     User->>Editor: 选中文本或阅读长篇笔记
-    Editor-->>Sidebar: 广播选区与笔记 Context
+    Editor-->>Sidebar: 提供选区与笔记 Context
     User->>Sidebar: 输入任务要求或发送指令
-    Sidebar->>Client: 发起请求 (带上下文元数据)
-    Client->>Agent: 通过 stdio / WebSocket 发起 JSON-RPC (ACP)
-    Agent-->>Client: 实时流式推送 (思考过程 + Tool 执行)
-    Client-->>Sidebar: ai-elements 流式渲染打字机效果
-    Agent-->>Client: 产出笔记修改方案 (Action Diff)
-    Client-->>Sidebar: 渲染 CompanionActionCard (带应用/拒绝按钮)
-    User->>Sidebar: 点击「应用修改」
-    Sidebar->>Editor: 安全执行原子化补丁更新
+    Sidebar->>Client: 经受限 IPC 发起请求 (带选定上下文)
+    Client->>Agent: 通过 stdio 发送 ACP 会话请求
+    Agent-->>Client: session/update (消息与工具进度)
+    Client-->>Sidebar: 映射为侧栏可展示的事件
+    opt 后续阶段：本机 Agent 提议修改笔记
+        Agent-->>Client: 通过受限工具提交结构化操作意图
+        Client->>API: 认证并提交提案 (接口待设计)
+        API-->>Client: 校验后创建待确认动作，或拒绝
+        Client-->>Sidebar: 仅对有效动作展示 CompanionActionCard
+        User->>Sidebar: 点击「应用修改」
+        Sidebar->>API: 请求应用待确认动作
+        API-->>Sidebar: 返回执行结果或版本冲突
+    end
 ```
+
+本机 ACP 首版仅向 Agent 提供用户选定的只读笔记上下文，不提供写入 EdgeEver 的工具；Agent 自身的本机工具权限另按其适配器配置。ACP 的工具事件或文件 Diff 不会自动成为 EdgeEver 笔记操作；开放笔记写入前必须另行设计受限工具、结构化提案、工作区权限、笔记版本校验和服务端确认接口，禁止本机 Agent 绕过现有门禁直接改写笔记。
 
 ---
 
@@ -178,8 +176,8 @@ sequenceDiagram
 | :--- | :--- |
 | **功能价值** | 彻底消除弹窗遮挡编辑器的交互硬伤；大幅减少手写冗余代码；统一操作心智；打通本地高阶 Agent 生态。 |
 | **影响范围** | `apps/web/src/components/EditorPane.tsx` 布局容器、`apps/web/src/components/dialogs/AiAssistantDialog.tsx`（逐步废弃并替换）、`WorkspaceApp.tsx` 侧栏布局排布、i18n 多语言文案。 |
-| **最坏后果** | 1. 窄屏下侧边栏挤压主编辑器可视区；<br>2. 移除旧问答模式导致部分习惯“单点点击替换”的用户感到路径变长；<br>3. 本地连接异常时出现无响应等待。 |
-| **回滚与防范方案** | 1. **弹性布局**：严格设定桌面最小断点，小屏强制降级为遮罩抽屉（Drawer）；<br>2. **保留行内极速改写**：编辑器 Bubble Menu 保留直达轻量操作；<br>3. **渐进式替换**：底层 `api.streamAiGeneration` 与 `CompanionChat` 逻辑保持向前兼容，先实现并挂载新侧栏，验收无误后再清理旧 Dialog 代码；<br>4. **连接状态可见**：本地通道明确展示连接状态灯（Connected / Disconnected / Port）。 |
+| **最坏后果** | 1. 窄屏下侧边栏挤压主编辑器可视区；<br>2. 移除旧问答模式导致部分习惯“单点点击替换”的用户感到路径变长；<br>3. 本地连接异常时出现无响应等待；<br>4. 若错误地将本机 Agent 输出当成可信笔记动作，可能覆盖旧内容或绕过写入确认。 |
+| **回滚与防范方案** | 1. **弹性布局**：严格设定桌面最小断点，小屏强制降级为遮罩抽屉（Drawer）；<br>2. **保留行内极速改写**：编辑器 Bubble Menu 保留直达轻量操作；<br>3. **渐进式替换**：底层 `api.streamAiGeneration` 与 `CompanionChat` 逻辑保持向前兼容，先实现并挂载新侧栏，验收无误后再清理旧 Dialog 代码；<br>4. **连接状态可见**：本地通道区分程序未找到、需要登录、会话可用和连接失败。 |
 | **跨运行时验证项** | 严格禁止在核心 Server 代码中引入 Node 本地沙箱依赖，确保 Cloudflare Workers 与 Docker 镜像构建 100% 保持纯净与通过。 |
 
 ---
@@ -194,7 +192,7 @@ sequenceDiagram
 ### 第二阶段：基于 `ai-elements` 重构对话流（UI Modernization）
 - [ ] 封装基于 `ai-elements` 的对话主视口：`<Conversation>`, `<ConversationContent>`, `<Message>`, `<PromptInput>`。
 - [ ] 将思考过程接入 `<Reasoning>` 折叠展示。
-- [ ] 迁移并重构 `CompanionActionCard`，以标准工具响应卡片的形式嵌入流中，保留 Diff 对比与安全应用门禁。
+- [ ] 将 `CompanionActionCard` 作为后端已校验动作的业务卡片嵌入消息流，保留 Diff 对比与安全应用门禁；ACP 工具进度另行呈现。
 - [ ] 确保正文的 `@streamdown/mermaid` 与 `@streamdown/math` 完美兼容流式解析。
 
 ### 第三阶段：模式收敛与快捷技能（Simplification）
@@ -204,12 +202,13 @@ sequenceDiagram
 - [ ] 验证多语言（zh-CN, en-US, ja, zh-TW）文案的同步清理与统一。
 
 ### 第四阶段：本地 Agent 桥接与协议接入（Local Agent Connectivity）
-- [ ] 引入 `@agentclientprotocol/sdk`，在客户端封装轻量 ACP 通信适配器。
-- [ ] 实现桌面端**本地 Agent 智能嗅探（Auto-Discovery）**模块：
-  * 自动探测常见默认路径（`PATH`、`/Applications/<Agent>.app/...`、`~/.local/bin/`、`~/.gemini/` 等）；
-  * 无缝复用本地桌面 App 已落盘的登录态，避免二次认证；
-  * 提供状态灯（`🟢 已检测到本地 Agent / ⚪ 未检测到`）及一键补全指引。
+- [ ] 引入 `@agentclientprotocol/sdk`，在 Electron 主进程封装 ACP v1 `stdio` 客户端，并通过受限 preload / IPC 向侧栏传递事件。
+- [ ] 实现桌面端**本机 ACP Agent 可用性验证**：
+  * 只查找明确支持的 ACP 适配器可执行程序，并允许用户手动指定路径；不读取登录凭据目录。
+  * 完成 `initialize`、必要的认证流程与会话创建，再显示“可用”；分别展示未安装、需登录、连接失败等状态。
+  * 首版提供安装与配置指引，不自动下载或安装二进制程序；按平台验证登录态是否能够复用。
 - [ ] 在设置中增加“Agent 来源”选择项：
   * **内置服务模式**（默认）：继续连接当前 EdgeEver 后端 / Companion 接口；
-  * **本地 Agent 模式**：优先通过智能嗅探直连，或支持手动配置本地连接地址（如 `http://127.0.0.1:xxxx`）。
-- [ ] 联调本地 Agent（如 Antigravity / Codex / Claude Code），验证真实会话、文件上下文传递与修改回填。
+  * **本地 Agent 模式**：桌面版从已验证的 ACP 适配器中选择，支持手动指定适配器程序路径；首版不接受任意本地网络地址。
+- [ ] 分别联调 Codex 与 Antigravity 的 ACP 适配器，验证握手、认证、真实会话、流式事件、取消和只读笔记上下文；其他 Agent 通过同样的验证后再加入。
+- [ ] 若后续开放本机 Agent 修改笔记，先完成服务端结构化提案与确认门禁设计，并验证版本冲突与失败恢复；不得将 ACP 文件 Diff 直接交给编辑器写入。
