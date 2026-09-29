@@ -560,7 +560,12 @@ function SidebarComposer({
               {t("aiAssistant.sidebar.stop")}
             </Button>
           ) : (
-            <PromptInputSubmit aria-label={t("companion.send")} disabled={locked || !draft.trim()} variant="solid" />
+            <PromptInputSubmit
+              aria-label={t("companion.send")}
+              className="border-slate-900 bg-slate-900 text-slate-50 hover:border-slate-800 hover:bg-slate-800"
+              disabled={locked || !draft.trim()}
+              variant="solid"
+            />
           )}
         </PromptInputFooter>
       </PromptInput>
