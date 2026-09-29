@@ -105,6 +105,12 @@ const applyLegacyWeChatStyles = (
   root.querySelectorAll<HTMLElement>("pre code").forEach((element) => {
     element.style.cssText = `padding: 0; background: transparent; color: inherit; font-family: Menlo, Consolas, monospace; font-size: ${codeSize}; white-space: pre-wrap;`;
   });
+
+  if (colors?.accent) {
+    root.querySelectorAll<HTMLElement>('ul[data-type="taskList"] li[data-checked] > label input').forEach((element) => {
+      element.style.accentColor = colors.accent;
+    });
+  }
 };
 
 const applyInlineStyles = (

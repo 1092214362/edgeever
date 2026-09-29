@@ -81,12 +81,14 @@ describe("editor typography contract", () => {
     expect(prose).not.toContain('data-note-palette="custom"');
   });
 
-  test("named palettes recolor links, inline code, and bold", () => {
+  test("named palettes recolor links, inline code, bold, and checked task boxes", () => {
     const prose = readStyle("./note-prose.css");
 
     expect(prose).toMatch(/color:\s*var\(--note-palette-link\)/);
     expect(prose).toMatch(/color:\s*var\(--note-palette-code-text\)/);
     expect(prose).toMatch(/color:\s*var\(--note-palette-accent\)/);
+    expect(prose).toMatch(/accent-color:\s*var\(--note-palette-accent\)/);
+    expect(prose).toMatch(/ul\[data-type="taskList"\] li\[data-checked\] > label input/);
     expect(prose).toMatch(/\.edgeever-code-block code/);
     expect(prose).not.toMatch(/--note-palette-text/);
     expect(prose).not.toMatch(/--note-palette-surface/);
