@@ -75,6 +75,8 @@ describe("reading typography settings", () => {
     expect(preferenceCard).not.toContain('t("settings.editorBodyLineHeightDescription")');
     expect(preferenceCard).toContain('t("settings.editorContentWidthDescription")');
     expect(preferenceCard).toContain('t("settings.editorBodyPaletteTitle")');
+    expect(preferenceCard).toContain("NoteProsePaletteSwatch");
+    expect(preferenceCard).toContain("NOTE_PROSE_PALETTES[paletteId].accent");
     expect(preferenceCard).toContain('t("settings.editorBodyCssTitle")');
     expect(preferenceCard.slice(preferenceCard.indexOf("editorBodyCssTitle") - 500, preferenceCard.indexOf("editorBodyCssTitle"))).toContain("lg:flex");
     expect(preferenceCard).toContain('t("settings.editorBodyCssDescription")');

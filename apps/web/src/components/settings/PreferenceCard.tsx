@@ -3,7 +3,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorContentWidth } from "@/lib/editor-content-width";
 import type { NoteProsePatch, NoteProsePaletteChoice, ResolvedNoteProse } from "@edgeever/shared";
-import { DEFAULT_NOTE_PROSE_CSS, MAX_NOTE_PROSE_CSS_BYTES, NOTE_PROSE_FONT_SIZES, NOTE_PROSE_PALETTE_CHOICES } from "@edgeever/shared";
+import { DEFAULT_NOTE_PROSE_CSS, MAX_NOTE_PROSE_CSS_BYTES, NOTE_PROSE_FONT_SIZES, NOTE_PROSE_PALETTE_CHOICES, NOTE_PROSE_PALETTES } from "@edgeever/shared";
 import {
   EDITOR_LINK_OPEN_MODE_CHANGED_EVENT,
   getStoredEditorLinkOpenMode,
@@ -175,6 +175,14 @@ const FontChoiceFields = ({
     </div>
   );
 };
+
+const NoteProsePaletteSwatch = ({ paletteId }: { paletteId: NoteProsePaletteChoice }) => (
+  <span
+    aria-hidden
+    className={`h-3 w-6 shrink-0 rounded-[2px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.14)] ${paletteId === "native" ? "bg-foreground" : ""}`}
+    style={paletteId === "native" ? undefined : { backgroundColor: NOTE_PROSE_PALETTES[paletteId].accent }}
+  />
+);
 
 const NOTE_PROSE_LINE_HEIGHT_OPTIONS = [
   { value: "1.5", labelKey: "settings.editorBodyLineHeights.compact" },
@@ -468,11 +476,25 @@ export const PreferenceCard = ({
               onValueChange={(value) => onNoteProseChange({ palette: value as NoteProsePaletteChoice })}
             >
               <SelectTrigger aria-label={t("settings.editorBodyPaletteTitle")} className="h-9 bg-card">
-                <SelectValue />
+                <SelectValue>
+                  <span className="flex items-center gap-2">
+                    <NoteProsePaletteSwatch paletteId={noteProse.palette} />
+                    <span>{t(`settings.editorBodyPalettes.${noteProse.palette}`)}</span>
+                  </span>
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {NOTE_PROSE_PALETTE_CHOICES.map((paletteId) => (
-                  <SelectItem key={paletteId} value={paletteId}>{t(`settings.editorBodyPalettes.${paletteId}`)}</SelectItem>
+                  <SelectItem
+                    key={paletteId}
+                    value={paletteId}
+                    className="pr-2.5 [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1"
+                  >
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <span>{t(`settings.editorBodyPalettes.${paletteId}`)}</span>
+                      <NoteProsePaletteSwatch paletteId={paletteId} />
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
