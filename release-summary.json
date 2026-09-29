@@ -1,5 +1,5 @@
 {
-  "version": "1.91.0",
+  "version": "1.92.0",
   "changes": {
     "en-US": [
       "On web and desktop, the AI assistant is a sidebar beside the note. It can attach files and asks before changing the note. The header switches recent chats. Desktop can connect Codex or Antigravity without handing over the note directory. In the browser that option stays unavailable, and requests still use the configured model. Settings use a Models and agents tab, with the agent source ahead of the model. The send button is near-black.",
