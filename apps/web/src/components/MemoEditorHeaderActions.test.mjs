@@ -15,7 +15,8 @@ describe("shared memo editor header actions", () => {
   test("owns every action shared by text and diagram notes", () => {
     expect(actionsSource).toContain("<Search");
     expect(actionsSource).toContain("<GitHubRepositoryLink");
-    expect(actionsSource).toContain("<SystemInfoDialog");
+    expect(actionsSource).not.toContain("SystemInfoDialog");
+    expect(actionsSource).not.toContain("systemInfo.title");
     expect(actionsSource).toContain("<ExecutionCenterButton");
     expect(actionsSource).toContain("setPreference(nextTheme)");
     expect(actionsSource).toContain("<MoreHorizontal");

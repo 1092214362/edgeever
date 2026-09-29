@@ -419,7 +419,6 @@ const RichEditorPane = ({
   const resourceInsertionLimit = useMemo(createFileBatchQueue, []);
   const isSelectionMode = Boolean(selectionActionBar);
   const [title, setTitle] = useState("");
-  const [systemInfoOpen, setSystemInfoOpen] = useState(false);
   const [tagsText, setTagsText] = useState("");
   const {
     dirtyVersion,
@@ -2918,7 +2917,6 @@ const RichEditorPane = ({
     historyOpen ||
       shareOpen ||
       aiAssistantOpen ||
-      systemInfoOpen ||
       mobileNotebookSheetOpen ||
       noteLinkPickerOpen ||
       externalLinkDialogOpen ||
@@ -3853,7 +3851,6 @@ const RichEditorPane = ({
               moreMenuClassName="w-56 rounded-md"
               onOpenExecutionCenter={onOpenExecutionCenter}
               onSearch={() => openNoteSearch()}
-              onSystemInfoOpenChange={setSystemInfoOpen}
               textNoteActions={(
                 <>
                   {!effectiveReadOnly && (
