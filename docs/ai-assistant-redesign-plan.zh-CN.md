@@ -15,7 +15,7 @@
 ### 1.2 重构目标
 1. **交互形态升级**：由“居中浮动弹窗”升级为现代知识工具标准的“右侧伴随式侧边栏（Right Sidebar）”，支持宽度调节与自适应折叠。
 2. **UI 组件标准化**：全面基于 Vercel `ai-elements`（与项目 `shadcn/ui` 深度整合）重构对话流、思考链（Reasoning）与状态展示，彻底消除手工样板代码。
-3. **消除模式割裂**：废弃多余的“问答 vs Agent”双 Tab，统一收敛为单一且强大的全局 Companion Agent；原预置指令沉淀为 Agent 快捷技能（Skills / Slash Commands），并保留选区极速改写能力。
+3. **消除模式割裂**：废弃多余的“问答 vs Agent”双 Tab，统一收敛为单一的全局 Companion Agent；常用写作意图通过快捷技能（Skills / Slash Commands）触发，选区作为 Agent 上下文。旧问答和行内改写链路不作为新架构的兼容目标。
 4. **标准化本地 Agent 接入**：采用轻量且符合行业开放标准的 **ACP (Agent Client Protocol)** 及本地服务通道，让 EdgeEver 能够丝滑调度本机已有的 AI Agent。
 
 ---
@@ -48,7 +48,7 @@
     * `<Reasoning>` / `<Thinking>`：原生可折叠的深度思考折叠面板；
     * `<PromptInput>`：带快捷发送、换行、附件与自动高度调节的现代化输入框。
 * **EdgeEver 专有能力适配**：
-  * **修改拦截与 Diff 卡片**：保留 `CompanionActionCard` 作为业务卡片，只展示由 EdgeEver 后端创建并校验的待确认动作。ACP 工具事件与文件 Diff 可以展示执行进度，但不能直接转换成可应用的笔记动作。
+  * **新笔记编辑流程**：不要求复用旧 `CompanionActionCard` 或行内替换交互。后续以结构化编辑提案、EdgeEver 后端校验、Diff 预览和用户确认建立新的写入流程；ACP 工具事件与文件 Diff 可以展示执行进度，但不能直接转换成可应用的笔记动作。
   * **富文本渲染**：消息正文无缝保留现有的 `@streamdown/mermaid` 与 `@streamdown/math`，图表与公式继续保持高质量流式排版。
 
 ---
@@ -71,16 +71,13 @@
 
 ### 决策四：砍掉“问答模式”，全面收敛到“统一 Agent”
 
-* **评估结论**：**废弃模式切换 Tab，统一为 Agent 交互，通过 Skills 兼顾高频微操作**。
+* **评估结论**：**废弃模式切换 Tab 与旧编辑链路，统一为 Agent 交互，并在新架构上重新设计笔记编辑**。不以旧功能逐项对齐作为上线条件。
 * **融合与收敛设计**：
-  1. **主视口收敛**：删除顶部 `instruction`（问答）与 `ask`（Agent）切换栏，界面保持极简纯粹。
-  2. **指令转化为 Agent Skills / 斜杠命令**：
-     * 原“指令模式”下的功能（精简总结、提炼要点、全文翻译、润色表达等）沉淀为内置预置 Skills；
-     * 用户在侧栏输入框输入 `/` 时，触发斜杠菜单（如 `/summarize`, `/translate`），点击即发；
-     * 用户亦可直接点击输入框上方的快捷胶囊标签（Pills）一键执行。
-  3. **保留编辑器行内极速微操作（防退化）**：
-     * 用户选中文本后弹出的气泡菜单（Bubble Menu）中，保留最直接的快捷指令入口（例如“AI 润色”、“AI 翻译”）；
-     * 极速微操作直接在行内呈现 Diff 或替换，无需强迫用户转移视线到侧栏，兼顾“复杂多轮问答”与“单点极速改写”。
+  1. **主视口收敛**：删除顶部 `instruction`（问答）与 `ask`（Agent）切换栏，以及依赖旧问答链路的编辑入口；所有 AI 任务从侧栏发起。
+  2. **常用写作意图作为 Agent 快捷入口**：
+     * 总结、翻译、润色等可提供快捷技能胶囊（Pills）与斜杠命令（Slash Commands），其结果先作为 Agent 回复呈现，不承诺旧版的一键替换行为；
+     * 编辑器选区随请求提供给 Agent，并在侧栏显示上下文徽标，避免用户重复复制。
+  3. **重新设计笔记写入**：Agent 如需修改笔记，必须提交结构化提案；EdgeEver 后端校验目标、权限与版本后，侧栏展示 Diff，由用户确认后应用。旧气泡菜单的 AI 改写、行内 Diff、直接替换和 `CompanionActionCard` 均可随旧链路移除；新写入流程完成前，相关任务只返回文本建议。
 
 ---
 
@@ -99,8 +96,7 @@ flowchart TD
     subgraph UI_Presentation ["前端表现层 (apps/web)"]
         Sidebar["右侧伴随式侧栏 (AiSidebar)"]
         AiElements["Vercel ai-elements\n(Conversation, Message, Reasoning, PromptInput)"]
-        ActionSlot["业务插槽 (已校验的 CompanionActionCard / ACP 进度)"]
-        InlineMenu["编辑器选区悬浮胶囊 (Quick Inline Actions)"]
+        ActionSlot["业务插槽 (新编辑提案 / ACP 进度)"]
     end
 
     subgraph Coordinator_Layer ["调度与状态协调层 (Coordinator)"]
@@ -111,7 +107,7 @@ flowchart TD
     subgraph Provider_Channel ["多通道执行驱动 (Execution Channels)"]
         ExistingAiChannel["通道 A: 现有 AI / Companion 调用链路\n(沿用已有直连与代理回退)"]
         LocalAgentChannel["通道 B: 桌面本机 ACP\n(Electron 主进程 / stdio)"]
-        ActionValidation["EdgeEver 后端动作校验与确认\n(本机 Agent 写入接口待设计)"]
+        ActionValidation["新笔记编辑通道\n(结构化提案 / 后端校验 / 用户确认)"]
     end
 
     subgraph External_Entities ["外部执行实体"]
@@ -121,7 +117,6 @@ flowchart TD
 
     Sidebar --> AiElements
     AiElements --> ActionSlot
-    InlineMenu -.->|快捷动作| AgentManager
     Sidebar --> AgentManager
     ContextCollector --> AgentManager
 
@@ -130,6 +125,7 @@ flowchart TD
 
     ExistingAiChannel -->|保持现状| ModelProviders
     LocalAgentChannel --> LocalAgent
+    ExistingAiChannel -.->|后续阶段：结构化编辑提案| ActionValidation
     LocalAgentChannel -.->|后续阶段：结构化提案| ActionValidation
     ActionValidation -.->|有效待确认动作| ActionSlot
 ```
@@ -157,7 +153,7 @@ sequenceDiagram
         Agent-->>Client: 通过受限工具提交结构化操作意图
         Client->>API: 认证并提交提案 (接口待设计)
         API-->>Client: 校验后创建待确认动作，或拒绝
-        Client-->>Sidebar: 仅对有效动作展示 CompanionActionCard
+        Client-->>Sidebar: 仅对有效动作展示新编辑提案与 Diff
         User->>Sidebar: 点击「应用修改」
         Sidebar->>API: 请求应用待确认动作
         API-->>Sidebar: 返回执行结果或版本冲突
@@ -175,9 +171,9 @@ sequenceDiagram
 | 评估维度 | 详细说明 |
 | :--- | :--- |
 | **功能价值** | 彻底消除弹窗遮挡编辑器的交互硬伤；大幅减少手写冗余代码；统一操作心智；打通本地高阶 Agent 生态。 |
-| **影响范围** | `apps/web/src/components/EditorPane.tsx` 布局容器、`apps/web/src/components/dialogs/AiAssistantDialog.tsx`（逐步废弃并替换）、`WorkspaceApp.tsx` 侧栏布局排布、i18n 多语言文案。 |
-| **最坏后果** | 1. 窄屏下侧边栏挤压主编辑器可视区；<br>2. 移除旧问答模式导致部分习惯“单点点击替换”的用户感到路径变长；<br>3. 本地连接异常时出现无响应等待；<br>4. 若错误地将本机 Agent 输出当成可信笔记动作，可能覆盖旧内容或绕过写入确认。 |
-| **回滚与防范方案** | 1. **弹性布局**：严格设定桌面最小断点，小屏强制降级为遮罩抽屉（Drawer）；<br>2. **保留行内极速改写**：编辑器 Bubble Menu 保留直达轻量操作；<br>3. **渐进式替换**：底层 `api.streamAiGeneration` 与 `CompanionChat` 逻辑保持向前兼容，先实现并挂载新侧栏，验收无误后再清理旧 Dialog 代码；<br>4. **连接状态可见**：本地通道区分程序未找到、需要登录、会话可用和连接失败。 |
+| **影响范围** | `apps/web/src/components/EditorPane.tsx` 布局容器、`apps/web/src/components/dialogs/AiAssistantDialog.tsx`（废弃并替换）、旧问答与行内 AI 编辑入口、原有动作卡片交互、`WorkspaceApp.tsx` 侧栏布局排布、i18n 多语言文案。 |
+| **最坏后果** | 1. 窄屏下侧边栏挤压主编辑器可视区；<br>2. 旧版一键改写与行内替换被移除后，在新编辑流程上线前，用户只能获取文本建议并手动修改笔记；<br>3. 本地连接异常时出现无响应等待；<br>4. 若错误地将 Agent 输出当成可信笔记动作，可能覆盖旧内容或绕过写入确认。 |
+| **回滚与防范方案** | 1. **弹性布局**：严格设定桌面最小断点，小屏强制降级为遮罩抽屉（Drawer）；<br>2. **明确过渡能力**：新编辑流程完成前，只提供 Agent 回复和人工编辑，不保留旧行内写入实现；<br>3. **独立回滚**：保留模型调用链路，旧交互代码可在替换后删除；若新版体验不可接受，通过版本回滚恢复旧实现，不长期并行维护两套交互；<br>4. **写入门禁与连接状态**：未经后端校验和用户确认不得应用提案；本地通道区分程序未找到、需要登录、会话可用和连接失败。 |
 | **跨运行时验证项** | 严格禁止在核心 Server 代码中引入 Node 本地沙箱依赖，确保 Cloudflare Workers 与 Docker 镜像构建 100% 保持纯净与通过。 |
 
 ---
@@ -192,12 +188,13 @@ sequenceDiagram
 ### 第二阶段：基于 `ai-elements` 重构对话流（UI Modernization）
 - [ ] 封装基于 `ai-elements` 的对话主视口：`<Conversation>`, `<ConversationContent>`, `<Message>`, `<PromptInput>`。
 - [ ] 将思考过程接入 `<Reasoning>` 折叠展示。
-- [ ] 将 `CompanionActionCard` 作为后端已校验动作的业务卡片嵌入消息流，保留 Diff 对比与安全应用门禁；ACP 工具进度另行呈现。
+- [ ] 展示 Agent 消息与思考过程，并为后续 ACP 工具进度预留插槽；新笔记编辑提案卡片在写入流程阶段单独设计，不迁移旧 `CompanionActionCard`。
 - [ ] 确保正文的 `@streamdown/mermaid` 与 `@streamdown/math` 完美兼容流式解析。
 
 ### 第三阶段：模式收敛与快捷技能（Simplification）
 - [ ] 移除旧界面的“问答/Agent”模式切换 Tab。
-- [ ] 将常用写作指令（总结、润色、翻译等）改造为输入框快捷技能胶囊（Pills）与斜杠命令（Slash Commands）。
+- [ ] 移除旧问答编辑入口、气泡菜单 AI 改写和行内替换链路；不以旧功能逐项对齐作为验收标准。
+- [ ] 将常用写作意图（总结、润色、翻译等）改造为输入框快捷技能胶囊（Pills）与斜杠命令（Slash Commands），结果先作为 Agent 回复呈现。
 - [ ] 优化编辑器选区联动：选中文字即在侧栏顶部挂载 Context Badge。
 - [ ] 验证多语言（zh-CN, en-US, ja, zh-TW）文案的同步清理与统一。
 
@@ -212,3 +209,8 @@ sequenceDiagram
   * **本地 Agent 模式**：桌面版从已验证的 ACP 适配器中选择，支持手动指定适配器程序路径；首版不接受任意本地网络地址。
 - [ ] 分别联调 Codex 与 Antigravity 的 ACP 适配器，验证握手、认证、真实会话、流式事件、取消和只读笔记上下文；其他 Agent 通过同样的验证后再加入。
 - [ ] 若后续开放本机 Agent 修改笔记，先完成服务端结构化提案与确认门禁设计，并验证版本冲突与失败恢复；不得将 ACP 文件 Diff 直接交给编辑器写入。
+
+### 第五阶段：新架构下的笔记编辑（New Editing Flow）
+- [ ] 定义 Agent 编辑提案的数据结构与受限接口，由 EdgeEver 后端校验笔记目标、权限、内容范围和版本；内置 Agent 先接入，本机 ACP Agent 在工具权限边界明确后接入。
+- [ ] 在侧栏设计新的提案预览与 Diff 确认交互；用户拒绝、取消或关闭侧栏时不得写入，确认后才应用。
+- [ ] 按新流程验收：选区与目标笔记正确、提案可理解、确认后内容正确、拒绝或取消无写入、版本冲突不覆盖新内容、失败后状态可恢复。无需补齐旧版一键改写、行内 Diff 或替换操作。
