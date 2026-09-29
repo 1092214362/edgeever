@@ -788,7 +788,6 @@ export const ja = {
       clay: "赤",
       orange: "オレンジ",
       dawn: "金",
-      emerald: "緑",
       teal: "青緑",
       azure: "青",
       violet: "紫",

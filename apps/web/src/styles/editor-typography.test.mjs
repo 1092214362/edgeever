@@ -72,6 +72,30 @@ describe("editor typography contract", () => {
     expect(placeholderRules).toMatch(/color\s*:\s*#a8b5c4/);
   });
 
+  test("paints bold text with the palette accent", () => {
+    const prose = readStyle("./note-prose.css");
+    const boldRules = declarationsForSelector(prose, ".ProseMirror strong");
+
+    expect(boldRules).toMatch(/color:\s*var\(--note-palette-accent\)/);
+    expect(boldRules).toMatch(/color:\s*var\(--note-palette-dark-accent\)/);
+  });
+
+  test("named palettes recolor links, inline code, and bold", () => {
+    const prose = readStyle("./note-prose.css");
+    const named = prose.split('.edgeever-editor[data-note-palette="custom"]')[0];
+
+    expect(named).toMatch(/color:\s*var\(--note-palette-link\)/);
+    expect(named).toMatch(/color:\s*var\(--note-palette-code-text\)/);
+    expect(named).toMatch(/color:\s*var\(--note-palette-accent\)/);
+    expect(named).toMatch(/\.edgeever-code-block code/);
+    expect(named).not.toMatch(/--note-palette-text/);
+    expect(named).not.toMatch(/--note-palette-surface/);
+    expect(named).not.toMatch(/--note-palette-muted/);
+    expect(named).not.toMatch(/--note-palette-divider/);
+    expect(named).not.toMatch(/--note-palette-code-bg/);
+    expect(named).not.toMatch(/blockquote/);
+  });
+
   test("keeps bold and italic text visible across platform font fallbacks", () => {
     const globals = readStyle("./globals.css");
     const mobileEditor = readStyle("./mobile-markdown-editor.css");

@@ -788,7 +788,6 @@ export const zhCN = {
       clay: "红色",
       orange: "橙色",
       dawn: "金色",
-      emerald: "绿色",
       teal: "青色",
       azure: "蓝色",
       violet: "紫色",

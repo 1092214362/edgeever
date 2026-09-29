@@ -10,7 +10,6 @@ export const NOTE_PROSE_PALETTE_IDS = [
   "clay",
   "orange",
   "dawn",
-  "emerald",
   "teal",
   "azure",
   "violet",
@@ -144,22 +143,11 @@ export const NOTE_PROSE_PALETTES: Record<NoteProsePaletteId, NoteProsePaletteCol
     codeText: "#7C5500",
     background: "#FFFFFF",
   }),
-  emerald: palette({
-    accent: "#16A06E",
-    text: "#2C3A34",
-    muted: "#5C6F66",
-    surface: "#F4FBF7",
-    divider: "#D7EBE1",
-    link: "#0F7A54",
-    codeBackground: "#F3F7F5",
-    codeText: "#0F7A54",
-    background: "#FFFFFF",
-  }),
   teal: palette({
     accent: "#22B8A7",
-    text: "#4D4F46",
-    muted: "#4D4F46",
-    surface: "#EEEFE9",
+    text: "#3E4C4A",
+    muted: "#5C6E6B",
+    surface: "#F2FBFA",
     divider: "#CDEFEA",
     link: "#1A8F82",
     codeBackground: "#ECFBF8",
@@ -224,11 +212,6 @@ export const NOTE_PROSE_PALETTES: Record<NoteProsePaletteId, NoteProsePaletteCol
 };
 
 const LEGACY_EDITOR_THEME_PALETTES: Record<string, NoteProsePaletteChoice> = {
-  "minimal-emerald": "emerald",
-  "outline-emerald": "emerald",
-  "wechat-green": "emerald",
-  "modern-mint": "emerald",
-  grove: "emerald",
   letter: "dawn",
   stub: "dawn",
   brief: "teal",
@@ -278,10 +261,13 @@ export const parseNoteProseLineHeight = (value: unknown): NoteProseLineHeight | 
   return null;
 };
 
-export const parseNoteProsePalette = (value: unknown): NoteProsePaletteChoice | null =>
-  typeof value === "string" && (NOTE_PROSE_PALETTE_CHOICES as readonly string[]).includes(value)
+export const parseNoteProsePalette = (value: unknown): NoteProsePaletteChoice | null => {
+  // The green option was removed. Stored rows keep reading as the native palette.
+  if (value === "emerald") return "native";
+  return typeof value === "string" && (NOTE_PROSE_PALETTE_CHOICES as readonly string[]).includes(value)
     ? value as NoteProsePaletteChoice
     : null;
+};
 
 const isColorSet = (value: unknown): value is NoteProseCustomColorSet => {
   if (typeof value !== "object" || value === null) return false;
@@ -323,7 +309,7 @@ export const noteProseCodeFontSize = (fontSize: number): number => {
 export const resolveNoteProse = (account: Partial<AccountNoteProse> | null | undefined): ResolvedNoteProse => ({
   fontSize: account?.fontSize ?? DEFAULT_NOTE_PROSE_FONT_SIZE,
   lineHeight: account?.lineHeight ?? DEFAULT_NOTE_PROSE_LINE_HEIGHT,
-  palette: account?.palette ?? "native",
+  palette: parseNoteProsePalette(account?.palette) ?? "native",
   customCss: account?.customCss ?? "",
   customColors: account?.palette === "custom"
     ? account.customColors ?? DEFAULT_NOTE_PROSE_CUSTOM_COLORS

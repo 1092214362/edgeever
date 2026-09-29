@@ -6,6 +6,8 @@ import {
   noteProseCodeFontSize,
   noteProseMigrationPatch,
   paletteForLegacyEditorTheme,
+  parseNoteProsePalette,
+  resolveNoteProse,
   sanitizeNoteProseCss,
 } from "@edgeever/shared";
 
@@ -22,9 +24,13 @@ describe("note prose", () => {
     expect(paletteForLegacyEditorTheme("stance")).toBe("clay");
     expect(paletteForLegacyEditorTheme("stub")).toBe("dawn");
     expect(paletteForLegacyEditorTheme("letter")).toBe("dawn");
-    expect(paletteForLegacyEditorTheme("grove")).toBe("emerald");
-    expect(paletteForLegacyEditorTheme("minimal-emerald")).toBe("emerald");
-    expect(paletteForLegacyEditorTheme("wechat-green")).toBe("emerald");
+    expect(paletteForLegacyEditorTheme("grove")).toBeNull();
+    expect(paletteForLegacyEditorTheme("minimal-emerald")).toBeNull();
+    expect(paletteForLegacyEditorTheme("outline-emerald")).toBeNull();
+    expect(paletteForLegacyEditorTheme("wechat-green")).toBeNull();
+    expect(paletteForLegacyEditorTheme("modern-mint")).toBeNull();
+    expect(parseNoteProsePalette("emerald")).toBe("native");
+    expect(resolveNoteProse({ palette: "emerald" }).palette).toBe("native");
     expect(paletteForLegacyEditorTheme("brief")).toBe("teal");
     expect(paletteForLegacyEditorTheme("zen")).toBe("teal");
     expect(paletteForLegacyEditorTheme("guide")).toBe("azure");
@@ -56,11 +62,11 @@ describe("note prose", () => {
 
   test("fills only account fields that were never set", () => {
     expect(noteProseMigrationPatch(emptyAccount(), {
-      palette: "emerald",
+      palette: "teal",
       customCss: "p { color: red; }",
       customColors: null,
     })).toEqual({
-      palette: "emerald",
+      palette: "teal",
       customCss: "p { color: red; }",
     });
 

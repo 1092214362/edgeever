@@ -788,7 +788,6 @@ export const enUS = {
       clay: "Red",
       orange: "Orange",
       dawn: "Gold",
-      emerald: "Green",
       teal: "Teal",
       azure: "Blue",
       violet: "Purple",
