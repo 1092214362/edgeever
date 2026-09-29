@@ -1130,7 +1130,6 @@ export const ja = {
     addDisabledReason: "モデルサービスを追加する前に、インスタンス認証シークレットを設定してください",
     savedCredentialsUnavailable: "保存済みのモデル認証情報を復号できません。サービスを開いて API Key を再入力してください。",
     savedCredentialsUnavailableBadge: "API Key を再入力",
-    privacyNotice: "個人のプライバシーを守るため、信頼できるモデル提供元または API プロキシを使ってください。",
   },
   aiPrompts: {
     title: "プロンプトライブラリ",
@@ -1336,6 +1335,7 @@ export const ja = {
     agentSource: {
       title: "エージェントの接続先",
       description: "内蔵コンパニオンか、このコンピュータ上のローカル ACP エージェントを使います。",
+      localDisabled: "デスクトップアプリが必要です。ブラウザではローカルエージェントを使えません。",
       builtin: "内蔵コンパニオン",
       builtinHint: "上で設定した AI モデルを使います。",
       local: "ローカル ACP エージェント",

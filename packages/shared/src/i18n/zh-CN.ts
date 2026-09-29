@@ -1130,7 +1130,6 @@ export const zhCN = {
     addDisabledReason: "需要先配置实例认证密钥才能添加模型服务",
     savedCredentialsUnavailable: "已保存的模型凭据无法解密，请打开该服务并重新填写 API Key。",
     savedCredentialsUnavailableBadge: "需重新填写密钥",
-    privacyNotice: "请务必选用可信赖的模型服务商或 API 代理节点，避免个人隐私泄露。",
   },
   aiPrompts: {
     title: "指令库",
@@ -1336,6 +1335,7 @@ export const zhCN = {
     agentSource: {
       title: "代理来源",
       description: "使用内置助手，或使用这台电脑上的本地 ACP 代理。",
+      localDisabled: "需要桌面客户端。网页里不能使用本机代理。",
       builtin: "内置助手",
       builtinHint: "使用上方配置的 AI 模型。",
       local: "本地 ACP 代理",

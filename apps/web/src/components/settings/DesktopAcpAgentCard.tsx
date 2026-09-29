@@ -39,10 +39,15 @@ const statusKey = (adapter: DesktopAcpAdapter | undefined, probing: boolean) => 
   if (probing) return "aiAssistant.agentSource.probing";
   if (!adapter || adapter.detail === "not_probed") return "aiAssistant.agentSource.notProbed";
   if (adapter.detail === "invalid_path") return "aiAssistant.agentSource.invalidPath";
+  if (adapter.detail === "desktop_unavailable") return "aiAssistant.agentSource.localDisabled";
   return `aiAssistant.agentSource.states.${adapter.state}`;
 };
 
-const DesktopAcpAgentCardBody = () => {
+const desktopBridgeAvailable = () => (
+  typeof window !== "undefined" && typeof window.edgeeverDesktop?.listAcpAdapters === "function"
+);
+
+const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
   const { t } = useTranslation();
   const [source, setSource] = useState<AiSidebarSource>("builtin");
   const [adapterId, setAdapterId] = useState<DesktopAcpAdapterId>("codex");
@@ -53,11 +58,12 @@ const DesktopAcpAgentCardBody = () => {
   const [probing, setProbing] = useState(false);
 
   useEffect(() => {
-    setSource(readSource());
+    const stored = readSource();
+    setSource(bridge && stored === "local" ? "local" : "builtin");
     setAdapterId(readAdapterId());
     setAdapterPath(localStorage.getItem(AI_SIDEBAR_ADAPTER_PATH_KEY) ?? "");
     setReady(true);
-  }, []);
+  }, [bridge]);
 
   useEffect(() => {
     if (!ready) return;
@@ -113,20 +119,24 @@ const DesktopAcpAgentCardBody = () => {
       <CardContent className="grid gap-4 p-4 pt-0">
         <div role="radiogroup" aria-label={t("aiAssistant.agentSource.title")} className="overflow-hidden rounded-lg border border-slate-200/70 divide-y divide-slate-200/70">
           {(["builtin", "local"] as const).map((option) => {
+            const disabled = option === "local" && !bridge;
             const checked = source === option;
             return (
-              <label key={option} className={cn("flex cursor-pointer items-start gap-3 px-3.5 py-2.5", checked && "bg-slate-50/80")}>
+              <label key={option} className={cn("flex items-start gap-3 px-3.5 py-2.5", disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer", checked && "bg-slate-50/80")}>
                 <input
                   className="mt-0.5"
                   type="radio"
                   name="edgeever-acp-source"
                   value={option}
                   checked={checked}
-                  onChange={() => setSource(option)}
+                  disabled={disabled}
+                  onChange={() => { if (!disabled) setSource(option); }}
                 />
                 <span className="min-w-0">
                   <span className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t(`aiAssistant.agentSource.${option}`)}</span>
-                  <span className={cn(SETTINGS_ITEM_DESCRIPTION_CLASSNAME, "block")}>{t(`aiAssistant.agentSource.${option}Hint`)}</span>
+                  <span className={cn(SETTINGS_ITEM_DESCRIPTION_CLASSNAME, "block")}>
+                    {disabled ? t("aiAssistant.agentSource.localDisabled") : t(`aiAssistant.agentSource.${option}Hint`)}
+                  </span>
                 </span>
               </label>
             );
@@ -204,7 +214,6 @@ const DesktopAcpAgentCardBody = () => {
   );
 };
 
-export const DesktopAcpAgentCard = () => {
-  if (typeof window === "undefined" || typeof window.edgeeverDesktop?.listAcpAdapters !== "function") return null;
-  return <DesktopAcpAgentCardBody />;
-};
+export const DesktopAcpAgentCard = () => (
+  <DesktopAcpAgentCardBody bridge={desktopBridgeAvailable()} />
+);

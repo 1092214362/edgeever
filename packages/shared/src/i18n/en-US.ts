@@ -1130,7 +1130,6 @@ export const enUS = {
     addDisabledReason: "Configure the instance authentication secret before adding a model service",
     savedCredentialsUnavailable: "Saved model credentials cannot be decrypted. Open the service and enter the API key again.",
     savedCredentialsUnavailableBadge: "Re-enter API key",
-    privacyNotice: "Please use trusted model providers or API proxies to protect your personal privacy.",
   },
   aiPrompts: {
     title: "Prompt library",
@@ -1336,6 +1335,7 @@ export const enUS = {
     agentSource: {
       title: "Agent source",
       description: "Use the built-in companion, or a local ACP agent on this computer.",
+      localDisabled: "Needs the desktop app. A browser cannot use a local agent.",
       builtin: "Built-in companion",
       builtinHint: "Uses the AI model configured above.",
       local: "Local ACP agent",
