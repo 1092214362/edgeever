@@ -70,12 +70,14 @@ describe("reading typography settings", () => {
     const editorToolbar = readFileSync(new URL("../EditorToolbar.tsx", import.meta.url), "utf8");
 
     expect(preferenceCard).toContain('t("settings.editorBodyFontSizeTitle")');
-    expect(preferenceCard).toContain('t("settings.editorBodyFontSizeDescription")');
+    expect(preferenceCard).not.toContain('t("settings.editorBodyFontSizeDescription")');
     expect(preferenceCard).toContain('t("settings.editorBodyLineHeightTitle")');
-    expect(preferenceCard).toContain('t("settings.editorBodyLineHeightDescription")');
+    expect(preferenceCard).not.toContain('t("settings.editorBodyLineHeightDescription")');
+    expect(preferenceCard).toContain('t("settings.editorContentWidthDescription")');
     expect(preferenceCard).toContain('t("settings.editorBodyPaletteTitle")');
     expect(preferenceCard).toContain('t("settings.editorBodyCssTitle")');
     expect(preferenceCard).toContain('t("settings.editorBodyCssDescription")');
+    expect(preferenceCard.match(/t\("settings\.accountSyncDescription"\)/g)).toHaveLength(1);
     expect(preferenceCard).toContain("NoteProseCssEditor");
     expect(readFileSync(new URL("./NoteProseCssEditor.tsx", import.meta.url), "utf8")).toContain("@codemirror/lang-css");
     expect(preferenceCard).toContain('t("common.save")');

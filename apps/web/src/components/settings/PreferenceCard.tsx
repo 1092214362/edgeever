@@ -43,7 +43,6 @@ import {
 } from "@/lib/editor-body-font";
 import { applyUiFontPreference, readUiFontPreference, writeUiFontPreference } from "@/lib/ui-font";
 import { syncPublishedNoteBodyFont } from "@/lib/published-note-body-font";
-import { CustomEditorThemeDialog } from "./CustomEditorThemeDialog";
 import { NoteProseCssEditor } from "./NoteProseCssEditor";
 
 const PreferenceSection = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -57,11 +56,7 @@ const PreferenceSection = ({ title, children }: { title: string; children: React
 import {
   MERMAID_THEME_PREFERENCES,
   useAppearanceTheme,
-  useEditorTheme,
   useMermaidTheme,
-  DEFAULT_CUSTOM_LIGHT_COLORS,
-  DEFAULT_CUSTOM_DARK_COLORS,
-  type CustomEditorTheme,
   type ThemePreference,
 } from "../ThemeProvider";
 
@@ -205,33 +200,16 @@ export const PreferenceCard = ({
   onNoteProseChange,
 }: PreferenceCardProps) => {
   const { t } = useTranslation();
-  const {
-    editorTheme,
-    customEditorThemes,
-    setCustomEditorThemes,
-    setEditorTheme,
-  } = useEditorTheme();
   const { preference: appearancePreference, resolvedTheme, setPreference: setAppearancePreference } = useAppearanceTheme();
   const { mermaidThemePreference, setMermaidTheme } = useMermaidTheme();
-  const [customThemeDialogOpen, setCustomThemeDialogOpen] = useState(false);
   const [cssDialogOpen, setCssDialogOpen] = useState(false);
   const [cssDraft, setCssDraft] = useState(noteProse.customCss);
-  const [editingTheme, setEditingTheme] = useState<CustomEditorTheme | null>(null);
   const [activeLocalePreference, setActiveLocalePreference] = useState<AppLocalePreference>(() => getAppLocalePreference());
-  const [isMobile, setIsMobile] = useState(false);
   const [linkOpenMode, setLinkOpenMode] = useState<EditorLinkOpenMode>(() => getStoredEditorLinkOpenMode());
   const [aiSelectionMenuEnabled, setAiSelectionMenuEnabled] = useState(readAiSelectionMenuPreference);
   const [aiSpaceShortcutEnabled, setAiSpaceShortcutEnabled] = useState(readAiSpaceShortcutPreference);
   const [editorBodyFont, setEditorBodyFont] = useState(readEditorBodyFontPreference);
   const [uiFont, setUiFont] = useState(readUiFontPreference);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 640px)");
-    setIsMobile(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
-  }, []);
 
   useEffect(() => {
     const syncPreference = () => setAiSpaceShortcutEnabled(readAiSpaceShortcutPreference());
@@ -289,31 +267,6 @@ export const PreferenceCard = ({
 
   const cssDraftBytes = new TextEncoder().encode(cssDraft).byteLength;
 
-  const handleEditClick = () => {
-    const colors = noteProse.customColors;
-    setEditingTheme({
-      id: "account-custom",
-      name: t("settings.customEditorTheme.defaultName"),
-      light: colors?.light ?? DEFAULT_CUSTOM_LIGHT_COLORS,
-      dark: colors?.dark ?? DEFAULT_CUSTOM_DARK_COLORS,
-      customCss: noteProse.customCss,
-    });
-    setCustomThemeDialogOpen(true);
-  };
-
-  const handleSaveTheme = (saved: CustomEditorTheme) => {
-    const exists = customEditorThemes.some((theme) => theme.id === saved.id);
-    const nextThemes = exists
-      ? customEditorThemes.map((theme) => (theme.id === saved.id ? saved : theme))
-      : [...customEditorThemes, saved];
-    setCustomEditorThemes(nextThemes);
-    onNoteProseChange({
-      palette: "custom",
-      customColors: { light: saved.light, dark: saved.dark },
-      ...(saved.customCss?.trim() ? { customCss: saved.customCss } : {}),
-    });
-  };
-
   const openCssDialog = () => {
     setCssDraft(noteProse.customCss);
     setCssDialogOpen(true);
@@ -322,14 +275,6 @@ export const PreferenceCard = ({
   const saveCssDraft = () => {
     onNoteProseChange({ customCss: cssDraft });
     setCssDialogOpen(false);
-  };
-
-  const handleDeleteTheme = (idToDelete: string) => {
-    const nextThemes = customEditorThemes.filter((t) => t.id !== idToDelete);
-    setCustomEditorThemes(nextThemes);
-    if (editorTheme === idToDelete) {
-      setEditorTheme("default");
-    }
   };
 
   const handleLocalePreferenceChange = (preference: AppLocalePreference) => {
@@ -463,7 +408,6 @@ export const PreferenceCard = ({
             <Type className="h-4 w-4 shrink-0 text-slate-500" />
             <div className="min-w-0">
               <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("settings.editorBodyFontSizeTitle")}</div>
-              <p className="text-xs leading-5 text-slate-500">{t("settings.editorBodyFontSizeDescription")}</p>
             </div>
           </div>
           <div className="w-full shrink-0 sm:w-80">
@@ -488,7 +432,6 @@ export const PreferenceCard = ({
             <AlignVerticalSpaceAround className="h-4 w-4 shrink-0 text-slate-500" />
             <div className="min-w-0">
               <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("settings.editorBodyLineHeightTitle")}</div>
-              <p className="text-xs leading-5 text-slate-500">{t("settings.editorBodyLineHeightDescription")}</p>
             </div>
           </div>
           <div className="w-full shrink-0 sm:w-80">
@@ -529,11 +472,6 @@ export const PreferenceCard = ({
                 ))}
               </SelectContent>
             </Select>
-            {noteProse.palette === "custom" && !isMobile ? (
-              <Button variant="outline" className="h-9 shrink-0 px-3 text-xs" onClick={handleEditClick}>
-                {t("settings.customEditorTheme.edit")}
-              </Button>
-            ) : null}
           </div>
         </div>
 
@@ -542,7 +480,7 @@ export const PreferenceCard = ({
             <Code2 className="h-4 w-4 shrink-0 text-slate-500" />
             <div className="min-w-0">
               <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("settings.editorBodyCssTitle")}</div>
-              <p className="text-xs leading-5 text-slate-500">{t("settings.editorBodyCssDescription")}</p>
+              <p className="text-xs leading-5 text-slate-500">{t("settings.accountSyncDescription")}</p>
             </div>
           </div>
           <div className="w-full shrink-0 sm:w-auto">
@@ -652,16 +590,6 @@ export const PreferenceCard = ({
           </div>
         </div>
       </PreferenceSection>
-      {!isMobile && editingTheme && (
-        <CustomEditorThemeDialog
-          open={customThemeDialogOpen}
-          theme={editingTheme}
-          onOpenChange={setCustomThemeDialogOpen}
-          onSave={handleSaveTheme}
-          onDelete={handleDeleteTheme}
-          isDefaultTheme={editingTheme.id === "custom-default"}
-        />
-      )}
       <Dialog open={cssDialogOpen} onOpenChange={setCssDialogOpen}>
         <DialogContent>
           <DialogHeader>

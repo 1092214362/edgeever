@@ -45,7 +45,7 @@ const applyLegacyWeChatStyles = (
   const fontSize = `${metrics.fontSize}px`;
   const lineHeight = String(metrics.lineHeight);
   const codeSize = `${noteProseCodeFontSize(metrics.fontSize)}px`;
-  // Named hues move link, inline-code, and bold ink. Custom still paints the whole article.
+  // Named hues move link, inline-code, and bold ink. The rest stays on the WeChat defaults.
   const painted = accentOnly ? null : colors;
   const text = painted?.text ?? "#333";
   const headingColor = painted?.text ?? "#1f2937";
@@ -508,7 +508,7 @@ export const readEditorCopyContext = (from?: HTMLElement | null) => {
     fontSize,
     lineHeight,
     colors,
-    accentOnly: Boolean(palette && palette !== "native" && palette !== "custom"),
+    accentOnly: Boolean(palette && palette !== "native"),
     customCss: customStyleTag?.dataset.originalCss || "",
   };
 };

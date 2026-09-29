@@ -77,23 +77,23 @@ describe("editor typography contract", () => {
     const boldRules = declarationsForSelector(prose, ".ProseMirror strong");
 
     expect(boldRules).toMatch(/color:\s*var\(--note-palette-accent\)/);
-    expect(boldRules).toMatch(/color:\s*var\(--note-palette-dark-accent\)/);
+    expect(prose).not.toMatch(/--note-palette-dark-accent/);
+    expect(prose).not.toContain('data-note-palette="custom"');
   });
 
   test("named palettes recolor links, inline code, and bold", () => {
     const prose = readStyle("./note-prose.css");
-    const named = prose.split('.edgeever-editor[data-note-palette="custom"]')[0];
 
-    expect(named).toMatch(/color:\s*var\(--note-palette-link\)/);
-    expect(named).toMatch(/color:\s*var\(--note-palette-code-text\)/);
-    expect(named).toMatch(/color:\s*var\(--note-palette-accent\)/);
-    expect(named).toMatch(/\.edgeever-code-block code/);
-    expect(named).not.toMatch(/--note-palette-text/);
-    expect(named).not.toMatch(/--note-palette-surface/);
-    expect(named).not.toMatch(/--note-palette-muted/);
-    expect(named).not.toMatch(/--note-palette-divider/);
-    expect(named).not.toMatch(/--note-palette-code-bg/);
-    expect(named).not.toMatch(/blockquote/);
+    expect(prose).toMatch(/color:\s*var\(--note-palette-link\)/);
+    expect(prose).toMatch(/color:\s*var\(--note-palette-code-text\)/);
+    expect(prose).toMatch(/color:\s*var\(--note-palette-accent\)/);
+    expect(prose).toMatch(/\.edgeever-code-block code/);
+    expect(prose).not.toMatch(/--note-palette-text/);
+    expect(prose).not.toMatch(/--note-palette-surface/);
+    expect(prose).not.toMatch(/--note-palette-muted/);
+    expect(prose).not.toMatch(/--note-palette-divider/);
+    expect(prose).not.toMatch(/--note-palette-code-bg/);
+    expect(prose).not.toMatch(/blockquote/);
   });
 
   test("keeps bold and italic text visible across platform font fallbacks", () => {

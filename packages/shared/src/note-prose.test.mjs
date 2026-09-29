@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  DEFAULT_NOTE_PROSE_CUSTOM_COLORS,
   MAX_NOTE_PROSE_CSS_BYTES,
   NoteProseUpdateSchema,
   noteProseCodeFontSize,
@@ -39,7 +38,9 @@ describe("note prose", () => {
     expect(paletteForLegacyEditorTheme("journal")).toBe("slate");
     expect(paletteForLegacyEditorTheme("default")).toBeNull();
     expect(paletteForLegacyEditorTheme("marxico")).toBeNull();
-    expect(paletteForLegacyEditorTheme("custom-default")).toBe("custom");
+    expect(paletteForLegacyEditorTheme("custom-default")).toBeNull();
+    expect(parseNoteProsePalette("custom")).toBe("native");
+    expect(resolveNoteProse({ palette: "custom" }).palette).toBe("native");
     expect(paletteForLegacyEditorTheme("not-a-theme")).toBeNull();
   });
 
@@ -80,14 +81,11 @@ describe("note prose", () => {
       customColors: null,
     })).toEqual({});
 
-    const custom = noteProseMigrationPatch(emptyAccount(), {
+    expect(noteProseMigrationPatch(emptyAccount(), {
       palette: "custom",
       customCss: "   ",
       customColors: null,
-    });
-    expect(custom.palette).toBe("custom");
-    expect(custom.customCss).toBeUndefined();
-    expect(custom.customColors).toEqual(DEFAULT_NOTE_PROSE_CUSTOM_COLORS);
+    })).toEqual({});
   });
 
   test("rejects a stylesheet larger than 8 KB", () => {
