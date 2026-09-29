@@ -84,6 +84,9 @@ describe("reading typography settings", () => {
     expect(preferenceCard).toContain("DEFAULT_NOTE_PROSE_CSS");
     expect(preferenceCard.match(/t\("settings\.accountSyncDescription"\)/g)).toHaveLength(1);
     expect(preferenceCard).toContain("NoteProseCssEditor");
+    expect(preferenceCard).toContain("NoteProseCssPreview");
+    expect(preferenceCard).toContain("noteProseCssDropsDeclarations");
+    expect(preferenceCard).toContain("overflow-hidden");
     expect(readFileSync(new URL("./NoteProseCssEditor.tsx", import.meta.url), "utf8")).toContain("@codemirror/lang-css");
     expect(preferenceCard).toContain('t("common.save")');
     expect(preferenceCard).not.toContain('t("settings.publishLayoutTitle")');

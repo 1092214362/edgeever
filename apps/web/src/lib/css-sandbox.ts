@@ -44,6 +44,12 @@ export const sanitizeAndScopeCss = (css: string): string => {
   return cleaned;
 };
 
+/** Class on the settings sample. Dark rules bind here instead of :root, so the sample does not follow the app theme. */
+export const NOTE_PROSE_CSS_PREVIEW_DARK_CLASS = "note-prose-css-preview-dark";
+
+export const previewNoteProseCss = (css: string): string =>
+  sanitizeAndScopeCss(css).replaceAll(":root.dark", `.${NOTE_PROSE_CSS_PREVIEW_DARK_CLASS}`);
+
 /**
  * 动态解析用户的自定义 CSS，并提取出能直接应用于微信/富文本一键复制时的标签样式字典
  */

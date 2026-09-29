@@ -3,7 +3,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorContentWidth } from "@/lib/editor-content-width";
 import type { NoteProsePatch, NoteProsePaletteChoice, ResolvedNoteProse } from "@edgeever/shared";
-import { DEFAULT_NOTE_PROSE_CSS, MAX_NOTE_PROSE_CSS_BYTES, NOTE_PROSE_FONT_SIZES, NOTE_PROSE_PALETTE_CHOICES, NOTE_PROSE_PALETTES } from "@edgeever/shared";
+import { DEFAULT_NOTE_PROSE_CSS, MAX_NOTE_PROSE_CSS_BYTES, NOTE_PROSE_FONT_SIZES, NOTE_PROSE_PALETTE_CHOICES, NOTE_PROSE_PALETTES, noteProseCssDropsDeclarations } from "@edgeever/shared";
 import {
   EDITOR_LINK_OPEN_MODE_CHANGED_EVENT,
   getStoredEditorLinkOpenMode,
@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { SETTINGS_ITEM_TITLE_CLASSNAME } from "./settings-ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   changeAppLocalePreference,
   getAppLocalePreference,
@@ -44,6 +45,7 @@ import {
 import { applyUiFontPreference, readUiFontPreference, writeUiFontPreference } from "@/lib/ui-font";
 import { syncPublishedNoteBodyFont } from "@/lib/published-note-body-font";
 import { NoteProseCssEditor } from "./NoteProseCssEditor";
+import { NoteProseCssPreview } from "./NoteProseCssPreview";
 
 const PreferenceSection = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="grid gap-2">
@@ -212,6 +214,7 @@ export const PreferenceCard = ({
   const { mermaidThemePreference, setMermaidTheme } = useMermaidTheme();
   const [cssDialogOpen, setCssDialogOpen] = useState(false);
   const [cssDraft, setCssDraft] = useState(noteProse.customCss);
+  const [cssPreviewTheme, setCssPreviewTheme] = useState<"light" | "dark">("light");
   const [activeLocalePreference, setActiveLocalePreference] = useState<AppLocalePreference>(() => getAppLocalePreference());
   const [linkOpenMode, setLinkOpenMode] = useState<EditorLinkOpenMode>(() => getStoredEditorLinkOpenMode());
   const [aiSelectionMenuEnabled, setAiSelectionMenuEnabled] = useState(readAiSelectionMenuPreference);
@@ -277,6 +280,7 @@ export const PreferenceCard = ({
 
   const openCssDialog = () => {
     setCssDraft(noteProse.customCss.trim() ? noteProse.customCss : DEFAULT_NOTE_PROSE_CSS);
+    setCssPreviewTheme("light");
     setCssDialogOpen(true);
   };
 
@@ -617,22 +621,56 @@ export const PreferenceCard = ({
         </div>
       </PreferenceSection>
       <Dialog open={cssDialogOpen} onOpenChange={setCssDialogOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex h-[min(44rem,calc(100dvh-2rem))] max-w-2xl flex-col gap-4 overflow-hidden">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>{t("settings.editorBodyCssTitle")}</DialogTitle>
-            <DialogDescription>{t("settings.editorBodyCssDescription")}</DialogDescription>
+            <DialogDescription className="leading-5">{t("settings.editorBodyCssDescription")}</DialogDescription>
           </DialogHeader>
-          <NoteProseCssEditor
-            value={cssDraft}
-            dark={resolvedTheme === "dark"}
-            ariaLabel={t("settings.editorBodyCssTitle")}
-            placeholder={t("settings.editorBodyCssPlaceholder")}
-            onChange={setCssDraft}
-          />
-          <p className={cssDraftBytes > MAX_NOTE_PROSE_CSS_BYTES ? "text-xs text-rose-600" : "text-xs text-slate-500"}>
+          <div className="shrink-0 overflow-hidden rounded-md border border-slate-200">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-3 py-1.5">
+              <span className="text-xs text-slate-500">{t("settings.editorBodyCssPreviewLabel")}</span>
+              <ToggleGroup
+                type="single"
+                value={cssPreviewTheme}
+                onValueChange={(value) => {
+                  if (value === "light" || value === "dark") setCssPreviewTheme(value);
+                }}
+                aria-label={t("settings.editorBodyCssPreviewLabel")}
+                className="rounded-md bg-muted p-0.5"
+              >
+                <ToggleGroupItem value="light" size="sm" className="h-7 rounded px-2.5 text-xs data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm">
+                  {t("settings.editorBodyCssPreviewLight")}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="dark" size="sm" className="h-7 rounded px-2.5 text-xs data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm">
+                  {t("settings.editorBodyCssPreviewDark")}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <NoteProseCssPreview
+              css={cssDraft}
+              dark={cssPreviewTheme === "dark"}
+              fontSize={noteProse.fontSize}
+              lineHeight={noteProse.lineHeight}
+            />
+          </div>
+          {noteProseCssDropsDeclarations(cssDraft) ? (
+            <p className="shrink-0 text-xs text-amber-700 dark:text-amber-400">{t("settings.editorBodyCssDropped")}</p>
+          ) : null}
+          <div className="relative min-h-0 flex-1">
+            <div className="absolute inset-0">
+              <NoteProseCssEditor
+                value={cssDraft}
+                dark={resolvedTheme === "dark"}
+                ariaLabel={t("settings.editorBodyCssTitle")}
+                placeholder={t("settings.editorBodyCssPlaceholder")}
+                onChange={setCssDraft}
+              />
+            </div>
+          </div>
+          <p className={cssDraftBytes > MAX_NOTE_PROSE_CSS_BYTES ? "shrink-0 text-xs text-rose-600" : "shrink-0 text-xs text-slate-500"}>
             {cssDraftBytes} / {MAX_NOTE_PROSE_CSS_BYTES}
           </p>
-          <DialogFooter className="sm:justify-between">
+          <DialogFooter className="shrink-0 sm:justify-between">
             <Button type="button" variant="outline" onClick={resetCssDraft}>
               {t("settings.editorBodyCssReset")}
             </Button>

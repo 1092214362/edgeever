@@ -15,7 +15,7 @@ const cssEditorChrome = EditorView.theme({
     lineHeight: "1.25rem",
   },
   ".cm-content, .cm-gutter": {
-    minHeight: "360px",
+    minHeight: "100%",
   },
   ".cm-content": {
     padding: "8px 12px",
@@ -50,7 +50,7 @@ export const NoteProseCssEditor = ({
   return (
     <CodeMirror
       value={value}
-      height="360px"
+      height="100%"
       theme={dark ? githubDark : lightTheme}
       extensions={extensions}
       basicSetup={{
@@ -61,7 +61,7 @@ export const NoteProseCssEditor = ({
       placeholder={placeholder}
       aria-label={ariaLabel}
       onChange={onChange}
-      className="overflow-hidden rounded-md border border-slate-200 focus-within:ring-2 focus-within:ring-slate-300"
+      className="h-full overflow-hidden rounded-md border border-slate-200 focus-within:ring-2 focus-within:ring-slate-300"
     />
   );
 };
