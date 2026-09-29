@@ -27,6 +27,14 @@ import {
 
 const adapterIds: DesktopAcpAdapterId[] = ["codex", "antigravity"];
 
+const agentCatalog = [
+  { id: "codex", connectable: true },
+  { id: "antigravity", connectable: true },
+  { id: "claudeCode", connectable: false },
+  { id: "workbuddy", connectable: false },
+  { id: "grokBuild", connectable: false },
+] as const;
+
 const readSource = (): AiSidebarSource => (
   localStorage.getItem(AI_SIDEBAR_SOURCE_KEY) === "local" ? "local" : "builtin"
 );
@@ -122,23 +130,35 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
             const disabled = option === "local" && !bridge;
             const checked = source === option;
             return (
-              <label key={option} className={cn("flex items-start gap-3 px-3.5 py-2.5", disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer", checked && "bg-slate-50/80")}>
-                <input
-                  className="mt-0.5"
-                  type="radio"
-                  name="edgeever-acp-source"
-                  value={option}
-                  checked={checked}
-                  disabled={disabled}
-                  onChange={() => { if (!disabled) setSource(option); }}
-                />
-                <span className="min-w-0">
-                  <span className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t(`aiAssistant.agentSource.${option}`)}</span>
-                  <span className={cn(SETTINGS_ITEM_DESCRIPTION_CLASSNAME, "block")}>
-                    {disabled ? t("aiAssistant.agentSource.localDisabled") : t(`aiAssistant.agentSource.${option}Hint`)}
+              <div key={option} className={cn(disabled && "opacity-60", checked && "bg-slate-50/80")}>
+                <label className={cn("flex items-start gap-3 px-3.5 py-2.5", disabled ? "cursor-not-allowed" : "cursor-pointer")}>
+                  <input
+                    className="mt-0.5"
+                    type="radio"
+                    name="edgeever-acp-source"
+                    value={option}
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => { if (!disabled) setSource(option); }}
+                  />
+                  <span className="min-w-0">
+                    <span className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t(`aiAssistant.agentSource.${option}`)}</span>
+                    <span className={cn(SETTINGS_ITEM_DESCRIPTION_CLASSNAME, "block")}>
+                      {disabled ? t("aiAssistant.agentSource.localDisabled") : t(`aiAssistant.agentSource.${option}Hint`)}
+                    </span>
                   </span>
-                </span>
-              </label>
+                </label>
+                {disabled ? (
+                  <div role="group" className="flex flex-wrap gap-2 px-3.5 pb-3 pl-9" aria-label={t("aiAssistant.agentSource.adapter")}>
+                    {agentCatalog.map((agent) => (
+                      <span key={agent.id} className="flex h-8 items-center gap-2 rounded-md border border-slate-200 px-2.5 text-xs text-slate-500">
+                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                        {t(`aiAssistant.agentSource.${agent.id}`)}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             );
           })}
         </div>
@@ -169,6 +189,12 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
                   </label>
                 );
               })}
+              {agentCatalog.filter((agent) => !agent.connectable).map((agent) => (
+                <span key={agent.id} className="flex h-8 cursor-not-allowed items-center gap-2 rounded-md border border-slate-200 px-2.5 text-xs text-slate-400">
+                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                  {t(`aiAssistant.agentSource.${agent.id}`)}
+                </span>
+              ))}
             </div>
 
             {adapterId === "antigravity" ? (
