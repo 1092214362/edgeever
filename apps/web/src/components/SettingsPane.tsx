@@ -232,8 +232,8 @@ export const SettingsPane = ({
       case "ai":
         return (
           <SettingsGroup>
-            <AiModelCard />
             <DesktopAcpAgentCard />
+            <AiModelCard />
           </SettingsGroup>
         );
       case "mcp":
