@@ -1,6 +1,6 @@
 <div align="center">
   <h1>
-    <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver Logo" width="40" align="absmiddle" /> EdgeEver
+    <img src="assets/brand/edgeever-icon.svg" alt="EdgeEver Logo" width="48" align="absmiddle" /> EdgeEver
   </h1>
   <p>
     <b>开源、原生支持 AI、可自由部署的自托管知识库与「印象笔记」替代方案</b>
