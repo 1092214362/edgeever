@@ -52,6 +52,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EditorToolbar } from "./EditorToolbar";
 import { EditorOutline } from "./EditorOutline";
+import { SelectionAiActions } from "./editor/SelectionAiActions";
 import { useAiBubbleMenu } from "./editor/useAiBubbleMenu";
 import {
   createEditorInstanceMemoIdentity,
@@ -135,6 +136,8 @@ import {
   type MemoEditSession,
   type TiptapDoc,
   createMemoLinkHref,
+  getAiDocumentFingerprint,
+  isAiSelectionSnapshotCurrent,
   parseMemoLinkHref,
 } from "@edgeever/shared";
 import { NEW_IMAGE_WIDTH_PERCENT } from "@edgeever/shared/image-display";
@@ -202,6 +205,16 @@ import {
   getRichTextAiSelectionContext,
   getRichTextAiSelectionReplacement,
 } from "@/lib/ai-selection-replacement";
+import {
+  AI_SELECTION_MENU_CHANGED_EVENT,
+  readAiSelectionMenuPreference,
+} from "@/lib/ai-selection-menu-preference";
+import {
+  clipSelectionForSend,
+  translationReplacement,
+  type SelectionAiPin,
+  type SelectionAiRequest,
+} from "@/lib/selection-ai";
 import { getAttachmentResourceId } from "@/lib/attachment-links";
 import {
   getAttachmentHoverTarget,
@@ -441,8 +454,13 @@ const RichEditorPane = ({
     setAiAssistantOpenState(open);
     writeAiSidebarOpen(open);
   }, []);
-  const aiBubbleMenu = useAiBubbleMenu(aiAssistantOpen);
-  const [aiSelectionText, setAiSelectionText] = useState("");
+  const aiBubbleMenu = useAiBubbleMenu();
+  const [selectionPin, setSelectionPin] = useState<SelectionAiPin | null>(null);
+  const [selectionRequest, setSelectionRequest] = useState<SelectionAiRequest | null>(null);
+  const selectionPinRef = useRef<SelectionAiPin | null>(null);
+  selectionPinRef.current = selectionPin;
+  const markdownMenuAnchorRef = useRef<HTMLDivElement | null>(null);
+  const [markdownAiMenu, setMarkdownAiMenu] = useState<{ top: number; left: number; below: boolean } | null>(null);
   const [mobileNotebookSheetOpen, setMobileNotebookSheetOpen] = useState(false);
   const [notebookUpdatePending, setNotebookUpdatePending] = useState(false);
   const handledPluginNavigationRequestRef = useRef(0);
@@ -1966,49 +1984,167 @@ const RichEditorPane = ({
       : memoRef.current?.contentMarkdown ?? "";
   }, [editor, getMobilePlainTextValue, markdownSource, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
-  const readLiveAiSelection = useCallback(() => {
-    if (useMobilePlainTextEditor) {
-      const source = getMobilePlainTextValue();
-      const plainTextElement = mobileTextAreaRef.current;
-      const from = plainTextElement instanceof HTMLTextAreaElement ? plainTextElement.selectionStart : 0;
-      const to = plainTextElement instanceof HTMLTextAreaElement ? plainTextElement.selectionEnd : from;
-      return source.slice(from, to).trim();
-    }
-    if (useMarkdownSourceEditor) {
-      const selectionPos = markdownSourceEditorRef.current?.getSelection() ?? { from: 0, to: 0 };
-      return markdownSource.slice(selectionPos.from, selectionPos.to).trim();
-    }
-    if (isEditorReady(editor)) {
-      return getRichTextAiSelectionContext(editor.state.doc, editor.state.selection)?.contentMarkdown.trim() ?? "";
-    }
-    return "";
-  }, [editor, getMobilePlainTextValue, markdownSource, useMarkdownSourceEditor, useMobilePlainTextEditor]);
-
   const openAiAssistant = useCallback(() => {
     if (effectiveReadOnly) return;
-    setAiSelectionText(readLiveAiSelection());
     setAiSidebarOpen(true);
-  }, [effectiveReadOnly, readLiveAiSelection, setAiSidebarOpen]);
+  }, [effectiveReadOnly, setAiSidebarOpen]);
 
   useEffect(() => {
     openAiAssistantRef.current = openAiAssistant;
   }, [openAiAssistant]);
 
+  const selectionMemoIdRef = useRef(memo?.id);
   useEffect(() => {
-    if (!aiAssistantOpen) return;
-    const refresh = () => {
-      const next = readLiveAiSelection();
-      setAiSelectionText((current) => current === next ? current : next);
+    if (selectionMemoIdRef.current === memo?.id) return;
+    selectionMemoIdRef.current = memo?.id;
+    setSelectionPin((current) => !current || current.memoId === memo?.id ? current : null);
+    setSelectionRequest(null);
+  }, [memo?.id]);
+
+  const requestSelectionAi = useCallback((kind: SelectionAiRequest["kind"]) => {
+    if (effectiveReadOnly || useMobilePlainTextEditor) return;
+    const currentMemo = memoRef.current;
+    if (!currentMemo) return;
+    let pin: SelectionAiPin | null = null;
+    if (useMarkdownSourceEditor) {
+      const sourceEditor = markdownSourceEditorRef.current;
+      if (!sourceEditor) return;
+      const selection = sourceEditor.getSelection();
+      const text = sourceEditor.sliceText(selection.from, selection.to);
+      if (!text.trim() || selection.to <= selection.from) return;
+      const clipped = clipSelectionForSend(text);
+      pin = {
+        memoId: currentMemo.id,
+        text,
+        sentText: clipped.sentText,
+        displayText: clipped.sentText,
+        truncated: clipped.truncated,
+        from: selection.from,
+        to: selection.to,
+        isInline: true,
+        documentFingerprint: "",
+        mode: "markdown",
+      };
+    } else if (isEditorReady(editor)) {
+      const context = getRichTextAiSelectionContext(editor.state.doc, editor.state.selection);
+      if (!context?.contentMarkdown.trim()) return;
+      const clipped = clipSelectionForSend(context.contentMarkdown);
+      const plain = editor.state.doc.textBetween(context.from, context.to, "\n");
+      const visible = clipSelectionForSend(plain.trim() ? plain : context.contentMarkdown);
+      pin = {
+        memoId: currentMemo.id,
+        text: context.contentMarkdown,
+        sentText: clipped.sentText,
+        displayText: visible.sentText,
+        truncated: visible.truncated,
+        from: context.from,
+        to: context.to,
+        isInline: context.isInline,
+        documentFingerprint: getAiDocumentFingerprint(editor.state.doc.toJSON()),
+        mode: "rich",
+      };
+    }
+    if (!pin) return;
+    setSelectionPin(pin);
+    setSelectionRequest({ id: crypto.randomUUID(), kind });
+    setAiSidebarOpen(true);
+  }, [editor, effectiveReadOnly, setAiSidebarOpen, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+
+  const replacePinnedSelection = useCallback((replacement: string) => {
+    const pin = selectionPinRef.current;
+    const currentMemo = memoRef.current;
+    if (!pin || !currentMemo || pin.memoId !== currentMemo.id) return false;
+    const body = translationReplacement(replacement);
+    if (!body) return false;
+    if (pin.mode === "markdown") {
+      const sourceEditor = markdownSourceEditorRef.current;
+      if (!sourceEditor) return false;
+      if (sourceEditor.sliceText(pin.from, pin.to) !== pin.text) return false;
+      const next = `${sourceEditor.sliceText(0, pin.from)}${body}${sourceEditor.sliceText(pin.to, sourceEditor.getDocumentLength())}`;
+      sourceEditor.insertText(body, pin.from, pin.to);
+      setMarkdownSource(next);
+      markDirty();
+      setSelectionPin(null);
+      return true;
+    }
+    const currentEditor = editorRef.current;
+    if (!isEditorReady(currentEditor)) return false;
+    const document = currentEditor.state.doc.toJSON();
+    if (!isAiSelectionSnapshotCurrent(
+      { from: pin.from, to: pin.to, documentFingerprint: pin.documentFingerprint },
+      document,
+      currentEditor.state.doc.content.size,
+    )) return false;
+    const content = getRichTextAiSelectionReplacement(body, pin.isInline);
+    const inserted = currentEditor.chain().focus().insertContentAt({ from: pin.from, to: pin.to }, content).run();
+    if (!inserted) return false;
+    setSelectionPin(null);
+    return true;
+  }, [markDirty, setMarkdownSource]);
+
+  const syncMarkdownAiMenu = useCallback(() => {
+    if (!useMarkdownSourceEditor || effectiveReadOnly || useMobilePlainTextEditor || !readAiSelectionMenuPreference()) {
+      setMarkdownAiMenu((current) => current ? null : current);
+      return;
+    }
+    const sourceEditor = markdownSourceEditorRef.current;
+    const anchor = markdownMenuAnchorRef.current;
+    if (!sourceEditor || !anchor) {
+      setMarkdownAiMenu((current) => current ? null : current);
+      return;
+    }
+    const selection = sourceEditor.getSelection();
+    const text = sourceEditor.sliceText(selection.from, selection.to);
+    const coords = text.trim() ? sourceEditor.getSelectionCoordinates() : null;
+    if (!coords) {
+      setMarkdownAiMenu((current) => current ? null : current);
+      return;
+    }
+    const bounds = anchor.getBoundingClientRect();
+    const above = coords.top - bounds.top;
+    const left = Math.min(
+      Math.max(0, coords.left - bounds.left),
+      Math.max(0, bounds.width - 196),
+    );
+    const next = {
+      top: above < 48 ? coords.bottom - bounds.top + 8 : above,
+      left,
+      below: above < 48,
     };
-    refresh();
-    const richEditor = !useMobilePlainTextEditor && !useMarkdownSourceEditor && isEditorReady(editor) ? editor : null;
-    richEditor?.on("selectionUpdate", refresh);
-    document.addEventListener("selectionchange", refresh);
+    setMarkdownAiMenu((current) => (
+      current && current.top === next.top && current.left === next.left && current.below === next.below
+        ? current
+        : next
+    ));
+  }, [effectiveReadOnly, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+
+  useEffect(() => {
+    if (!useMarkdownSourceEditor) {
+      setMarkdownAiMenu(null);
+      return;
+    }
+    let scroller: HTMLElement | null = null;
+    const bind = () => {
+      const next = markdownSourceEditorRef.current?.getScrollContainer() ?? null;
+      if (next === scroller) return;
+      scroller?.removeEventListener("scroll", syncMarkdownAiMenu);
+      scroller = next;
+      scroller?.addEventListener("scroll", syncMarkdownAiMenu, { passive: true });
+    };
+    bind();
+    const timer = window.setInterval(() => {
+      bind();
+      if (scroller) window.clearInterval(timer);
+    }, 200);
+    window.addEventListener("resize", syncMarkdownAiMenu);
+    window.addEventListener(AI_SELECTION_MENU_CHANGED_EVENT, syncMarkdownAiMenu);
     return () => {
-      richEditor?.off("selectionUpdate", refresh);
-      document.removeEventListener("selectionchange", refresh);
+      window.clearInterval(timer);
+      scroller?.removeEventListener("scroll", syncMarkdownAiMenu);
+      window.removeEventListener("resize", syncMarkdownAiMenu);
+      window.removeEventListener(AI_SELECTION_MENU_CHANGED_EVENT, syncMarkdownAiMenu);
     };
-  }, [aiAssistantOpen, editor, readLiveAiSelection, useMarkdownSourceEditor, useMobilePlainTextEditor]);
+  }, [memo?.id, syncMarkdownAiMenu, useMarkdownSourceEditor]);
 
   const getCurrentContentJson = useCallback((): TiptapDoc | null => {
     if (useMobilePlainTextEditor) {
@@ -4010,7 +4146,7 @@ const RichEditorPane = ({
                 </div>
               </>
             ) : useMarkdownSourceEditor ? (
-              <div className="relative min-h-0 flex-1">
+              <div ref={markdownMenuAnchorRef} className="relative min-h-0 flex-1">
                 <Suspense fallback={<div className="h-full w-full" />}>
                   <MarkdownSourceEditor
                     ref={markdownSourceEditorRef}
@@ -4026,9 +4162,26 @@ const RichEditorPane = ({
                       openAiAssistant();
                     }}
                     onLinkShortcut={openExternalLinkDialog}
+                    onSelectionChange={syncMarkdownAiMenu}
                     className="absolute inset-0 h-full w-full"
                   />
                 </Suspense>
+                {markdownAiMenu ? (
+                  <div
+                    className="absolute z-40"
+                    style={{
+                      top: markdownAiMenu.top,
+                      left: markdownAiMenu.left,
+                      transform: markdownAiMenu.below ? undefined : "translateY(calc(-100% - 8px))",
+                    }}
+                  >
+                    <SelectionAiActions
+                      onExplain={() => requestSelectionAi("explain")}
+                      onTranslate={() => requestSelectionAi("translate")}
+                      onAsk={() => requestSelectionAi("ask")}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div
@@ -4043,17 +4196,11 @@ const RichEditorPane = ({
                   shouldShow={aiBubbleMenu.shouldShow}
                   options={aiBubbleMenu.options}
                 >
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="solid"
-                    className="shadow-lg"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={openAiAssistant}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {t("aiAssistant.openForSelection")}
-                  </Button>
+                  <SelectionAiActions
+                    onExplain={() => requestSelectionAi("explain")}
+                    onTranslate={() => requestSelectionAi("translate")}
+                    onAsk={() => requestSelectionAi("ask")}
+                  />
                 </BubbleMenu>
                 {!isMobileViewport && !effectiveReadOnly && isEditorReady(editor) ? (
                   <EditorBlockDragHandle editor={editor} />
@@ -4230,7 +4377,11 @@ const RichEditorPane = ({
         open={aiAssistantOpen}
         onOpenChange={setAiSidebarOpen}
         companionAvailable={companionAvailable}
-        selectionMarkdown={aiSelectionText}
+        selectionMarkdown={selectionPin?.memoId === memo.id ? selectionPin.sentText : ""}
+        selectionPin={selectionPin?.memoId === memo.id ? selectionPin : null}
+        selectionRequest={selectionRequest}
+        onDismissSelectionPin={() => setSelectionPin(null)}
+        onReplaceSelection={replacePinnedSelection}
         contentMarkdown={currentMarkdownForAi}
         memoId={memo.id}
         notebookId={memo.notebookId}

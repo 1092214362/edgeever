@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent,
 import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronDown, Loader2, PanelRightClose, Paperclip, Plus, Search, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Loader2, PanelRightClose, Paperclip, Plus, Search, Sparkles, X } from "lucide-react";
 import type { CompanionAction, CompanionAnswer, CompanionEvent, CompanionTurn, CompanionTurnInput } from "@edgeever/shared";
 import { buildRevisionDiffRows, createMemoLinkHref, parseMemoLinkHref } from "@edgeever/shared";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { api, ApiRequestError } from "@/lib/api";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   AI_ATTACHMENT_ACCEPT,
   AiAttachmentError,
@@ -58,6 +59,14 @@ import {
   type DesktopAcpEvent,
 } from "@/lib/desktop-acp";
 import { sidebarRevealTransition } from "@/lib/motion";
+import {
+  SELECTION_AI_LANGUAGES,
+  selectionAiUserMessage,
+  translationReplacement,
+  type SelectionAiLanguage,
+  type SelectionAiPin,
+  type SelectionAiRequest,
+} from "@/lib/selection-ai";
 import { cn } from "@/lib/utils";
 import { CompanionQuestionForm } from "../CompanionQuestionForm";
 import { AiSidebarMessage } from "./AiSidebarMessage";
@@ -136,9 +145,32 @@ type AiSidebarProps = AiSidebarFocus & {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companionAvailable: boolean;
+  selectionPin?: SelectionAiPin | null;
+  selectionRequest?: SelectionAiRequest | null;
+  onDismissSelectionPin?: () => void;
+  onReplaceSelection?: (replacement: string) => boolean;
   beforeCompanionApply?: () => Promise<void>;
   onCompanionNotesChanged?: () => Promise<void>;
   onOpenCompanionNote?: (id: string, notebookId: string) => void;
+};
+
+const SELECTION_TURN_STORAGE = "edgeever.aiSidebar.selectionTurns";
+
+const readSelectionTurnKinds = (): Record<string, "explain" | "translate"> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(SELECTION_TURN_STORAGE);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+    const next: Record<string, "explain" | "translate"> = {};
+    for (const [id, kind] of Object.entries(parsed)) {
+      if (kind === "explain" || kind === "translate") next[id] = kind;
+    }
+    return next;
+  } catch {
+    return {};
+  }
 };
 
 const clampSidebarWidth = (value: number) => Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
@@ -445,6 +477,80 @@ function NoteEditDiff({ before, after }: { before: string; after: string }) {
   );
 }
 
+function SelectionReplyActions({
+  kind,
+  response,
+  pinned,
+  busy,
+  onReplace,
+  onRetranslate,
+}: {
+  kind: "explain" | "translate";
+  response: string;
+  pinned: boolean;
+  busy: boolean;
+  onReplace: (replacement: string) => boolean;
+  onRetranslate: (language: SelectionAiLanguage) => void;
+}) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const [stale, setStale] = useState(false);
+  const copyText = kind === "translate" ? translationReplacement(response) : response.trim();
+  if (!copyText) return null;
+  return (
+    <div className="space-y-1.5" data-selection-reply-actions={kind}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void copyTextToClipboard(copyText).then((ok) => {
+              if (!ok) return;
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 2000);
+            });
+          }}
+        >
+          {copied ? t("aiAssistant.sidebar.selection.copied") : t("aiAssistant.sidebar.selection.copy")}
+        </Button>
+        {kind === "translate" && pinned ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => {
+              if (onReplace(response)) {
+                setStale(false);
+                return;
+              }
+              setStale(true);
+            }}
+          >
+            {t("aiAssistant.sidebar.selection.replace")}
+          </Button>
+        ) : null}
+        {kind === "translate" && pinned ? SELECTION_AI_LANGUAGES.map((language) => (
+          <Button
+            key={language}
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => onRetranslate(language)}
+          >
+            {t(`aiAssistant.sidebar.selection.chips.${language}`)}
+          </Button>
+        )) : null}
+      </div>
+      {stale ? (
+        <p role="alert" className="text-xs text-rose-700">{t("aiAssistant.sidebar.selection.stale")}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function SidebarComposer({
   attachments,
   attachmentError,
@@ -456,6 +562,7 @@ function SidebarComposer({
   onLaunch,
   onStop,
   skillPrompt,
+  focusToken,
 }: {
   attachments: PendingAttachment[];
   attachmentError: string | null;
@@ -464,13 +571,23 @@ function SidebarComposer({
   placeholder: string;
   onAddFiles: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
-  onLaunch: (message: string) => Promise<void>;
+  onLaunch: (message: string) => Promise<string>;
   onStop: () => void;
   skillPrompt: (id: SkillId, rest?: string) => string;
+  focusToken: number;
 }) {
   const { t } = useTranslation();
   const { textInput } = usePromptInputController();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const focusedToken = useRef(0);
+  useEffect(() => {
+    if (!focusToken || busy || focusedToken.current === focusToken) return;
+    const field = composerRef.current?.querySelector("textarea");
+    if (!(field instanceof HTMLTextAreaElement)) return;
+    field.focus();
+    focusedToken.current = focusToken;
+  }, [busy, focusToken]);
   const draft = textInput.value;
   const token = draft.trimStart().split(/\s/, 1)[0]?.toLowerCase() ?? "";
   const slashOpen = token.startsWith("/") && !draft.trimStart().includes("\n");
@@ -494,7 +611,7 @@ function SidebarComposer({
   };
 
   return (
-    <div className="space-y-2">
+    <div ref={composerRef} className="space-y-2">
       {slashMatches.length ? (
         <ul className="overflow-hidden rounded-md border border-slate-200 bg-card text-sm">
           {slashMatches.map((skill) => (
@@ -593,6 +710,10 @@ function AiSidebarSession({
   onOpenChange,
   companionAvailable,
   selectionMarkdown,
+  selectionPin,
+  selectionRequest,
+  onDismissSelectionPin,
+  onReplaceSelection,
   contentMarkdown,
   memoId,
   notebookId,
@@ -621,7 +742,10 @@ function AiSidebarSession({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useMemory, setUseMemory] = useState(false);
+  const [composerFocusToken, setComposerFocusToken] = useState(0);
+  const [selectionTurnKinds, setSelectionTurnKinds] = useState<Record<string, "explain" | "translate">>(readSelectionTurnKinds);
   const alive = useRef(true);
+  const handledSelectionRequestId = useRef<string | null>(null);
   const locked = useRef(false);
   const threadPinned = useRef(false);
   const active = useRef<ActiveTurn | null>(null);
@@ -861,7 +985,7 @@ function AiSidebarSession({
     onStopReady.current = () => { void stop(); };
   }, [onStopReady, stop]);
 
-  const launch = useCallback(async (message: string) => {
+  const launch = useCallback(async (message: string): Promise<string> => {
     const text = message.trim();
     if (!text || locked.current) throw new Error("busy");
     const mode = readAiSidebarSource();
@@ -933,7 +1057,7 @@ function AiSidebarSession({
         const queued = acpBuffer.current.filter((event) => event.requestId === result.requestId);
         acpBuffer.current = acpBuffer.current.filter((event) => event.requestId !== result.requestId);
         for (const event of queued) applyAcpEventRef.current(event);
-        return;
+        return id;
       }
 
       const uploaded: UploadedCompanionAttachment[] = [];
@@ -997,6 +1121,7 @@ function AiSidebarSession({
           }
         }
       })();
+      return id;
     } catch (cause) {
       if (active.current?.id === id) active.current = null;
       locked.current = false;
@@ -1019,6 +1144,63 @@ function AiSidebarSession({
       throw cause;
     }
   }, [applyStreamEvent, attachments, buildFocus, contextText, explainError, i18n.resolvedLanguage, recoverTurn, restoreAttachments, t, threadId, useMemory]);
+
+  const rememberSelectionTurn = useCallback((id: string, kind: "explain" | "translate") => {
+    setSelectionTurnKinds((current) => {
+      const next = { ...current, [id]: kind };
+      const ids = Object.keys(next);
+      if (ids.length > 80) {
+        for (const oldId of ids.slice(0, ids.length - 80)) delete next[oldId];
+      }
+      try {
+        window.sessionStorage.setItem(SELECTION_TURN_STORAGE, JSON.stringify(next));
+      } catch {
+        // Session storage can be unavailable in private mode.
+      }
+      return next;
+    });
+  }, []);
+
+  const selectionMessage = useCallback((kind: "explain" | "translate", language?: SelectionAiLanguage) => {
+    if (!selectionPin) return "";
+    const quote = selectionPin.displayText || selectionPin.sentText;
+    const notice = selectionPin.truncated
+      ? t("aiAssistant.sidebar.selection.truncated", { count: Array.from(quote).length })
+      : "";
+    const instruction = kind === "explain"
+      ? t("aiAssistant.sidebar.selection.explainPrompt")
+      : language
+        ? t("aiAssistant.sidebar.selection.translateLanguagePrompt", {
+            language: t(`aiAssistant.sidebar.selection.languageNames.${language}`),
+          })
+        : t("aiAssistant.sidebar.selection.translatePrompt");
+    return selectionAiUserMessage({ instruction, notice, quote });
+  }, [selectionPin, t]);
+
+  const retranslateSelection = useCallback((language: SelectionAiLanguage) => {
+    const message = selectionMessage("translate", language);
+    if (!message || locked.current) return;
+    void launch(message).then((id) => {
+      rememberSelectionTurn(id, "translate");
+    }).catch(() => undefined);
+  }, [launch, rememberSelectionTurn, selectionMessage]);
+
+  useEffect(() => {
+    const request = selectionRequest;
+    if (!request || handledSelectionRequestId.current === request.id) return;
+    if (request.kind === "ask") {
+      handledSelectionRequestId.current = request.id;
+      setComposerFocusToken((current) => current + 1);
+      return;
+    }
+    if (!selectionPin || locked.current || loading) return;
+    const message = selectionMessage(request.kind);
+    if (!message) return;
+    handledSelectionRequestId.current = request.id;
+    void launch(message).then((id) => {
+      rememberSelectionTurn(id, request.kind === "explain" ? "explain" : "translate");
+    }).catch(() => undefined);
+  }, [busy, launch, loading, rememberSelectionTurn, selectionMessage, selectionPin, selectionRequest]);
 
   const addFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
@@ -1141,7 +1323,6 @@ function AiSidebarSession({
     onOpenCompanionNote(linkedId, source.notebookId);
   };
 
-  const selectionCount = Array.from((selectionMarkdown ?? "").trim()).length;
   const threads = useMemo(() => sidebarThreadsFromTurns(turns), [turns]);
   const threadTitle = threads.find((thread) => thread.id === threadId)?.title || t("aiAssistant.sidebar.newThread");
   const rememberThread = (id: string) => {
@@ -1154,6 +1335,21 @@ function AiSidebarSession({
   const visibleCompanion = source === "builtin";
   const visibleTurns = visibleCompanion ? threadTurns : localTurns;
   const running = busy || visibleTurns.some((turn) => turn.status === "running");
+
+  const renderSelectionReply = (turnId: string, response: string, status: string) => {
+    const kind = selectionTurnKinds[turnId];
+    if (!kind || status !== "completed" || !response.trim()) return null;
+    return (
+      <SelectionReplyActions
+        kind={kind}
+        response={response}
+        pinned={Boolean(selectionPin)}
+        busy={running || acting}
+        onReplace={(replacement) => onReplaceSelection?.(replacement) ?? false}
+        onRetranslate={retranslateSelection}
+      />
+    );
+  };
 
   const renderActions = (turnId: string) => actions
     .filter((action) => action.turnId === turnId && action.status === "pending")
@@ -1208,11 +1404,6 @@ function AiSidebarSession({
           <PanelRightClose className="h-4 w-4" />
         </Button>
       </div>
-      {selectionCount > 0 ? (
-        <p className="shrink-0 border-b border-slate-200 px-3 py-1.5 text-xs text-slate-500">
-          {t("aiAssistant.sidebar.selectionBadge", { count: selectionCount })}
-        </p>
-      ) : null}
       {error ? <p role="alert" className="shrink-0 px-3 pt-2 text-sm text-rose-700">{error}</p> : null}
       <Conversation key={source === "builtin" ? threadId : "local"} className="min-h-0 flex-1">
         <ConversationContent className={sidebarThreadClassName}>
@@ -1267,6 +1458,7 @@ function AiSidebarSession({
                 {turn.status === "failed" || turn.status === "cancelled" ? (
                   <p className="text-xs text-slate-500">{t(`companion.status.${turn.status}`)}</p>
                 ) : null}
+                {renderSelectionReply(turn.id, turn.response, turn.status)}
                 {renderActions(turn.id)}
               </Message>
             </div>
@@ -1296,6 +1488,7 @@ function AiSidebarSession({
                   </ul>
                 ) : null}
                 {turn.response ? <AiSidebarMessage isAnimating={turn.status === "running"}>{turn.response}</AiSidebarMessage> : null}
+                {renderSelectionReply(turn.id, turn.response, turn.status)}
                 {turn.status === "failed" || turn.status === "cancelled" ? (
                   <p className="text-xs text-slate-500">{t(`companion.status.${turn.status}`)}</p>
                 ) : null}
@@ -1306,6 +1499,34 @@ function AiSidebarSession({
         <ConversationScrollButton />
       </Conversation>
       <div className="shrink-0 space-y-2 border-t border-slate-200 p-3">
+        {selectionPin ? (
+          <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2" data-selection-pin="">
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-3 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{selectionPin.displayText || selectionPin.sentText}</p>
+              {selectionPin.truncated ? (
+                <p className="mt-1 text-xs text-slate-500">
+                  {t("aiAssistant.sidebar.selection.truncated", { count: Array.from(selectionPin.displayText || selectionPin.sentText).length })}
+                </p>
+              ) : null}
+            </div>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={t("aiAssistant.sidebar.selection.dismiss")}
+                    onClick={() => onDismissSelectionPin?.()}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("aiAssistant.sidebar.selection.dismiss")}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        ) : null}
         {!companionAvailable && source !== "local" ? (
           <p className="text-xs leading-5 text-slate-500">{t("aiAssistant.sidebar.unavailable")}</p>
         ) : null}
@@ -1335,6 +1556,7 @@ function AiSidebarSession({
             onLaunch={launch}
             onStop={() => { void stop(); }}
             skillPrompt={skillPrompt}
+            focusToken={composerFocusToken}
           />
         </PromptInputProvider>
       </div>
