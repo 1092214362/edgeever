@@ -89,14 +89,21 @@ export const NoteProseCssPreview = ({
     anchor.textContent = link;
     const codeElement = document.createElement("code");
     codeElement.textContent = code;
-    paragraph.append(before, anchor, between, codeElement, after);
+    // Root typecheck resolves ParentNode.append to the Workers stream helper.
+    paragraph.appendChild(document.createTextNode(before));
+    paragraph.appendChild(anchor);
+    paragraph.appendChild(document.createTextNode(between));
+    paragraph.appendChild(codeElement);
+    paragraph.appendChild(document.createTextNode(after));
     const quotation = document.createElement("blockquote");
     const quotationText = document.createElement("p");
     quotationText.textContent = quote;
-    quotation.append(quotationText);
-    prose.append(title, paragraph, quotation);
-    frame.append(prose);
-    scope.append(frame);
+    quotation.appendChild(quotationText);
+    prose.appendChild(title);
+    prose.appendChild(paragraph);
+    prose.appendChild(quotation);
+    frame.appendChild(prose);
+    scope.appendChild(frame);
     root.replaceChildren(style, scope);
   }, [after, before, between, code, dark, fontSize, heading, lineHeight, link, previewCss, quote]);
 
