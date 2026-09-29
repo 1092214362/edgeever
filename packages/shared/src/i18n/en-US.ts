@@ -1292,6 +1292,12 @@ export const enUS = {
     sidebar: {
       title: "AI assistant",
       close: "Collapse assistant",
+      history: "Chat history",
+      newThread: "New chat",
+      historyRecent: "Past 30 days",
+      historyOlder: "Earlier",
+      historySearch: "Search chats",
+      historyEmpty: "No matching chats",
       resize: "Resize assistant",
       stop: "Stop",
       placeholder: "Ask about this note, or type / for a skill",

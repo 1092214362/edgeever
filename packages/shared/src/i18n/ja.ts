@@ -1292,6 +1292,12 @@ export const ja = {
     sidebar: {
       title: "AI アシスタント",
       close: "アシスタントをしまう",
+      history: "チャット履歴",
+      newThread: "新しいチャット",
+      historyRecent: "過去 30 日",
+      historyOlder: "それ以前",
+      historySearch: "チャットを検索",
+      historyEmpty: "一致するチャットがありません",
       resize: "幅を調整",
       stop: "停止",
       placeholder: "このノートについて聞くか、/ でスキルを入力",

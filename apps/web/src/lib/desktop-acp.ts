@@ -42,6 +42,7 @@ export type DesktopAcpEvent =
 
 export const AI_SIDEBAR_WIDTH_KEY = "edgeever.aiSidebar.width";
 export const AI_SIDEBAR_OPEN_KEY = "edgeever.aiSidebar.open";
+export const AI_SIDEBAR_THREAD_KEY = "edgeever.aiSidebar.thread";
 export const AI_SIDEBAR_SOURCE_KEY = "edgeever.aiSidebar.source";
 export const AI_SIDEBAR_ADAPTER_KEY = "edgeever.aiSidebar.adapterId";
 export const AI_SIDEBAR_ADAPTER_PATH_KEY = "edgeever.aiSidebar.adapterPath";

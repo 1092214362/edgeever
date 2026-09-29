@@ -1292,6 +1292,12 @@ export const zhCN = {
     sidebar: {
       title: "AI 助手",
       close: "收起助手",
+      history: "会话记录",
+      newThread: "新对话",
+      historyRecent: "过去 30 天",
+      historyOlder: "更早",
+      historySearch: "搜索会话",
+      historyEmpty: "没有匹配的会话",
       resize: "调整助手宽度",
       stop: "停止",
       placeholder: "问问这篇笔记，或输入 / 使用技能",
