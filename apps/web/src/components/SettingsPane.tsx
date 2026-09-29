@@ -37,6 +37,7 @@ import { PasswordCard } from "./settings/PasswordCard";
 import { UserManagementCard } from "./settings/UserManagementCard";
 import { ObjectStorageCard } from "./settings/ObjectStorageCard";
 import { AiModelCard } from "./settings/AiModelCard";
+import { DesktopAcpAgentCard } from "./settings/DesktopAcpAgentCard";
 import { ThemeToggle } from "./ThemeToggle";
 import type { AuthUser } from "@edgeever/shared";
 import { contentEnterMotion } from "@/lib/motion";
@@ -232,6 +233,7 @@ export const SettingsPane = ({
         return (
           <SettingsGroup>
             <AiModelCard />
+            <DesktopAcpAgentCard />
           </SettingsGroup>
         );
       case "mcp":

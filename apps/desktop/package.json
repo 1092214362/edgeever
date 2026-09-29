@@ -18,8 +18,10 @@
     "electron-builder": "^26.0.12"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "^1.5.1",
     "@edgeever/public-network": "workspace:*",
     "croner": "^10.0.1",
-    "electron-updater": "^6.6.2"
+    "electron-updater": "^6.6.2",
+    "zod": "^4.6.5"
   }
 }
