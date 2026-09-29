@@ -795,8 +795,9 @@ export const ja = {
       slate: "グレー",
     },
     editorBodyCssTitle: "カスタム CSS",
-    editorBodyCssDescription: "文字サイズと行間はここでは指定しません。",
+    editorBodyCssDescription: "ライトとダークをそれぞれ書きます。文字サイズと行間はここでは指定しません。",
     editorBodyCssEdit: "スタイルを編集",
+    editorBodyCssReset: "初期値に戻す",
     editorBodyCssPlaceholder: "p { text-indent: 2em; } h1 { letter-spacing: 0.04em; }",
     editorBodyFontTitle: "ノート本文のフォント",
     editorBodyFonts: {

@@ -795,8 +795,9 @@ export const zhCN = {
       slate: "灰色",
     },
     editorBodyCssTitle: "自定义 CSS",
-    editorBodyCssDescription: "字号和行高不写在这里。",
+    editorBodyCssDescription: "浅色和深色各写一份。字号和行高不写在这里。",
     editorBodyCssEdit: "编辑样式",
+    editorBodyCssReset: "恢复预置",
     editorBodyCssPlaceholder: "例如 p { text-indent: 2em; } h1 { letter-spacing: 0.04em; }",
     editorBodyFontTitle: "笔记正文字体",
     editorBodyFonts: {

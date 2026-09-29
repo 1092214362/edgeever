@@ -3,7 +3,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorContentWidth } from "@/lib/editor-content-width";
 import type { NoteProsePatch, NoteProsePaletteChoice, ResolvedNoteProse } from "@edgeever/shared";
-import { MAX_NOTE_PROSE_CSS_BYTES, NOTE_PROSE_FONT_SIZES, NOTE_PROSE_PALETTE_CHOICES } from "@edgeever/shared";
+import { DEFAULT_NOTE_PROSE_CSS, MAX_NOTE_PROSE_CSS_BYTES, NOTE_PROSE_FONT_SIZES, NOTE_PROSE_PALETTE_CHOICES } from "@edgeever/shared";
 import {
   EDITOR_LINK_OPEN_MODE_CHANGED_EVENT,
   getStoredEditorLinkOpenMode,
@@ -268,8 +268,12 @@ export const PreferenceCard = ({
   const cssDraftBytes = new TextEncoder().encode(cssDraft).byteLength;
 
   const openCssDialog = () => {
-    setCssDraft(noteProse.customCss);
+    setCssDraft(noteProse.customCss.trim() ? noteProse.customCss : DEFAULT_NOTE_PROSE_CSS);
     setCssDialogOpen(true);
+  };
+
+  const resetCssDraft = () => {
+    setCssDraft(DEFAULT_NOTE_PROSE_CSS);
   };
 
   const saveCssDraft = () => {
@@ -475,7 +479,7 @@ export const PreferenceCard = ({
           </div>
         </div>
 
-        <div className="flex min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="hidden min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 lg:flex">
           <div className="flex min-w-0 items-center gap-3">
             <Code2 className="h-4 w-4 shrink-0 text-slate-500" />
             <div className="min-w-0">
@@ -591,7 +595,7 @@ export const PreferenceCard = ({
         </div>
       </PreferenceSection>
       <Dialog open={cssDialogOpen} onOpenChange={setCssDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("settings.editorBodyCssTitle")}</DialogTitle>
             <DialogDescription>{t("settings.editorBodyCssDescription")}</DialogDescription>
@@ -606,7 +610,10 @@ export const PreferenceCard = ({
           <p className={cssDraftBytes > MAX_NOTE_PROSE_CSS_BYTES ? "text-xs text-rose-600" : "text-xs text-slate-500"}>
             {cssDraftBytes} / {MAX_NOTE_PROSE_CSS_BYTES}
           </p>
-          <DialogFooter>
+          <DialogFooter className="sm:justify-between">
+            <Button type="button" variant="outline" onClick={resetCssDraft}>
+              {t("settings.editorBodyCssReset")}
+            </Button>
             <Button type="button" onClick={saveCssDraft} disabled={cssDraftBytes > MAX_NOTE_PROSE_CSS_BYTES}>
               {t("common.save")}
             </Button>

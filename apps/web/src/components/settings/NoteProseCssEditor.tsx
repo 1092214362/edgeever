@@ -15,7 +15,7 @@ const cssEditorChrome = EditorView.theme({
     lineHeight: "1.25rem",
   },
   ".cm-content, .cm-gutter": {
-    minHeight: "192px",
+    minHeight: "360px",
   },
   ".cm-content": {
     padding: "8px 12px",
@@ -41,6 +41,7 @@ export const NoteProseCssEditor = ({
   const extensions = useMemo(() => [
     cssLanguage,
     cssEditorChrome,
+    EditorView.lineWrapping,
     EditorView.contentAttributes.of({
       "aria-label": ariaLabel,
       spellcheck: "false",
@@ -49,7 +50,7 @@ export const NoteProseCssEditor = ({
   return (
     <CodeMirror
       value={value}
-      height="192px"
+      height="360px"
       theme={dark ? githubDark : lightTheme}
       extensions={extensions}
       basicSetup={{

@@ -795,8 +795,9 @@ export const enUS = {
       slate: "Gray",
     },
     editorBodyCssTitle: "Custom CSS",
-    editorBodyCssDescription: "Size and line height stay on the controls above.",
+    editorBodyCssDescription: "Light and dark each have their own rules. Size and line height stay on the controls above.",
     editorBodyCssEdit: "Edit styles",
+    editorBodyCssReset: "Reset",
     editorBodyCssPlaceholder: "p { text-indent: 2em; } h1 { letter-spacing: 0.04em; }",
     editorBodyFontTitle: "Note text font",
     editorBodyFonts: {
