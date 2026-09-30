@@ -685,7 +685,7 @@ function SidebarComposer({
                 size="sm"
                 variant="outline"
                 aria-pressed={includeCurrentNote}
-                className={includeCurrentNote ? "border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" : undefined}
+                className={includeCurrentNote ? "border-slate-600 bg-slate-100 text-slate-900 hover:bg-slate-200" : undefined}
                 disabled={busy || locked}
                 onClick={() => onIncludeCurrentNoteChange(!includeCurrentNote)}
               >
@@ -1486,7 +1486,7 @@ function AiSidebarSession({
           {draft ? <NoteEditDiff before={draft.before} after={draft.after} /> : null}
           {conflicts[action.id] ? <p role="alert" className="text-xs text-rose-700">{conflicts[action.id]}</p> : null}
           <div className="flex gap-2">
-            <Button type="button" size="sm" variant="solid" disabled={running || acting} onClick={() => void applyAction(action)}>
+            <Button type="button" size="sm" variant="solid" className="border-slate-900 bg-slate-900 hover:border-slate-800 hover:bg-slate-800" disabled={running || acting} onClick={() => void applyAction(action)}>
               {t(draft ? "aiAssistant.sidebar.proposalConfirm" : "aiAssistant.sidebar.proposalConfirmOther")}
             </Button>
             <Button type="button" size="sm" variant="outline" disabled={running || acting} onClick={() => void dismissAction(action)}>
