@@ -2146,7 +2146,7 @@ export const enUS = {
     hidePhonePreview: "Hide phone preview",
     phonePreviewEmpty: "Start writing to see how this note reads on a phone.",
     phonePreviewFollow: "Follow scroll",
-    copyingToWeChat: "Preparing rich text",
+    copyingToWeChat: "Copying to clipboard, please wait…",
     copiedToWeChat: "Copied",
     copyToWeChatFailed: "Copy failed",
     outline: "Outline",

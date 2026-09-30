@@ -2146,7 +2146,7 @@ export const ja = {
     hidePhonePreview: "スマホプレビューを隠す",
     phonePreviewEmpty: "書き始めると、このノートのスマホでの読み味がここに表示されます。",
     phonePreviewFollow: "スクロール追従",
-    copyingToWeChat: "リッチテキストを準備中",
+    copyingToWeChat: "クリップボードにコピー中です。お待ちください…",
     copiedToWeChat: "コピーしました",
     copyToWeChatFailed: "コピーに失敗",
     outline: "アウトライン",

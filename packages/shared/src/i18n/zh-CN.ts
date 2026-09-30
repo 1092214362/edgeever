@@ -2144,7 +2144,7 @@ export const zhCN = {
     hidePhonePreview: "隐藏手机预览",
     phonePreviewEmpty: "开始写作后，这里会显示手机阅读效果。",
     phonePreviewFollow: "滚动跟随",
-    copyingToWeChat: "正在准备富文本内容",
+    copyingToWeChat: "正在复制到剪贴板，请稍候…",
     copiedToWeChat: "已复制",
     copyToWeChatFailed: "复制失败",
     outline: "文档大纲",
