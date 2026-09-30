@@ -234,6 +234,38 @@ describe("ACP command allow-list", () => {
     expect(detected).toEqual(["codex", "antigravity"]);
   });
 
+  test("starts the official DeepSeek ACP profile and uses a separate adapter for pi", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "edgeever-new-agents-"));
+    try {
+      const bin = path.join(directory, "bin");
+      await mkdir(bin);
+      const pi = path.join(bin, "pi");
+      const piAcp = path.join(bin, "pi-acp");
+      const dsh = path.join(bin, "dsh");
+      await writeFile(pi, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      await writeFile(piAcp, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      await writeFile(dsh, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      const deps = { platform: "darwin", pathEnv: bin, home: directory, executablePath: "/usr/bin/node" };
+      expect(resolveAcpCommand({ id: "deepseekHarness" }, deps).command).toEqual({ command: realpathSync(dsh), args: ["--profile", "acp"] });
+      expect(resolveAcpCommand({ id: "piAgent" }, deps).command).toEqual({ command: realpathSync(piAcp), args: [] });
+      expect(detectInstalledAgentApps({ platform: "darwin", pathEnv: bin, home: directory })).toContain("piAgent");
+      const localBin = path.join(directory, ".local", "bin");
+      await mkdir(localBin, { recursive: true });
+      await writeFile(path.join(localBin, "pi"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      await writeFile(path.join(localBin, "pi-acp"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      const fallback = resolveAcpCommand({ id: "piAgent" }, { ...deps, pathEnv: "" });
+      expect(fallback.command.env.PATH.startsWith(`${localBin}:`)).toBe(true);
+      await rm(piAcp);
+      await rm(path.join(localBin, "pi-acp"));
+      expect(resolveAcpCommand({ id: "piAgent" }, deps)).toMatchObject({ ok: false, detail: "adapter_missing" });
+      await rm(pi);
+      await rm(path.join(localBin, "pi"));
+      expect(resolveAcpCommand({ id: "piAgent" }, deps)).toMatchObject({ ok: false, state: "not_installed" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test("automatically installs only a detected agent missing its ACP connector", async () => {
     let installed = false;
     let installs = 0;

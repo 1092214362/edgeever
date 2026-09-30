@@ -27,7 +27,7 @@ import {
   SETTINGS_ITEM_TITLE_CLASSNAME,
 } from "./settings-ui";
 
-const adapterIds: DesktopAcpAdapterId[] = ["codex", "antigravity", "grokBuild", "workbuddyCn", "workbuddyIntl"];
+const adapterIds: DesktopAcpAdapterId[] = ["codex", "antigravity", "grokBuild", "deepseekHarness", "piAgent", "workbuddyCn", "workbuddyIntl"];
 
 const agentCatalog = [
   { id: "codex", connectable: true },
@@ -36,6 +36,8 @@ const agentCatalog = [
   { id: "workbuddyCn", connectable: true },
   { id: "workbuddyIntl", connectable: true },
   { id: "grokBuild", connectable: true },
+  { id: "deepseekHarness", connectable: true },
+  { id: "piAgent", connectable: true },
 ] as const;
 
 const readSource = (): AiSidebarSource => (
@@ -53,6 +55,8 @@ const statusKey = (adapter: DesktopAcpAdapter | undefined, probing: boolean) => 
   if (adapter.detail === "invalid_path") return "aiAssistant.agentSource.invalidPath";
   if (adapter.detail === "desktop_unavailable") return "aiAssistant.agentSource.localDisabled";
   if (adapter.id === "grokBuild" && adapter.state === "not_installed") return "aiAssistant.agentSource.grokBuildNotFound";
+  if (adapter.id === "deepseekHarness" && adapter.state === "not_installed") return "aiAssistant.agentSource.deepseekHarnessNotFound";
+  if (adapter.id === "piAgent" && adapter.state === "not_installed") return adapter.detail === "adapter_missing" ? "aiAssistant.agentSource.piAgentAdapterMissing" : "aiAssistant.agentSource.piAgentNotFound";
   if ((adapter.id === "workbuddyCn" || adapter.id === "workbuddyIntl") && adapter.state === "not_installed") return "aiAssistant.agentSource.workbuddyNotFound";
   return `aiAssistant.agentSource.states.${adapter.state}`;
 };
@@ -118,7 +122,7 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
   };
 
   const install = async () => {
-    if (adapterId !== "codex" && adapterId !== "antigravity") return;
+    if (adapterId !== "codex" && adapterId !== "antigravity" && adapterId !== "piAgent") return;
     setInstalling(true);
     setInstallError(false);
     try {
@@ -290,7 +294,7 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
                 {shown?.managed && shown.version ? ` · v${shown.version} · ${t("aiAssistant.agentSource.autoUpdated")}` : ""}
               </p>
               <div className="flex shrink-0 gap-2">
-                {shown?.state === "not_installed" && (adapterId === "codex" || adapterId === "antigravity") ? (
+                {shown?.state === "not_installed" && (adapterId === "codex" || adapterId === "antigravity" || (adapterId === "piAgent" && shown?.detail === "adapter_missing")) ? (
                   <Button type="button" variant="outline" size="sm" className="h-8 bg-card text-xs font-normal" disabled={installing || probing} onClick={() => void install()}>
                     {installing ? t("aiAssistant.agentSource.installing") : t("aiAssistant.agentSource.install")}
                   </Button>
@@ -307,7 +311,8 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
                 </TooltipProvider>
               </div>
             </div>
-            {shown?.state === "not_installed" ? <p className="text-xs text-slate-500">{t(adapterId === "grokBuild" ? "aiAssistant.agentSource.grokBuildMissingHint" : adapterId === "workbuddyCn" || adapterId === "workbuddyIntl" ? "aiAssistant.agentSource.workbuddyMissingHint" : "aiAssistant.agentSource.installHint")}</p> : null}
+            {shown?.state === "not_installed" ? <p className="text-xs text-slate-500">{t(adapterId === "grokBuild" ? "aiAssistant.agentSource.grokBuildMissingHint" : adapterId === "deepseekHarness" ? "aiAssistant.agentSource.deepseekHarnessMissingHint" : adapterId === "piAgent" ? shown.detail === "adapter_missing" ? "aiAssistant.agentSource.piAgentAdapterMissingHint" : "aiAssistant.agentSource.piAgentMissingHint" : adapterId === "workbuddyCn" || adapterId === "workbuddyIntl" ? "aiAssistant.agentSource.workbuddyMissingHint" : "aiAssistant.agentSource.installHint")}</p> : null}
+            {shown?.state === "needs_login" && adapterId === "piAgent" ? <p className="text-xs text-slate-600">{t("aiAssistant.agentSource.piAgentLoginHint")}</p> : null}
             {shown?.state === "needs_login" && (adapterId === "workbuddyCn" || adapterId === "workbuddyIntl") ? (
               <p className="text-xs text-slate-600">{t(adapterId === "workbuddyCn" ? "aiAssistant.agentSource.workbuddyCnLoginHint" : "aiAssistant.agentSource.workbuddyIntlLoginHint")}</p>
             ) : null}
@@ -320,7 +325,7 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
                 ))}
               </div>
             ) : null}
-            {shown?.state === "needs_login" && !authMethods.length ? (
+            {shown?.state === "needs_login" && !authMethods.length && adapterId !== "piAgent" ? (
               <p className="text-xs text-amber-700" role="status">{t("aiAssistant.agentSource.loginUnavailable")}</p>
             ) : null}
             {shown?.updateError ? <p className="text-xs text-amber-700" role="status">{t("aiAssistant.agentSource.updateFailed")}</p> : null}

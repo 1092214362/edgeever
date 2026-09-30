@@ -13,6 +13,8 @@ const ADAPTERS = {
   codex: { id: "codex", label: "Codex" },
   antigravity: { id: "antigravity", label: "Antigravity" },
   grokBuild: { id: "grokBuild", label: "Grok Build" },
+  deepseekHarness: { id: "deepseekHarness", label: "DeepSeek Harness" },
+  piAgent: { id: "piAgent", label: "pi agent" },
   workbuddyCn: { id: "workbuddyCn", label: "WorkBuddy 中国版" },
   workbuddyIntl: { id: "workbuddyIntl", label: "WorkBuddy International" },
 };
@@ -95,7 +97,9 @@ export function detectInstalledAgentApps({
       : [env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, "Programs", "Antigravity", "Antigravity.exe"), env.PROGRAMFILES && path.join(env.PROGRAMFILES, "Antigravity", "Antigravity.exe")];
     return [];
   };
-  return ["codex", "antigravity"].filter((id) => {
+  return ["codex", "antigravity", "piAgent"].filter((id) => {
+    if (id === "piAgent") return lookup(platform === "win32" ? ["pi.exe"] : ["pi"])
+      || (platform !== "win32" && [path.join(home, ".local", "bin", "pi"), ...(platform === "darwin" ? ["/opt/homebrew/bin/pi", "/usr/local/bin/pi"] : [])].some((candidate) => exists(candidate)));
     const names = platform === "win32" ? [`${id}.exe`, id] : [id];
     return lookup(names) || candidates(id).some((candidate) => candidate && exists(candidate));
   });
@@ -121,7 +125,50 @@ export function resolveAcpCommand(input, deps = {}) {
   if (id === "codex") return resolveCodex(input?.path, resolved);
   if (id === "antigravity") return resolveAntigravity(input?.path, resolved);
   if (id === "grokBuild") return resolveGrok(input?.path, resolved);
+  if (id === "deepseekHarness") return resolveLocalAcpCli("dsh", ["--profile", "acp"], resolved);
+  if (id === "piAgent") {
+    if (!localExecutable("pi", resolved)) return { ok: false, state: "not_installed" };
+    const adapter = resolveLocalAcpCli("pi-acp", [], resolved);
+    return adapter.ok ? { ...adapter, command: withPiPath(adapter.command, resolved) } : { ...adapter, detail: "adapter_missing" };
+  }
   return resolveWorkBuddy(id, resolved);
+}
+
+function localExecutable(name, deps) {
+  const executable = deps.platform === "win32" ? `${name}.exe` : name;
+  const candidates = [findOnPath([executable], deps)];
+  if (deps.platform !== "win32") candidates.push(path.join(deps.home, ".local", "bin", name));
+  if (deps.platform === "darwin") candidates.push(`/opt/homebrew/bin/${name}`, `/usr/local/bin/${name}`);
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const actual = deps.realpath(candidate);
+      if (deps.stat(actual).isFile()) { deps.access(actual, fsConstants.X_OK); return actual; }
+    } catch { /* Try another installation. */ }
+  }
+  return null;
+}
+
+function resolveLocalAcpCli(name, args, deps) {
+  const executable = localExecutable(name, deps);
+  if (!executable) return { ok: false, state: "not_installed" };
+  return { ok: true, command: /\.[cm]?js$/i.test(executable)
+    ? { command: deps.executablePath, args: [executable, ...args], env: { ELECTRON_RUN_AS_NODE: "1" } }
+    : { command: executable, args } };
+}
+
+function withPiPath(command, deps) {
+  if (deps.platform === "win32" || findOnPath(["pi"], deps)) return command;
+  const candidates = [path.join(deps.home, ".local", "bin", "pi"), ...(deps.platform === "darwin" ? ["/opt/homebrew/bin/pi", "/usr/local/bin/pi"] : [])];
+  for (const candidate of candidates) {
+    try {
+      const actual = deps.realpath(candidate);
+      if (!deps.stat(actual).isFile()) continue;
+      deps.access(actual, fsConstants.X_OK);
+      return { ...command, env: { ...command.env, PATH: `${path.dirname(candidate)}:${deps.pathEnv}` } };
+    } catch { /* Try another installation. */ }
+  }
+  return command;
 }
 
 function resolveWorkBuddy(id, deps) {
@@ -254,7 +301,7 @@ const adapterFromResolution = (id, resolution) => {
   if (!resolution.ok && resolution.state === "failed") {
     return { ...adapter, state: "failed", detail: resolution.detail || "connection_failed" };
   }
-  if (!resolution.ok) return { ...adapter, state: "not_installed" };
+  if (!resolution.ok) return { ...adapter, state: "not_installed", ...(resolution.detail ? { detail: resolution.detail } : {}) };
   return adapter;
 };
 
@@ -574,8 +621,9 @@ export function createAcpHostRuntime(options = {}) {
 
   const resolveCommand = (input) => {
     if (input?.id === "antigravity" && typeof input.path === "string" && input.path.trim()) return resolveAcpCommand(input, commandDeps);
+    if (input?.id === "piAgent" && !localExecutable("pi", resolutionDeps(commandDeps))) return { ok: false, state: "not_installed" };
     const managed = manager?.get(input?.id);
-    if (managed) return { ok: true, command: managed.command, version: managed.version, managed: true };
+    if (managed) return { ok: true, command: input?.id === "piAgent" ? withPiPath(managed.command, resolutionDeps(commandDeps)) : managed.command, version: managed.version, managed: true };
     return resolveAcpCommand(input, commandDeps);
   };
 
@@ -636,7 +684,7 @@ export function createAcpHostRuntime(options = {}) {
 
   return {
     listAdapters() {
-      return ["codex", "antigravity", "grokBuild", "workbuddyCn", "workbuddyIntl"].map((id) => {
+      return ["codex", "antigravity", "grokBuild", "deepseekHarness", "piAgent", "workbuddyCn", "workbuddyIntl"].map((id) => {
         if (installingIds.has(id)) return { ...adapterShell(id), state: "installing" };
         const resolved = resolveCommand({ id });
         return resolved.ok
@@ -647,12 +695,13 @@ export function createAcpHostRuntime(options = {}) {
 
     async installAdapter(id, { updateOnly = false } = {}) {
       if (!manager) return { updated: false, reason: "adapter_store_unavailable" };
+      if (id === "piAgent" && !localExecutable("pi", resolutionDeps(commandDeps))) return { updated: false, reason: "agent_not_installed" };
       installingIds.add(id);
       try {
         const result = await manager.install(id, async (command) => {
           let connected;
           try {
-            connected = await withHandshakeTimeout((signal) => connect(command, `install-${id}`, () => {}, signal), 90_000);
+            connected = await withHandshakeTimeout((signal) => connect(id === "piAgent" ? withPiPath(command, resolutionDeps(commandDeps)) : command, `install-${id}`, () => {}, signal), 90_000);
             return { ...adapterShell(id), state: "available", promptCapabilities: connected.promptCapabilities };
           } catch (error) {
             return { ...adapterShell(id), ...failureFields(classifyAcpFailure(error)), ...(isAuthRequiredError(error) ? { authMethods: error.authMethods ?? [] } : {}) };
@@ -689,6 +738,7 @@ export function createAcpHostRuntime(options = {}) {
       if (!manager) return [];
       const results = [];
       for (const id of manager.installedIds()) {
+        if (id === "piAgent" && !localExecutable("pi", resolutionDeps(commandDeps))) continue;
         try {
           const result = await this.installAdapter(id, { updateOnly: true });
           updateFailures.delete(id);

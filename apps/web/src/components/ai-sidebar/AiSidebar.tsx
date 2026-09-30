@@ -347,7 +347,7 @@ function AiSidebarThreadMenu({
 
 const readLocalAdapter = (): { id: DesktopAcpAdapterId; path?: string } | null => {
   const id = readStorage(AI_SIDEBAR_ADAPTER_KEY);
-  if (id !== "codex" && id !== "antigravity" && id !== "grokBuild" && id !== "workbuddyCn" && id !== "workbuddyIntl") return null;
+  if (id !== "codex" && id !== "antigravity" && id !== "grokBuild" && id !== "deepseekHarness" && id !== "piAgent" && id !== "workbuddyCn" && id !== "workbuddyIntl") return null;
   const path = readStorage(AI_SIDEBAR_ADAPTER_PATH_KEY)?.trim();
   return id === "antigravity" && path ? { id, path } : { id };
 };

@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { zipSync } from "fflate";
-import { createAcpAdapterManager, managedAdapterCommand, selectAdapterRelease } from "./acp-adapter-manager.mjs";
+import { createAcpAdapterManager, managedAdapterCommand, selectAdapterRelease, selectPiAdapterRelease } from "./acp-adapter-manager.mjs";
 
 const codexEntry = (version) => ({
   id: "codex-acp",
@@ -13,6 +13,35 @@ const codexEntry = (version) => ({
 });
 
 describe("managed ACP adapters", () => {
+  test("accepts only the expected pi ACP npm package and retains the old adapter on a failed update", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "edgeever-managed-pi-"));
+    let version = "0.0.34";
+    const metadata = () => ({ name: "pi-acp", version, bin: { "pi-acp": "dist/index.js" } });
+    expect(selectPiAdapterRelease(metadata()).packageName).toBe("pi-acp@0.0.34");
+    expect(() => selectPiAdapterRelease({ ...metadata(), name: "other-package" })).toThrow("unsupported_release");
+    expect(() => selectPiAdapterRelease({ ...metadata(), version: "0.1.0" })).toThrow("unsupported_release");
+    const manager = createAcpAdapterManager({
+      root,
+      executablePath: "/usr/bin/node",
+      fetchImpl: async () => new Response(JSON.stringify(metadata()), { status: 200 }),
+      installNpmImpl: async (args, stage) => {
+        expect(args).toContain(`pi-acp@${version}`);
+        const directory = path.join(stage, "node_modules", "pi-acp", "dist");
+        await mkdir(directory, { recursive: true });
+        await writeFile(path.join(directory, "index.js"), "// fake ACP adapter");
+      },
+    });
+    try {
+      expect((await manager.install("piAgent", async () => ({ state: "available" }))).updated).toBe(true);
+      expect(manager.get("piAgent")?.command.args[0].endsWith(path.join("pi-acp", "dist", "index.js"))).toBe(true);
+      version = "0.0.35";
+      await expect(manager.install("piAgent", async () => ({ state: "failed", detail: "handshake_failed" }), { updateOnly: true })).rejects.toThrow("handshake_failed");
+      expect(manager.get("piAgent")?.version).toBe("0.0.34");
+      expect((await manager.install("piAgent", async () => ({ state: "available" }), { updateOnly: true })).version).toBe("0.0.35");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
   test("accepts only the supported official distribution and platform command", () => {
     expect(selectAdapterRelease([codexEntry("2.0.1")], "codex").version).toBe("2.0.1");
     expect(() => selectAdapterRelease([{ ...codexEntry("2.0.1"), distribution: { npx: { package: "evil@2.0.1" } } }], "codex")).toThrow("unsupported_release");

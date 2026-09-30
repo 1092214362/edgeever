@@ -1,4 +1,4 @@
-export type DesktopAcpAdapterId = "codex" | "antigravity" | "grokBuild" | "workbuddyCn" | "workbuddyIntl";
+export type DesktopAcpAdapterId = "codex" | "antigravity" | "grokBuild" | "deepseekHarness" | "piAgent" | "workbuddyCn" | "workbuddyIntl";
 export type DesktopAcpAdapterState = "not_installed" | "installing" | "needs_login" | "available" | "failed";
 
 export type DesktopAcpPromptCapabilities = {
@@ -71,7 +71,7 @@ export const probeDesktopAcpAdapter = async (input: { id: DesktopAcpAdapterId; p
   return desktop.probeAcpAdapter(input);
 };
 
-export const installDesktopAcpAdapter = async (id: Extract<DesktopAcpAdapterId, "codex" | "antigravity">) => {
+export const installDesktopAcpAdapter = async (id: Extract<DesktopAcpAdapterId, "codex" | "antigravity" | "piAgent">) => {
   const desktop = bridge();
   if (!desktop?.installAcpAdapter) throw new Error("desktop_acp_unavailable");
   return desktop.installAcpAdapter(id);
