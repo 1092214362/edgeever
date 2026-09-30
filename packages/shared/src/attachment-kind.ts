@@ -9,6 +9,11 @@ export const ATTACHMENT_KINDS = [
   "archive",
   "code",
   "text",
+  "executable",
+  "book",
+  "font",
+  "diskimage",
+  "database",
   "file",
 ] as const;
 
@@ -94,6 +99,37 @@ export const resolveAttachmentKind = (
   ) return "presentation";
 
   if (
+    mime.includes("android.package-archive") ||
+    mime.includes("application/x-msdownload") ||
+    mime.includes("application/x-msi") ||
+    mime.includes("application/x-apple-diskimage") ||
+    mime.includes("application/x-debian-package") ||
+    mime.includes("application/x-redhat-package-manager") ||
+    mime.includes("application/x-executable") ||
+    ["apk", "xapk", "apks", "aab", "ipa", "exe", "msi", "dmg", "pkg", "deb", "rpm", "appimage"].includes(extension)
+  ) return "executable";
+
+  if (
+    mime.includes("epub") || mime.includes("mobipocket") ||
+    ["epub", "mobi", "azw", "azw3", "fb2", "djvu"].includes(extension)
+  ) return "book";
+
+  if (
+    mime.startsWith("font/") || mime.includes("font") ||
+    ["ttf", "otf", "woff", "woff2", "eot"].includes(extension)
+  ) return "font";
+
+  if (
+    mime.includes("iso9660") ||
+    ["iso", "img", "vmdk", "qcow2", "vdi"].includes(extension)
+  ) return "diskimage";
+
+  if (
+    mime.includes("sqlite") ||
+    ["sqlite", "sqlite3", "db", "db3"].includes(extension)
+  ) return "database";
+
+  if (
     mime.includes("zip") || mime.includes("compressed") || mime.includes("tar") ||
     mime.includes("rar") || mime.includes("gzip") ||
     ["zip", "rar", "7z", "tar", "gz", "bz2", "xz"].includes(extension)
@@ -102,7 +138,11 @@ export const resolveAttachmentKind = (
   if (
     mime.includes("javascript") || mime.includes("typescript") || mime.includes("json") ||
     mime.includes("xml") || mime.includes("yaml") ||
-    ["js", "jsx", "ts", "tsx", "json", "xml", "yaml", "yml", "html", "css", "sh", "py", "java", "go", "rs"].includes(extension)
+    [
+      "js", "jsx", "ts", "tsx", "json", "xml", "yaml", "yml", "html", "css", "scss", "less",
+      "sh", "bash", "zsh", "py", "java", "go", "rs", "c", "cpp", "h", "hpp", "cs",
+      "swift", "kt", "kts", "rb", "php", "lua", "sql", "toml", "ini", "conf", "env",
+    ].includes(extension)
   ) return "code";
 
   if (mime.startsWith("text/") || ["txt", "md", "log"].includes(extension)) return "text";

@@ -42,6 +42,38 @@ describe("attachment kind", () => {
     expect(resolvePlayableMediaMimeType("application/octet-stream", "voice.mp3")).toBe("audio/mpeg");
   });
 
+  test("identifies executables, books, fonts, disk images, and databases", () => {
+    expect(resolveAttachmentKind("application/vnd.android.package-archive", "app.apk")).toBe("executable");
+    expect(resolveAttachmentKind("application/octet-stream", "EdgeEver-Setup.exe")).toBe("executable");
+    expect(resolveAttachmentKind(null, "EdgeEver-arm64.dmg")).toBe("executable");
+    expect(resolveAttachmentKind(null, "installer.msi")).toBe("executable");
+    expect(resolveAttachmentKind(null, "package.deb")).toBe("executable");
+    expect(resolveAttachmentKind(null, "package.rpm")).toBe("executable");
+    expect(resolveAttachmentKind(null, "app.AppImage")).toBe("executable");
+    expect(resolveAttachmentKind("application/zip", "app.apk")).toBe("executable");
+
+    expect(resolveAttachmentKind("application/epub+zip", "manual.epub")).toBe("book");
+    expect(resolveAttachmentKind(null, "novel.mobi")).toBe("book");
+    expect(resolveAttachmentKind(null, "guide.azw3")).toBe("book");
+
+    expect(resolveAttachmentKind("font/woff2", "inter.woff2")).toBe("font");
+    expect(resolveAttachmentKind(null, "roboto.ttf")).toBe("font");
+    expect(resolveAttachmentKind(null, "opensans.otf")).toBe("font");
+
+    expect(resolveAttachmentKind("application/x-iso9660-image", "ubuntu.iso")).toBe("diskimage");
+    expect(resolveAttachmentKind(null, "system.img")).toBe("diskimage");
+
+    expect(resolveAttachmentKind(null, "app.sqlite")).toBe("database");
+    expect(resolveAttachmentKind(null, "data.db")).toBe("database");
+
+    expect(resolveAttachmentKind(null, "schema.sql")).toBe("code");
+    expect(resolveAttachmentKind(null, "Cargo.toml")).toBe("code");
+    expect(resolveAttachmentKind(null, "main.rs")).toBe("code");
+    expect(resolveAttachmentKind(null, "main.go")).toBe("code");
+    expect(resolveAttachmentKind(null, "Main.java")).toBe("code");
+    expect(resolveAttachmentKind(null, "script.py")).toBe("code");
+  });
+
   test("falls back predictably for text and unknown files", () => {
     expect(resolveAttachmentKind("text/plain", "README")).toBe("text");
     expect(resolveAttachmentKind("application/octet-stream", "payload.bin")).toBe("file");

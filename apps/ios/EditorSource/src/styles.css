@@ -611,6 +611,16 @@ html[data-theme="dark"] .ProseMirror a:active {
 .ProseMirror a.edgeever-attachment-kind-code::before { background: #faf5ff; color: #8b5cf6; content: "</>"; }
 .edgeever-prose a.edgeever-attachment-kind-text::before,
 .ProseMirror a.edgeever-attachment-kind-text::before { background: #f1f5f9; color: #64748b; content: "TXT"; }
+.edgeever-prose a.edgeever-attachment-kind-executable::before,
+.ProseMirror a.edgeever-attachment-kind-executable::before { background: #ccfbf1; color: #0d9488; content: "PKG"; }
+.edgeever-prose a.edgeever-attachment-kind-book::before,
+.ProseMirror a.edgeever-attachment-kind-book::before { background: #fef3c7; color: #b45309; content: "BOOK"; }
+.edgeever-prose a.edgeever-attachment-kind-font::before,
+.ProseMirror a.edgeever-attachment-kind-font::before { background: #e0e7ff; color: #4f46e5; content: "FONT"; }
+.edgeever-prose a.edgeever-attachment-kind-diskimage::before,
+.ProseMirror a.edgeever-attachment-kind-diskimage::before { background: #cffafe; color: #0891b2; content: "ISO"; }
+.edgeever-prose a.edgeever-attachment-kind-database::before,
+.ProseMirror a.edgeever-attachment-kind-database::before { background: #fae8ff; color: #c026d3; content: "DB"; }
 
 html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-link,
 html[data-theme="dark"] .ProseMirror a.edgeever-attachment-link,
@@ -643,6 +653,16 @@ html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-code::before,
 html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-code::before { background: #581c87; color: #d8b4fe; }
 html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-text::before,
 html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-text::before { background: #334155; color: #cbd5e1; }
+html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-executable::before,
+html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-executable::before { background: #134e4a; color: #5eead4; }
+html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-book::before,
+html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-book::before { background: #78350f; color: #fcd34d; }
+html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-font::before,
+html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-font::before { background: #312e81; color: #a5b4fc; }
+html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-diskimage::before,
+html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-diskimage::before { background: #164e63; color: #67e8f9; }
+html[data-theme="dark"] .edgeever-prose a.edgeever-attachment-kind-database::before,
+html[data-theme="dark"] .ProseMirror a.edgeever-attachment-kind-database::before { background: #701a75; color: #f0abfc; }
 
 .edgeever-prose .edgeever-unsupported-content,
 .ProseMirror .edgeever-unsupported-content {

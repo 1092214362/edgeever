@@ -3236,6 +3236,11 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-editor-content a.edgeever-attachment-kind-archive::before { background: ${theme === "dark" ? "#713f12" : "#fffbeb"}; color: ${theme === "dark" ? "#fde68a" : "#d97706"}; content: "ZIP"; }
   .edgeever-editor-content a.edgeever-attachment-kind-code::before { background: ${theme === "dark" ? "#581c87" : "#faf5ff"}; color: ${theme === "dark" ? "#d8b4fe" : "#8b5cf6"}; content: "</>"; }
   .edgeever-editor-content a.edgeever-attachment-kind-text::before { background: ${theme === "dark" ? "#334155" : "#f1f5f9"}; color: ${theme === "dark" ? "#cbd5e1" : "#64748b"}; content: "TXT"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-executable::before { background: ${theme === "dark" ? "#134e4a" : "#ccfbf1"}; color: ${theme === "dark" ? "#5eead4" : "#0d9488"}; content: "PKG"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-book::before { background: ${theme === "dark" ? "#78350f" : "#fef3c7"}; color: ${theme === "dark" ? "#fcd34d" : "#b45309"}; content: "BOOK"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-font::before { background: ${theme === "dark" ? "#312e81" : "#e0e7ff"}; color: ${theme === "dark" ? "#a5b4fc" : "#4f46e5"}; content: "FONT"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-diskimage::before { background: ${theme === "dark" ? "#164e63" : "#cffafe"}; color: ${theme === "dark" ? "#67e8f9" : "#0891b2"}; content: "ISO"; }
+  .edgeever-editor-content a.edgeever-attachment-kind-database::before { background: ${theme === "dark" ? "#701a75" : "#fae8ff"}; color: ${theme === "dark" ? "#f0abfc" : "#c026d3"}; content: "DB"; }
   .edgeever-editor-content .edgeever-unsupported-content {
     border: 1px dashed ${theme === "dark" ? "#64748b" : "#94a3b8"};
     border-radius: 8px;

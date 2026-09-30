@@ -11,6 +11,11 @@ const TYPE_LABELS = {
   archive: "ZIP",
   code: "CODE",
   text: "TXT",
+  executable: "PKG",
+  book: "BOOK",
+  font: "FONT",
+  diskimage: "ISO",
+  database: "DB",
   file: "FILE",
 } as const;
 
