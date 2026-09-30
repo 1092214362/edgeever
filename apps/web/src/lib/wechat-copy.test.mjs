@@ -1,18 +1,38 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { parseHTML } from "../../../../node_modules/.bun/linkedom@0.18.13/node_modules/linkedom/esm/index.js";
 
-const window = parseHTML("<!DOCTYPE html><html><body></body></html>");
+const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+const originalNode = Object.getOwnPropertyDescriptor(globalThis, "Node");
+const originalHTMLElement = Object.getOwnPropertyDescriptor(globalThis, "HTMLElement");
+const originalGetComputedStyle = Object.getOwnPropertyDescriptor(globalThis, "getComputedStyle");
+
+const linkedomWindow = parseHTML("<!DOCTYPE html><html><head></head><body></body></html>");
 try {
-  Object.defineProperty(window.document, "compatMode", { value: "CSS1Compat" });
+  Object.defineProperty(linkedomWindow.document, "compatMode", { value: "CSS1Compat" });
 } catch {
   // linkedom may already expose a read-only quirks flag. KaTeX still renders.
 }
-globalThis.document = window.document;
-globalThis.Node = window.Node;
-globalThis.HTMLElement = window.HTMLElement;
-globalThis.getComputedStyle = typeof window.getComputedStyle === "function"
-  ? window.getComputedStyle.bind(window)
+globalThis.window = linkedomWindow;
+globalThis.document = linkedomWindow.document;
+globalThis.Node = linkedomWindow.Node;
+globalThis.HTMLElement = linkedomWindow.HTMLElement;
+globalThis.getComputedStyle = typeof linkedomWindow.getComputedStyle === "function"
+  ? linkedomWindow.getComputedStyle.bind(linkedomWindow)
   : () => ({ getPropertyValue: () => "" });
+
+const restoreGlobal = (name, descriptor) => {
+  if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+  else delete globalThis[name];
+};
+
+afterAll(() => {
+  restoreGlobal("window", originalWindow);
+  restoreGlobal("document", originalDocument);
+  restoreGlobal("Node", originalNode);
+  restoreGlobal("HTMLElement", originalHTMLElement);
+  restoreGlobal("getComputedStyle", originalGetComputedStyle);
+});
 
 const css = (element) => (element?.style.cssText ?? "").replace(/:\s+/g, ":");
 

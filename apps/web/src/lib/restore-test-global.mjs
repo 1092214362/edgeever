@@ -1,12 +1,28 @@
 const restoreUnconditionally = Symbol("restore-unconditionally");
 const noop = () => {};
 
-// Linux Bun exposes `document` without a `window` binding. Test files then
-// install plain objects. ProseMirror and TipTap read `window.MutationObserver`
-// and `window.addEventListener` from that object, so a leftover stub needs
-// those methods. Do not create a window when none is installed: assigning one
-// is unnecessary on hosts whose editor already resolves `window` elsewhere.
+// Linux Bun can be left with a plain window object, or with a linkedom
+// document whose view is not installed as `window`. TipTap reads
+// `window.addEventListener` and appends CSS to `document.head`.
+export const ensureTestDocumentHead = () => {
+  const doc = globalThis.document;
+  if (!doc || typeof doc.createElement !== "function" || typeof doc.getElementsByTagName !== "function") return;
+  if (doc.getElementsByTagName("head")[0]) return;
+  const head = doc.createElement("head");
+  const html = doc.documentElement;
+  if (html && typeof html.insertBefore === "function") {
+    html.insertBefore(head, html.firstChild ?? null);
+    return;
+  }
+  if (typeof doc.appendChild === "function") doc.appendChild(head);
+};
+
 export const ensureTestWindowDom = () => {
+  const view = globalThis.document?.defaultView;
+  if (view && typeof globalThis.window?.addEventListener !== "function") {
+    globalThis.window = view;
+  }
+  ensureTestDocumentHead();
   const current = globalThis.window;
   if (!current || typeof current !== "object") return;
   if (typeof current.addEventListener !== "function") current.addEventListener = noop;
