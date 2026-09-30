@@ -1370,11 +1370,11 @@ export const zhCN = {
     },
     agentSource: {
       title: "Agent 运行模式",
-      description: "使用应用内置 Agent，或连接本机运行的本地 Agent (ACP)。",
+      description: "使用应用内置 Agent，或连接本机运行的 Agent (ACP)。",
       localDisabled: "仅支持桌面客户端。",
       builtin: "内置 Agent",
       builtinHint: "直接调用下方配置的模型服务与工具。",
-      local: "本地 Agent (ACP)",
+      local: "本机 Agent (ACP)",
       localHint: "连接本机安装的 Codex、Antigravity、Grok Build 或 WorkBuddy 等 Agent。EdgeEver 不通过 ACP 暴露文件系统或终端权限，具体工具权限由 Agent 自身配置决定。",
       adapter: "Agent",
       codex: "Codex",

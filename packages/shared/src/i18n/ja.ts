@@ -1370,7 +1370,7 @@ export const ja = {
     },
     agentSource: {
       title: "エージェントの動作モード",
-      description: "内蔵 Agent を使用するか、このマシンで動作するローカル Agent (ACP) に接続します。",
+      description: "内蔵 Agent を使用するか、このマシンで動作する Agent (ACP) に接続します。",
       localDisabled: "デスクトップアプリが必要です。",
       builtin: "内蔵 Agent",
       builtinHint: "下で設定したモデルサービスとツールを使用します。",

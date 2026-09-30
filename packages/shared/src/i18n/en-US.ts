@@ -1370,7 +1370,7 @@ export const enUS = {
     },
     agentSource: {
       title: "Agent mode",
-      description: "Use the built-in Agent, or connect to a local Agent (ACP) running on this machine.",
+      description: "Use the built-in Agent, or connect to an Agent (ACP) running on this machine.",
       localDisabled: "Requires the desktop app.",
       builtin: "Built-in Agent",
       builtinHint: "Uses the model services and tools configured below.",
