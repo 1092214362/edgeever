@@ -1309,9 +1309,10 @@ export const enUS = {
       historyEmpty: "No matching chats",
       resize: "Resize assistant",
       stop: "Stop",
-      placeholder: "Ask about this note, or type / for a skill",
-      emptyTitle: "Start from this note",
-      emptyDescription: "Summaries, rewrites, and translations come back as replies. They do not change the note on their own.",
+      placeholder: "Ask anything, or type / for a note skill",
+      emptyTitle: "Start a conversation",
+      emptyDescription: "Select 'Include current note' before sending when the note is relevant. Summarize, improve, and translate include it automatically.",
+      includeCurrentNote: "Include current note",
       working: "Replying…",
       selectionBadge: "{{count}} characters selected · Current note",
       selection: {

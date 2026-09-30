@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent,
 import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronDown, Download, Loader2, PanelRightClose, Paperclip, Plus, Search, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Download, FileText, Loader2, PanelRightClose, Paperclip, Plus, Search, Sparkles, X } from "lucide-react";
 import type { CompanionAction, CompanionAnswer, CompanionEvent, CompanionTurn, CompanionTurnInput } from "@edgeever/shared";
 import { buildRevisionDiffRows, createMemoLinkHref, parseMemoLinkHref } from "@edgeever/shared";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { api, ApiRequestError } from "@/lib/api";
+import { sidebarCompanionFocus, sidebarLocalContextText } from "@/lib/ai-sidebar-context";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { createClientUuid } from "@/lib/client-id";
 import {
@@ -561,6 +562,9 @@ function SidebarComposer({
   onAddFiles,
   onRemoveAttachment,
   onLaunch,
+  includeCurrentNote,
+  currentNoteAvailable,
+  onIncludeCurrentNoteChange,
   onStop,
   skillPrompt,
   focusToken,
@@ -572,7 +576,10 @@ function SidebarComposer({
   placeholder: string;
   onAddFiles: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
-  onLaunch: (message: string) => Promise<string>;
+  onLaunch: (message: string, options?: { includeCurrentNote?: boolean }) => Promise<string>;
+  includeCurrentNote: boolean;
+  currentNoteAvailable: boolean;
+  onIncludeCurrentNoteChange: (include: boolean) => void;
   onStop: () => void;
   skillPrompt: (id: SkillId, rest?: string) => string;
   focusToken: number;
@@ -594,9 +601,9 @@ function SidebarComposer({
   const slashOpen = token.startsWith("/") && !draft.trimStart().includes("\n");
   const slashMatches = slashOpen ? SKILLS.filter((skill) => skill.command.startsWith(token)) : [];
 
-  const launch = async (message: string, restoreDraft?: string) => {
+  const launch = async (message: string, restoreDraft?: string, forceCurrentNote = false) => {
     try {
-      await onLaunch(message);
+      await onLaunch(message, forceCurrentNote ? { includeCurrentNote: true } : undefined);
       if (restoreDraft !== undefined) textInput.clear();
     } catch (cause) {
       if (restoreDraft !== undefined && !isAbortError(cause)) textInput.setInput(restoreDraft);
@@ -620,7 +627,7 @@ function SidebarComposer({
               <button
                 type="button"
                 className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-slate-50"
-                onClick={() => void launch(skillPrompt(skill.id), draft).catch(() => undefined)}
+                onClick={() => void launch(skillPrompt(skill.id), draft, true).catch(() => undefined)}
               >
                 <span className="font-medium text-slate-800">{t(`aiAssistant.sidebar.skills.${skill.id}`)}</span>
                 <span className="truncate text-xs text-slate-400">{skill.command}</span>
@@ -636,7 +643,7 @@ function SidebarComposer({
           const raw = text.trim();
           if (!raw) throw new Error("empty");
           const skill = matchSkill(raw);
-          await launch(skill ? skillPrompt(skill.id, skill.rest) : raw);
+          await launch(skill ? skillPrompt(skill.id, skill.rest) : raw, undefined, Boolean(skill));
         }}
       >
         {attachments.length ? (
@@ -672,6 +679,20 @@ function SidebarComposer({
             >
               <Paperclip className="h-4 w-4" />
             </Button>
+            {currentNoteAvailable ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-pressed={includeCurrentNote}
+                className={includeCurrentNote ? "border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" : undefined}
+                disabled={busy || locked}
+                onClick={() => onIncludeCurrentNoteChange(!includeCurrentNote)}
+              >
+                <FileText className="size-3.5" aria-hidden="true" />
+                {t("aiAssistant.sidebar.includeCurrentNote")}
+              </Button>
+            ) : null}
           </PromptInputTools>
           {busy ? (
             <Button type="button" size="sm" variant="outline" onClick={onStop}>
@@ -753,6 +774,7 @@ function AiSidebarSession({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useMemory, setUseMemory] = useState(false);
+  const [includeCurrentNote, setIncludeCurrentNote] = useState(false);
   const [composerFocusToken, setComposerFocusToken] = useState(0);
   const [selectionTurnKinds, setSelectionTurnKinds] = useState<Record<string, "explain" | "translate">>(readSelectionTurnKinds);
   const alive = useRef(true);
@@ -771,6 +793,10 @@ function AiSidebarSession({
   localThreadIdRef.current = localThreadId;
   const focusRef = useRef({ selectionMarkdown, contentMarkdown, memoId, notebookId, notebookTitle, noteTitle, companionAvailable });
   focusRef.current = { selectionMarkdown, contentMarkdown, memoId, notebookId, notebookTitle, noteTitle, companionAvailable };
+
+  useEffect(() => {
+    setIncludeCurrentNote(false);
+  }, [memoId]);
 
   const explainError = useCallback((cause: unknown) => {
     const code = cause instanceof ApiRequestError ? cause.code : "";
@@ -1026,31 +1052,6 @@ function AiSidebarSession({
     await onCompanionNotesChanged?.()?.catch(() => undefined);
   }, [onCompanionNotesChanged, reloadCompanion]);
 
-  const buildFocus = useCallback((): CompanionTurnInput["focus"] => {
-    const focus = focusRef.current;
-    const selection = focus.selectionMarkdown?.trim().slice(0, 2000) ?? "";
-    const content = focus.contentMarkdown?.trim() ?? "";
-    const excerpt = content.slice(0, 4000);
-    const next: NonNullable<CompanionTurnInput["focus"]> = {};
-    if (focus.memoId) next.memoId = focus.memoId;
-    if (focus.notebookId) next.notebookId = focus.notebookId;
-    if (focus.notebookTitle) next.notebookTitle = focus.notebookTitle;
-    if (focus.noteTitle?.trim()) next.title = focus.noteTitle.trim();
-    if (selection) next.selectionMarkdown = selection;
-    if (excerpt) {
-      next.contentMarkdown = excerpt;
-      if (content.length > 4000) next.contentTruncated = true;
-    }
-    return Object.keys(next).length ? next : undefined;
-  }, []);
-
-  const contextText = useCallback(() => {
-    const focus = focusRef.current;
-    const selection = focus.selectionMarkdown?.trim().slice(0, 2000) ?? "";
-    const excerpt = focus.contentMarkdown?.trim().slice(0, 2000) ?? "";
-    return [selection, excerpt].filter(Boolean).join("\n\n");
-  }, []);
-
   const skillPrompt = useCallback((id: SkillId, rest = "") => {
     const prompt = t(`aiAssistant.sidebar.skillPrompts.${id}`);
     return rest ? `${prompt}\n\n${rest}` : prompt;
@@ -1088,12 +1089,14 @@ function AiSidebarSession({
     onStopReady.current = () => { void stop(); };
   }, [onStopReady, stop]);
 
-  const launch = useCallback(async (message: string): Promise<string> => {
+  const launch = useCallback(async (message: string, options?: { includeCurrentNote?: boolean }): Promise<string> => {
     const text = message.trim();
     if (!text || locked.current) throw new Error("busy");
+    const useCurrentNote = options?.includeCurrentNote ?? includeCurrentNote;
+    const focusAtSend = focusRef.current;
     const mode = readAiSidebarSource();
     setSource(mode);
-    if (mode === "builtin" && !focusRef.current.companionAvailable) {
+    if (mode === "builtin" && !focusAtSend.companionAvailable) {
       setError(t("aiAssistant.sidebar.unavailable"));
       throw new Error("unavailable");
     }
@@ -1122,7 +1125,7 @@ function AiSidebarSession({
         }));
         const activeLocalThreadId = localThreadIdRef.current;
         const transcript = localAgentTranscript(localTurnsRef.current, activeLocalThreadId);
-        const noteContext = contextText();
+        const noteContext = sidebarLocalContextText(focusAtSend, useCurrentNote);
         writeStorage(AI_SIDEBAR_LOCAL_THREAD_KEY, activeLocalThreadId);
         setLocalTurns((previous) => [...previous, {
           id,
@@ -1167,6 +1170,7 @@ function AiSidebarSession({
         const queued = acpBuffer.current.filter((event) => event.requestId === result.requestId);
         acpBuffer.current = acpBuffer.current.filter((event) => event.requestId !== result.requestId);
         for (const event of queued) applyAcpEventRef.current(event);
+        setIncludeCurrentNote(false);
         return id;
       }
 
@@ -1196,6 +1200,7 @@ function AiSidebarSession({
         })),
       }, ...previous]);
       if (active.current?.id === id) active.current.started = true;
+      const focus = sidebarCompanionFocus(focusAtSend, useCurrentNote);
       const payload: CompanionTurnInput = {
         id,
         threadId: activeThreadId,
@@ -1205,8 +1210,9 @@ function AiSidebarSession({
         allowWrites: true,
         locale: companionLocale(i18n.resolvedLanguage),
         ...(uploaded.length ? { attachmentIds: uploaded.map((item) => item.id) } : {}),
-        ...(buildFocus() ? { focus: buildFocus() } : {}),
+        ...(focus ? { focus } : {}),
       };
+      setIncludeCurrentNote(false);
       void (async () => {
         let completed = false;
         try {
@@ -1253,7 +1259,7 @@ function AiSidebarSession({
       setError(explainError(cause));
       throw cause;
     }
-  }, [applyStreamEvent, attachments, buildFocus, contextText, explainError, i18n.resolvedLanguage, recoverTurn, restoreAttachments, t, threadId, useMemory]);
+  }, [applyStreamEvent, attachments, explainError, i18n.resolvedLanguage, includeCurrentNote, recoverTurn, restoreAttachments, t, threadId, useMemory]);
 
   const rememberSelectionTurn = useCallback((id: string, kind: "explain" | "translate") => {
     setSelectionTurnKinds((current) => {
@@ -1694,7 +1700,7 @@ function AiSidebarSession({
               size="sm"
               variant="outline"
               disabled={running || acting}
-              onClick={() => void launch(skillPrompt(skill.id)).catch(() => undefined)}
+              onClick={() => void launch(skillPrompt(skill.id), { includeCurrentNote: true }).catch(() => undefined)}
             >
               {t(`aiAssistant.sidebar.skills.${skill.id}`)}
             </Button>
@@ -1706,6 +1712,9 @@ function AiSidebarSession({
             attachmentError={attachmentError}
             busy={running}
             locked={acting}
+            includeCurrentNote={includeCurrentNote}
+            currentNoteAvailable={Boolean(noteTitle?.trim() || contentMarkdown?.trim())}
+            onIncludeCurrentNoteChange={setIncludeCurrentNote}
             placeholder={t("aiAssistant.sidebar.placeholder")}
             onAddFiles={(files) => { void addFiles(files); }}
             onRemoveAttachment={(id) => setAttachments((current) => current.filter((item) => item.localId !== id))}

@@ -1309,9 +1309,10 @@ export const ja = {
       historyEmpty: "一致するチャットがありません",
       resize: "幅を調整",
       stop: "停止",
-      placeholder: "このノートについて聞くか、/ でスキルを入力",
-      emptyTitle: "このノートから始める",
-      emptyDescription: "要約、推敲、翻訳は返信として返ります。ノートは自動では変わりません。",
+      placeholder: "質問するか、/ でノート用スキルを入力",
+      emptyTitle: "会話を始める",
+      emptyDescription: "ノートを参照したいときは、送信前に「現在のノートを含める」を選択してください。要約・推敲・翻訳では自動的に含まれます。",
+      includeCurrentNote: "現在のノートを含める",
       working: "返信しています…",
       selectionBadge: "{{count}} 文字を選択 · 現在のノート",
       selection: {

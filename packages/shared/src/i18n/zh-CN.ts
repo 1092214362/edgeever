@@ -1309,9 +1309,10 @@ export const zhCN = {
       historyEmpty: "没有匹配的会话",
       resize: "调整助手宽度",
       stop: "停止",
-      placeholder: "问问这篇笔记，或输入 / 使用技能",
-      emptyTitle: "从当前笔记开始",
-      emptyDescription: "总结、润色和翻译会作为回复出现，不会直接改掉笔记。",
+      placeholder: "提问，或输入 / 使用笔记技能",
+      emptyTitle: "开始对话",
+      emptyDescription: "需要笔记内容时，发送前选择“引用当前笔记”。总结、润色和翻译会自动引用。",
+      includeCurrentNote: "引用当前笔记",
       working: "正在回复…",
       selectionBadge: "已选 {{count}} 字 · 当前笔记",
       selection: {
