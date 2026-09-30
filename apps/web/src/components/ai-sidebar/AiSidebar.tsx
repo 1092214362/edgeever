@@ -1563,9 +1563,12 @@ function AiSidebarSession({
               </Message>
               <Message from="assistant">
                 {turn.process?.trim() ? (
-                  <Reasoning isStreaming={turn.status === "running"}>
-                    <ReasoningTrigger getThinkingMessage={() => t("companion.process")} />
-                    <ReasoningContent>{turn.process}</ReasoningContent>
+                  <Reasoning isStreaming={turn.status === "running"} className="mb-2">
+                    <ReasoningTrigger
+                      className="-ml-1 min-h-7 w-fit gap-1.5 rounded-sm px-1 py-1 text-xs leading-4 text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 [&_svg]:size-3"
+                      getThinkingMessage={() => t("companion.process")}
+                    />
+                    <ReasoningContent className="mt-2 text-xs leading-5">{turn.process}</ReasoningContent>
                   </Reasoning>
                 ) : turn.status === "running" ? (
                   <p role="status" className="flex items-center gap-2 text-xs text-slate-500">
