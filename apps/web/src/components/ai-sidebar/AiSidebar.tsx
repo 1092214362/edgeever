@@ -84,6 +84,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CompanionQuestionForm } from "../CompanionQuestionForm";
 import { AiSidebarMessage } from "./AiSidebarMessage";
+import { AiSidebarLocalProcess } from "./AiSidebarLocalProcess";
 
 const SIDEBAR_DEFAULT_WIDTH = 380;
 const sidebarThreadClassName = cn(
@@ -1608,23 +1609,13 @@ function AiSidebarSession({
                 <AttachmentChips items={turn.attachments} />
               </Message>
               <Message from="assistant">
-                {turn.reasoning.trim() ? (
-                  <Reasoning isStreaming={turn.status === "running"}>
-                    <ReasoningTrigger getThinkingMessage={() => t("companion.process")} />
-                    <ReasoningContent>{turn.reasoning}</ReasoningContent>
-                  </Reasoning>
+                {turn.reasoning.trim() || turn.tools.length ? (
+                  <AiSidebarLocalProcess reasoning={turn.reasoning} tools={turn.tools} running={turn.status === "running"} />
                 ) : turn.status === "running" ? (
                   <p role="status" className="flex items-center gap-2 text-xs text-slate-500">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                     {t("aiAssistant.sidebar.working")}
                   </p>
-                ) : null}
-                {turn.tools.length ? (
-                  <ul className="space-y-1 text-xs text-slate-500">
-                    {turn.tools.map((tool) => (
-                      <li key={tool.id}>{t("aiAssistant.sidebar.toolProgress", { name: tool.title || tool.name, status: tool.status })}</li>
-                    ))}
-                  </ul>
                 ) : null}
                 {turn.images.length ? (
                   <div className="flex flex-col gap-2">
