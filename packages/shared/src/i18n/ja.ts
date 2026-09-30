@@ -1376,7 +1376,7 @@ export const ja = {
       builtin: "内蔵 Agent",
       builtinHint: "下で設定したモデルサービスとツールを使用します。",
       local: "ローカル Agent (ACP)",
-      localHint: "このマシン上の Codex、Antigravity、Grok Build、または WorkBuddy に接続します。EdgeEver は ACP 経由でファイルやターミナル権限を公開しません。ツール権限はエージェント自身の設定に従います。",
+      localHint: "このマシン上の Codex、Antigravity、Grok Build、または WorkBuddy に接続します。",
       adapter: "エージェント",
       codex: "Codex",
       antigravity: "Antigravity",
