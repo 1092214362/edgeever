@@ -790,7 +790,6 @@ export const zhCN = {
       teal: "青色",
       azure: "蓝色",
       violet: "紫色",
-      plum: "酒红",
       pink: "粉色",
       slate: "灰色",
     },

@@ -790,7 +790,6 @@ export const enUS = {
       teal: "Teal",
       azure: "Blue",
       violet: "Purple",
-      plum: "Wine",
       pink: "Pink",
       slate: "Gray",
     },

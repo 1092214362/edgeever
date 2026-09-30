@@ -790,7 +790,6 @@ export const ja = {
       teal: "青緑",
       azure: "青",
       violet: "紫",
-      plum: "ワイン",
       pink: "ピンク",
       slate: "グレー",
     },
