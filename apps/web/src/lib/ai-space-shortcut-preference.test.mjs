@@ -9,7 +9,8 @@ import {
 const originalWindow = globalThis.window;
 
 afterEach(() => {
-  globalThis.window = originalWindow;
+  if (originalWindow === undefined) delete globalThis.window;
+  else globalThis.window = originalWindow;
 });
 
 const installWindow = () => {
