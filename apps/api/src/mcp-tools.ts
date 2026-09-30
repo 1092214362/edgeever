@@ -1,4 +1,4 @@
-import { ARCHITECTURE_RESOURCE_ICONS } from "@edgeever/shared";
+import { ARCHITECTURE_RESOURCE_ICONS, TABLE_FIELD_TYPES } from "@edgeever/shared";
 
 const DIAGRAM_IR_NODE_TYPES = [
   "topic",
@@ -53,6 +53,17 @@ const mutableDiagramEdgeSchema = {
   properties: {
     id: { type: "string", minLength: 1, maxLength: 100 },
     ...diagramEdgeProperties,
+  },
+};
+
+const tableFieldSchema = {
+  type: "object",
+  required: ["name", "type"],
+  additionalProperties: false,
+  properties: {
+    name: { type: "string", minLength: 1, maxLength: 80 },
+    type: { type: "string", enum: [...TABLE_FIELD_TYPES] },
+    options: { type: "array", maxItems: 40, items: { type: "string", minLength: 1, maxLength: 80 } },
   },
 };
 
@@ -142,6 +153,47 @@ const MCP_TOOL_DEFINITIONS = [
         recordId: { type: "string", minLength: 1 },
         offset: { type: "integer", minimum: 0 },
         limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    },
+  },
+  {
+    name: "create_table_memo",
+    description: "Create an editable structured table memo from a field plan. Infer field names and types from the user's request, then pass explicit fields. The table starts empty; add_table_record can populate it. Select fields require options.",
+    inputSchema: {
+      type: "object", required: ["notebookId", "title", "fields"], additionalProperties: false,
+      properties: {
+        notebookId: { type: "string", minLength: 1 },
+        title: { type: "string", minLength: 1, maxLength: 160 },
+        tags: { type: "array", maxItems: 100, items: { type: "string" } },
+        fields: { type: "array", minItems: 1, maxItems: 40, items: tableFieldSchema },
+      },
+    },
+  },
+  {
+    name: "update_table_schema",
+    description: "Apply field changes to one structured table memo. First use dryRun to preview changedCellCount and removedAttachmentCount. If existing cell values would change, pass allowDataChanges=true to execute. Operations run in order and use stable field IDs from get_table_records.",
+    inputSchema: {
+      type: "object", required: ["memoId", "expectedRevision", "operations"], additionalProperties: false,
+      properties: {
+        memoId: { type: "string", minLength: 1 },
+        expectedRevision: { type: "integer", minimum: 0 },
+        dryRun: { type: "boolean" },
+        allowDataChanges: { type: "boolean" },
+        operations: {
+          type: "array", minItems: 1, maxItems: 40,
+          items: {
+            type: "object", required: ["op"], additionalProperties: false,
+            properties: {
+              op: { type: "string", enum: ["add_field", "update_field", "remove_field"] },
+              fieldId: { type: "string", minLength: 1 },
+              field: tableFieldSchema,
+              changes: {
+                type: "object", minProperties: 1, additionalProperties: false,
+                properties: tableFieldSchema.properties,
+              },
+            },
+          },
+        },
       },
     },
   },
@@ -837,6 +889,7 @@ const READ_ONLY_MCP_TOOLS = new Set([
 ]);
 const NON_DESTRUCTIVE_MCP_TOOLS = new Set([
   "create_memo",
+  "create_table_memo",
   "create_diagram_memo",
   "import_memos",
   "restore_memos",

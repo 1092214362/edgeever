@@ -139,6 +139,8 @@ describe("MCP HTTP routes", () => {
       expect.objectContaining({ name: "add_table_record" }),
       expect.objectContaining({ name: "update_table_record" }),
       expect.objectContaining({ name: "delete_table_record" }),
+      expect.objectContaining({ name: "create_table_memo" }),
+      expect.objectContaining({ name: "update_table_schema" }),
     ]));
   });
 
