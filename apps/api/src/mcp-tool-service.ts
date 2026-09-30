@@ -6,18 +6,27 @@ import {
   TemplateUpdateSchema,
   docToText,
   markdownToDoc,
+  addTableRecord,
+  createTableId,
   getTableSummary,
+  TABLE_ATTACHMENT_LIMIT,
+  TABLE_RECORD_LIMIT,
   hasTableDocumentMarker,
   parseDiagramDocument,
   parseTableDocument,
+  removeTableRecord,
   serializeDiagramDocument,
+  serializeTableDocument,
   stripDiagramDocumentMarker,
   stripTableDocumentMarker,
+  tableFallbackMarkdown,
+  updateTableCell,
   type DiagramDocument,
   type DiagramNodeShape,
   type MemoDetail,
   type MemoSummary,
   type MemoUpdateInput,
+  type TableDocument,
 } from "@edgeever/shared";
 import type { DiagramIr, DiagramIrNodeType } from "@edgeever/shared/diagram-layout";
 import { audit, auditStatement } from "./audit";
@@ -393,6 +402,79 @@ const memoWithoutTablePayload = (memo: MemoDetail) => {
   return { ...memo, contentMarkdown, contentJson, contentText: docToText(contentJson) };
 };
 
+const requiredTableRevision = (value: unknown) => {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+    throw new AppError("invalid_params", "expectedRevision must be a non-negative integer", 400);
+  }
+  return value as number;
+};
+
+const tableCellPatch = async (
+  db: DatabaseAdapter,
+  memoId: string,
+  document: TableDocument,
+  value: unknown,
+  allowEmpty: boolean,
+) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new AppError("invalid_params", "cells must be an object keyed by field ID", 400);
+  }
+  const cells = value as Record<string, unknown>;
+  const normalized: Record<string, unknown> = {};
+  if (!allowEmpty && Object.keys(cells).length === 0) {
+    throw new AppError("invalid_params", "cells must include at least one field", 400);
+  }
+  const fields = new Map(document.fields.map((field) => [field.id, field]));
+  for (const [fieldId, cell] of Object.entries(cells)) {
+    const field = fields.get(fieldId);
+    if (!field) throw new AppError("invalid_params", `Unknown table field: ${fieldId}`, 400);
+    if (field.type === "attachment") {
+      if (!Array.isArray(cell) || cell.length > TABLE_ATTACHMENT_LIMIT || cell.some((id) => typeof id !== "string")) {
+        throw new AppError("invalid_params", `${fieldId} requires an array of up to ${TABLE_ATTACHMENT_LIMIT} resource IDs`, 400);
+      }
+      if (new Set(cell).size !== cell.length) {
+        throw new AppError("invalid_params", `${fieldId} contains duplicate resource IDs`, 400);
+      }
+      const attachments = [];
+      for (const resourceId of cell) {
+        const resource = await db.prepare(
+          `SELECT id, filename, mime_type, byte_size FROM resources
+           WHERE id = ? AND memo_id = ? AND kind = 'attachment' AND is_deleted = 0`,
+        ).bind(resourceId, memoId).first<{ id: string; filename: string | null; mime_type: string | null; byte_size: number }>();
+        if (!resource) throw new AppError("invalid_params", `Attachment resource not found in this memo: ${resourceId}`, 400);
+        attachments.push({
+          resourceId: resource.id,
+          filename: resource.filename ?? "attachment",
+          mimeType: resource.mime_type ?? "application/octet-stream",
+          byteSize: resource.byte_size,
+        });
+      }
+      normalized[fieldId] = attachments;
+      continue;
+    }
+    if (field.type === "checkbox") {
+      if (typeof cell !== "boolean") throw new AppError("invalid_params", `${fieldId} requires a boolean`, 400);
+    } else if (field.type === "number") {
+      if (cell !== null && (typeof cell !== "number" || !Number.isFinite(cell))) {
+        throw new AppError("invalid_params", `${fieldId} requires a finite number or null`, 400);
+      }
+    } else if (cell !== null && (typeof cell !== "string" || cell.length > 2000)) {
+      throw new AppError("invalid_params", `${fieldId} requires a string of at most 2000 characters or null`, 400);
+    }
+    if (field.type === "select" && cell && !field.options?.includes(cell as string)) {
+      throw new AppError("invalid_params", `${fieldId} requires an existing option`, 400);
+    }
+    if (field.type === "date" && cell && !/^\d{4}-\d{2}-\d{2}$/.test(cell as string)) {
+      throw new AppError("invalid_params", `${fieldId} requires YYYY-MM-DD`, 400);
+    }
+    if (field.type === "url" && cell && !/^https?:\/\//i.test(cell as string)) {
+      throw new AppError("invalid_params", `${fieldId} requires an http:// or https:// URL`, 400);
+    }
+    normalized[fieldId] = cell;
+  }
+  return normalized;
+};
+
 type MutableDiagramEdge = ReturnType<typeof diagramSemanticGraph>["edges"][number];
 
 const applyDiagramOperations = async (
@@ -697,6 +779,74 @@ export const callMcpTool = async (
       const table = parseTableDocument(memo.contentMarkdown);
       if (table) return { memo: memoWithoutTablePayload(memo), structuredTable: getTableSummary(memo.contentMarkdown).tablePreview };
       return { memo };
+    }
+    case "get_table_records": {
+      assertScope(auth, "read:memos");
+      const memoId = getRequiredString(args.memoId, "memoId");
+      const memo = await getMemoDetail(c.env.storage.db, auth.workspaceId, memoId);
+      if (!memo) throw new AppError("not_found", "Memo not found", 404);
+      const document = parseTableDocument(memo.contentMarkdown);
+      if (!document) throw new AppError("not_table", "Memo is not a structured table", 400);
+      const recordId = getOptionalString(args.recordId);
+      const offset = clampNumber(Number(args.offset ?? 0), 0, document.records.length);
+      const limit = clampNumber(Number(args.limit ?? 50), 1, 100);
+      const record = recordId ? document.records.find((item) => item.id === recordId) : undefined;
+      if (recordId && !record) throw new AppError("not_found", "Table record not found", 404);
+      return {
+        memoId,
+        revision: memo.revision,
+        fields: document.fields,
+        records: record ? [record] : document.records.slice(offset, offset + limit),
+        totalRecords: document.records.length,
+        ...(recordId ? {} : { offset, limit }),
+      };
+    }
+    case "add_table_record":
+    case "update_table_record":
+    case "delete_table_record": {
+      assertScope(auth, "write:memos");
+      const memoId = getRequiredString(args.memoId, "memoId");
+      const expectedRevision = requiredTableRevision(args.expectedRevision);
+      const memo = await getMemoDetail(c.env.storage.db, auth.workspaceId, memoId);
+      if (!memo) throw new AppError("not_found", "Memo not found", 404);
+      const document = parseTableDocument(memo.contentMarkdown);
+      if (!document) throw new AppError("not_table", "Memo is not a structured table", 400);
+      if (memo.revision !== expectedRevision) {
+        throw new AppError("revision_conflict", "Table changed since it was read. Read it again before writing.", 409);
+      }
+      let next = document;
+      let recordId: string;
+      if (name === "add_table_record") {
+        if (document.records.length >= TABLE_RECORD_LIMIT) throw new AppError("table_record_limit", "Table record limit reached", 409);
+        const cells = await tableCellPatch(c.env.storage.db, memoId, document, args.cells, true);
+        recordId = createTableId("rec");
+        next = addTableRecord(document, recordId);
+        for (const [fieldId, value] of Object.entries(cells)) next = updateTableCell(next, recordId, fieldId, value);
+      } else {
+        recordId = getRequiredString(args.recordId, "recordId");
+        if (!document.records.some((record) => record.id === recordId)) {
+          throw new AppError("not_found", "Table record not found", 404);
+        }
+        if (name === "update_table_record") {
+          const cells = await tableCellPatch(c.env.storage.db, memoId, document, args.cells, false);
+          for (const [fieldId, value] of Object.entries(cells)) next = updateTableCell(next, recordId, fieldId, value);
+        } else {
+          next = removeTableRecord(document, recordId);
+        }
+      }
+      const result = await updateMemoRecord(c.env.storage.db, auth.workspaceId, memoId, {
+        expectedRevision,
+        contentMarkdown: serializeTableDocument(next),
+        contentJson: markdownToDoc(tableFallbackMarkdown(next)),
+        tags: memo.tags,
+      }, getAuditActor(c), getActorLabel(c));
+      if (!("memo" in result)) throw new AppError(result.error, result.message, result.status ?? 409);
+      return {
+        memoId,
+        revision: result.memo.revision,
+        recordId,
+        ...(name === "delete_table_record" ? { deleted: true } : { record: next.records.find((item) => item.id === recordId) }),
+      };
     }
     case "create_memo": {
       assertScope(auth, "write:memos");

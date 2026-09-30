@@ -133,6 +133,56 @@ const MCP_TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "get_table_records",
+    description: "Read the fields and a page of records from one structured table memo. Use field IDs and record IDs for subsequent writes. Returns the memo revision for optimistic concurrency.",
+    inputSchema: {
+      type: "object", required: ["memoId"], additionalProperties: false,
+      properties: {
+        memoId: { type: "string", minLength: 1 },
+        recordId: { type: "string", minLength: 1 },
+        offset: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    },
+  },
+  {
+    name: "add_table_record",
+    description: "Add one record to an existing structured table memo. cells maps field IDs to values; attachment fields accept arrays of resource IDs already uploaded to this memo. Pass the revision returned by get_table_records.",
+    inputSchema: {
+      type: "object", required: ["memoId", "expectedRevision", "cells"], additionalProperties: false,
+      properties: {
+        memoId: { type: "string", minLength: 1 },
+        expectedRevision: { type: "integer", minimum: 0 },
+        cells: { type: "object", additionalProperties: true },
+      },
+    },
+  },
+  {
+    name: "update_table_record",
+    description: "Update selected cells of one record in a structured table memo. Other cells remain unchanged. Attachment fields accept arrays of resource IDs already uploaded to this memo.",
+    inputSchema: {
+      type: "object", required: ["memoId", "recordId", "expectedRevision", "cells"], additionalProperties: false,
+      properties: {
+        memoId: { type: "string", minLength: 1 },
+        recordId: { type: "string", minLength: 1 },
+        expectedRevision: { type: "integer", minimum: 0 },
+        cells: { type: "object", minProperties: 1, additionalProperties: true },
+      },
+    },
+  },
+  {
+    name: "delete_table_record",
+    description: "Delete one record from a structured table memo by record ID. This also releases attachments used only by the removed record.",
+    inputSchema: {
+      type: "object", required: ["memoId", "recordId", "expectedRevision"], additionalProperties: false,
+      properties: {
+        memoId: { type: "string", minLength: 1 },
+        recordId: { type: "string", minLength: 1 },
+        expectedRevision: { type: "integer", minimum: 0 },
+      },
+    },
+  },
+  {
     name: "create_diagram_memo",
     description:
       "Create an editable visual diagram memo from a semantic graph; EdgeEver generates node sizes, coordinates, edge IDs, and a deterministic layout. For mind maps, omit node type and use parentId for hierarchy. Flowchart node types are process, decision, start, or end. Architecture node types are client, frontend, service, database, storage, queue, security, external, or boundary; boundary nodes may contain nodes through parentId but cannot be edge endpoints.",
@@ -769,6 +819,7 @@ const READ_ONLY_MCP_TOOLS = new Set([
   "search_memos",
   "list_memos",
   "get_memo",
+  "get_table_records",
   "get_diagram",
   "list_memo_resources",
   "list_resources",

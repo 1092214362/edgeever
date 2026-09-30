@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { globSync, readFileSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { callMcpTool } from "./index.ts";
-import { parseDiagramDocument, parseTableDocument, serializeTableDocument, createDefaultTableDocument } from "@edgeever/shared";
+import { addTableField, parseDiagramDocument, parseTableDocument, serializeTableDocument, createDefaultTableDocument } from "@edgeever/shared";
 
 class SqliteD1PreparedStatement {
   constructor(db, sql, bindings = []) {
@@ -216,6 +216,109 @@ describe("MCP template and AI instruction management", () => {
     })).rejects.toMatchObject({ code: "table_update_required" });
     const stored = sqlite.query("SELECT content_markdown FROM memo_contents WHERE memo_id = ?").get(created.memo.id);
     expect(parseTableDocument(stored.content_markdown)?.records).toHaveLength(1);
+  });
+
+  test("reads and mutates records in one structured table without replacing other records", async () => {
+    const { sqlite, auth, context } = createFixture();
+    sqlite.query("INSERT INTO notebooks (id, workspace_id, name) VALUES (?, ?, ?)")
+      .run("nb_tables", "ws_mcp", "Tables");
+    const created = await callMcpTool(context, auth, "create_memo", {
+      notebookId: "nb_tables",
+      title: "阅读清单",
+      contentMarkdown: serializeTableDocument(createDefaultTableDocument()),
+    });
+    const memoId = created.memo.id;
+    const first = await callMcpTool(context, auth, "get_table_records", { memoId, limit: 1 });
+    expect(first).toMatchObject({ memoId, totalRecords: 1, limit: 1, offset: 0 });
+    expect(first.fields.map((field) => field.id)).toEqual(["fld_name", "fld_status", "fld_date"]);
+    expect(first.records.map((record) => record.id)).toEqual(["rec_sample"]);
+
+    const added = await callMcpTool(context, auth, "add_table_record", {
+      memoId, expectedRevision: first.revision,
+      cells: { fld_name: "读一本书", fld_status: "进行中" },
+    });
+    expect(added.record).toMatchObject({ id: added.recordId, cells: { fld_name: "读一本书", fld_status: "进行中" } });
+    const page = await callMcpTool(context, auth, "get_table_records", { memoId, offset: 1, limit: 1 });
+    expect(page.records.map((record) => record.id)).toEqual([added.recordId]);
+    const byId = await callMcpTool(context, auth, "get_table_records", { memoId, recordId: added.recordId });
+    expect(byId.records[0].cells.fld_name).toBe("读一本书");
+
+    const changed = await callMcpTool(context, auth, "update_table_record", {
+      memoId, recordId: added.recordId, expectedRevision: added.revision,
+      cells: { fld_status: "完成", fld_date: "2026-09-30" },
+    });
+    expect(changed.record.cells).toMatchObject({ fld_name: "读一本书", fld_status: "完成", fld_date: "2026-09-30" });
+    const deleted = await callMcpTool(context, auth, "delete_table_record", {
+      memoId, recordId: added.recordId, expectedRevision: changed.revision,
+    });
+    expect(deleted.deleted).toBe(true);
+    const final = await callMcpTool(context, auth, "get_table_records", { memoId });
+    expect(final.records.map((record) => record.id)).toEqual(["rec_sample"]);
+    const stored = sqlite.query("SELECT content_markdown FROM memo_contents WHERE memo_id = ?").get(memoId);
+    expect(parseTableDocument(stored.content_markdown)?.records.map((record) => record.id)).toEqual(["rec_sample"]);
+  });
+
+  test("rejects stale revisions, invalid cells, non-tables, and missing scope for table tools", async () => {
+    const { auth, context } = createFixture();
+    const sqlite = context.env.storage.db.db;
+    sqlite.query("INSERT INTO notebooks (id, workspace_id, name) VALUES (?, ?, ?)")
+      .run("nb_tables", "ws_mcp", "Tables");
+    const table = await callMcpTool(context, auth, "create_memo", {
+      notebookId: "nb_tables", contentMarkdown: serializeTableDocument(createDefaultTableDocument()),
+    });
+    const plain = await callMcpTool(context, auth, "create_memo", {
+      notebookId: "nb_tables", contentMarkdown: "Plain note",
+    });
+    const memoId = table.memo.id;
+    const revision = table.memo.revision;
+    await expect(callMcpTool(context, auth, "add_table_record", {
+      memoId, expectedRevision: revision + 1, cells: { fld_name: "stale" },
+    })).rejects.toMatchObject({ code: "revision_conflict" });
+    await expect(callMcpTool(context, auth, "add_table_record", {
+      memoId, expectedRevision: revision, cells: { unknown: "value" },
+    })).rejects.toMatchObject({ code: "invalid_params" });
+    await expect(callMcpTool(context, auth, "update_table_record", {
+      memoId, recordId: "rec_sample", expectedRevision: revision, cells: { fld_status: "not-an-option" },
+    })).rejects.toMatchObject({ code: "invalid_params" });
+    await expect(callMcpTool(context, auth, "get_table_records", { memoId: plain.memo.id }))
+      .rejects.toMatchObject({ code: "not_table" });
+    await expect(callMcpTool(context, { ...auth, scopes: ["read:memos"] }, "delete_table_record", {
+      memoId, recordId: "rec_sample", expectedRevision: revision,
+    })).rejects.toMatchObject({ code: "forbidden" });
+    await expect(callMcpTool(context, { ...auth, workspaceId: "ws_other" }, "get_table_records", { memoId }))
+      .rejects.toMatchObject({ code: "not_found" });
+  });
+
+  test("accepts only attachment resources owned by the target table memo", async () => {
+    const { sqlite, auth, context } = createFixture();
+    sqlite.query("INSERT INTO notebooks (id, workspace_id, name) VALUES (?, ?, ?)")
+      .run("nb_tables", "ws_mcp", "Tables");
+    const document = addTableField(createDefaultTableDocument(), { id: "fld_files", name: "附件", type: "attachment" });
+    const table = await callMcpTool(context, auth, "create_memo", {
+      notebookId: "nb_tables", contentMarkdown: serializeTableDocument(document),
+    });
+    const other = await callMcpTool(context, auth, "create_memo", {
+      notebookId: "nb_tables", contentMarkdown: "Other note",
+    });
+    sqlite.query("INSERT INTO resources (id, memo_id, object_key, kind, filename, mime_type, byte_size) VALUES (?, ?, ?, 'attachment', ?, ?, ?)")
+      .run("res_owned", table.memo.id, "mcp-owned", "notes.pdf", "application/pdf", 123);
+    sqlite.query("INSERT INTO resources (id, memo_id, object_key, kind, filename, mime_type, byte_size) VALUES (?, ?, ?, 'attachment', ?, ?, ?)")
+      .run("res_other", other.memo.id, "mcp-other", "secret.pdf", "application/pdf", 456);
+    await expect(callMcpTool(context, auth, "add_table_record", {
+      memoId: table.memo.id, expectedRevision: table.memo.revision,
+      cells: { fld_files: ["res_other"] },
+    })).rejects.toMatchObject({ code: "invalid_params" });
+    const added = await callMcpTool(context, auth, "add_table_record", {
+      memoId: table.memo.id, expectedRevision: table.memo.revision,
+      cells: { fld_files: ["res_owned"] },
+    });
+    expect(added.record.cells.fld_files).toEqual([{
+      resourceId: "res_owned", filename: "notes.pdf", mimeType: "application/pdf", byteSize: 123,
+    }]);
+    await callMcpTool(context, auth, "delete_table_record", {
+      memoId: table.memo.id, recordId: added.recordId, expectedRevision: added.revision,
+    });
+    expect(sqlite.query("SELECT is_deleted FROM resources WHERE id = 'res_owned'").get().is_deleted).toBe(1);
   });
 
   test("keeps mind-map hierarchy edges consistent when a node is reparented", async () => {
