@@ -12,7 +12,7 @@ import { EditorNoteSearchBar } from "@/components/editor/EditorNoteSearchBar";
 import { IconTooltip } from "@/components/editor/EditorPaneChrome";
 import { MemoEditorHeaderActions } from "@/components/MemoEditorHeaderActions";
 import { MemoEditorMetadataRow } from "@/components/MemoEditorMetadataRow";
-import { MemoEditorFocusModeButton, MemoEditorTopRowLeading, MemoEditorUpdatedLabel } from "@/components/MemoEditorTopRowLeading";
+import { MemoEditorFocusModeButton, MemoEditorTopRowLeading } from "@/components/MemoEditorTopRowLeading";
 import { MEMO_EDITOR_METADATA_ROW_CLASS_NAME, MEMO_EDITOR_TOP_ROW_CLASS_NAME, nextTitleStatusClearance } from "@/components/MemoEditorChromeDensity";
 import { MemoEditorToolbarDivider } from "@/components/MemoEditorToolbarChrome";
 import { MemoTitleInput } from "@/components/MemoTitleInput";
@@ -22,7 +22,7 @@ import { createLocalEditSession, requiresLocalEditSession } from "@/components/e
 import { buildInfographicSyntax, buildOfficialInfographicSyntax, infographicAgentCandidates, INFOGRAPHIC_TEMPLATES, parseGeneratedOfficialData, type InfographicItem } from "@/lib/infographic-generation";
 import { statusSettleMotion } from "@/lib/motion";
 import type { EdgeEverRepository } from "@/lib/repository";
-import { cn, formatDateTime, parseTagsText } from "@/lib/utils";
+import { cn, parseTagsText } from "@/lib/utils";
 
 type Props = {
   memo: MemoDetail;
@@ -537,7 +537,6 @@ export default function InfographicEditorPane({
   };
 
   const previewUsesLightSheet = Boolean(syntax.trim()) && syntax.split("\n")[1] !== "theme dark";
-  const updatedLabel = formatDateTime(memo.updatedAt);
   const saveStatus = saving ? "saving" : dirty ? "unsaved" : "saved";
   const saveLabel = t(`editor.saveState.${saveStatus}`);
   const saveStatusClassName = saveStatus === "saved" ? "text-slate-400" : "bg-slate-100 text-slate-700";
@@ -581,7 +580,6 @@ export default function InfographicEditorPane({
         </div>
         <div ref={setHeaderStatusCluster} className="absolute right-1 top-0 flex h-full shrink-0 items-center gap-1 sm:right-2">
           <div className="flex min-w-0 items-center gap-1.5">
-            <MemoEditorUpdatedLabel updatedLabel={updatedLabel} />
             {readOnly ? <span className="text-xs text-slate-500">{t("infographic.readOnly")}</span> : (
               <>
                 <m.span key={`mobile-${saveStatus}`} className={cn("inline-flex max-w-[5.5rem] truncate rounded-full px-2 py-1 text-xs font-medium sm:hidden", saveStatus === "saved" ? "bg-slate-100 text-slate-500" : saveStatusClassName)} role="status" {...statusSettleMotion}>{saveLabel}</m.span>

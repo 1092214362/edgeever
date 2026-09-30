@@ -126,7 +126,8 @@ describe("diagram editor canvas surface", () => {
 
   test("uses the common note header and capability-aware more menu", () => {
     expect(source).toContain("<MemoEditorTopRowLeading");
-    expect(topRowLeadingSource).toContain('<span className="hidden truncate text-xs text-slate-400 sm:inline">{updatedLabel}</span>');
+    expect(topRowLeadingSource).not.toContain("MemoEditorUpdatedLabel");
+    expect(source).not.toContain("formatDateTime(memo.updatedAt)");
     expect(source).not.toContain('t("editor.updatedAt", { time: updatedLabel })');
     expect(source).toContain("onToggleDesktopFocusMode");
     expect(source).not.toContain("onOpenPreviousMemo");

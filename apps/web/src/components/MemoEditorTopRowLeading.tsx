@@ -5,10 +5,6 @@ import { IconTooltip } from "@/components/editor/EditorPaneChrome";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export const MemoEditorUpdatedLabel = ({ updatedLabel }: { updatedLabel: string }) => (
-  <span className="hidden truncate text-xs text-slate-400 sm:inline">{updatedLabel}</span>
-);
-
 export const MemoEditorFocusModeButton = ({
   desktopFocusMode,
   onToggleDesktopFocusMode,
