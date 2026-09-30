@@ -1,16 +1,20 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { accessSync, constants as fsConstants, readFileSync, realpathSync, statSync } from "node:fs";
+import { accessSync, constants as fsConstants, existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { Readable, Writable } from "node:stream";
 import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION, RequestError } from "@agentclientprotocol/sdk";
 import { waitForChildProcessSpawn } from "./child-process-start.mjs";
+import { createAcpAdapterManager } from "./acp-adapter-manager.mjs";
 
 const ADAPTERS = {
   codex: { id: "codex", label: "Codex" },
   antigravity: { id: "antigravity", label: "Antigravity" },
+  grokBuild: { id: "grokBuild", label: "Grok Build" },
+  workbuddyCn: { id: "workbuddyCn", label: "WorkBuddy 中国版" },
+  workbuddyIntl: { id: "workbuddyIntl", label: "WorkBuddy International" },
 };
 const AUTH_REQUIRED_CODE = -32000;
 const MAX_ATTACHMENTS = 8;
@@ -68,8 +72,40 @@ const findOnPath = (names, { access, pathEnv, delimiter, sep }) => {
   return null;
 };
 
+export function detectInstalledAgentApps({
+  platform = process.platform,
+  pathEnv = process.env.PATH ?? "",
+  home = homedir(),
+  env = process.env,
+  access = accessSync,
+  exists = existsSync,
+} = {}) {
+  const lookup = (names) => !!findOnPath(names, {
+    access,
+    pathEnv,
+    delimiter: platform === "win32" ? ";" : ":",
+    sep: platform === "win32" ? "\\" : "/",
+  });
+  const candidates = (id) => {
+    if (platform === "darwin") return id === "codex"
+      ? ["/Applications/Codex.app", path.join(home, "Applications", "Codex.app"), "/Applications/ChatGPT.app/Contents/Resources/codex"]
+      : ["/Applications/Antigravity.app", path.join(home, "Applications", "Antigravity.app")];
+    if (platform === "win32") return id === "codex"
+      ? [env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, "Programs", "Codex", "Codex.exe")]
+      : [env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, "Programs", "Antigravity", "Antigravity.exe"), env.PROGRAMFILES && path.join(env.PROGRAMFILES, "Antigravity", "Antigravity.exe")];
+    return [];
+  };
+  return ["codex", "antigravity"].filter((id) => {
+    const names = platform === "win32" ? [`${id}.exe`, id] : [id];
+    return lookup(names) || candidates(id).some((candidate) => candidate && exists(candidate));
+  });
+}
+
 const resolutionDeps = (deps = {}) => ({
   platform: deps.platform ?? process.platform,
+  home: deps.home ?? homedir(),
+  env: deps.env ?? process.env,
+  executablePath: deps.executablePath ?? process.execPath,
   access: deps.accessSync ?? accessSync,
   realpath: deps.realpathSync ?? realpathSync,
   stat: deps.statSync ?? statSync,
@@ -81,9 +117,65 @@ const resolutionDeps = (deps = {}) => ({
 export function resolveAcpCommand(input, deps = {}) {
   const resolved = resolutionDeps(deps);
   const id = input?.id;
-  if (id !== "codex" && id !== "antigravity") return { ok: false, state: "failed", detail: "unknown_adapter" };
+  if (!Object.hasOwn(ADAPTERS, id)) return { ok: false, state: "failed", detail: "unknown_adapter" };
   if (id === "codex") return resolveCodex(input?.path, resolved);
-  return resolveAntigravity(input?.path, resolved);
+  if (id === "antigravity") return resolveAntigravity(input?.path, resolved);
+  if (id === "grokBuild") return resolveGrok(input?.path, resolved);
+  return resolveWorkBuddy(id, resolved);
+}
+
+function resolveWorkBuddy(id, deps) {
+  const homeApplications = path.join(deps.home, "Applications");
+  const macApps = id === "workbuddyCn" ? ["WorkBuddy.app", "WorkBuddy AI.app"] : ["WorkBuddy AI.app", "WorkBuddy.app"];
+  const candidates = deps.platform === "darwin"
+    ? macApps.flatMap((name) => [path.join("/Applications", name), path.join(homeApplications, name)])
+      .map((app) => path.join(app, "Contents", "Resources", "app.asar.unpacked", "cli", "bin", "codebuddy"))
+    : deps.platform === "win32"
+      ? [deps.env.LOCALAPPDATA && path.join(deps.env.LOCALAPPDATA, "Programs", "WorkBuddy"), deps.env.LOCALAPPDATA && path.join(deps.env.LOCALAPPDATA, "WorkBuddy"), deps.env.PROGRAMFILES && path.join(deps.env.PROGRAMFILES, "WorkBuddy")]
+        .filter(Boolean).map((folder) => path.join(folder, "resources", "app.asar.unpacked", "cli", "bin", "codebuddy"))
+      : [];
+  for (const candidate of candidates) {
+    try {
+      const actual = deps.realpath(candidate);
+      if (!deps.stat(actual).isFile()) continue;
+      deps.access(actual, fsConstants.R_OK);
+      return { ok: true, command: workBuddyCommand(deps.executablePath, actual, id) };
+    } catch { /* Try another installed WorkBuddy application. */ }
+  }
+  const external = findOnPath(deps.platform === "win32" ? ["codebuddy.exe"] : ["codebuddy"], deps);
+  return external
+    ? { ok: true, command: workBuddyCommand(external, null, id) }
+    : { ok: false, state: "not_installed" };
+}
+
+function workBuddyCommand(executablePath, bundledCli, id) {
+  const edition = id === "workbuddyCn" ? { CODEBUDDY_INTERNET_ENVIRONMENT: "internal" } : {};
+  return bundledCli
+    ? { command: executablePath, args: [bundledCli, "--acp"], env: { ...edition, ELECTRON_RUN_AS_NODE: "1" }, ...(id === "workbuddyIntl" ? { unsetEnv: ["CODEBUDDY_INTERNET_ENVIRONMENT"] } : {}) }
+    : { command: executablePath, args: ["--acp"], env: edition, ...(id === "workbuddyIntl" ? { unsetEnv: ["CODEBUDDY_INTERNET_ENVIRONMENT"] } : {}) };
+}
+
+function resolveGrok(configured, deps) {
+  const executable = deps.platform === "win32" ? "grok.exe" : "grok";
+  const explicit = typeof configured === "string" && configured.trim() ? configured.trim() : null;
+  if (explicit && (explicit.includes("\0") || !path.isAbsolute(explicit) || explicit.split(/[/\\]/).includes(".."))) {
+    return { ok: false, state: "failed", detail: "invalid_path" };
+  }
+  const candidates = explicit ? [explicit] : [
+    findOnPath([executable], deps),
+    path.join(deps.home, ".grok", "bin", executable),
+    ...(deps.platform === "darwin" ? [`/opt/homebrew/bin/${executable}`, `/usr/local/bin/${executable}`] : []),
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const actual = deps.realpath(candidate);
+      if (!deps.stat(actual).isFile()) continue;
+      deps.access(actual, fsConstants.X_OK);
+      return { ok: true, command: { command: actual, args: ["agent", "stdio"] } };
+    } catch { /* Try another installed Grok binary. */ }
+  }
+  return { ok: false, state: explicit ? "failed" : "not_installed", ...(explicit ? { detail: "invalid_path" } : {}) };
 }
 
 function resolveCodex(configured, deps) {
@@ -291,19 +383,27 @@ export function acpInitializeParams(version = clientVersion()) {
   };
 }
 
-export function createAcpSpawnPlan(command, cwd) {
+export function createAcpSpawnPlan(input, cwd) {
+  const spec = typeof input === "string" ? { command: input, args: [] } : input;
+  const command = spec?.command;
   if (typeof command !== "string" || !command.trim() || command.includes("\0")) throw new Error("invalid_command");
+  if (!Array.isArray(spec.args) || spec.args.some((arg) => typeof arg !== "string" || arg.includes("\0"))) throw new Error("invalid_command");
   if (typeof cwd !== "string" || !cwd.trim()) throw new Error("invalid_workspace");
   const workspace = path.resolve(cwd);
   if (workspace === path.resolve(homedir())) throw new Error("invalid_workspace");
   return {
     command,
-    args: [],
+    args: spec.args,
     options: {
       cwd: workspace,
       stdio: ["pipe", "pipe", "ignore"],
       windowsHide: true,
       shell: false,
+      ...(spec.env || spec.unsetEnv ? { env: (() => {
+        const env = { ...process.env, ...spec.env };
+        for (const key of spec.unsetEnv ?? []) delete env[key];
+        return env;
+      })() } : {}),
     },
   };
 }
@@ -312,7 +412,7 @@ export function spawnAcpChild(spawnImpl, command, cwd) {
   const plan = createAcpSpawnPlan(command, cwd);
   const options = { ...plan.options, shell: false, stdio: ["pipe", "pipe", "ignore"] };
   if (options.shell !== false) throw new Error("ACP processes cannot use a shell");
-  const child = spawnImpl(plan.command, [], options);
+  const child = spawnImpl(plan.command, plan.args, options);
   trackChild(child);
   return waitForChildProcessSpawn(child);
 }
@@ -403,6 +503,13 @@ const normalizePromptCapabilities = (initialized) => {
   };
 };
 
+const publicAuthMethods = (initialized) => (
+  Array.isArray(initialized?.authMethods)
+    ? initialized.authMethods.filter((method) => (method?.type == null || method.type === "agent") && typeof method.id === "string" && method.id.length <= 120)
+      .map((method) => ({ id: method.id, name: typeof method.name === "string" ? method.name.slice(0, 120) : method.id }))
+    : []
+);
+
 const createEdgeEverAcpClient = (requestId, emit) => ({
   requestPermission() {
     return { outcome: { outcome: "cancelled" } };
@@ -459,11 +566,23 @@ export function createAcpHostRuntime(options = {}) {
   const version = options.clientVersion ?? clientVersion();
   const handshakeTimeoutMs = options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS;
   const commandDeps = options;
+  const manager = options.adapterManager ?? (options.adapterStore ? createAcpAdapterManager({ root: options.adapterStore, executablePath: options.executablePath }) : null);
   const active = new Map();
+  const updateFailures = new Map();
+  const installingIds = new Set();
+  const latestStatus = new Map();
 
-  const connect = async (command, requestId, emit, signal) => {
+  const resolveCommand = (input) => {
+    if (input?.id === "antigravity" && typeof input.path === "string" && input.path.trim()) return resolveAcpCommand(input, commandDeps);
+    const managed = manager?.get(input?.id);
+    if (managed) return { ok: true, command: managed.command, version: managed.version, managed: true };
+    return resolveAcpCommand(input, commandDeps);
+  };
+
+  const connect = async (command, requestId, emit, signal, authMethodId) => {
     const cwd = await createAcpWorkspace(mkdtempImpl, options.tmpRoot);
     let child = null;
+    let authMethods = [];
     const abort = () => stopChild(child);
     signal?.addEventListener("abort", abort, { once: true });
     try {
@@ -474,6 +593,11 @@ export function createAcpHostRuntime(options = {}) {
       const connection = new ClientSideConnection(() => createEdgeEverAcpClient(requestId, emit), stream);
       void connection.closed?.catch(() => {});
       const initialized = await connection.initialize(acpInitializeParams(version));
+      authMethods = publicAuthMethods(initialized);
+      if (authMethodId) {
+        if (!authMethods.some((method) => method.id === authMethodId)) throw new Error("invalid_auth_method");
+        await connection.authenticate({ methodId: authMethodId });
+      }
       const session = await connection.newSession({ cwd, mcpServers: [] });
       if (signal?.aborted) throw Object.assign(new Error("connection_timeout"), { code: "TIMEOUT" });
       return {
@@ -485,6 +609,7 @@ export function createAcpHostRuntime(options = {}) {
         stop: abort,
       };
     } catch (error) {
+      if (authMethods.length && error && typeof error === "object") error.authMethods = authMethods;
       abort();
       await removeAcpWorkspace(cwd, rmImpl);
       throw error;
@@ -493,9 +618,9 @@ export function createAcpHostRuntime(options = {}) {
     }
   };
 
-  const withHandshakeTimeout = async (operation) => {
+  const withHandshakeTimeout = async (operation, timeoutMs = handshakeTimeoutMs) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), handshakeTimeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     timer.unref?.();
     try {
       return await operation(controller.signal);
@@ -511,44 +636,131 @@ export function createAcpHostRuntime(options = {}) {
 
   return {
     listAdapters() {
-      const codex = resolveAcpCommand({ id: "codex" }, commandDeps);
-      const codexAdapter = codex.ok
-        ? { ...adapterShell("codex"), state: "failed", detail: "not_probed" }
-        : adapterFromResolution("codex", codex);
-      return [codexAdapter, { ...adapterShell("antigravity"), state: "not_installed" }];
+      return ["codex", "antigravity", "grokBuild", "workbuddyCn", "workbuddyIntl"].map((id) => {
+        if (installingIds.has(id)) return { ...adapterShell(id), state: "installing" };
+        const resolved = resolveCommand({ id });
+        return resolved.ok
+          ? { ...adapterShell(id), ...(latestStatus.get(id) ?? { state: "failed", detail: "not_probed" }), ...(resolved.version ? { version: resolved.version, managed: true } : {}), ...(updateFailures.has(id) ? { updateError: updateFailures.get(id) } : {}) }
+          : adapterFromResolution(id, resolved);
+      });
+    },
+
+    async installAdapter(id, { updateOnly = false } = {}) {
+      if (!manager) return { updated: false, reason: "adapter_store_unavailable" };
+      installingIds.add(id);
+      try {
+        const result = await manager.install(id, async (command) => {
+          let connected;
+          try {
+            connected = await withHandshakeTimeout((signal) => connect(command, `install-${id}`, () => {}, signal), 90_000);
+            return { ...adapterShell(id), state: "available", promptCapabilities: connected.promptCapabilities };
+          } catch (error) {
+            return { ...adapterShell(id), ...failureFields(classifyAcpFailure(error)), ...(isAuthRequiredError(error) ? { authMethods: error.authMethods ?? [] } : {}) };
+          } finally {
+            if (connected) {
+              connected.stop();
+              await removeAcpWorkspace(connected.cwd, rmImpl);
+            }
+          }
+        }, { updateOnly });
+        if (result.adapter) latestStatus.set(id, result.adapter);
+        return result;
+      } finally {
+        installingIds.delete(id);
+      }
+    },
+
+    async installDetected() {
+      if (!manager) return [];
+      const detected = options.detectInstalledAgentApps?.() ?? detectInstalledAgentApps();
+      const results = [];
+      for (const id of detected) {
+        if (manager.get(id) || resolveAcpCommand({ id }, commandDeps).ok) continue;
+        try {
+          results.push({ id, ...await this.installAdapter(id) });
+        } catch (error) {
+          results.push({ id, updated: false, reason: sanitizeFailureDetail(error) });
+        }
+      }
+      return results;
+    },
+
+    async updateInstalled() {
+      if (!manager) return [];
+      const results = [];
+      for (const id of manager.installedIds()) {
+        try {
+          const result = await this.installAdapter(id, { updateOnly: true });
+          updateFailures.delete(id);
+          results.push({ id, ...result });
+        } catch (error) {
+          const reason = sanitizeFailureDetail(error);
+          updateFailures.set(id, reason);
+          results.push({ id, updated: false, reason });
+        }
+      }
+      return results;
+    },
+
+    async pruneAdapters() {
+      await manager?.prune();
     },
 
     async probeAdapter(input) {
       const id = input?.id;
-      if (id !== "codex" && id !== "antigravity") throw new Error("unknown_adapter");
-      const resolved = resolveAcpCommand(input, commandDeps);
+      if (!Object.hasOwn(ADAPTERS, id)) throw new Error("unknown_adapter");
+      const resolved = resolveCommand(input);
       if (!resolved.ok) return adapterFromResolution(id, resolved);
       let connected;
       try {
         connected = await withHandshakeTimeout((signal) => connect(resolved.command, `probe-${id}`, () => {}, signal));
       } catch (error) {
-        return { ...adapterShell(id), ...failureFields(classifyAcpFailure(error)) };
+        const failure = { ...adapterShell(id), ...failureFields(classifyAcpFailure(error)), ...(isAuthRequiredError(error) ? { authMethods: error.authMethods ?? [] } : {}), ...(resolved.version ? { version: resolved.version, managed: true } : {}) };
+        latestStatus.set(id, failure);
+        return failure;
       }
       const adapter = {
         ...adapterShell(id),
         state: "available",
         promptCapabilities: connected.promptCapabilities,
+        ...(resolved.version ? { version: resolved.version, managed: true } : {}),
       };
+      latestStatus.set(id, adapter);
       connected.stop();
       await removeAcpWorkspace(connected.cwd, rmImpl);
       return adapter;
     },
 
+    async authenticateAdapter(input) {
+      const id = input?.id;
+      if (!Object.hasOwn(ADAPTERS, id)) throw new Error("unknown_adapter");
+      if (typeof input.methodId !== "string" || !input.methodId || input.methodId.length > 120) throw new Error("invalid_auth_method");
+      const resolved = resolveCommand(input);
+      if (!resolved.ok) return adapterFromResolution(id, resolved);
+      let connected;
+      try {
+        connected = await withHandshakeTimeout((signal) => connect(resolved.command, `auth-${id}`, () => {}, signal, input.methodId), 5 * 60_000);
+        return { ...adapterShell(id), state: "available", promptCapabilities: connected.promptCapabilities, ...(resolved.version ? { version: resolved.version, managed: true } : {}) };
+      } catch (error) {
+        return { ...adapterShell(id), ...failureFields(classifyAcpFailure(error)), ...(isAuthRequiredError(error) ? { authMethods: error.authMethods ?? [] } : {}), ...(resolved.version ? { version: resolved.version, managed: true } : {}) };
+      } finally {
+        if (connected) {
+          connected.stop();
+          await removeAcpWorkspace(connected.cwd, rmImpl);
+        }
+      }
+    },
+
     async prompt(input, emit = () => {}) {
       if (!input || typeof input !== "object" || typeof input.prompt !== "string") throw new Error("invalid_prompt");
-      if (input.adapterId !== "codex" && input.adapterId !== "antigravity") throw new Error("unknown_adapter");
+      if (!Object.hasOwn(ADAPTERS, input.adapterId)) throw new Error("unknown_adapter");
       const requestId = randomUUID();
       const notify = (event) => emit(event);
       const fail = (message) => {
         notify({ requestId, type: "error", message });
         return { requestId };
       };
-      const resolved = resolveAcpCommand({ id: input.adapterId, path: input.path }, commandDeps);
+      const resolved = resolveCommand({ id: input.adapterId, path: input.path });
       if (!resolved.ok) return fail(promptFailureMessage(resolved));
 
       let connected;
@@ -616,13 +828,21 @@ const failureFields = (failure) => (
     : { state: failure.state }
 );
 
-export function registerAcpIpc(ipcMain, runtime = createAcpHostRuntime()) {
+export function registerAcpIpc(ipcMain, runtime = createAcpHostRuntime(), { allowInstall = () => false } = {}) {
   const send = (sender, event) => {
     if (!sender || sender.isDestroyed?.()) return;
     sender.send("desktop:acp-event", event);
   };
   ipcMain.handle("desktop:acp-list", () => runtime.listAdapters());
   ipcMain.handle("desktop:acp-probe", (_event, input) => runtime.probeAdapter(input));
+  ipcMain.handle("desktop:acp-install", (event, id) => {
+    if (!allowInstall(event.sender)) throw new Error("adapter_install_forbidden");
+    return runtime.installAdapter(id);
+  });
+  ipcMain.handle("desktop:acp-authenticate", (event, input) => {
+    if (!allowInstall(event.sender)) throw new Error("adapter_auth_forbidden");
+    return runtime.authenticateAdapter(input);
+  });
   ipcMain.handle("desktop:acp-prompt", (event, input) => runtime.prompt(input, (acpEvent) => send(event.sender, acpEvent)));
   ipcMain.handle("desktop:acp-cancel", (_event, requestId) => runtime.cancel(requestId));
   return runtime;
