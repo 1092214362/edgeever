@@ -317,7 +317,7 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
               </label>
             ) : null}
 
-            <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 sm:p-3.5 space-y-2.5">
+            <div className="space-y-2.5 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span
@@ -371,7 +371,7 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
               </div>
 
               {hasDetails ? (
-                <div className="space-y-2 border-t border-slate-200/70 pt-2.5">
+                <div className="space-y-2">
                   {shown?.state === "not_installed" ? (
                     <p className="text-xs leading-relaxed text-slate-600">
                       {t(adapterId === "grokBuild" ? "aiAssistant.agentSource.grokBuildMissingHint" : adapterId === "deepseekHarness" ? "aiAssistant.agentSource.deepseekHarnessMissingHint" : adapterId === "piAgent" ? shown.detail === "adapter_missing" ? "aiAssistant.agentSource.piAgentAdapterMissingHint" : "aiAssistant.agentSource.piAgentMissingHint" : adapterId === "workbuddyCn" || adapterId === "workbuddyIntl" ? "aiAssistant.agentSource.workbuddyMissingHint" : "aiAssistant.agentSource.installHint")}
