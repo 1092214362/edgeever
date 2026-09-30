@@ -1,13 +1,15 @@
 import { expect, test } from "bun:test";
 import { restoreTestGlobal } from "./restore-test-global.mjs";
 
-test("restoreTestGlobal deletes a missing global instead of shadowing it with undefined", () => {
+test("restoreTestGlobal keeps a window object when nothing was there before", () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
   delete globalThis.window;
-  globalThis.window = { localStorage: {} };
-  restoreTestGlobal("window", undefined, globalThis.window);
-  expect(Object.hasOwn(globalThis, "window")).toBe(false);
+  const stub = { localStorage: {} };
+  globalThis.window = stub;
+  restoreTestGlobal("window", undefined, stub);
+  expect(globalThis.window).toBe(stub);
   if (descriptor) Object.defineProperty(globalThis, "window", descriptor);
+  else delete globalThis.window;
 });
 
 test("restoreTestGlobal leaves a global that another file replaced", () => {
