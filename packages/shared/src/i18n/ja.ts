@@ -1367,6 +1367,7 @@ export const ja = {
       proposalConfirmOther: "確認",
       proposalDismiss: "無視",
       toolProgress: "{{name}} · {{status}}",
+      generatedImage: "生成された画像",
     },
     agentSource: {
       title: "エージェントの動作モード",

@@ -1367,6 +1367,7 @@ export const zhCN = {
       proposalConfirmOther: "确认",
       proposalDismiss: "忽略",
       toolProgress: "{{name}} · {{status}}",
+      generatedImage: "生成的图片",
     },
     agentSource: {
       title: "Agent 运行模式",

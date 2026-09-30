@@ -1367,6 +1367,7 @@ export const enUS = {
       proposalConfirmOther: "Confirm",
       proposalDismiss: "Dismiss",
       toolProgress: "{{name}} · {{status}}",
+      generatedImage: "Generated image",
     },
     agentSource: {
       title: "Agent mode",
