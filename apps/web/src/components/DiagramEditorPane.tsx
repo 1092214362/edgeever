@@ -154,6 +154,7 @@ import { MemoEditorMetadataRow } from "@/components/MemoEditorMetadataRow";
 import { MemoEditorFocusModeButton, MemoEditorTopRowLeading, MemoEditorUpdatedLabel } from "@/components/MemoEditorTopRowLeading";
 import { MemoEditorToolbarDivider } from "@/components/MemoEditorToolbarChrome";
 import {
+  MEMO_EDITOR_METADATA_ROW_CLASS_NAME,
   MEMO_EDITOR_TOP_ROW_CLASS_NAME,
   nextTitleStatusClearance,
 } from "@/components/MemoEditorChromeDensity";
@@ -3089,7 +3090,6 @@ export const DiagramEditorPane = ({
             className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 px-4 sm:flex-nowrap"
           >
           <MemoEditorTopRowLeading
-            className="min-w-0 flex-1"
             mobileBackButton={(
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -3123,7 +3123,7 @@ export const DiagramEditorPane = ({
             )}
           />
           <MemoEditorMetadataRow
-            rowClassName="shrink-0 flex-nowrap"
+            rowClassName={MEMO_EDITOR_METADATA_ROW_CLASS_NAME}
             contentMarkdown={memo.contentMarkdown}
             disabled={readOnly}
             mobileNotebookPickerOpen={mobileNotebookSheetOpen}

@@ -13,7 +13,7 @@ import { IconTooltip } from "@/components/editor/EditorPaneChrome";
 import { MemoEditorHeaderActions } from "@/components/MemoEditorHeaderActions";
 import { MemoEditorMetadataRow } from "@/components/MemoEditorMetadataRow";
 import { MemoEditorFocusModeButton, MemoEditorTopRowLeading, MemoEditorUpdatedLabel } from "@/components/MemoEditorTopRowLeading";
-import { MEMO_EDITOR_TOP_ROW_CLASS_NAME, nextTitleStatusClearance } from "@/components/MemoEditorChromeDensity";
+import { MEMO_EDITOR_METADATA_ROW_CLASS_NAME, MEMO_EDITOR_TOP_ROW_CLASS_NAME, nextTitleStatusClearance } from "@/components/MemoEditorChromeDensity";
 import { MemoEditorToolbarDivider } from "@/components/MemoEditorToolbarChrome";
 import { MemoTitleInput } from "@/components/MemoTitleInput";
 import { api } from "@/lib/api";
@@ -550,7 +550,6 @@ export default function InfographicEditorPane({
         <div className="min-w-0 w-full" style={titleStatusClearancePx > 0 ? { paddingRight: titleStatusClearancePx } : undefined}>
           <div ref={setHeaderTitleSlot} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 px-4 sm:flex-nowrap">
             <MemoEditorTopRowLeading
-              className="min-w-0 flex-1"
               mobileBackButton={(
                 <IconTooltip label={t("common.back")}>
                   <Button variant="ghost" size="icon" className="lg:hidden" onClick={onBackToList} aria-label={t("common.back")}><ChevronLeft className="h-4 w-4" /></Button>
@@ -561,7 +560,7 @@ export default function InfographicEditorPane({
               )}
             />
             <MemoEditorMetadataRow
-              rowClassName="shrink-0 flex-nowrap"
+              rowClassName={MEMO_EDITOR_METADATA_ROW_CLASS_NAME}
               contentMarkdown={syntax}
               disabled={readOnly}
               mobileNotebookPickerOpen={mobileNotebookSheetOpen}

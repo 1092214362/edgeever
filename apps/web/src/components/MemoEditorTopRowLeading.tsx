@@ -46,7 +46,7 @@ export const MemoEditorTopRowLeading = ({
   mobileBackButton?: ReactNode;
   titleInput?: ReactNode;
 }) => (
-  <div className={cn("flex min-w-0 flex-1 items-center gap-2 text-sm", className)}>
+  <div className={cn("flex min-w-0 basis-full items-center gap-2 text-sm sm:min-w-[min(12rem,45%)] sm:flex-1", className)}>
     {mobileBackButton}
     {titleInput && <div className="min-w-0 flex-1">{titleInput}</div>}
   </div>
