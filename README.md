@@ -44,7 +44,7 @@ Many long-time **Evernote** users simply want a **reliable, open, and fast** per
 **EdgeEver fills this gap**: The entire stack is open source, including sync and self-hosting. It keeps the three-pane layout you know, stays silky-smooth and lightweight even with 10,000+ notes, and ships native AI agents with zero-cost deployment.
 
 > 💡 **Recommended Workflow:**
-> Capture inspiration seamlessly across all devices and organize deeply in the classic three-pane view. Powered by native ACP and MCP, you can collaborate deeply with local AI agents on your machine while letting external agents retrieve and organize notes, or connect with productivity tools like Notion and Feishu. Publish anywhere with one-click formatting—100% self-hosted at zero cost, building an open and truly owned second brain.
+> Capture inspiration seamlessly across all devices and organize deeply in the classic three-pane view. Powered by native MCP and ACP, external agents can retrieve and organize your notes seamlessly, while the desktop app lets you collaborate deeply with local AI agents on your machine. Publish anywhere with one-click formatting—100% self-hosted at zero cost, building an open and truly owned second brain.
 
 ## Online Demo
 
@@ -69,7 +69,7 @@ The public demo resets every day at 3:00 AM (China Standard Time) and restores s
 - **Deploy Your Way**: Run on Cloudflare's free serverless platform or with Docker on a VPS, NAS, or home server. Based on Cloudflare's free storage allowances, a personal deployment can hold roughly 150,000 short notes and 50,000 images; Docker storage scales on demand to easily support millions of notes and a vast image library.
 - **Open Data, No Vendor Lock-in**: Built on standard SQLite with complete REST API, MCP, and CLI access. Your knowledge is stored transparently and accessible anytime without being locked to a single app.
 - **Lossless ZIP Backup & Portability**: Export your complete library as a clean archive containing Markdown, Front Matter, nested folders, relative attachment links, and version histories for instant restoration anywhere.
-- **Native AI Agent Synergy**: The desktop app connects directly to local AI Agents running on your machine (such as Codex, Antigravity, Claude Code, and WorkBuddy) via Agent Client Protocol (ACP) for collaborative writing; built-in Model Context Protocol (MCP) support also allows external AI Agents to read, organize, and summarize notes, and sync seamlessly with Notion and Feishu Bitable.
+- **Native AI Agent Synergy**: Built-in Model Context Protocol (MCP) support allows external AI Agents to directly read, organize, and summarize notes; the desktop app also connects directly to local AI Agents running on your machine (such as Codex, Antigravity, Claude Code, and WorkBuddy) via Agent Client Protocol (ACP) for collaborative writing.
 - **Bring Your Own AI Models**: Connect OpenAI, Anthropic, or Gemini-compatible services and third-party API relays to power the built-in Agent and companion sidebar, bringing smart note summarization, key point extraction, proofreading, translation, and text continuation to full notes or selected text.
 - **Rich Plugin API**: Extend EdgeEver with the [Plugin API](docs/plugin-development.md).
 - **Unlimited Multi-Device Sync**: No commercial device caps or paywalls. Enjoy seamless synchronization across PC, tablet, and mobile via web, PWA, or browser.
@@ -245,7 +245,7 @@ Open **Profile** -> **Import and export** to export or import an EdgeEver ZIP. I
 
 ## MCP
 
-Create an API token in **Profile** -> **MCP settings** and give it to your AI Agent. The Agent can then securely manage your knowledge base within your account permissions. It supports both text notes and diagram notes (including mind maps, flowcharts, and architecture diagrams) with full CRUD capabilities. The Agent can also manage note templates and AI instructions, and connect with tools such as Notion databases and Feishu Bitable.
+Create an API token in **Profile** -> **MCP settings** and give it to your AI Agent. The Agent can then securely manage your knowledge base within your account permissions. It supports both text notes and diagram notes (including mind maps, flowcharts, and architecture diagrams) with full CRUD capabilities. The Agent can also manage note templates and AI instructions.
 
 > 💡 **Inspiration:**
 > Make AI your true knowledge orchestrator and creative co-pilot—instantly turn concepts into interactive mind maps and architecture diagrams, while supplying private context to your AI Agents. Paired with EdgeEver’s powerful rich-text editing and elegant typography, AI-assisted content becomes beautifully structured, polished, and publication-ready knowledge assets.
