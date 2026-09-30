@@ -1367,6 +1367,8 @@ export const ja = {
       proposalDismiss: "無視",
       toolProgress: "{{name}} · {{status}}",
       generatedImage: "生成された画像",
+      downloadImage: "画像をダウンロード",
+      imageSaveFailed: "画像を端末に保存できませんでした。今すぐダウンロードしてください。ページを閉じると失われる可能性があります。",
     },
     agentSource: {
       title: "エージェントの動作モード",

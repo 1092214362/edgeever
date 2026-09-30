@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent,
 import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronDown, Loader2, PanelRightClose, Paperclip, Plus, Search, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Download, Loader2, PanelRightClose, Paperclip, Plus, Search, Sparkles, X } from "lucide-react";
 import type { CompanionAction, CompanionAnswer, CompanionEvent, CompanionTurn, CompanionTurnInput } from "@edgeever/shared";
 import { buildRevisionDiffRows, createMemoLinkHref, parseMemoLinkHref } from "@edgeever/shared";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,7 @@ import {
   saveLocalAgentTurns,
   type ChatThreadSummary,
 } from "@/lib/local-agent-threads";
+import { LocalAgentImageStore } from "@/lib/local-agent-images";
 import { sidebarRevealTransition } from "@/lib/motion";
 import {
   SELECTION_AI_LANGUAGES,
@@ -122,6 +123,7 @@ type LocalImage = { id: string; mediaType: string; base64: string };
 
 const EMPTY_IMAGE_BYTES = new Uint8Array();
 const MAX_LOCAL_IMAGES = 8;
+const localAgentImageStore = new LocalAgentImageStore();
 
 type LocalTurn = {
   id: string;
@@ -764,6 +766,7 @@ function AiSidebarSession({
   const localTurnsRef = useRef(localTurns);
   const localThreadIdRef = useRef(localThreadId);
   const localPersistTimer = useRef<number | null>(null);
+  const imagesByTurn = useRef(new Map<string, Map<string, LocalImage>>());
   localTurnsRef.current = localTurns;
   localThreadIdRef.current = localThreadId;
   const focusRef = useRef({ selectionMarkdown, contentMarkdown, memoId, notebookId, notebookTitle, noteTitle, companionAvailable });
@@ -819,11 +822,35 @@ function AiSidebarSession({
   }, []);
 
   useEffect(() => {
+    const turnIds = localTurnsRef.current.map((turn) => turn.id);
+    if (!turnIds.length) return;
+    void localAgentImageStore.list(turnIds).then((images) => {
+      if (!alive.current || !images.length) return;
+      const byTurn = new Map<string, LocalImage[]>();
+      for (const image of images) {
+        const list = byTurn.get(image.turnId) ?? [];
+        if (list.length < MAX_LOCAL_IMAGES) list.push({ id: image.id, mediaType: image.mediaType, base64: image.base64 });
+        byTurn.set(image.turnId, list);
+      }
+      setLocalTurns((previous) => previous.map((turn) => {
+        const saved = byTurn.get(turn.id);
+        if (!saved?.length) return turn;
+        const currentIds = new Set(turn.images.map((image) => image.id));
+        const restored = [...turn.images, ...saved.filter((image) => !currentIds.has(image.id))].slice(0, MAX_LOCAL_IMAGES);
+        return { ...turn, images: restored };
+      }));
+    }).catch(() => {
+      if (alive.current) setError(t("aiAssistant.sidebar.imageSaveFailed"));
+    });
+  }, [t]);
+
+  useEffect(() => {
     if (!localTurns.length && !readStorage(AI_SIDEBAR_LOCAL_THREADS_KEY)) return;
     if (localPersistTimer.current != null) window.clearTimeout(localPersistTimer.current);
     localPersistTimer.current = window.setTimeout(() => {
       try {
-        saveLocalAgentTurns(window.localStorage, AI_SIDEBAR_LOCAL_THREADS_KEY, localTurnsRef.current);
+        const saved = saveLocalAgentTurns(window.localStorage, AI_SIDEBAR_LOCAL_THREADS_KEY, localTurnsRef.current);
+        if (saved) void localAgentImageStore.prune(saved.map((turn) => turn.id)).catch(() => undefined);
       } catch {
         // Private mode can reject storage writes. The open chat still stays in memory.
       }
@@ -838,7 +865,8 @@ function AiSidebarSession({
       if (localPersistTimer.current != null) window.clearTimeout(localPersistTimer.current);
       if (!localTurnsRef.current.length && !readStorage(AI_SIDEBAR_LOCAL_THREADS_KEY)) return;
       try {
-        saveLocalAgentTurns(window.localStorage, AI_SIDEBAR_LOCAL_THREADS_KEY, localTurnsRef.current);
+        const saved = saveLocalAgentTurns(window.localStorage, AI_SIDEBAR_LOCAL_THREADS_KEY, localTurnsRef.current);
+        if (saved) void localAgentImageStore.prune(saved.map((turn) => turn.id)).catch(() => undefined);
       } catch {
         // The in-memory chat remains available until the page closes.
       }
@@ -894,6 +922,16 @@ function AiSidebarSession({
       return;
     }
     if (event.type === "image") {
+      const current = localTurnsRef.current.find((turn) => turn.id === turnId);
+      if (current?.status === "cancelled") return;
+      const known = imagesByTurn.current.get(turnId) ?? new Map(current?.images.map((image) => [image.id, image]) ?? []);
+      if ([...known.values()].some((image) => image.id !== event.id && image.mediaType === event.mediaType && image.base64 === event.base64)) return;
+      if (!known.has(event.id) && known.size >= MAX_LOCAL_IMAGES) return;
+      known.set(event.id, { id: event.id, mediaType: event.mediaType, base64: event.base64 });
+      imagesByTurn.current.set(turnId, known);
+      void localAgentImageStore.put({ turnId, id: event.id, mediaType: event.mediaType, base64: event.base64 }).catch(() => {
+        if (alive.current) setError(t("aiAssistant.sidebar.imageSaveFailed"));
+      });
       setLocalTurns((previous) => previous.map((turn) => {
         if (turn.id !== turnId || turn.status === "cancelled") return turn;
         if (turn.images.some((image) => image.mediaType === event.mediaType && image.base64 === event.base64)) return turn;
@@ -1584,15 +1622,24 @@ function AiSidebarSession({
                 ) : null}
                 {turn.images.length ? (
                   <div className="flex flex-col gap-2">
-                    {turn.images.map((image) => (
-                      <Image
-                        key={image.id}
-                        alt={t("aiAssistant.sidebar.generatedImage")}
-                        base64={image.base64}
-                        className="max-h-96"
-                        mediaType={image.mediaType}
-                        uint8Array={EMPTY_IMAGE_BYTES}
-                      />
+                    {turn.images.map((image, index) => (
+                      <div key={image.id} className="space-y-1">
+                        <Image
+                          alt={t("aiAssistant.sidebar.generatedImage")}
+                          base64={image.base64}
+                          className="max-h-96"
+                          mediaType={image.mediaType}
+                          uint8Array={EMPTY_IMAGE_BYTES}
+                        />
+                        <a
+                          className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs text-slate-600 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                          download={`edgeever-image-${turn.id.slice(0, 8)}-${index + 1}.${image.mediaType === "image/jpeg" ? "jpg" : image.mediaType === "image/webp" ? "webp" : image.mediaType === "image/gif" ? "gif" : "png"}`}
+                          href={`data:${image.mediaType};base64,${image.base64}`}
+                        >
+                          <Download className="size-3.5" aria-hidden="true" />
+                          {t("aiAssistant.sidebar.downloadImage")}
+                        </a>
+                      </div>
                     ))}
                   </div>
                 ) : null}

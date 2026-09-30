@@ -1367,6 +1367,8 @@ export const zhCN = {
       proposalDismiss: "忽略",
       toolProgress: "{{name}} · {{status}}",
       generatedImage: "生成的图片",
+      downloadImage: "下载图片",
+      imageSaveFailed: "图片暂时无法保存到本机。请先下载图片，关闭页面后可能无法找回。",
     },
     agentSource: {
       title: "Agent 运行模式",

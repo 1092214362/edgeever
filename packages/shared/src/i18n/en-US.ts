@@ -1367,6 +1367,8 @@ export const enUS = {
       proposalDismiss: "Dismiss",
       toolProgress: "{{name}} · {{status}}",
       generatedImage: "Generated image",
+      downloadImage: "Download image",
+      imageSaveFailed: "The image could not be saved locally. Download it now; it may be lost when you close this page.",
     },
     agentSource: {
       title: "Agent mode",
