@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, FileCode2, FileImage, LoaderCircle, Pencil, Sparkles } from "lucide-react";
+import { Check, ChevronLeft, Download, FileCode2, FileImage, LoaderCircle, Pencil, Sparkles } from "lucide-react";
 import * as m from "motion/react-m";
 import { useTranslation } from "react-i18next";
 import { INFOGRAPHIC_AGENT_SOURCE_MAX_LENGTH, markdownToDoc, infographicFallbackMarkdown, parseInfographicDocument, serializeInfographicDocument, type InfographicConversationTurn, type InfographicDocument, type MemoDetail, type MemoEditSession, type Notebook } from "@edgeever/shared";
 import type { Infographic as InfographicInstance, SyntaxParseResult } from "@antv/infographic";
 import { Button } from "@/components/ui/button";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AiSidebar, readAiSidebarOpen, writeAiSidebarOpen } from "@/components/ai-sidebar/AiSidebar";
 import { AiSidebarErrorBoundary } from "@/components/ai-sidebar/AiSidebarErrorBoundary";
 import type { InfographicSidebarController } from "@/components/ai-sidebar/InfographicSidebarSession";
@@ -19,6 +19,7 @@ import { MemoTitleInput } from "@/components/MemoTitleInput";
 import { api } from "@/lib/api";
 import { formatShortcutBinding, getNotebookMoveOptions, type ShortcutSettings } from "@/lib/app-helpers";
 import { createLocalEditSession, requiresLocalEditSession } from "@/components/editor/editor-pane-helpers";
+import { canvasToPngBlob, downloadBlob, frameInfographicExportSvg, infographicExportBasename, rasterizeInfographicSvg, readInfographicSheetColor } from "@/lib/infographic-image-export";
 import { buildInfographicSyntax, buildOfficialInfographicSyntax, infographicAgentCandidates, INFOGRAPHIC_TEMPLATES, parseGeneratedOfficialData, type InfographicItem } from "@/lib/infographic-generation";
 import { statusSettleMotion } from "@/lib/motion";
 import type { EdgeEverRepository } from "@/lib/repository";
@@ -177,15 +178,6 @@ const applyOfficialVisualTextChange = (syntax: string, payload: VisualTextChange
     } else return null;
   }
   return buildOfficialInfographicSyntax(parsed.options.template, data, editable.dark);
-};
-
-const downloadDataUrl = (dataUrl: string, filename: string) => {
-  const link = document.createElement("a");
-  link.href = dataUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
 };
 
 export default function InfographicEditorPane({
@@ -526,11 +518,22 @@ export default function InfographicEditorPane({
   };
 
   const exportImage = async (type: "svg" | "png") => {
-    if (!instanceRef.current || renderError || !previewReady) return;
+    const svg = containerRef.current?.querySelector("svg");
+    if (!(svg instanceof SVGSVGElement) || renderError || !previewReady) return;
     try {
-      const url = await instanceRef.current.toDataURL({ type });
-      downloadDataUrl(url, `${(title.trim() || "infographic").replace(/[\\/:*?"<>|]/g, "-")}.${type}`);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : t("infographic.renderError")); }
+      const { exportToSVG } = await import("@antv/infographic");
+      const exported = await exportToSVG(svg);
+      const sheetColor = readInfographicSheetColor(containerRef.current?.parentElement ?? null, syntax.split("\n")[1] === "theme dark");
+      frameInfographicExportSvg(exported, sheetColor);
+      const basename = infographicExportBasename(title.trim() || t("infographic.name"));
+      if (type === "svg") {
+        downloadBlob(new Blob([new XMLSerializer().serializeToString(exported)], { type: "image/svg+xml;charset=utf-8" }), `${basename}.svg`);
+        return;
+      }
+      downloadBlob(await canvasToPngBlob(await rasterizeInfographicSvg(exported, sheetColor)), `${basename}.png`);
+    } catch {
+      setError(t("infographic.exportError"));
+    }
   };
 
   const previewUsesLightSheet = Boolean(syntax.trim()) && syntax.split("\n")[1] !== "theme dark";
@@ -600,6 +603,32 @@ export default function InfographicEditorPane({
           <MemoEditorToolbarDivider className="mx-0.5 hidden h-4 sm:block" />
           <div className="flex items-center gap-0.5">
             <MemoEditorFocusModeButton desktopFocusMode={desktopFocusMode} onToggleDesktopFocusMode={onToggleDesktopFocusMode} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1 px-2 text-xs"
+                  data-infographic-export=""
+                  disabled={!previewReady || Boolean(renderError)}
+                  aria-label={t("infographic.export")}
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t("infographic.export")}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem className="gap-2" disabled={!previewReady || Boolean(renderError)} onClick={() => void exportImage("png")}>
+                  <FileImage className="h-4 w-4 text-slate-500" />
+                  {t("infographic.exportPng")}
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2" disabled={!previewReady || Boolean(renderError)} onClick={() => void exportImage("svg")}>
+                  <FileCode2 className="h-4 w-4 text-slate-500" />
+                  {t("infographic.exportSvg")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <MemoEditorHeaderActions
               moreMenuClassName="w-48"
               onOpenExecutionCenter={onOpenExecutionCenter}

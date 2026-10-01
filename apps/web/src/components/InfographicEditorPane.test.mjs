@@ -14,8 +14,12 @@ describe("infographic editor header", () => {
     expect(status).toBeGreaterThan(metadata);
     expect(headerEnd).toBeGreaterThan(status);
     expect(source).toContain("<MemoEditorHeaderActions");
+    expect(source).toContain('t("infographic.export")');
+    expect(source).toContain("data-infographic-export");
+    expect(source).toContain("rasterizeInfographicSvg");
     expect(source).toContain('t("infographic.exportSvg")');
     expect(source).toContain('t("infographic.exportPng")');
+    expect(source).not.toContain("toDataURL");
     expect(source).not.toContain("<PieChart");
     expect(source).not.toContain('t("infographic.save")');
     expect(source).toContain("parseTagsText(tagsRef.current)");
