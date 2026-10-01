@@ -85,6 +85,7 @@ import { cn } from "@/lib/utils";
 import { CompanionQuestionForm } from "../CompanionQuestionForm";
 import { AiSidebarMessage } from "./AiSidebarMessage";
 import { AiSidebarLocalProcess } from "./AiSidebarLocalProcess";
+import { InfographicSidebarSession, type InfographicSidebarController } from "./InfographicSidebarSession";
 
 const SIDEBAR_DEFAULT_WIDTH = 380;
 const sidebarThreadClassName = cn(
@@ -176,6 +177,7 @@ type AiSidebarProps = AiSidebarFocus & {
   beforeCompanionApply?: () => Promise<void>;
   onCompanionNotesChanged?: () => Promise<void>;
   onOpenCompanionNote?: (id: string, notebookId: string) => void;
+  infographic?: InfographicSidebarController | null;
 };
 
 const SELECTION_TURN_STORAGE = "edgeever.aiSidebar.selectionTurns";
@@ -1840,7 +1842,15 @@ export function AiSidebar(props: AiSidebarProps) {
               </Tooltip>
             </TooltipProvider>
           ) : null}
-          <AiSidebarSession {...props} addFilesRef={addFilesRef} onStopReady={onStopReady} />
+          {props.infographic ? (
+            <InfographicSidebarSession
+              session={props.infographic}
+              noteTitle={props.noteTitle}
+              onOpenChange={onOpenChange}
+            />
+          ) : (
+            <AiSidebarSession {...props} addFilesRef={addFilesRef} onStopReady={onStopReady} />
+          )}
         </div>
       </m.aside>
     </>

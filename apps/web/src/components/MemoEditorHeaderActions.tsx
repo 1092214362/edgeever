@@ -26,7 +26,7 @@ export const MemoEditorHeaderActions = ({
   moreMenuClassName?: string;
   moreMenuItems: ReactNode;
   onOpenExecutionCenter: () => void;
-  onSearch: () => void;
+  onSearch?: () => void;
   textNoteActions?: ReactNode;
   textNoteMenuItems?: ReactNode;
 }) => {
@@ -63,13 +63,15 @@ export const MemoEditorHeaderActions = ({
           className={cn("border border-slate-200 bg-card py-1 shadow-md", moreMenuClassName)}
         >
           {textNoteMenuItems}
-          <DropdownMenuItem
-            className="flex h-9 w-full items-center gap-2 px-3 text-left text-xs text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
-            onClick={onSearch}
-          >
-            <Search className="h-4 w-4 text-slate-500" />
-            {t("editor.searchCurrentMemo")}
-          </DropdownMenuItem>
+          {onSearch ? (
+            <DropdownMenuItem
+              className="flex h-9 w-full items-center gap-2 px-3 text-left text-xs text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
+              onClick={onSearch}
+            >
+              <Search className="h-4 w-4 text-slate-500" />
+              {t("editor.searchCurrentMemo")}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             className="flex h-9 w-full items-center gap-2 px-3 text-left text-xs text-slate-700 hover:bg-slate-50 cursor-pointer outline-none"
             onClick={() => setPreference(nextTheme)}
