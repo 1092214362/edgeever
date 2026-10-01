@@ -12,7 +12,7 @@
     "message": "网页剪藏"
   },
   "popupDescription": {
-    "message": "剪藏当前网页或选中内容。选中文字后右键可以保存这段文字；在图片上右键可以保存图片；在 X 上右键可以保存这条推文；在 GitHub 仓库页上右键可以保存仓库地址和简介。"
+    "message": "剪藏当前网页或选中内容。选中文字后右键可以保存这段文字；在图片上右键可以保存图片；在 X 上右键可以保存这条推文；在小红书笔记正文上右键可以保存这篇笔记；在 GitHub 仓库页上右键可以保存仓库地址和简介。"
   },
   "saveCurrentPage": {
     "message": "剪藏当前网页"
@@ -350,5 +350,50 @@
   },
   "githubRepoTopicsLabel": {
     "message": "话题"
+  },
+  "saveXhsToEdgeEver": {
+    "message": "保存这篇小红书笔记到 EdgeEver"
+  },
+  "xhsSaveHint": {
+    "message": "在小红书笔记正文上右键，选择“保存这篇小红书笔记到 EdgeEver”。标题、正文和笔记里的图片会存成一条新笔记，评论不会写入。右键图片仍然只保存这张图片。"
+  },
+  "savingXhs": {
+    "message": "正在保存这篇笔记……"
+  },
+  "xhsSaved": {
+    "message": "已把这篇笔记存成一条笔记。"
+  },
+  "xhsNotFound": {
+    "message": "没有定位到这篇笔记。请先打开笔记，再在正文上右键。"
+  },
+  "xhsNeedsOpen": {
+    "message": "请先打开这篇笔记，再在正文上右键。"
+  },
+  "xhsPermissionIntro": {
+    "message": "首页上有很多篇笔记。允许访问小红书之后，插件才能记住指针下的这一篇。允许后，请再在同一篇笔记上右键一次。只会把你选中的这篇存进剪藏插件的默认笔记本。"
+  },
+  "xhsPermissionToast": {
+    "message": "需要允许访问小红书，才能在首页上选中这篇笔记。允许后请再右键一次。"
+  },
+  "xhsRightClickAgain": {
+    "message": "已经可以识别首页上的笔记。请再在这篇笔记上右键一次。"
+  },
+  "allowXhsAccess": {
+    "message": "允许访问小红书"
+  },
+  "xhsPermissionDenied": {
+    "message": "没有获得访问权限。请再在笔记上右键一次来重新授权。"
+  },
+  "xhsPermissionReady": {
+    "message": "已允许。回到页面，再在这篇笔记上右键一次。"
+  },
+  "xhsNoteFallbackTitle": {
+    "message": "一篇小红书笔记"
+  },
+  "xhsSaveWindowTitle": {
+    "message": "保存这篇小红书笔记到 EdgeEver"
+  },
+  "xhsLocationLabel": {
+    "message": "地点"
   }
 }

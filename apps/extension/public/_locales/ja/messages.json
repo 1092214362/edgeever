@@ -12,7 +12,7 @@
     "message": "Web Clipper"
   },
   "popupDescription": {
-    "message": "表示中のページや選択した内容を取り込みます。選択した文字の右クリックでその文章を、画像の右クリックで画像を、X 上の投稿の右クリックでその投稿を、GitHub のリポジトリページの右クリックでアドレスと紹介文を保存できます。"
+    "message": "表示中のページや選択した内容を取り込みます。選択した文字の右クリックでその文章を、画像の右クリックで画像を、X 上の投稿の右クリックでその投稿を、小紅書のノート本文の右クリックでそのノートを、GitHub のリポジトリページの右クリックでアドレスと紹介文を保存できます。"
   },
   "saveCurrentPage": {
     "message": "このページを取り込む"
@@ -350,5 +350,50 @@
   },
   "githubRepoTopicsLabel": {
     "message": "トピック"
+  },
+  "saveXhsToEdgeEver": {
+    "message": "この小紅書ノートを EdgeEver に保存"
+  },
+  "xhsSaveHint": {
+    "message": "小紅書でノート本文を右クリックし、「この小紅書ノートを EdgeEver に保存」を選びます。タイトル、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
+  },
+  "savingXhs": {
+    "message": "このノートを保存しています…"
+  },
+  "xhsSaved": {
+    "message": "このノートを保存しました。"
+  },
+  "xhsNotFound": {
+    "message": "このノートを特定できませんでした。ノートを開いてから、本文を右クリックしてください。"
+  },
+  "xhsNeedsOpen": {
+    "message": "ノートを開いてから、本文を右クリックしてください。"
+  },
+  "xhsPermissionIntro": {
+    "message": "フィードには複数のノートがあります。ポインタの下にあるノートを覚えるには、小紅書へのアクセスを許可してください。許可したあと、同じノートをもう一度右クリックします。選んだノートだけを、クリップ拡張機能の既定ノートブックに保存します。"
+  },
+  "xhsPermissionToast": {
+    "message": "フィードでノートを選ぶには、小紅書へのアクセスを許可してください。そのあと、もう一度右クリックします。"
+  },
+  "xhsRightClickAgain": {
+    "message": "フィードのノートを識別できるようになりました。そのノートをもう一度右クリックしてください。"
+  },
+  "allowXhsAccess": {
+    "message": "小紅書へのアクセスを許可"
+  },
+  "xhsPermissionDenied": {
+    "message": "アクセスは許可されませんでした。ノートをもう一度右クリックしてやり直してください。"
+  },
+  "xhsPermissionReady": {
+    "message": "許可しました。ページに戻り、そのノートをもう一度右クリックしてください。"
+  },
+  "xhsNoteFallbackTitle": {
+    "message": "小紅書のノート"
+  },
+  "xhsSaveWindowTitle": {
+    "message": "この小紅書ノートを EdgeEver に保存"
+  },
+  "xhsLocationLabel": {
+    "message": "場所"
   }
 }

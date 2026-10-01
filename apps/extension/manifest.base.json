@@ -31,6 +31,14 @@
       ],
       "js": ["assets/tweet-target.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.xiaohongshu.com/*",
+        "https://xiaohongshu.com/*"
+      ],
+      "js": ["assets/xhs-target.js"],
+      "run_at": "document_start"
     }
   ]
 }

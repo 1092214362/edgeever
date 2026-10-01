@@ -43,6 +43,14 @@ import {
   statusIdFromPageUrl,
   tweetNoteTitle,
 } from "./tweet-clip";
+import {
+  isXhsPageRead,
+  noteIdFromPageUrl,
+  readXhsStateInPage,
+  resolveXhsNote,
+  saveCapturedXhsNote,
+  xhsNoteTitle,
+} from "./xhs-clip";
 import { t } from "./i18n";
 
 type CapturedPage = {
@@ -82,6 +90,13 @@ const TWEET_DOCUMENT_PATTERNS = [
 const GITHUB_DOCUMENT_PATTERNS = [
   "https://github.com/*",
   "https://www.github.com/*",
+];
+const XHS_MENU_ID = "save-xhs";
+const PENDING_XHS_KEY = "pendingXhsPermission";
+const XHS_WINDOW_KEY = "xhsSaveWindowId";
+const XHS_DOCUMENT_PATTERNS = [
+  "https://www.xiaohongshu.com/*",
+  "https://xiaohongshu.com/*",
 ];
 
 const toMarkdown = (page: CapturedPage) => {
@@ -392,10 +407,16 @@ const openTweetPermissionWindow = async (tabId: number | null) => {
   await focusExtensionWindow("tweet-save.html", TWEET_WINDOW_KEY, 560);
 };
 
+const openXhsPermissionWindow = async (tabId: number | null) => {
+  await chrome.storage.session.set({ [PENDING_XHS_KEY]: { tabId } });
+  await focusExtensionWindow("xhs-save.html", XHS_WINDOW_KEY, 560);
+};
+
 let pendingCapture: ((page: CapturedPage) => void) | null = null;
 const pendingImageReads = new Map<string, (result: unknown) => void>();
 const pendingTweetReads = new Map<string, (result: unknown) => void>();
 const pendingGithubReads = new Map<string, (result: unknown) => void>();
+const pendingXhsReads = new Map<string, (result: unknown) => void>();
 let clipQueue = Promise.resolve();
 let completingImageSave = false;
 
@@ -657,6 +678,130 @@ const saveTweetFromMenu = async (
   }
 };
 
+const injectXhsReader = async (tabId: number, frameId: number | null, payload: unknown) => {
+  const target = scriptTarget(tabId, frameId);
+  await chrome.scripting.executeScript({
+    target,
+    func: (value: unknown) => {
+      (globalThis as { __edgeeverXhsClipPayload?: unknown }).__edgeeverXhsClipPayload = value;
+    },
+    args: [payload],
+  });
+  await chrome.scripting.executeScript({
+    target,
+    files: ["assets/capture-xhs.js"],
+  });
+};
+
+const injectXhsTarget = async (tabId: number) => {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ["assets/xhs-target.js"],
+  });
+};
+
+const readXhsStateFromPage = async (tabId: number, frameId: number | null) => {
+  try {
+    const [injected] = await chrome.scripting.executeScript({
+      target: scriptTarget(tabId, frameId),
+      world: "MAIN",
+      func: readXhsStateInPage,
+    });
+    return isXhsPageRead(injected?.result) && injected.result.ok ? injected.result : null;
+  } catch {
+    // Older pages can block the main world. The DOM reader below still runs.
+    return null;
+  }
+};
+
+const readXhsFromPage = async (tabId: number, frameId: number | null) => {
+  const requestId = crypto.randomUUID();
+  const result = await new Promise<unknown>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pendingXhsReads.delete(requestId);
+      reject(new Error("timeout"));
+    }, 10_000);
+    pendingXhsReads.set(requestId, (value) => {
+      clearTimeout(timeout);
+      resolve(value);
+    });
+    void injectXhsReader(tabId, frameId, { requestId }).catch((error: unknown) => {
+      clearTimeout(timeout);
+      pendingXhsReads.delete(requestId);
+      reject(error);
+    });
+  });
+  return isXhsPageRead(result) ? result : { ok: false as const, reason: "not-found" as const };
+};
+
+const describeXhsError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "";
+  if (message === t("xhsNotFound") || message === t("xhsNeedsOpen")) return message;
+  return describeImageError(error);
+};
+
+const saveXhsFromMenu = async (
+  info: { pageUrl?: string; frameId?: number },
+  tab?: { id?: number; url?: string },
+) => {
+  const tabId = typeof tab?.id === "number" ? tab.id : null;
+  const frameId = typeof info.frameId === "number" ? info.frameId : null;
+  const pageUrl = tab?.url || info.pageUrl || "";
+  try {
+    const settings = await ensureClipperReady();
+    if (!tabId) throw new Error(t("xhsNotFound"));
+    const noteId = noteIdFromPageUrl(pageUrl);
+    if (!noteId && !await hasTweetSitePermission(pageUrl)) {
+      await openXhsPermissionWindow(tabId);
+      await showFeedback(tabId, frameId, t("xhsPermissionToast"), "success");
+      return;
+    }
+
+    await showFeedback(tabId, frameId, t("savingXhs"), "success");
+    const page = await readXhsStateFromPage(tabId, frameId) ?? await readXhsFromPage(tabId, frameId);
+    if (!page.ok && page.reason === "needs-listener") {
+      await injectXhsTarget(tabId);
+      await showFeedback(tabId, frameId, t("xhsRightClickAgain"), "success");
+      return;
+    }
+    if (!page.ok && page.reason === "needs-open") throw new Error(t("xhsNeedsOpen"));
+    if (!page.ok) throw new Error(t("xhsNotFound"));
+    const note = resolveXhsNote(page, pageUrl);
+    if (!note) throw new Error(t("xhsNotFound"));
+
+    const images = [];
+    const alt = note.title || t("imageAltFallback");
+    for (const url of note.imageUrls) {
+      const stored = await readTweetImage(tabId, frameId, url, alt);
+      if (stored) images.push(stored);
+    }
+    await saveCapturedXhsNote(imageNoteClient(settings), {
+      notebookId: settings.notebookId,
+      title: xhsNoteTitle({ ...note, fallback: t("xhsNoteFallbackTitle") }),
+      nickname: note.nickname,
+      noteTitle: note.title,
+      body: note.body,
+      datetime: note.datetime,
+      location: note.location,
+      noteUrl: note.noteUrl,
+      images,
+      capturedAt: new Date().toISOString(),
+      sourceLabel: t("sourceLabel"),
+      capturedAtLabel: t("capturedAtLabel"),
+      timeLabel: t("tweetTimeLabel"),
+      locationLabel: t("xhsLocationLabel"),
+      altFallback: t("imageAltFallback"),
+    });
+    await showFeedback(tabId, frameId, t("xhsSaved"), "success");
+  } catch (error) {
+    const message = describeXhsError(error);
+    if (message === t("completePluginConfiguration") || message === t("instancePermissionRequired")) {
+      await chrome.runtime.openOptionsPage();
+    }
+    await showFeedback(tabId, frameId, message, "error");
+  }
+};
+
 const isGithubRepoSource = (value: unknown): value is GithubRepoPageSource => {
   if (!value || typeof value !== "object") return false;
   const record = value as Partial<GithubRepoPageSource>;
@@ -870,8 +1015,8 @@ const registerClipMenus = () => {
   // Chrome and Firefox fold an extension into a submenu when more than one of
   // its items is visible. These contexts stay disjoint so each command remains
   // on the top-level menu: a photo saves the image, selected words save the
-  // passage, the rest of an X post saves the post, and a GitHub repository
-  // page saves the repository.
+  // passage, the rest of an X post saves the post, a GitHub repository page
+  // saves the repository, and the rest of a Xiaohongshu note saves the note.
   // Link context is omitted because a linked image would otherwise show both
   // commands. Recreate from scratch so a previous registration cannot keep an
   // overlapping item.
@@ -914,6 +1059,14 @@ const createClipMenus = () => {
   }, () => {
     void chrome.runtime.lastError;
   });
+  chrome.contextMenus.create({
+    id: XHS_MENU_ID,
+    title: t("saveXhsToEdgeEver"),
+    contexts: ["page", "video"],
+    documentUrlPatterns: XHS_DOCUMENT_PATTERNS,
+  }, () => {
+    void chrome.runtime.lastError;
+  });
 };
 
 chrome.runtime.onInstalled.addListener(registerClipMenus);
@@ -934,16 +1087,23 @@ chrome.contextMenus.onClicked.addListener((info: { menuItemId?: string | number;
   }
   if (info.menuItemId === GITHUB_REPO_MENU_ID) {
     void enqueueClip(() => saveGithubRepoFromMenu(info, tab));
+    return;
+  }
+  if (info.menuItemId === XHS_MENU_ID) {
+    void enqueueClip(() => saveXhsFromMenu(info, tab));
   }
 });
 
 chrome.windows.onRemoved.addListener((windowId: number) => {
-  void chrome.storage.session.get([IMAGE_SAVE_WINDOW_KEY, TWEET_WINDOW_KEY]).then((stored: Record<string, unknown>) => {
+  void chrome.storage.session.get([IMAGE_SAVE_WINDOW_KEY, TWEET_WINDOW_KEY, XHS_WINDOW_KEY]).then((stored: Record<string, unknown>) => {
     if (stored[IMAGE_SAVE_WINDOW_KEY] === windowId) {
       void chrome.storage.session.remove(IMAGE_SAVE_WINDOW_KEY);
     }
     if (stored[TWEET_WINDOW_KEY] === windowId) {
       void chrome.storage.session.remove(TWEET_WINDOW_KEY);
+    }
+    if (stored[XHS_WINDOW_KEY] === windowId) {
+      void chrome.storage.session.remove(XHS_WINDOW_KEY);
     }
   }).catch(() => undefined);
 });
@@ -973,6 +1133,12 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
     return false;
   }
 
+  if (message.type === "pageXhsRead" && message.requestId) {
+    pendingXhsReads.get(message.requestId)?.(message.result);
+    pendingXhsReads.delete(message.requestId);
+    return false;
+  }
+
   if (message.type === "activateTweetTarget") {
     void (async () => {
       const stored = await chrome.storage.session.get(PENDING_TWEET_KEY);
@@ -985,6 +1151,23 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
         }
       }
       await chrome.storage.session.remove(PENDING_TWEET_KEY);
+      sendResponse({ ok: true });
+    })().catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
+  if (message.type === "activateXhsTarget") {
+    void (async () => {
+      const stored = await chrome.storage.session.get(PENDING_XHS_KEY);
+      const pending = stored[PENDING_XHS_KEY] as { tabId?: number | null } | undefined;
+      if (typeof pending?.tabId === "number") {
+        try {
+          await injectXhsTarget(pending.tabId);
+        } catch {
+          // The tab can be saved on the next right-click after it reloads.
+        }
+      }
+      await chrome.storage.session.remove(PENDING_XHS_KEY);
       sendResponse({ ok: true });
     })().catch(() => sendResponse({ ok: false }));
     return true;

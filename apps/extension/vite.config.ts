@@ -34,8 +34,11 @@ export default defineConfig({
         "capture-image": fileURLToPath(new URL("./src/capture-image.ts", import.meta.url)),
         "capture-tweet": fileURLToPath(new URL("./src/capture-tweet.ts", import.meta.url)),
         "capture-github": fileURLToPath(new URL("./src/capture-github.ts", import.meta.url)),
+        "capture-xhs": fileURLToPath(new URL("./src/capture-xhs.ts", import.meta.url)),
         "tweet-target": fileURLToPath(new URL("./src/tweet-target.ts", import.meta.url)),
         "tweet-save": fileURLToPath(new URL("./tweet-save.html", import.meta.url)),
+        "xhs-target": fileURLToPath(new URL("./src/xhs-target.ts", import.meta.url)),
+        "xhs-save": fileURLToPath(new URL("./xhs-save.html", import.meta.url)),
       },
       output: {
         entryFileNames: "assets/[name].js",
