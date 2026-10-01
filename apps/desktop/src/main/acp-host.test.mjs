@@ -654,7 +654,7 @@ describe("ACP stdio session", () => {
       const executable = path.join(directory, "openclaw");
       await writeFile(executable, await readFile(scriptPath), { mode: 0o755 });
       const runtime = createAcpHostRuntime({
-        pathEnv: directory,
+        pathEnv: `${directory}${path.delimiter}${path.dirname(process.execPath)}`,
         home: directory,
         mcpAccess: () => { throw new Error("OpenClaw must use Gateway MCP configuration"); },
       });
