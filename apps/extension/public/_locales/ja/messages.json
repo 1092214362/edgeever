@@ -395,5 +395,47 @@
   },
   "xhsLocationLabel": {
     "message": "場所"
+  },
+  "saveZhihuToEdgeEver": {
+    "message": "この知乎の回答または記事を EdgeEver に保存"
+  },
+  "zhihuSaveHint": {
+    "message": "知乎で回答または記事の本文を右クリックし、「この知乎の回答または記事を EdgeEver に保存」を選びます。タイトル、著者、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
+  },
+  "savingZhihu": {
+    "message": "この知乎の回答または記事を保存しています…"
+  },
+  "zhihuSaved": {
+    "message": "この知乎の回答または記事を保存しました。"
+  },
+  "zhihuNotFound": {
+    "message": "この回答または記事を特定できませんでした。本文を右クリックしてください。"
+  },
+  "zhihuUnreadable": {
+    "message": "この回答または記事の本文を読めなかったため、保存しませんでした。"
+  },
+  "zhihuPermissionIntro": {
+    "message": "ページには複数の回答や記事があります。ポインタの下にある一篇を覚えるには、知乎へのアクセスを許可してください。許可したあと、同じ本文をもう一度右クリックします。選んだ一篇だけを、クリップ拡張機能の既定ノートブックに保存します。"
+  },
+  "zhihuPermissionToast": {
+    "message": "一覧で回答または記事を選ぶには、知乎へのアクセスを許可してください。そのあと、もう一度右クリックします。"
+  },
+  "zhihuRightClickAgain": {
+    "message": "ページ上の回答と記事を識別できるようになりました。その本文をもう一度右クリックしてください。"
+  },
+  "allowZhihuAccess": {
+    "message": "知乎へのアクセスを許可"
+  },
+  "zhihuPermissionDenied": {
+    "message": "アクセスは許可されませんでした。本文をもう一度右クリックしてやり直してください。"
+  },
+  "zhihuPermissionReady": {
+    "message": "許可しました。ページに戻り、その本文をもう一度右クリックしてください。"
+  },
+  "zhihuNoteFallbackTitle": {
+    "message": "知乎の回答または記事"
+  },
+  "zhihuSaveWindowTitle": {
+    "message": "この知乎の回答または記事を EdgeEver に保存"
   }
 }

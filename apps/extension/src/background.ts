@@ -51,6 +51,18 @@ import {
   saveCapturedXhsNote,
   xhsNoteTitle,
 } from "./xhs-clip";
+import {
+  fetchZhihuItemInPage,
+  isZhihuApiRead,
+  isZhihuLocate,
+  resolveZhihuNote,
+  saveCapturedZhihuNote,
+  zhihuBodyFromHtml,
+  zhihuNoteTitle,
+  zhihuTargetFromPageUrl,
+  zhihuTimeIso,
+  type ZhihuLocateSuccess,
+} from "./zhihu-clip";
 import { t } from "./i18n";
 
 type CapturedPage = {
@@ -97,6 +109,15 @@ const XHS_WINDOW_KEY = "xhsSaveWindowId";
 const XHS_DOCUMENT_PATTERNS = [
   "https://www.xiaohongshu.com/*",
   "https://xiaohongshu.com/*",
+];
+const ZHIHU_MENU_ID = "save-zhihu";
+const PENDING_ZHIHU_KEY = "pendingZhihuPermission";
+const ZHIHU_WINDOW_KEY = "zhihuSaveWindowId";
+const ZHIHU_DOCUMENT_PATTERNS = [
+  "https://www.zhihu.com/*",
+  "https://zhihu.com/*",
+  "https://zhuanlan.zhihu.com/*",
+  "https://www.zhuanlan.zhihu.com/*",
 ];
 
 const toMarkdown = (page: CapturedPage) => {
@@ -412,11 +433,17 @@ const openXhsPermissionWindow = async (tabId: number | null) => {
   await focusExtensionWindow("xhs-save.html", XHS_WINDOW_KEY, 560);
 };
 
+const openZhihuPermissionWindow = async (tabId: number | null) => {
+  await chrome.storage.session.set({ [PENDING_ZHIHU_KEY]: { tabId } });
+  await focusExtensionWindow("zhihu-save.html", ZHIHU_WINDOW_KEY, 560);
+};
+
 let pendingCapture: ((page: CapturedPage) => void) | null = null;
 const pendingImageReads = new Map<string, (result: unknown) => void>();
 const pendingTweetReads = new Map<string, (result: unknown) => void>();
 const pendingGithubReads = new Map<string, (result: unknown) => void>();
 const pendingXhsReads = new Map<string, (result: unknown) => void>();
+const pendingZhihuReads = new Map<string, (result: unknown) => void>();
 let clipQueue = Promise.resolve();
 let completingImageSave = false;
 
@@ -802,6 +829,149 @@ const saveXhsFromMenu = async (
   }
 };
 
+const injectZhihuReader = async (tabId: number, frameId: number | null, payload: unknown) => {
+  const target = scriptTarget(tabId, frameId);
+  await chrome.scripting.executeScript({
+    target,
+    func: (value: unknown) => {
+      (globalThis as { __edgeeverZhihuClipPayload?: unknown }).__edgeeverZhihuClipPayload = value;
+    },
+    args: [payload],
+  });
+  await chrome.scripting.executeScript({
+    target,
+    files: ["assets/capture-zhihu.js"],
+  });
+};
+
+const injectZhihuTarget = async (tabId: number) => {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ["assets/zhihu-target.js"],
+  });
+};
+
+const readZhihuLocate = async (tabId: number, frameId: number | null) => {
+  const requestId = crypto.randomUUID();
+  const result = await new Promise<unknown>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pendingZhihuReads.delete(requestId);
+      reject(new Error("timeout"));
+    }, 10_000);
+    pendingZhihuReads.set(requestId, (value) => {
+      clearTimeout(timeout);
+      resolve(value);
+    });
+    void injectZhihuReader(tabId, frameId, { requestId }).catch((error: unknown) => {
+      clearTimeout(timeout);
+      pendingZhihuReads.delete(requestId);
+      reject(error);
+    });
+  });
+  return isZhihuLocate(result) ? result : { ok: false as const, reason: "not-found" as const };
+};
+
+const readZhihuApi = async (tabId: number, frameId: number | null, located: ZhihuLocateSuccess) => {
+  try {
+    const [injected] = await chrome.scripting.executeScript({
+      target: scriptTarget(tabId, frameId),
+      world: "MAIN",
+      func: fetchZhihuItemInPage,
+      args: [{ kind: located.kind, id: located.id }],
+    });
+    return isZhihuApiRead(injected?.result) ? injected.result : null;
+  } catch {
+    return null;
+  }
+};
+
+const describeZhihuError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "";
+  if (message === t("zhihuNotFound") || message === t("zhihuUnreadable")) return message;
+  return describeImageError(error);
+};
+
+const saveLocatedZhihu = async (
+  settings: ExtensionSettings,
+  tabId: number,
+  frameId: number | null,
+  located: ZhihuLocateSuccess,
+) => {
+  const api = await readZhihuApi(tabId, frameId, located);
+  const note = resolveZhihuNote(located, api);
+  if (!note) throw new Error(t("zhihuUnreadable"));
+  const body = zhihuBodyFromHtml(note.html, t("imageAltFallback"));
+  if (!body.markdown && body.images.length === 0) throw new Error(t("zhihuUnreadable"));
+  const images = [];
+  for (const image of body.images) {
+    const stored = await readTweetImage(tabId, frameId, image.url, image.alt || note.title || t("imageAltFallback"));
+    if (stored) images.push({ ...stored, sourceUrl: image.url });
+  }
+  await saveCapturedZhihuNote(imageNoteClient(settings), {
+    notebookId: settings.notebookId,
+    title: zhihuNoteTitle({
+      title: note.title,
+      author: note.author,
+      body: body.markdown,
+      fallback: t("zhihuNoteFallbackTitle"),
+    }),
+    author: note.author,
+    noteTitle: note.title,
+    body: body.markdown,
+    noteUrl: note.noteUrl,
+    datetime: zhihuTimeIso(note.timeSeconds),
+    images,
+    capturedAt: new Date().toISOString(),
+    sourceLabel: t("sourceLabel"),
+    capturedAtLabel: t("capturedAtLabel"),
+    timeLabel: t("tweetTimeLabel"),
+  });
+};
+
+const saveZhihuFromMenu = async (
+  info: { pageUrl?: string; frameId?: number },
+  tab?: { id?: number; url?: string },
+) => {
+  const tabId = typeof tab?.id === "number" ? tab.id : null;
+  const frameId = typeof info.frameId === "number" ? info.frameId : null;
+  try {
+    const settings = await ensureClipperReady();
+    if (!tabId) throw new Error(t("zhihuNotFound"));
+    let located: Awaited<ReturnType<typeof readZhihuLocate>>;
+    try {
+      located = await readZhihuLocate(tabId, frameId);
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : String(error);
+      if (/cannot access|missing host permission|permission/i.test(raw)) {
+        await openZhihuPermissionWindow(tabId);
+        await showFeedback(tabId, frameId, t("zhihuPermissionToast"), "success");
+        return;
+      }
+      throw error;
+    }
+    if (!located.ok && located.reason === "needs-listener") {
+      try {
+        await injectZhihuTarget(tabId);
+        await showFeedback(tabId, frameId, t("zhihuRightClickAgain"), "success");
+      } catch {
+        await openZhihuPermissionWindow(tabId);
+        await showFeedback(tabId, frameId, t("zhihuPermissionToast"), "success");
+      }
+      return;
+    }
+    if (!located.ok) throw new Error(t("zhihuNotFound"));
+    await showFeedback(tabId, frameId, t("savingZhihu"), "success");
+    await saveLocatedZhihu(settings, tabId, frameId, located);
+    await showFeedback(tabId, frameId, t("zhihuSaved"), "success");
+  } catch (error) {
+    const message = describeZhihuError(error);
+    if (message === t("completePluginConfiguration") || message === t("instancePermissionRequired")) {
+      await chrome.runtime.openOptionsPage();
+    }
+    await showFeedback(tabId, frameId, message, "error");
+  }
+};
+
 const isGithubRepoSource = (value: unknown): value is GithubRepoPageSource => {
   if (!value || typeof value !== "object") return false;
   const record = value as Partial<GithubRepoPageSource>;
@@ -1016,7 +1186,8 @@ const registerClipMenus = () => {
   // its items is visible. These contexts stay disjoint so each command remains
   // on the top-level menu: a photo saves the image, selected words save the
   // passage, the rest of an X post saves the post, a GitHub repository page
-  // saves the repository, and the rest of a Xiaohongshu note saves the note.
+  // saves the repository, the rest of a Xiaohongshu note saves the note, and
+  // the rest of a Zhihu answer or article saves that item.
   // Link context is omitted because a linked image would otherwise show both
   // commands. Recreate from scratch so a previous registration cannot keep an
   // overlapping item.
@@ -1067,6 +1238,14 @@ const createClipMenus = () => {
   }, () => {
     void chrome.runtime.lastError;
   });
+  chrome.contextMenus.create({
+    id: ZHIHU_MENU_ID,
+    title: t("saveZhihuToEdgeEver"),
+    contexts: ["page", "video"],
+    documentUrlPatterns: ZHIHU_DOCUMENT_PATTERNS,
+  }, () => {
+    void chrome.runtime.lastError;
+  });
 };
 
 chrome.runtime.onInstalled.addListener(registerClipMenus);
@@ -1091,11 +1270,15 @@ chrome.contextMenus.onClicked.addListener((info: { menuItemId?: string | number;
   }
   if (info.menuItemId === XHS_MENU_ID) {
     void enqueueClip(() => saveXhsFromMenu(info, tab));
+    return;
+  }
+  if (info.menuItemId === ZHIHU_MENU_ID) {
+    void enqueueClip(() => saveZhihuFromMenu(info, tab));
   }
 });
 
 chrome.windows.onRemoved.addListener((windowId: number) => {
-  void chrome.storage.session.get([IMAGE_SAVE_WINDOW_KEY, TWEET_WINDOW_KEY, XHS_WINDOW_KEY]).then((stored: Record<string, unknown>) => {
+  void chrome.storage.session.get([IMAGE_SAVE_WINDOW_KEY, TWEET_WINDOW_KEY, XHS_WINDOW_KEY, ZHIHU_WINDOW_KEY]).then((stored: Record<string, unknown>) => {
     if (stored[IMAGE_SAVE_WINDOW_KEY] === windowId) {
       void chrome.storage.session.remove(IMAGE_SAVE_WINDOW_KEY);
     }
@@ -1104,6 +1287,9 @@ chrome.windows.onRemoved.addListener((windowId: number) => {
     }
     if (stored[XHS_WINDOW_KEY] === windowId) {
       void chrome.storage.session.remove(XHS_WINDOW_KEY);
+    }
+    if (stored[ZHIHU_WINDOW_KEY] === windowId) {
+      void chrome.storage.session.remove(ZHIHU_WINDOW_KEY);
     }
   }).catch(() => undefined);
 });
@@ -1139,6 +1325,12 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
     return false;
   }
 
+  if (message.type === "pageZhihuRead" && message.requestId) {
+    pendingZhihuReads.get(message.requestId)?.(message.result);
+    pendingZhihuReads.delete(message.requestId);
+    return false;
+  }
+
   if (message.type === "activateTweetTarget") {
     void (async () => {
       const stored = await chrome.storage.session.get(PENDING_TWEET_KEY);
@@ -1168,6 +1360,23 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
         }
       }
       await chrome.storage.session.remove(PENDING_XHS_KEY);
+      sendResponse({ ok: true });
+    })().catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
+  if (message.type === "activateZhihuTarget") {
+    void (async () => {
+      const stored = await chrome.storage.session.get(PENDING_ZHIHU_KEY);
+      const pending = stored[PENDING_ZHIHU_KEY] as { tabId?: number | null } | undefined;
+      if (typeof pending?.tabId === "number") {
+        try {
+          await injectZhihuTarget(pending.tabId);
+        } catch {
+          // The tab can be saved on the next right-click after it reloads.
+        }
+      }
+      await chrome.storage.session.remove(PENDING_ZHIHU_KEY);
       sendResponse({ ok: true });
     })().catch(() => sendResponse({ ok: false }));
     return true;
@@ -1246,6 +1455,14 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
           }
         }
 
+        if (zhihuTargetFromPageUrl(pageUrl)) {
+          const located = await readZhihuLocate(tab.id, null);
+          if (!located.ok) throw new Error(t("zhihuNotFound"));
+          await saveLocatedZhihu(settings, tab.id, null, located);
+          sendResponse({ ok: true });
+          return;
+        }
+
         const page = await readCapturedPage(tab.id, null, "page");
         await createMemo(settings, page);
         sendResponse({ ok: true });
@@ -1253,9 +1470,11 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
         const message = error instanceof Error ? error.message : "";
         sendResponse({
           ok: false,
-          message: message === t("captureTimeout") || message.startsWith(t("captureScriptFailed", ""))
-            ? describeCaptureError(error)
-            : describeSaveError(error),
+          message: message === t("zhihuNotFound") || message === t("zhihuUnreadable")
+            ? message
+            : message === t("captureTimeout") || message.startsWith(t("captureScriptFailed", ""))
+              ? describeCaptureError(error)
+              : describeSaveError(error),
         });
       }
     })();

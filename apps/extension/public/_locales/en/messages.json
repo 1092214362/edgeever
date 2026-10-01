@@ -395,5 +395,47 @@
   },
   "xhsLocationLabel": {
     "message": "Location"
+  },
+  "saveZhihuToEdgeEver": {
+    "message": "Save this Zhihu answer or article to EdgeEver"
+  },
+  "zhihuSaveHint": {
+    "message": "On Zhihu, right-click the answer or article text and choose “Save this Zhihu answer or article to EdgeEver”. The title, author, text, and photos go into one new note. Comments are left out. Right-clicking a photo still saves that image only."
+  },
+  "savingZhihu": {
+    "message": "Saving this Zhihu answer or article…"
+  },
+  "zhihuSaved": {
+    "message": "Saved this Zhihu answer or article."
+  },
+  "zhihuNotFound": {
+    "message": "Could not find that answer or article. Right-click its text."
+  },
+  "zhihuUnreadable": {
+    "message": "Could not read that answer or article, so nothing was saved."
+  },
+  "zhihuPermissionIntro": {
+    "message": "This page lists more than one answer or article. Allow access to Zhihu so the clipper can remember the one under the pointer. After that, right-click the same text once more. Only the item you choose is saved to the clipper's default notebook."
+  },
+  "zhihuPermissionToast": {
+    "message": "Allow access to Zhihu to choose an answer or article in the list. Then right-click that text again."
+  },
+  "zhihuRightClickAgain": {
+    "message": "Answers and articles on this page can be recognized now. Right-click that text again."
+  },
+  "allowZhihuAccess": {
+    "message": "Allow access to Zhihu"
+  },
+  "zhihuPermissionDenied": {
+    "message": "Access was not allowed. Right-click the text again to retry."
+  },
+  "zhihuPermissionReady": {
+    "message": "Access allowed. Go back and right-click that text again."
+  },
+  "zhihuNoteFallbackTitle": {
+    "message": "Zhihu answer or article"
+  },
+  "zhihuSaveWindowTitle": {
+    "message": "Save this Zhihu answer or article to EdgeEver"
   }
 }
