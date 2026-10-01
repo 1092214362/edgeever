@@ -580,13 +580,18 @@ describe("ACP stdio session", () => {
       const { spawn } = await import("node:child_process");
       const spawned = [];
       const runtime = createAcpHostRuntime({
+        platform: "darwin",
+        env: {},
+        readProxy: () => "HTTPEnable : 1\nHTTPProxy : 127.0.0.1\nHTTPPort : 10808\nHTTPSEnable : 1\nHTTPSProxy : 127.0.0.1\nHTTPSPort : 10809\nSOCKSEnable : 1",
         spawnImpl(command, args, options) {
-          spawned.push({ command, args, cwd: options.cwd, shell: options.shell });
+          spawned.push({ command, args, cwd: options.cwd, shell: options.shell, httpProxy: options.env?.HTTP_PROXY, httpsProxy: options.env?.HTTPS_PROXY });
           return spawn(command, args, options);
         },
       });
       const probed = await runtime.probeAdapter({ id: "antigravity", path: wrapper });
       expect(spawned[0]?.shell).toBe(false);
+      expect(spawned[0]?.httpProxy).toBe("http://127.0.0.1:10808");
+      expect(spawned[0]?.httpsProxy).toBe("http://127.0.0.1:10809");
       expect(realpathSync(spawned[0]?.command)).toBe(realpathSync(wrapper));
       expect(probed.state).toBe("available");
       expect(probed.promptCapabilities).toEqual({ image: true, embeddedContext: true });

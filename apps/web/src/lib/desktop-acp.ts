@@ -18,6 +18,24 @@ export type DesktopAcpAdapter = {
   authMethods?: Array<{ id: string; name: string }>;
 };
 
+export const displayedDesktopAcpAdapter = ({
+  id,
+  path,
+  listed,
+  probed,
+}: {
+  id: DesktopAcpAdapterId;
+  path: string;
+  listed: DesktopAcpAdapter[];
+  probed: DesktopAcpAdapter | null;
+}): DesktopAcpAdapter | undefined => {
+  const current = listed.find((adapter) => adapter.id === id);
+  const checked = probed?.id === id ? probed : undefined;
+  if (id === "antigravity" && path.trim()) return checked;
+  if (current?.state === "installing" || (current?.managed && (!checked?.managed || current.version !== checked.version))) return current;
+  return checked ?? current;
+};
+
 export type DesktopAcpAttachment = {
   filename: string;
   mediaType: string;
