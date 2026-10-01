@@ -16,6 +16,7 @@ import {
   detectInstalledAgentApps,
   eventsFromSessionUpdate,
   isAuthRequiredError,
+  promptResultFailure,
   registerAcpIpc,
   resolveAcpCommand,
   sanitizeFailureDetail,
@@ -27,6 +28,13 @@ const sdkHref = pathToFileURL(require.resolve("@agentclientprotocol/sdk")).href;
 const home = path.resolve(homedir());
 
 const encode = (value) => Buffer.from(value).toString("base64");
+
+test("classifies ACP prompt refusals without exposing vendor error details", () => {
+  expect(promptResultFailure({ stopReason: "end_turn" })).toBeNull();
+  expect(promptResultFailure({ stopReason: "refusal" })).toBe("agent_refused");
+  expect(promptResultFailure({ stopReason: "refusal", _meta: { "codebuddy.ai/errorMessage": "not-json" } })).toBe("agent_refused");
+  expect(promptResultFailure({ stopReason: "refusal", _meta: { "codebuddy.ai/errorMessage": JSON.stringify({ data: { category: "auth" }, message: "private detail" }) } })).toBe("needs_login");
+});
 
 const collector = () => {
   const events = [];
@@ -60,7 +68,7 @@ const collector = () => {
   };
 };
 
-const fakeAgentSource = ({ reportPath, secretPath, allowImage, allowEmbedded, hold, requireAuth }) => `#!/usr/bin/env bun
+const fakeAgentSource = ({ reportPath, secretPath, allowImage, allowEmbedded, hold, requireAuth, promptRefusal }) => `#!/usr/bin/env bun
 import * as acp from ${JSON.stringify(sdkHref)};
 import { writeFileSync } from "node:fs";
 
@@ -70,6 +78,7 @@ const allowImage = ${allowImage ? "true" : "false"};
 const allowEmbedded = ${allowEmbedded ? "true" : "false"};
 const hold = ${hold ? "true" : "false"};
 const requireAuth = ${requireAuth ? "true" : "false"};
+const promptRefusal = ${promptRefusal ? JSON.stringify(promptRefusal) : "null"};
 let authenticated = false;
 const report = { initialize: null, newSession: null, permission: null, readError: null, readResult: null, prompt: null, authMethod: null };
 const save = () => writeFileSync(reportPath, JSON.stringify(report));
@@ -128,6 +137,7 @@ acp.agent({ name: "edgeever-fake-agent" })
   .onRequest("session/prompt", async (ctx) => {
     report.prompt = ctx.params.prompt;
     save();
+    if (promptRefusal) return promptRefusal;
     await ctx.client.notify("session/update", {
       sessionId: ctx.params.sessionId,
       update: { sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "thinking" } },
@@ -693,6 +703,32 @@ describe("ACP stdio session", () => {
       const authenticated = await runtime.authenticateAdapter({ id: "antigravity", path: scriptPath, methodId: "browser" });
       expect(authenticated.state).toBe("available");
       expect((await readReport(reportPath)).authMethod).toBe("browser");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  sessionTest("reports a prompt-time authentication refusal instead of an empty reply", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "edgeever-acp-refusal-"));
+    try {
+      const scriptPath = await writeFakeAgent(directory, {
+        reportPath: path.join(directory, "report.json"),
+        secretPath: path.join(directory, "secret.txt"),
+        allowImage: false,
+        allowEmbedded: false,
+        hold: false,
+        promptRefusal: {
+          stopReason: "refusal",
+          _meta: { "codebuddy.ai/errorMessage": JSON.stringify({ code: -32000, message: "Authentication required", data: { category: "auth" } }) },
+        },
+      });
+      const runtime = createAcpHostRuntime();
+      const probed = await runtime.probeAdapter({ id: "antigravity", path: scriptPath });
+      expect(probed.state).toBe("available");
+      const events = collector();
+      const result = await runtime.prompt({ adapterId: "antigravity", path: scriptPath, prompt: "Hello" }, events.emit);
+      expect(await events.waitFor((event) => event.type === "error")).toEqual({ requestId: result.requestId, type: "error", message: "needs_login" });
+      expect(events.events.some((event) => event.type === "done")).toBe(false);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

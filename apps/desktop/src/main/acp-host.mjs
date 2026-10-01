@@ -664,6 +664,18 @@ const promptFailureMessage = (failure) => {
   return failure.detail || "connection_failed";
 };
 
+export function promptResultFailure(result) {
+  if (result?.stopReason !== "refusal") return null;
+  const rawError = result?._meta?.["codebuddy.ai/errorMessage"];
+  if (typeof rawError === "string" && rawError.length <= 4_096) {
+    try {
+      const error = JSON.parse(rawError);
+      if (error?.data?.category === "auth" || isAuthRequiredError(error)) return "needs_login";
+    } catch { /* The agent may return an unstructured refusal. */ }
+  }
+  return "agent_refused";
+}
+
 export function createAcpHostRuntime(options = {}) {
   const spawnImpl = options.spawnImpl ?? nodeSpawn;
   const mkdtempImpl = options.mkdtemp ?? mkdtemp;
@@ -725,6 +737,7 @@ export function createAcpHostRuntime(options = {}) {
         child,
         connection,
         sessionId: session.sessionId,
+        authMethods,
         promptCapabilities: normalizePromptCapabilities(initialized),
         stop: abort,
       };
@@ -847,6 +860,7 @@ export function createAcpHostRuntime(options = {}) {
         ...adapterShell(id),
         state: "available",
         promptCapabilities: connected.promptCapabilities,
+        ...((id === "workbuddyCn" || id === "workbuddyIntl") ? { authMethods: connected.authMethods } : {}),
         ...(resolved.version ? { version: resolved.version, managed: true } : {}),
       };
       latestStatus.set(id, adapter);
@@ -864,7 +878,9 @@ export function createAcpHostRuntime(options = {}) {
       let connected;
       try {
         connected = await withHandshakeTimeout((signal) => connect(resolved.command, `auth-${id}`, () => {}, signal, input.methodId), 5 * 60_000);
-        return { ...adapterShell(id), state: "available", promptCapabilities: connected.promptCapabilities, ...(resolved.version ? { version: resolved.version, managed: true } : {}) };
+        const adapter = { ...adapterShell(id), state: "available", promptCapabilities: connected.promptCapabilities, ...((id === "workbuddyCn" || id === "workbuddyIntl") ? { authMethods: connected.authMethods } : {}), ...(resolved.version ? { version: resolved.version, managed: true } : {}) };
+        latestStatus.set(id, adapter);
+        return adapter;
       } catch (error) {
         return { ...adapterShell(id), ...failureFields(classifyAcpFailure(error)), ...(isAuthRequiredError(error) ? { authMethods: error.authMethods ?? [] } : {}), ...(resolved.version ? { version: resolved.version, managed: true } : {}) };
       } finally {
@@ -941,11 +957,22 @@ export function createAcpHostRuntime(options = {}) {
         void removeAcpWorkspace(session.cwd, rmImpl);
         void session.mcpBridge?.close();
       };
-      void connected.connection.prompt({ sessionId: connected.sessionId, prompt: content.blocks }).then(() => {
-        finish({ requestId, type: "done" });
+      void connected.connection.prompt({ sessionId: connected.sessionId, prompt: content.blocks }).then((result) => {
+        if (session.cancelled) return finish({ requestId, type: "done" });
+        const failure = promptResultFailure(result);
+        if (failure === "needs_login") {
+          latestStatus.set(input.adapterId, { ...adapterShell(input.adapterId), state: "needs_login", authMethods: connected.authMethods });
+        }
+        finish(failure ? { requestId, type: "error", message: failure } : { requestId, type: "done" });
       }).catch((error) => {
         if (session.cancelled) finish({ requestId, type: "done" });
-        else finish({ requestId, type: "error", message: promptFailureMessage(classifyAcpFailure(error)) });
+        else {
+          const failure = classifyAcpFailure(error);
+          if (failure.state === "needs_login") {
+            latestStatus.set(input.adapterId, { ...adapterShell(input.adapterId), state: "needs_login", authMethods: connected.authMethods });
+          }
+          finish({ requestId, type: "error", message: promptFailureMessage(failure) });
+        }
       });
       return { requestId, rejectedAttachments: content.rejectedAttachments };
     },
