@@ -771,9 +771,9 @@ html.dark .edgeever-mobile-tiptap-content a:hover {
 
 .edgeever-mobile-tiptap-content .edgeever-mermaid-svg svg {
   display: block;
-  width: auto;
+  width: var(--mermaid-display-width, auto);
   max-width: none;
-  height: auto;
+  height: var(--mermaid-display-height, auto);
   max-height: none;
   flex: none;
 }

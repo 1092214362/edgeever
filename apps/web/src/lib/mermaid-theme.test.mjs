@@ -44,6 +44,7 @@ describe("official Mermaid theme variables", () => {
     expect(lightVariables.primaryTextColor).toBe(light.fg);
     expect(lightVariables.primaryBorderColor).toBe(light.border);
     expect(lightVariables.lineColor).toBe(light.line);
+    expect(lightVariables.fontSize).toBe("12px");
     expect(dark.bg).toBe("#191e1b");
     expect(dark.surface).toBe("#242b27");
     expect(dark.muted).toBe("#d4d4d8");

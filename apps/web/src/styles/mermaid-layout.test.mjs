@@ -12,7 +12,7 @@ describe("Mermaid editor layout", () => {
       /\.ProseMirror \.edgeever-mermaid-preview\s*{[^}]*max-height: min\(70vh, 44rem\);[^}]*overflow: auto;/s,
     );
     expect(globals).toMatch(
-      /\.ProseMirror \.edgeever-mermaid-svg svg\s*{[^}]*width: auto;[^}]*max-width: none;[^}]*max-height: none;/s,
+      /\.ProseMirror \.edgeever-mermaid-svg svg\s*{[^}]*width: var\(--mermaid-display-width, auto\);[^}]*max-width: none;[^}]*max-height: none;/s,
     );
     expect(globals).toMatch(
       /\.ProseMirror \.edgeever-mermaid-svg text\s*{[^}]*font-family: var\(--editor-body-font-family, var\(--edgeever-system-font-family\)\);[^}]*font-synthesis: weight;/s,
