@@ -1392,7 +1392,7 @@ export const enUS = {
       builtin: "Built-in Agent",
       builtinHint: "Uses the model services and tools configured below.",
       local: "Local Agent (ACP)",
-      localHint: "Connects to a local Agent and automatically grants access to read, edit, and delete notes in the signed-in account. No separate MCP setup is needed. If the Agent already has EdgeEver MCP, check that it uses the same instance and account.",
+      localHint: "Connects to a local Agent via ACP and automatically grants read and write access to notes in the current account.",
       adapter: "Agent",
       codex: "Codex",
       antigravity: "Antigravity",
