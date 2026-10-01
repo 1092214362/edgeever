@@ -338,6 +338,26 @@ struct SettingsView: View {
                         .tint(AppTheme.accent)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                preferenceBlock(
+                    title: env.preferences.t("显示子笔记本中的笔记", en: "Show notes from sub-notebooks", ja: "サブノートブックのノートを表示"),
+                    description: env.preferences.t(
+                        "开启后，打开父笔记本会同时列出所有子笔记本中的笔记；关闭后只列出直接放在该笔记本中的笔记。",
+                        en: "When on, opening a parent notebook also lists notes from all of its sub-notebooks. When off, only notes stored directly in that notebook are listed.",
+                        ja: "オンにすると、親ノートブックを開いたときにすべてのサブノートブックのノートも一覧表示します。オフにすると、そのノートブックに直接保存されたノートのみを表示します。"
+                    ),
+                    showTopBorder: true
+                ) {
+                    Toggle("", isOn: Bindable(env.preferences).showDescendantNotes)
+                        .labelsHidden()
+                        .tint(AppTheme.accent)
+                        .accessibilityLabel(env.preferences.t(
+                            "是否在父笔记本中显示子笔记本中的笔记",
+                            en: "Show notes from sub-notebooks in parent notebooks",
+                            ja: "親ノートブックにサブノートブックのノートを表示する"
+                        ))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 // List density lives in list-options sheet (Android NotesActionsModal), not here.
             }
         }
