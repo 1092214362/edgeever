@@ -25,6 +25,14 @@ import {
   type StoredImageFailure,
 } from "./image-clip";
 import {
+  githubRepoFactsFromSource,
+  githubRepoNoteMarkdown,
+  githubRepoNoteTitle,
+  githubRepoTarget,
+  type GithubRepoFacts,
+  type GithubRepoPageSource,
+} from "./github-repo";
+import {
   selectionNoteMarkdown,
   selectionNoteTitle,
 } from "./selection-clip";
@@ -59,6 +67,7 @@ type PendingImageSave = {
 const IMAGE_MENU_ID = "save-image";
 const SELECTION_MENU_ID = "save-selection";
 const TWEET_MENU_ID = "save-tweet";
+const GITHUB_REPO_MENU_ID = "save-github-repo";
 const PENDING_IMAGE_SAVE_KEY = "pendingImageSave";
 const IMAGE_SAVE_WINDOW_KEY = "imageSaveWindowId";
 const PENDING_TWEET_KEY = "pendingTweetPermission";
@@ -69,6 +78,10 @@ const TWEET_DOCUMENT_PATTERNS = [
   "https://twitter.com/*",
   "https://www.twitter.com/*",
   "https://mobile.twitter.com/*",
+];
+const GITHUB_DOCUMENT_PATTERNS = [
+  "https://github.com/*",
+  "https://www.github.com/*",
 ];
 
 const toMarkdown = (page: CapturedPage) => {
@@ -117,6 +130,32 @@ const createMemo = async (settings: ExtensionSettings, page: CapturedPage) => {
       notebookId: await notebookForClip(settings),
       title: page.title,
       contentMarkdown: toMarkdown(page),
+      tags: ["web-clip"],
+    }),
+  });
+};
+
+const createGithubRepoMemo = async (settings: ExtensionSettings, facts: GithubRepoFacts) => {
+  await edgeEverRequest(settings, "/api/v1/memos", {
+    method: "POST",
+    body: JSON.stringify({
+      notebookId: await notebookForClip(settings),
+      title: githubRepoNoteTitle(facts.owner, facts.name),
+      contentMarkdown: githubRepoNoteMarkdown({
+        canonicalUrl: facts.canonicalUrl,
+        intro: facts.intro,
+        homepage: facts.homepage,
+        language: facts.language,
+        license: facts.license,
+        topics: facts.topics,
+        capturedAt: new Date().toISOString(),
+        sourceLabel: t("sourceLabel"),
+        capturedAtLabel: t("capturedAtLabel"),
+        homepageLabel: t("githubRepoHomepageLabel"),
+        languageLabel: t("githubRepoLanguageLabel"),
+        licenseLabel: t("githubRepoLicenseLabel"),
+        topicsLabel: t("githubRepoTopicsLabel"),
+      }),
       tags: ["web-clip"],
     }),
   });
@@ -356,6 +395,7 @@ const openTweetPermissionWindow = async (tabId: number | null) => {
 let pendingCapture: ((page: CapturedPage) => void) | null = null;
 const pendingImageReads = new Map<string, (result: unknown) => void>();
 const pendingTweetReads = new Map<string, (result: unknown) => void>();
+const pendingGithubReads = new Map<string, (result: unknown) => void>();
 let clipQueue = Promise.resolve();
 let completingImageSave = false;
 
@@ -617,6 +657,108 @@ const saveTweetFromMenu = async (
   }
 };
 
+const isGithubRepoSource = (value: unknown): value is GithubRepoPageSource => {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Partial<GithubRepoPageSource>;
+  const strings = (items: unknown): items is string[] =>
+    Array.isArray(items) && items.every((item) => typeof item === "string");
+  return typeof record.pageUrl === "string"
+    && typeof record.openGraphDescription === "string"
+    && strings(record.embeddedJsonChunks)
+    && typeof record.aboutText === "string"
+    && typeof record.homepage === "string"
+    && strings(record.topics)
+    && typeof record.license === "string"
+    && typeof record.language === "string"
+    && strings(record.readmeParagraphs);
+};
+
+const readGithubRepoFromPage = async (tabId: number, frameId: number | null) => {
+  const requestId = crypto.randomUUID();
+  const result = await new Promise<unknown>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pendingGithubReads.delete(requestId);
+      reject(new Error(t("captureTimeout")));
+    }, 10_000);
+    pendingGithubReads.set(requestId, (value) => {
+      clearTimeout(timeout);
+      resolve(value);
+    });
+    const target = scriptTarget(tabId, frameId);
+    const inject = async () => {
+      await chrome.scripting.executeScript({
+        target,
+        func: (value: unknown) => {
+          (globalThis as { __edgeeverGithubClipPayload?: unknown }).__edgeeverGithubClipPayload = value;
+        },
+        args: [{ requestId }],
+      });
+      await chrome.scripting.executeScript({
+        target,
+        files: ["assets/capture-github.js"],
+      });
+    };
+    void inject().catch((error: unknown) => {
+      clearTimeout(timeout);
+      pendingGithubReads.delete(requestId);
+      reject(new Error(describeCaptureError(error)));
+    });
+  });
+  if (!result || typeof result !== "object") return null;
+  const source = (result as { source?: unknown }).source;
+  if (!isGithubRepoSource(source)) return null;
+  return githubRepoFactsFromSource(source);
+};
+
+const describeGithubError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "";
+  if (
+    message === t("completePluginConfiguration")
+    || message === t("instancePermissionRequired")
+    || message === t("noAvailableNotebooks")
+    || message === t("githubRepoNotPage")
+    || message === t("githubRepoUnreadable")
+    || message === t("captureTimeout")
+    || message === t("pageAccessDenied")
+  ) {
+    return message;
+  }
+  const captureScriptPrefix = t("captureScriptFailed", "\u0000").split("\u0000")[0] ?? "";
+  if (captureScriptPrefix && message.startsWith(captureScriptPrefix)) return message;
+  return describeSaveError(error);
+};
+
+const saveGithubRepoFromMenu = async (
+  info: { pageUrl?: string; frameId?: number },
+  tab?: { id?: number; url?: string },
+) => {
+  const tabId = typeof tab?.id === "number" ? tab.id : null;
+  const frameId = typeof info.frameId === "number" ? info.frameId : null;
+  const pageUrl = tab?.url || info.pageUrl || "";
+  try {
+    const settings = await ensureClipperReady();
+    if (!githubRepoTarget(pageUrl)) {
+      await showFeedback(tabId, frameId, t("githubRepoNotPage"), "error");
+      return;
+    }
+    if (!tabId) throw new Error(t("githubRepoUnreadable"));
+    const facts = await readGithubRepoFromPage(tabId, frameId);
+    if (!facts) {
+      await showFeedback(tabId, frameId, t("githubRepoUnreadable"), "error");
+      return;
+    }
+    await showFeedback(tabId, frameId, t("savingGithubRepo"), "success");
+    await createGithubRepoMemo(settings, facts);
+    await showFeedback(tabId, frameId, t("githubRepoSaved"), "success");
+  } catch (error) {
+    const message = describeGithubError(error);
+    if (message === t("completePluginConfiguration") || message === t("instancePermissionRequired")) {
+      await chrome.runtime.openOptionsPage();
+    }
+    await showFeedback(tabId, frameId, message, "error");
+  }
+};
+
 const isCapturedPage = (value: unknown): value is CapturedPage => {
   if (!value || typeof value !== "object") return false;
   const record = value as Partial<CapturedPage>;
@@ -728,8 +870,11 @@ const registerClipMenus = () => {
   // Chrome and Firefox fold an extension into a submenu when more than one of
   // its items is visible. These contexts stay disjoint so each command remains
   // on the top-level menu: a photo saves the image, selected words save the
-  // passage, and the rest of an X post saves the post. Recreate from scratch
-  // so a previous registration cannot keep an overlapping item.
+  // passage, the rest of an X post saves the post, and a GitHub repository
+  // page saves the repository.
+  // Link context is omitted because a linked image would otherwise show both
+  // commands. Recreate from scratch so a previous registration cannot keep an
+  // overlapping item.
   chrome.contextMenus.removeAll(() => {
     void chrome.runtime.lastError;
     createClipMenus();
@@ -761,6 +906,14 @@ const createClipMenus = () => {
   }, () => {
     void chrome.runtime.lastError;
   });
+  chrome.contextMenus.create({
+    id: GITHUB_REPO_MENU_ID,
+    title: t("saveGithubRepoToEdgeEver"),
+    contexts: ["page"],
+    documentUrlPatterns: GITHUB_DOCUMENT_PATTERNS,
+  }, () => {
+    void chrome.runtime.lastError;
+  });
 };
 
 chrome.runtime.onInstalled.addListener(registerClipMenus);
@@ -777,6 +930,10 @@ chrome.contextMenus.onClicked.addListener((info: { menuItemId?: string | number;
   }
   if (info.menuItemId === TWEET_MENU_ID) {
     void enqueueClip(() => saveTweetFromMenu(info, tab));
+    return;
+  }
+  if (info.menuItemId === GITHUB_REPO_MENU_ID) {
+    void enqueueClip(() => saveGithubRepoFromMenu(info, tab));
   }
 });
 
@@ -807,6 +964,12 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
   if (message.type === "pageTweetRead" && message.requestId) {
     pendingTweetReads.get(message.requestId)?.(message.result);
     pendingTweetReads.delete(message.requestId);
+    return false;
+  }
+
+  if (message.type === "pageGithubRead" && message.requestId) {
+    pendingGithubReads.get(message.requestId)?.(message.result);
+    pendingGithubReads.delete(message.requestId);
     return false;
   }
 
@@ -883,6 +1046,21 @@ chrome.runtime.onMessage.addListener((message: { type?: string; page?: CapturedP
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab?.id) {
           throw new Error(t("currentPageNotFound"));
+        }
+
+        const pageUrl = tab.url || "";
+        if (githubRepoTarget(pageUrl)) {
+          let facts: GithubRepoFacts | null = null;
+          try {
+            facts = await readGithubRepoFromPage(tab.id, null);
+          } catch {
+            // The repository card is unavailable. Save the page as an article.
+          }
+          if (facts) {
+            await createGithubRepoMemo(settings, facts);
+            sendResponse({ ok: true });
+            return;
+          }
         }
 
         const page = await readCapturedPage(tab.id, null, "page");

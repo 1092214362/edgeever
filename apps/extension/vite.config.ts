@@ -33,6 +33,7 @@ export default defineConfig({
         capture: fileURLToPath(new URL("./src/capture.ts", import.meta.url)),
         "capture-image": fileURLToPath(new URL("./src/capture-image.ts", import.meta.url)),
         "capture-tweet": fileURLToPath(new URL("./src/capture-tweet.ts", import.meta.url)),
+        "capture-github": fileURLToPath(new URL("./src/capture-github.ts", import.meta.url)),
         "tweet-target": fileURLToPath(new URL("./src/tweet-target.ts", import.meta.url)),
         "tweet-save": fileURLToPath(new URL("./tweet-save.html", import.meta.url)),
       },

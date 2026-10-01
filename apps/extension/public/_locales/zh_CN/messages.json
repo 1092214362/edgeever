@@ -12,7 +12,7 @@
     "message": "网页剪藏"
   },
   "popupDescription": {
-    "message": "剪藏当前网页或选中内容。选中文字后右键可以保存这段文字；在图片上右键可以保存图片；在 X 上右键可以保存这条推文。"
+    "message": "剪藏当前网页或选中内容。选中文字后右键可以保存这段文字；在图片上右键可以保存图片；在 X 上右键可以保存这条推文；在 GitHub 仓库页上右键可以保存仓库地址和简介。"
   },
   "saveCurrentPage": {
     "message": "剪藏当前网页"
@@ -320,5 +320,35 @@
   },
   "tweetTimeLabel": {
     "message": "时间"
+  },
+  "saveGithubRepoToEdgeEver": {
+    "message": "保存这个仓库到 EdgeEver"
+  },
+  "githubRepoSaveHint": {
+    "message": "在 GitHub 仓库主页或代码目录上，右键页面空白、简介或 README 正文，选择“保存这个仓库到 EdgeEver”。仓库地址和简介会存成一条新笔记，放进上面选择的默认笔记本。Issue、讨论和单个文件页不会保存。"
+  },
+  "savingGithubRepo": {
+    "message": "正在保存这个仓库……"
+  },
+  "githubRepoSaved": {
+    "message": "已把这个仓库存成一条笔记。"
+  },
+  "githubRepoNotPage": {
+    "message": "当前不是 GitHub 仓库主页或代码目录，没有保存。"
+  },
+  "githubRepoUnreadable": {
+    "message": "没有读到这个仓库的信息，没有保存。"
+  },
+  "githubRepoHomepageLabel": {
+    "message": "主页"
+  },
+  "githubRepoLanguageLabel": {
+    "message": "语言"
+  },
+  "githubRepoLicenseLabel": {
+    "message": "许可证"
+  },
+  "githubRepoTopicsLabel": {
+    "message": "话题"
   }
 }

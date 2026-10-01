@@ -12,7 +12,7 @@
     "message": "Web Clipper"
   },
   "popupDescription": {
-    "message": "Clip the current page or selection. Right-click selected text to save that passage, right-click an image to save it, or right-click a post on X to save that post."
+    "message": "Clip the current page or selection. Right-click selected text to save that passage, right-click an image to save it, right-click a post on X to save that post, or right-click a GitHub repository page to save its address and description."
   },
   "saveCurrentPage": {
     "message": "Clip current page"
@@ -320,5 +320,35 @@
   },
   "tweetTimeLabel": {
     "message": "Time"
+  },
+  "saveGithubRepoToEdgeEver": {
+    "message": "Save this repository to EdgeEver"
+  },
+  "githubRepoSaveHint": {
+    "message": "On a GitHub repository page or code tree, right-click the page background, the description, or the README text and choose “Save this repository to EdgeEver”. The address and description are saved as a new note in the default notebook selected above. Issue, discussion, and single-file pages are left unsaved."
+  },
+  "savingGithubRepo": {
+    "message": "Saving this repository…"
+  },
+  "githubRepoSaved": {
+    "message": "Saved this repository as a note."
+  },
+  "githubRepoNotPage": {
+    "message": "This is not a GitHub repository page or code tree, so nothing was saved."
+  },
+  "githubRepoUnreadable": {
+    "message": "The repository details could not be read, so nothing was saved."
+  },
+  "githubRepoHomepageLabel": {
+    "message": "Homepage"
+  },
+  "githubRepoLanguageLabel": {
+    "message": "Language"
+  },
+  "githubRepoLicenseLabel": {
+    "message": "License"
+  },
+  "githubRepoTopicsLabel": {
+    "message": "Topics"
   }
 }

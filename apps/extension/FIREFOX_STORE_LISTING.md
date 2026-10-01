@@ -3,7 +3,7 @@
 ## Listing
 
 - Name: EdgeEver Web Clipper
-- Summary: Save a webpage, selected text, an image, or an X post to your EdgeEver instance.
+- Summary: Save a webpage, selected text, an image, an X post, or a GitHub repository to your EdgeEver instance.
 - Category: Bookmarks
 - Homepage: https://edgeever.org
 - Support: https://github.com/tianma-if/edgeever/issues
@@ -11,18 +11,19 @@
 
 ## Description
 
-EdgeEver Web Clipper saves the current webpage, selected text, a right-clicked image, or an X post directly to the self-hosted EdgeEver instance you configure.
+EdgeEver Web Clipper saves the current webpage, selected text, a right-clicked image, an X post, or a GitHub repository's address and description directly to the self-hosted EdgeEver instance you configure.
 
 - Extract readable article content, or right-click selected text and save that passage only.
 - Right-click an image and save that image file as a new note. From Google Search, the note records Google Search and the keyword.
 - On X, right-click the post text and save the full post, including text behind Show more, plus photos already shown.
+- On a GitHub repository page or code tree, right-click the page background, the description, or the README text and save the repository address and description.
 - These commands stay on the top-level right-click menu.
 - Convert captured HTML to Markdown locally.
 - Choose a default EdgeEver notebook.
 - Send content directly to your instance without an EdgeEver-operated relay.
 - No advertising, analytics, tracking, or telemetry.
 
-Before using the extension, enter your EdgeEver instance URL and API token in the extension settings. The extension reads and sends page content only after you click **Clip current page**, **Save selection to EdgeEver**, **Save image to EdgeEver**, or **Save this post to EdgeEver**.
+Before using the extension, enter your EdgeEver instance URL and API token in the extension settings. The extension reads and sends page content only after you click **Clip current page**, **Save selection to EdgeEver**, **Save image to EdgeEver**, **Save this post to EdgeEver**, or **Save this repository to EdgeEver**.
 
 ## Data collection and transmission
 
@@ -42,7 +43,8 @@ The project maintainers do not receive or retain this data. Instance settings ar
 6. On a normal webpage, select a passage, right-click it, choose **Save selection to EdgeEver**, and verify the note contains that passage and the page link.
 7. On a normal webpage, right-click an image, choose **Save image to EdgeEver**, and verify the new note contains the image.
 8. Open one X post page, right-click the post text (not a photo), choose **Save this post to EdgeEver**, and verify the note contains the post text and the post link.
-9. Verify the created notes in the review EdgeEver instance.
+9. Open one GitHub repository page, right-click the description or README text, choose **Save this repository to EdgeEver**, and verify the note contains the repository address and description.
+10. Verify the created notes in the review EdgeEver instance.
 
 Restricted browser pages, extension stores, built-in PDF viewers, and other privileged pages cannot be captured.
 
