@@ -1439,11 +1439,12 @@ export const zhCN = {
       updateFailed: "自动更新失败，正在继续使用原版本。",
       authenticating: "正在登录…",
       authenticateWith: "使用 {{method}} 登录",
+      authAvailableHint: "此 Agent 提供 ACP 登录方式。若发消息时提示需要登录，可在这里完成认证。",
       loginUnavailable: "这个 ACP 连接组件要求认证，但没有提供 ACP 登录入口。请在对应代理中完成认证后重试连接。",
       autoUpdated: "自动更新",
       probe: "检查连接",
       probing: "正在检查…",
-      probeHint: "会临时建立会话并立即关闭，不会发送你的笔记。",
+      probeHint: "会临时建立会话并立即关闭，不会发送你的笔记；此检查不验证模型请求是否已登录。",
       notProbed: "尚未检查",
       invalidPath: "请填写可执行文件的绝对路径。",
       states: {

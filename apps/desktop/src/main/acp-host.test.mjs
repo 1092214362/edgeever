@@ -68,7 +68,7 @@ const collector = () => {
   };
 };
 
-const fakeAgentSource = ({ reportPath, secretPath, allowImage, allowEmbedded, hold, requireAuth, promptRefusal }) => `#!/usr/bin/env bun
+const fakeAgentSource = ({ reportPath, secretPath, allowImage, allowEmbedded, hold, requireAuth, advertiseAuth, promptRefusal }) => `#!/usr/bin/env bun
 import * as acp from ${JSON.stringify(sdkHref)};
 import { writeFileSync } from "node:fs";
 
@@ -78,6 +78,7 @@ const allowImage = ${allowImage ? "true" : "false"};
 const allowEmbedded = ${allowEmbedded ? "true" : "false"};
 const hold = ${hold ? "true" : "false"};
 const requireAuth = ${requireAuth ? "true" : "false"};
+const advertiseAuth = ${advertiseAuth ? "true" : "false"};
 const promptRefusal = ${promptRefusal ? JSON.stringify(promptRefusal) : "null"};
 let authenticated = false;
 const report = { initialize: null, newSession: null, permission: null, readError: null, readResult: null, prompt: null, authMethod: null };
@@ -119,7 +120,7 @@ acp.agent({ name: "edgeever-fake-agent" })
     return {
       protocolVersion: ctx.params.protocolVersion,
       agentCapabilities: { promptCapabilities: { image: allowImage, embeddedContext: allowEmbedded } },
-      authMethods: requireAuth ? [{ id: "browser", name: "Browser" }] : [],
+      authMethods: requireAuth || advertiseAuth ? [{ id: "browser", name: "Browser" }] : [],
     };
   })
   .onRequest("authenticate", (ctx) => {
@@ -703,6 +704,26 @@ describe("ACP stdio session", () => {
       const authenticated = await runtime.authenticateAdapter({ id: "antigravity", path: scriptPath, methodId: "browser" });
       expect(authenticated.state).toBe("available");
       expect((await readReport(reportPath)).authMethod).toBe("browser");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  sessionTest("keeps ACP login methods visible when another agent can already create a session", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "edgeever-acp-optional-auth-"));
+    try {
+      const scriptPath = await writeFakeAgent(directory, {
+        reportPath: path.join(directory, "report.json"),
+        secretPath: path.join(directory, "secret.txt"),
+        allowImage: false,
+        allowEmbedded: false,
+        hold: false,
+        advertiseAuth: true,
+      });
+      const runtime = createAcpHostRuntime();
+      const probed = await runtime.probeAdapter({ id: "antigravity", path: scriptPath });
+      expect(probed.state).toBe("available");
+      expect(probed.authMethods).toEqual([{ id: "browser", name: "Browser" }]);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

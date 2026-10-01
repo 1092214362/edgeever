@@ -1439,11 +1439,12 @@ export const ja = {
       updateFailed: "自動更新に失敗しました。以前のバージョンを継続して使用します。",
       authenticating: "ログイン中…",
       authenticateWith: "{{method}} でログイン",
+      authAvailableHint: "この Agent は ACP ログインに対応しています。メッセージ送信時にログインを求められた場合は、ここで認証してください。",
       loginUnavailable: "この ACP 接続コンポーネントは認証が必要ですが、ACP のログイン方法を提供していません。エージェント側で認証してから再確認してください。",
       autoUpdated: "自動更新",
       probe: "接続を確認",
       probing: "確認中…",
-      probeHint: "一時的なセッションを開いてすぐ閉じます。ノートは送信しません。",
+      probeHint: "一時的なセッションを開いてすぐ閉じます。ノートは送信されず、モデルへのログイン状態も確認しません。",
       notProbed: "未確認",
       invalidPath: "実行ファイルの絶対パスを入力してください。",
       states: {

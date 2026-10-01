@@ -15,3 +15,9 @@ test("a newly installed managed connector takes priority over an older probe", (
   const previous = { id: "antigravity", label: "Antigravity", state: "failed", version: "1.2.1", managed: true };
   expect(displayedDesktopAcpAdapter({ id: "antigravity", path: "", listed: [current], probed: previous })).toBe(current);
 });
+
+test("a prompt-time login failure takes priority over an earlier successful session probe", () => {
+  const current = { id: "grokBuild", label: "Grok Build", state: "needs_login", authMethods: [{ id: "browser", name: "Browser" }] };
+  const earlierProbe = { id: "grokBuild", label: "Grok Build", state: "available" };
+  expect(displayedDesktopAcpAdapter({ id: "grokBuild", path: "", listed: [current], probed: earlierProbe })).toBe(current);
+});

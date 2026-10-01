@@ -1439,11 +1439,12 @@ export const enUS = {
       updateFailed: "Automatic update failed. The previous version remains in use.",
       authenticating: "Signing in…",
       authenticateWith: "Sign in with {{method}}",
+      authAvailableHint: "This agent offers ACP sign-in. If sending a message requires login, complete it here.",
       loginUnavailable: "This ACP connector requires authentication but provides no ACP sign-in method. Authenticate in the agent, then check the connection again.",
       autoUpdated: "Auto-updated",
       probe: "Check connection",
       probing: "Checking…",
-      probeHint: "Opens a temporary session and closes it. Your notes are not sent.",
+      probeHint: "Opens and closes a temporary session without sending your notes. This check does not verify model sign-in.",
       notProbed: "Not checked yet",
       invalidPath: "Enter an absolute path to an executable file.",
       states: {

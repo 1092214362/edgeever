@@ -33,6 +33,7 @@ export const displayedDesktopAcpAdapter = ({
   const checked = probed?.id === id ? probed : undefined;
   if (id === "antigravity" && path.trim()) return checked;
   if (current?.state === "installing" || (current?.managed && (!checked?.managed || current.version !== checked.version))) return current;
+  if (current?.state === "needs_login" && checked?.state === "available") return current;
   return checked ?? current;
 };
 

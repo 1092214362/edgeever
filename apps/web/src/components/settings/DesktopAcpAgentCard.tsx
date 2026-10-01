@@ -126,15 +126,15 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
     installError,
     state: shown?.state,
   });
-  const hasDetails = Boolean(
-    shown?.state === "not_installed" ||
-    shown?.state === "needs_login" ||
-    (isWorkBuddy && shown?.state === "available" && Boolean(shown.authMethods?.length)) ||
-    shown?.updateError
-  );
   const authMethods = shown?.authMethods?.filter((method) => (
     adapterId === "workbuddyCn" ? method.id !== "external" : adapterId === "workbuddyIntl" ? method.id !== "internal" : true
   )) ?? [];
+  const hasDetails = Boolean(
+    shown?.state === "not_installed" ||
+    shown?.state === "needs_login" ||
+    (shown?.state === "available" && authMethods.length > 0) ||
+    shown?.updateError
+  );
 
   const selectAdapter = (id: DesktopAcpAdapterId) => {
     setAdapterId(id);
@@ -369,7 +369,10 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
                   {(shown?.state === "needs_login" || shown?.state === "available") && isWorkBuddy ? (
                     <p className="text-xs leading-relaxed text-slate-600">{t(adapterId === "workbuddyCn" ? "aiAssistant.agentSource.workbuddyCnLoginHint" : "aiAssistant.agentSource.workbuddyIntlLoginHint")}</p>
                   ) : null}
-                  {(shown?.state === "needs_login" || (isWorkBuddy && shown?.state === "available")) && authMethods.length ? (
+                  {shown?.state === "available" && !isWorkBuddy && authMethods.length ? (
+                    <p className="text-xs leading-relaxed text-slate-600">{t("aiAssistant.agentSource.authAvailableHint")}</p>
+                  ) : null}
+                  {(shown?.state === "needs_login" || shown?.state === "available") && authMethods.length ? (
                     <div className="flex flex-wrap gap-2 pt-0.5">
                       {authMethods.map((method) => (
                         <Button key={method.id} type="button" variant="outline" size="sm" className="h-8 bg-card text-xs font-normal" disabled={authenticating} onClick={() => void authenticate(method.id)}>
