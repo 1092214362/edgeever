@@ -13,7 +13,10 @@ import { startAcpMcpBridge } from "./acp-mcp-bridge.mjs";
 
 const ADAPTERS = {
   codex: { id: "codex", label: "Codex" },
+  claudeCode: { id: "claudeCode", label: "Claude Code" },
   antigravity: { id: "antigravity", label: "Antigravity" },
+  openClaw: { id: "openClaw", label: "OpenClaw" },
+  hermesAgent: { id: "hermesAgent", label: "Hermes Agent" },
   grokBuild: { id: "grokBuild", label: "Grok Build" },
   deepseekHarness: { id: "deepseekHarness", label: "DeepSeek Harness" },
   piAgent: { id: "piAgent", label: "pi agent" },
@@ -125,7 +128,10 @@ export function resolveAcpCommand(input, deps = {}) {
   const id = input?.id;
   if (!Object.hasOwn(ADAPTERS, id)) return { ok: false, state: "failed", detail: "unknown_adapter" };
   if (id === "codex") return resolveCodex(input?.path, resolved);
+  if (id === "claudeCode") return resolveAgentCli("claude-agent-acp", [], resolved);
   if (id === "antigravity") return resolveAntigravity(input?.path, resolved);
+  if (id === "openClaw") return resolveAgentCli("openclaw", ["acp"], resolved);
+  if (id === "hermesAgent") return resolveAgentCli("hermes", ["acp"], resolved);
   if (id === "grokBuild") return resolveGrok(input?.path, resolved);
   if (id === "deepseekHarness") return resolveLocalAcpCli("dsh", ["--profile", "acp"], resolved);
   if (id === "piAgent") {
@@ -157,6 +163,14 @@ function resolveLocalAcpCli(name, args, deps) {
   return { ok: true, command: /\.[cm]?js$/i.test(executable)
     ? { command: deps.executablePath, args: [executable, ...args], env: { ELECTRON_RUN_AS_NODE: "1" } }
     : { command: executable, args } };
+}
+
+function resolveAgentCli(name, args, deps) {
+  const result = resolveLocalAcpCli(name, args, deps);
+  if (!result.ok || deps.platform === "win32") return result;
+  // Desktop launchers may omit the directories containing node or agent shims.
+  const paths = [path.join(deps.home, ".local", "bin"), ...(deps.platform === "darwin" ? ["/opt/homebrew/bin", "/usr/local/bin"] : []), deps.pathEnv];
+  return { ...result, command: { ...result.command, env: { ...result.command.env, PATH: paths.join(":") } } };
 }
 
 function withPiPath(command, deps) {
@@ -738,7 +752,7 @@ export function createAcpHostRuntime(options = {}) {
 
   return {
     listAdapters() {
-      return ["codex", "antigravity", "grokBuild", "deepseekHarness", "piAgent", "workbuddyCn", "workbuddyIntl"].map((id) => {
+      return ["codex", "claudeCode", "antigravity", "openClaw", "hermesAgent", "grokBuild", "deepseekHarness", "piAgent", "workbuddyCn", "workbuddyIntl"].map((id) => {
         if (installingIds.has(id)) return { ...adapterShell(id), state: "installing" };
         const resolved = resolveCommand({ id });
         return resolved.ok
@@ -870,7 +884,8 @@ export function createAcpHostRuntime(options = {}) {
       let connected;
       let mcpBridge;
       try {
-        if (options.mcpAccess) {
+        // OpenClaw's ACP Gateway bridge rejects session-scoped MCP servers.
+        if (options.mcpAccess && input.adapterId !== "openClaw") {
           const access = await options.mcpAccess();
           mcpBridge = await (options.startMcpBridge ?? startAcpMcpBridge)(access);
         }

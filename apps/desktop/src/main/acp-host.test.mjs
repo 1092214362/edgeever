@@ -266,6 +266,23 @@ describe("ACP command allow-list", () => {
     }
   });
 
+  test("resolves the three additional ACP entry points from installed commands", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "edgeever-acp-extra-"));
+    try {
+      for (const name of ["claude-agent-acp", "openclaw", "hermes"]) {
+        await writeFile(path.join(directory, name), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      }
+      const deps = { platform: "darwin", pathEnv: directory, home: directory };
+      expect(resolveAcpCommand({ id: "claudeCode" }, deps).command).toMatchObject({ command: realpathSync(path.join(directory, "claude-agent-acp")), args: [] });
+      expect(resolveAcpCommand({ id: "openClaw" }, deps).command).toMatchObject({ command: realpathSync(path.join(directory, "openclaw")), args: ["acp"] });
+      expect(resolveAcpCommand({ id: "hermesAgent" }, deps).command).toMatchObject({ command: realpathSync(path.join(directory, "hermes")), args: ["acp"] });
+      expect(resolveAcpCommand({ id: "openClaw" }, deps).command.env.PATH).toContain(path.join(directory, ".local", "bin"));
+      expect(resolveAcpCommand({ id: "openClaw" }, { ...deps, pathEnv: "" }).state).toBe("not_installed");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test("automatically installs only a detected agent missing its ACP connector", async () => {
     let installed = false;
     let installs = 0;
@@ -618,6 +635,35 @@ describe("ACP stdio session", () => {
       expect(servers[0].env).toContainEqual({ name: "EDGEEVER_TOKEN", value: "temporary-secret" });
       expect(JSON.stringify(servers)).not.toContain("login-secret");
       expect(closed).toBe(true);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  sessionTest("keeps OpenClaw ACP sessions free of unsupported session MCP servers", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "edgeever-openclaw-acp-"));
+    const reportPath = path.join(directory, "report.json");
+    try {
+      const scriptPath = await writeFakeAgent(directory, {
+        reportPath,
+        secretPath: path.join(directory, "secret.txt"),
+        allowImage: false,
+        allowEmbedded: false,
+        hold: false,
+      });
+      const executable = path.join(directory, "openclaw");
+      await writeFile(executable, await readFile(scriptPath), { mode: 0o755 });
+      const runtime = createAcpHostRuntime({
+        pathEnv: directory,
+        home: directory,
+        mcpAccess: () => { throw new Error("OpenClaw must use Gateway MCP configuration"); },
+      });
+      const events = collector();
+      await runtime.prompt({ adapterId: "openClaw", prompt: "Hello" }, events.emit);
+      await events.waitFor((event) => event.type === "done");
+      const report = await readReport(reportPath);
+      expect(report.newSession.mcpServers).toEqual([]);
+      expect(report.prompt).toEqual([{ type: "text", text: "Hello" }]);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
