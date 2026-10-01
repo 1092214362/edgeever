@@ -85,6 +85,7 @@ import { cn } from "@/lib/utils";
 import { CompanionQuestionForm } from "../CompanionQuestionForm";
 import { AiSidebarMessage } from "./AiSidebarMessage";
 import { AiSidebarLocalProcess } from "./AiSidebarLocalProcess";
+import { BuiltinAgentStatus } from "./BuiltinAgentStatus";
 import { InfographicSidebarSession, type InfographicSidebarController } from "./InfographicSidebarSession";
 
 const SIDEBAR_DEFAULT_WIDTH = 380;
@@ -1539,9 +1540,8 @@ function AiSidebarSession({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        ) : null}
+        ) : <BuiltinAgentStatus />}
         <Button
-          className={source === "local" ? undefined : "ml-auto"}
           type="button"
           size="icon-sm"
           variant="ghost"
