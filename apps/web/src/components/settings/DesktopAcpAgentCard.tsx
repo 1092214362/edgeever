@@ -51,6 +51,7 @@ const statusKey = (adapter: DesktopAcpAdapter | undefined, probing: boolean) => 
   if (adapter.id === "deepseekHarness" && adapter.state === "not_installed") return "aiAssistant.agentSource.deepseekHarnessNotFound";
   if (adapter.id === "piAgent" && adapter.state === "not_installed") return adapter.detail === "adapter_missing" ? "aiAssistant.agentSource.piAgentAdapterMissing" : "aiAssistant.agentSource.piAgentNotFound";
   if ((adapter.id === "workbuddyCn" || adapter.id === "workbuddyIntl") && adapter.state === "not_installed") return "aiAssistant.agentSource.workbuddyNotFound";
+  if ((adapter.id === "workbuddyCn" || adapter.id === "workbuddyIntl") && adapter.state === "available") return "aiAssistant.agentSource.workbuddyConnectionReady";
   return `aiAssistant.agentSource.states.${adapter.state}`;
 };
 
@@ -58,15 +59,18 @@ const getStatusTone = ({
   probing,
   installing,
   installError,
+  handshakeOnly,
   state,
 }: {
   probing: boolean;
   installing: boolean;
   installError: boolean;
+  handshakeOnly: boolean;
   state?: DesktopAcpAdapter["state"];
 }) => {
   if (installing || probing) return "loading";
   if (installError || state === "failed") return "error";
+  if (handshakeOnly) return "neutral";
   if (state === "available") return "success";
   if (state === "needs_login" || state === "not_installed") return "warning";
   return "neutral";
@@ -124,6 +128,7 @@ const DesktopAcpAgentCardBody = ({ bridge }: { bridge: boolean }) => {
     probing,
     installing,
     installError,
+    handshakeOnly: isWorkBuddy && shown?.state === "available",
     state: shown?.state,
   });
   const authMethods = shown?.authMethods?.filter((method) => (
