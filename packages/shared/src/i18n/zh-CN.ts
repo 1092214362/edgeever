@@ -18,6 +18,10 @@ export const zhCN = {
     selectTemplate: "选择模板", simpleList: "横向步骤", numberedSteps: "编号步骤", zigzagSteps: "交错流程", verticalList: "纵向清单", gridList: "网格清单", pyramidList: "金字塔清单", timeline: "时间线", timelineChecklist: "里程碑时间线", roadmap: "纵向路线图", comparison: "双栏对比图", compactComparison: "紧凑对比图", arrowComparison: "方向对比图", quadrant: "四象限图", circularQuadrant: "圆形四象限", themeDefault: "默认", themeDark: "深色",
     stepsGroup: "流程型", listGroup: "列表型", timelineGroup: "时间与路线", comparisonGroup: "对比型", quadrantGroup: "四象限型",
     officialTemplates: "AntV 官方模板（{{count}}）", searchTemplates: "搜索模板 ID", templateCategory: "模板分类", chooseCategory: "这段内容适合哪类信息图？", keepCategory: "保持当前类型", allCategories: "全部分类", chartCategory: "图表型", comparisonCategory: "对比型", hierarchyCategory: "层级型", listCategory: "列表型", quadrantCategory: "四象限型", relationCategory: "关系型", sequenceCategory: "顺序型",
+    galleryTitle: "信息图示例与模板库", gallerySubtitle: "精选常见信息图结构与版式。点击任意示例即可载入并可视化编辑，或在右侧向 AI 描述直接生成。",
+    galleryEmptyHint: "当前画布为空，你可以从精选示例开始体验，或使用 AI 助手一键生成。", galleryExploreOfficial: "浏览官方画廊", galleryUseSample: "载入示例",
+    galleryTemplatesButton: "示例库", gallerySearchPlaceholder: "搜索示例标题或类型…", galleryCategoryAll: "全部",
+    galleryConfirmReplace: "载入新示例将替换当前画布内容，是否继续？",
     sourceHelp: "语法是此信息图的可编辑源文件；预览随更改更新。", readOnly: "只读",
   },
   companion: {

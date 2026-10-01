@@ -18,6 +18,10 @@ export const enUS = {
     selectTemplate: "Choose template", simpleList: "Horizontal steps", numberedSteps: "Numbered steps", zigzagSteps: "Zigzag process", verticalList: "Vertical list", gridList: "Grid list", pyramidList: "Pyramid list", timeline: "Timeline", timelineChecklist: "Milestone timeline", roadmap: "Vertical roadmap", comparison: "Side-by-side comparison", compactComparison: "Compact comparison", arrowComparison: "Directional comparison", quadrant: "Quadrant", circularQuadrant: "Circular quadrant", themeDefault: "Default", themeDark: "Dark",
     stepsGroup: "Process", listGroup: "List", timelineGroup: "Time and roadmap", comparisonGroup: "Comparison", quadrantGroup: "Quadrant",
     officialTemplates: "AntV templates ({{count}})", searchTemplates: "Search template IDs", templateCategory: "Template category", chooseCategory: "Which infographic type fits this content?", keepCategory: "Keep current type", allCategories: "All categories", chartCategory: "Chart", comparisonCategory: "Comparison", hierarchyCategory: "Hierarchy", listCategory: "List", quadrantCategory: "Quadrant", relationCategory: "Relation", sequenceCategory: "Sequence",
+    galleryTitle: "Infographic Examples & Templates", gallerySubtitle: "Curated infographic structures and layouts. Click any example to load and visually edit, or describe what you want to AI on the right.",
+    galleryEmptyHint: "The canvas is currently empty. Choose a curated example to get started, or ask the AI assistant to create one.", galleryExploreOfficial: "Explore Gallery", galleryUseSample: "Load Example",
+    galleryTemplatesButton: "Gallery", gallerySearchPlaceholder: "Search examples or types…", galleryCategoryAll: "All",
+    galleryConfirmReplace: "Loading a new example will replace current canvas content. Continue?",
     sourceHelp: "The syntax is the editable source of this infographic. The preview updates as you edit.", readOnly: "Read only",
   },
   companion: {

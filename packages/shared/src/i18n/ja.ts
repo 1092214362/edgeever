@@ -18,6 +18,10 @@ export const ja = {
     selectTemplate: "テンプレートを選択", simpleList: "横向きの手順", numberedSteps: "番号付き手順", zigzagSteps: "ジグザグ手順", verticalList: "縦向きのリスト", gridList: "グリッドリスト", pyramidList: "ピラミッドリスト", timeline: "タイムライン", timelineChecklist: "マイルストーン", roadmap: "縦型ロードマップ", comparison: "左右比較図", compactComparison: "コンパクト比較図", arrowComparison: "方向比較図", quadrant: "四象限図", circularQuadrant: "円形四象限", themeDefault: "標準", themeDark: "ダーク",
     stepsGroup: "手順", listGroup: "リスト", timelineGroup: "時間とロードマップ", comparisonGroup: "比較", quadrantGroup: "四象限",
     officialTemplates: "AntV テンプレート（{{count}}）", searchTemplates: "テンプレート ID を検索", templateCategory: "テンプレート分類", chooseCategory: "この内容に合う図の種類を選んでください", keepCategory: "現在の種類を維持", allCategories: "すべての分類", chartCategory: "チャート", comparisonCategory: "比較", hierarchyCategory: "階層", listCategory: "リスト", quadrantCategory: "四象限", relationCategory: "関係", sequenceCategory: "順序",
+    galleryTitle: "インフォグラフィックのサンプルとテンプレート", gallerySubtitle: "厳選されたインフォグラフィックの構成とレイアウト。クリックして読み込み、または右側の AI に指示して直接生成できます。",
+    galleryEmptyHint: "現在キャンバスは空です。おすすめのサンプルから始めるか、AI アシスタントで生成してください。", galleryExploreOfficial: "公式ギャラリーを見る", galleryUseSample: "サンプルを読み込む",
+    galleryTemplatesButton: "サンプル集", gallerySearchPlaceholder: "サンプルやタイプを検索…", galleryCategoryAll: "すべて",
+    galleryConfirmReplace: "選択したサンプルで現在の内容が置き換わります。続行しますか？",
     sourceHelp: "構文が編集可能な元データです。変更するとプレビューが更新されます。", readOnly: "読み取り専用",
   },
   companion: {
