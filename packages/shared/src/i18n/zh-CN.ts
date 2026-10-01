@@ -1392,7 +1392,7 @@ export const zhCN = {
       builtin: "内置 Agent",
       builtinHint: "直接调用下方配置的模型服务与工具。",
       local: "本机 Agent (ACP)",
-      localHint: "通过 ACP 连接本机 Agent。支持会话级 MCP 的 Agent 可使用当前账号的笔记。",
+      localHint: "通过 ACP 连接本机 Agent，并自动授予当前账号笔记的读写权限。",
       adapter: "Agent",
       codex: "Codex",
       antigravity: "Antigravity",

@@ -1392,7 +1392,7 @@ export const ja = {
       builtin: "内蔵 Agent",
       builtinHint: "下で設定したモデルサービスとツールを使用します。",
       local: "ローカル Agent (ACP)",
-      localHint: "ACP 経由でローカル Agent に接続します。セッション MCP に対応する Agent は現在のアカウントのノートを利用できます。",
+      localHint: "ACP 経由でローカル Agent に接続し、現在のアカウントのノートに対する読み書き権限を自動で付与します。",
       adapter: "エージェント",
       codex: "Codex",
       antigravity: "Antigravity",

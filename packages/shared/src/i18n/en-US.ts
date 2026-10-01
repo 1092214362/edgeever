@@ -1392,7 +1392,7 @@ export const enUS = {
       builtin: "Built-in Agent",
       builtinHint: "Uses the model services and tools configured below.",
       local: "Local Agent (ACP)",
-      localHint: "Connects to a local Agent via ACP. Agents that accept session MCP can access notes in the current account.",
+      localHint: "Connects to a local Agent via ACP and automatically grants read and write access to notes in the current account.",
       adapter: "Agent",
       codex: "Codex",
       antigravity: "Antigravity",
