@@ -5,9 +5,11 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { Readable, Writable } from "node:stream";
+import { fileURLToPath } from "node:url";
 import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION, RequestError } from "@agentclientprotocol/sdk";
 import { waitForChildProcessSpawn } from "./child-process-start.mjs";
 import { createAcpAdapterManager } from "./acp-adapter-manager.mjs";
+import { startAcpMcpBridge } from "./acp-mcp-bridge.mjs";
 
 const ADAPTERS = {
   codex: { id: "codex", label: "Codex" },
@@ -659,6 +661,17 @@ export function createAcpHostRuntime(options = {}) {
   const updateFailures = new Map();
   const installingIds = new Set();
   const latestStatus = new Map();
+  const mcpScriptPath = options.mcpScriptPath ?? fileURLToPath(new URL("../../../../scripts/edgeever-mcp-stdio.mjs", import.meta.url));
+  const mcpServerFor = (bridge) => ({
+    name: "edgeever-current-workspace",
+    command: options.mcpExecutablePath ?? process.execPath,
+    args: [mcpScriptPath],
+    env: [
+      { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+      { name: "EDGEEVER_URL", value: bridge.url },
+      { name: "EDGEEVER_TOKEN", value: bridge.secret },
+    ],
+  });
 
   const resolveCommand = (input) => {
     if (input?.id === "antigravity" && typeof input.path === "string" && input.path.trim()) return resolveAcpCommand(input, commandDeps);
@@ -668,7 +681,7 @@ export function createAcpHostRuntime(options = {}) {
     return resolveAcpCommand(input, commandDeps);
   };
 
-  const connect = async (command, requestId, emit, signal, authMethodId) => {
+  const connect = async (command, requestId, emit, signal, authMethodId, mcpServers = []) => {
     const cwd = await createAcpWorkspace(mkdtempImpl, options.tmpRoot);
     let child = null;
     let authMethods = [];
@@ -687,7 +700,7 @@ export function createAcpHostRuntime(options = {}) {
         if (!authMethods.some((method) => method.id === authMethodId)) throw new Error("invalid_auth_method");
         await connection.authenticate({ methodId: authMethodId });
       }
-      const session = await connection.newSession({ cwd, mcpServers: [] });
+      const session = await connection.newSession({ cwd, mcpServers });
       if (signal?.aborted) throw Object.assign(new Error("connection_timeout"), { code: "TIMEOUT" });
       return {
         cwd,
@@ -855,9 +868,18 @@ export function createAcpHostRuntime(options = {}) {
       if (!resolved.ok) return fail(promptFailureMessage(resolved));
 
       let connected;
+      let mcpBridge;
       try {
-        connected = await withHandshakeTimeout((signal) => connect(resolved.command, requestId, notify, signal));
+        if (options.mcpAccess) {
+          const access = await options.mcpAccess();
+          mcpBridge = await (options.startMcpBridge ?? startAcpMcpBridge)(access);
+        }
+        connected = await withHandshakeTimeout((signal) => connect(
+          resolved.command, requestId, notify, signal, undefined,
+          mcpBridge ? [mcpServerFor(mcpBridge)] : [],
+        ));
       } catch (error) {
+        await mcpBridge?.close();
         return fail(promptFailureMessage(classifyAcpFailure(error)));
       }
 
@@ -869,9 +891,16 @@ export function createAcpHostRuntime(options = {}) {
           attachments: input.attachments,
           promptCapabilities: connected.promptCapabilities,
         });
+        if (mcpBridge) {
+          content.blocks.unshift({
+            type: "text",
+            text: "For EdgeEver note operations in this conversation, use only the session-provided MCP server named edgeever-current-workspace. It is connected to the account currently signed in to EdgeEver. Ignore any EdgeEver MCP server from your persistent configuration, which may target a different instance or account.",
+          });
+        }
       } catch (error) {
         connected.stop();
         await removeAcpWorkspace(connected.cwd, rmImpl);
+        await mcpBridge?.close();
         return fail(promptFailureMessage(classifyAcpFailure(error)));
       }
 
@@ -879,6 +908,7 @@ export function createAcpHostRuntime(options = {}) {
         cancelled: false,
         settled: false,
         ...connected,
+        mcpBridge,
       };
       active.set(requestId, session);
       const finish = (event) => {
@@ -888,6 +918,7 @@ export function createAcpHostRuntime(options = {}) {
         session.stop();
         active.delete(requestId);
         void removeAcpWorkspace(session.cwd, rmImpl);
+        void session.mcpBridge?.close();
       };
       void connected.connection.prompt({ sessionId: connected.sessionId, prompt: content.blocks }).then(() => {
         finish({ requestId, type: "done" });
@@ -908,6 +939,7 @@ export function createAcpHostRuntime(options = {}) {
         // The process may already be gone. Killing it is enough.
       }
       session.stop();
+      void session.mcpBridge?.close();
       return { ok: true };
     },
   };
@@ -919,7 +951,7 @@ const failureFields = (failure) => (
     : { state: failure.state }
 );
 
-export function registerAcpIpc(ipcMain, runtime = createAcpHostRuntime(), { allowInstall = () => false } = {}) {
+export function registerAcpIpc(ipcMain, runtime = createAcpHostRuntime(), { allowInstall = () => false, allowPrompt = allowInstall } = {}) {
   const send = (sender, event) => {
     if (!sender || sender.isDestroyed?.()) return;
     sender.send("desktop:acp-event", event);
@@ -934,7 +966,13 @@ export function registerAcpIpc(ipcMain, runtime = createAcpHostRuntime(), { allo
     if (!allowInstall(event.sender)) throw new Error("adapter_auth_forbidden");
     return runtime.authenticateAdapter(input);
   });
-  ipcMain.handle("desktop:acp-prompt", (event, input) => runtime.prompt(input, (acpEvent) => send(event.sender, acpEvent)));
-  ipcMain.handle("desktop:acp-cancel", (_event, requestId) => runtime.cancel(requestId));
+  ipcMain.handle("desktop:acp-prompt", (event, input) => {
+    if (!allowPrompt(event.sender)) throw new Error("acp_prompt_forbidden");
+    return runtime.prompt(input, (acpEvent) => send(event.sender, acpEvent));
+  });
+  ipcMain.handle("desktop:acp-cancel", (event, requestId) => {
+    if (!allowPrompt(event.sender)) throw new Error("acp_cancel_forbidden");
+    return runtime.cancel(requestId);
+  });
   return runtime;
 }

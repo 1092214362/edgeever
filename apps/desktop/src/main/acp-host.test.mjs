@@ -589,6 +589,40 @@ describe("ACP stdio session", () => {
     }
   }, 15_000);
 
+  sessionTest("provides the signed-in workspace MCP server only during an ACP prompt", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "edgeever-acp-mcp-"));
+    const reportPath = path.join(directory, "report.json");
+    let closed = false;
+    try {
+      const scriptPath = await writeFakeAgent(directory, {
+        reportPath,
+        secretPath: path.join(directory, "secret.txt"),
+        allowImage: false,
+        allowEmbedded: false,
+        hold: false,
+      });
+      const runtime = createAcpHostRuntime({
+        mcpAccess: () => ({ baseUrl: "https://notes.example", sessionToken: "login-secret" }),
+        startMcpBridge: () => ({
+          url: "http://127.0.0.1:12345",
+          secret: "temporary-secret",
+          close: async () => { closed = true; },
+        }),
+      });
+      const events = collector();
+      await runtime.prompt({ adapterId: "antigravity", path: scriptPath, prompt: "List my notes" }, events.emit);
+      await events.waitFor((event) => event.type === "done");
+      const servers = (await readReport(reportPath)).newSession.mcpServers;
+      expect(servers).toHaveLength(1);
+      expect(servers[0].name).toBe("edgeever-current-workspace");
+      expect(servers[0].env).toContainEqual({ name: "EDGEEVER_TOKEN", value: "temporary-secret" });
+      expect(JSON.stringify(servers)).not.toContain("login-secret");
+      expect(closed).toBe(true);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 15_000);
+
   sessionTest("offers advertised agent login and verifies a session after authentication", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "edgeever-acp-auth-"));
     const reportPath = path.join(directory, "report.json");
@@ -742,4 +776,5 @@ test("desktop preload and main process expose the ACP host", async () => {
   const handlers = new Map();
   registerAcpIpc({ handle: (channel, handler) => handlers.set(channel, handler) });
   expect([...handlers.keys()]).toEqual(["desktop:acp-list", "desktop:acp-probe", "desktop:acp-install", "desktop:acp-authenticate", "desktop:acp-prompt", "desktop:acp-cancel"]);
+  expect(() => handlers.get("desktop:acp-prompt")({ sender: {} }, { prompt: "test" })).toThrow("acp_prompt_forbidden");
 });

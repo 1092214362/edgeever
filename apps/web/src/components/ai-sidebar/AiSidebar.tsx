@@ -980,7 +980,9 @@ function AiSidebarSession({
       setLocalTurns((previous) => previous.map((turn) => turn.id === turnId && turn.status === "running"
         ? { ...turn, status: event.type === "error" ? "failed" : "completed" }
         : turn));
-      if (event.type === "error" && event.message) setError(event.message);
+      if (event.type === "error" && event.message) {
+        setError(event.message === "note_access_unavailable" ? t("aiAssistant.sidebar.noteAccessUnavailable") : event.message);
+      }
       if (active.current?.requestId === event.requestId) {
         active.current = null;
         locked.current = false;
@@ -1528,8 +1530,9 @@ function AiSidebarSession({
                   {localAdapterId ? t(`aiAssistant.agentSource.${localAdapterId}`) : t("aiAssistant.sidebar.localStatus")}
                 </span>
               </TooltipTrigger>
-              <TooltipContent>
-                {localAdapterId ? t(`aiAssistant.agentSource.${localAdapterId}`) : t("aiAssistant.sidebar.localStatus")}
+              <TooltipContent className="max-w-xs">
+                <p>{localAdapterId ? t(`aiAssistant.agentSource.${localAdapterId}`) : t("aiAssistant.sidebar.localStatus")}</p>
+                <p className="mt-1">{t("aiAssistant.agentSource.localHint")}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
