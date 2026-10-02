@@ -203,10 +203,10 @@
     "message": "（このページから読み取れる本文はありませんでした）"
   },
   "saveSelectionToEdgeEver": {
-    "message": "選択した文字を EdgeEver に保存"
+    "message": "選択したテキストを EdgeEver に保存"
   },
   "selectionSaveHint": {
-    "message": "ページ上の文字を選択して右クリックし、「選択した文字を EdgeEver に保存」を選びます。その文章は、上で選んだ既定のノートブックに 1 件のノートとして保存されます。"
+    "message": "ページ上の文字を選択して右クリックし、「選択したテキストを EdgeEver に保存」を選びます。その文章は、上で選んだ既定のノートブックに 1 件のノートとして保存されます。"
   },
   "savingSelection": {
     "message": "選択した文字を保存しています…"
@@ -280,10 +280,10 @@
     "message": "この保存は終了しています。画像を右クリックしてやり直してください。"
   },
   "saveTweetToEdgeEver": {
-    "message": "この投稿を EdgeEver に保存"
+    "message": "投稿を EdgeEver に保存"
   },
   "tweetSaveHint": {
-    "message": "X で投稿を右クリックし、「この投稿を EdgeEver に保存」を選びます。本文は「さらに表示」で折りたたまれた部分も含めて保存され、表示中の画像とともに、上で選んだ既定のノートブックへ 1 件のノートになります。"
+    "message": "X で投稿を右クリックし、「投稿を EdgeEver に保存」を選びます。本文は「さらに表示」で折りたたまれた部分も含めて保存され、表示中の画像とともに、上で選んだ既定のノートブックへ 1 件のノートになります。"
   },
   "savingTweet": {
     "message": "この投稿を保存しています…"
@@ -316,16 +316,16 @@
     "message": "投稿"
   },
   "tweetSaveWindowTitle": {
-    "message": "この投稿を EdgeEver に保存"
+    "message": "投稿を EdgeEver に保存"
   },
   "tweetTimeLabel": {
     "message": "日時"
   },
   "saveGithubRepoToEdgeEver": {
-    "message": "このリポジトリを EdgeEver に保存"
+    "message": "リポジトリ情報を EdgeEver に保存"
   },
   "githubRepoSaveHint": {
-    "message": "GitHub のリポジトリページまたはコード一覧で、ページの余白、紹介文、または README 本文を右クリックし、「このリポジトリを EdgeEver に保存」を選びます。アドレスと紹介文は、上で選んだ既定のノートブックに 1 件のノートとして保存されます。Issue、ディスカッション、単一ファイルのページは保存しません。"
+    "message": "GitHub のリポジトリページまたはコード一覧で、ページの余白、紹介文、または README 本文を右クリックし、「リポジトリ情報を EdgeEver に保存」を選びます。アドレスと紹介文は、上で選んだ既定のノートブックに 1 件のノートとして保存されます。Issue、ディスカッション、単一ファイルのページは保存しません。"
   },
   "savingGithubRepo": {
     "message": "このリポジトリを保存しています…"
@@ -352,10 +352,10 @@
     "message": "トピック"
   },
   "saveXhsToEdgeEver": {
-    "message": "小紅書のノートを EdgeEver に保存"
+    "message": "ノートを EdgeEver に保存"
   },
   "xhsSaveHint": {
-    "message": "小紅書でノート本文を右クリックし、「小紅書のノートを EdgeEver に保存」を選びます。タイトル、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
+    "message": "小紅書でノート本文を右クリックし、「ノートを EdgeEver に保存」を選びます。タイトル、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
   },
   "savingXhs": {
     "message": "このノートを保存しています…"
@@ -391,13 +391,13 @@
     "message": "小紅書のノート"
   },
   "xhsSaveWindowTitle": {
-    "message": "小紅書のノートを EdgeEver に保存"
+    "message": "ノートを EdgeEver に保存"
   },
   "xhsLocationLabel": {
     "message": "場所"
   },
   "saveZhihuToEdgeEver": {
-    "message": "知乎の内容を EdgeEver に保存"
+    "message": "回答・記事を EdgeEver に保存"
   },
   "zhihuQuestionLabel": {
     "message": "質問"
@@ -415,7 +415,7 @@
     "message": "本文"
   },
   "zhihuSaveHint": {
-    "message": "知乎で回答または記事の本文を右クリックし、「知乎の内容を EdgeEver に保存」を選びます。タイトル、著者、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
+    "message": "知乎で回答または記事の本文を右クリックし、「回答・記事を EdgeEver に保存」を選びます。タイトル、著者、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
   },
   "savingZhihu": {
     "message": "この知乎の回答または記事を保存しています…"
@@ -451,6 +451,6 @@
     "message": "知乎の回答または記事"
   },
   "zhihuSaveWindowTitle": {
-    "message": "知乎の内容を EdgeEver に保存"
+    "message": "回答・記事を EdgeEver に保存"
   }
 }

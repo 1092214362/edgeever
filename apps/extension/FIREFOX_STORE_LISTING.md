@@ -25,7 +25,7 @@ EdgeEver Web Clipper saves the current webpage, selected text, a right-clicked i
 - Send content directly to your instance without an EdgeEver-operated relay.
 - No advertising, analytics, tracking, or telemetry.
 
-Before using the extension, enter your EdgeEver instance URL and API token in the extension settings. The extension reads and sends page content only after you click **Clip current page**, **Save selection to EdgeEver**, **Save image to EdgeEver**, **Save this post to EdgeEver**, **Save Xiaohongshu note to EdgeEver**, **Save Zhihu content to EdgeEver**, or **Save this repository to EdgeEver**.
+Before using the extension, enter your EdgeEver instance URL and API token in the extension settings. The extension reads and sends page content only after you click **Clip current page**, **Save selection to EdgeEver**, **Save image to EdgeEver**, **Save post to EdgeEver**, **Save note to EdgeEver**, **Save answer or article to EdgeEver**, or **Save repository info to EdgeEver**.
 
 ## Data collection and transmission
 
@@ -44,10 +44,10 @@ The project maintainers do not receive or retain this data. Instance settings ar
 5. Open the extension, choose **Clip current page**, and verify that the success message appears.
 6. On a normal webpage, select a passage, right-click it, choose **Save selection to EdgeEver**, and verify the note contains that passage and the page link.
 7. On a normal webpage, right-click an image, choose **Save image to EdgeEver**, and verify the new note contains the image.
-8. Open one X post page, right-click the post text (not a photo), choose **Save this post to EdgeEver**, and verify the note contains the post text and the post link.
-9. Open one GitHub repository page, right-click the description or README text, choose **Save this repository to EdgeEver**, and verify the note contains the repository address and description.
-10. Open one Xiaohongshu note, right-click the note text (not a photo), choose **Save Xiaohongshu note to EdgeEver**, and verify the note contains the title, text, and source link.
-11. Open one Zhihu answer or article, right-click the text (not a photo), choose **Save Zhihu content to EdgeEver**, and verify the note contains the title, text, and source link.
+8. Open one X post page, right-click the post text (not a photo), choose **Save post to EdgeEver**, and verify the note contains the post text and the post link.
+9. Open one GitHub repository page, right-click the description or README text, choose **Save repository info to EdgeEver**, and verify the note contains the repository address and description.
+10. Open one Xiaohongshu note, right-click the note text (not a photo), choose **Save note to EdgeEver**, and verify the note contains the title, text, and source link.
+11. Open one Zhihu answer or article, right-click the text (not a photo), choose **Save answer or article to EdgeEver**, and verify the note contains the title, text, and source link.
 12. Verify the created notes in the review EdgeEver instance.
 
 Restricted browser pages, extension stores, built-in PDF viewers, and other privileged pages cannot be captured.
@@ -85,4 +85,4 @@ EdgeEver 网页剪藏插件可将当前网页、选中的文字、右键选中�
 - 数据直接发送到用户自己的实例，不经过 EdgeEver 中转服务。
 - 不包含广告、分析、追踪或遥测。
 
-使用前，请在插件设置中填写 EdgeEver 实例地址和 API Token。插件只会在用户点击“剪藏当前网页”，或选择“保存选中文字到 EdgeEver”“保存图片到 EdgeEver”“保存这条推文到 EdgeEver”“保存小红书笔记到 EdgeEver”“保存知乎内容到 EdgeEver”后读取并发送网页内容。
+使用前，请在插件设置中填写 EdgeEver 实例地址和 API Token。插件只会在用户点击“剪藏当前网页”，或选择“保存所选内容到 EdgeEver”“保存图片到 EdgeEver”“保存推文到 EdgeEver”“保存笔记到 EdgeEver”“保存回答/文章到 EdgeEver”后读取并发送网页内容。

@@ -38,7 +38,7 @@ EdgeEver Web Clipper 可以把当前网页，或你选中的那一部分，保�
 主要功能：
 
 - 自动提取文章正文，并转换为便于搜索和编辑的 Markdown。
-- 选中一段文字后右键，选择“保存选中文字到 EdgeEver”，只保存这段文字。
+- 选中一段文字后右键，选择“保存所选内容到 EdgeEver”，只保存这段文字。
 - 在图片上右键，选择“保存图片到 EdgeEver”，把图片文件存成一条新笔记。
 - 在 X 上右键推文，保存展开后的全文和已经显示的图片。
 - 在小红书上保存笔记的标题、正文和图片，不写入评论。
@@ -89,7 +89,7 @@ Save the current webpage, user-selected text, a user-chosen image, one X post, o
 
 ### Permission justifications
 
-- `activeTab`: Read the active page only after the user clicks the extension's save action or chooses Save selection to EdgeEver, Save image to EdgeEver, Save this post to EdgeEver, Save Xiaohongshu note to EdgeEver, Save Zhihu content to EdgeEver, or Save this repository to EdgeEver.
+- `activeTab`: Read the active page only after the user clicks the extension's save action or chooses Save selection to EdgeEver, Save image to EdgeEver, Save post to EdgeEver, Save note to EdgeEver, Save answer or article to EdgeEver, or Save repository info to EdgeEver.
 - `contextMenus`: Add one top-level item for the thing the user right-clicked: selected text, an image, an X post, a Xiaohongshu note, a Zhihu answer or article, or a GitHub repository page. It runs only after the user selects that item.
 - `scripting`: Inject the packaged capture script into the active page after the user initiates a capture.
 - `storage`: Store the user's EdgeEver instance URL, API token, and default notebook ID locally.

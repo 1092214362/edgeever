@@ -280,10 +280,10 @@
     "message": "This save has expired. Right-click the image and try again."
   },
   "saveTweetToEdgeEver": {
-    "message": "Save this post to EdgeEver"
+    "message": "Save post to EdgeEver"
   },
   "tweetSaveHint": {
-    "message": "On X, right-click a post and choose “Save this post to EdgeEver”. The post text, including text behind Show more, and the photos go into one new note in the same default notebook."
+    "message": "On X, right-click a post and choose “Save post to EdgeEver”. The post text, including text behind Show more, and the photos go into one new note in the same default notebook."
   },
   "savingTweet": {
     "message": "Saving this post…"
@@ -316,16 +316,16 @@
     "message": "Post"
   },
   "tweetSaveWindowTitle": {
-    "message": "Save this post to EdgeEver"
+    "message": "Save post to EdgeEver"
   },
   "tweetTimeLabel": {
     "message": "Time"
   },
   "saveGithubRepoToEdgeEver": {
-    "message": "Save this repository to EdgeEver"
+    "message": "Save repository info to EdgeEver"
   },
   "githubRepoSaveHint": {
-    "message": "On a GitHub repository page or code tree, right-click the page background, the description, or the README text and choose “Save this repository to EdgeEver”. The address and description are saved as a new note in the default notebook selected above. Issue, discussion, and single-file pages are left unsaved."
+    "message": "On a GitHub repository page or code tree, right-click the page background, the description, or the README text and choose “Save repository info to EdgeEver”. The address and description are saved as a new note in the default notebook selected above. Issue, discussion, and single-file pages are left unsaved."
   },
   "savingGithubRepo": {
     "message": "Saving this repository…"
@@ -352,10 +352,10 @@
     "message": "Topics"
   },
   "saveXhsToEdgeEver": {
-    "message": "Save Xiaohongshu note to EdgeEver"
+    "message": "Save note to EdgeEver"
   },
   "xhsSaveHint": {
-    "message": "On Xiaohongshu, right-click the note text and choose “Save Xiaohongshu note to EdgeEver”. The title, text, and photos go into one new note. Comments are left out. Right-clicking a photo still saves that image only."
+    "message": "On Xiaohongshu, right-click the note text and choose “Save note to EdgeEver”. The title, text, and photos go into one new note. Comments are left out. Right-clicking a photo still saves that image only."
   },
   "savingXhs": {
     "message": "Saving this note…"
@@ -391,13 +391,13 @@
     "message": "Xiaohongshu note"
   },
   "xhsSaveWindowTitle": {
-    "message": "Save Xiaohongshu note to EdgeEver"
+    "message": "Save note to EdgeEver"
   },
   "xhsLocationLabel": {
     "message": "Location"
   },
   "saveZhihuToEdgeEver": {
-    "message": "Save Zhihu content to EdgeEver"
+    "message": "Save answer or article to EdgeEver"
   },
   "zhihuQuestionLabel": {
     "message": "Question"
@@ -415,7 +415,7 @@
     "message": "Body"
   },
   "zhihuSaveHint": {
-    "message": "On Zhihu, right-click the answer or article text and choose “Save Zhihu content to EdgeEver”. The title, author, text, and photos go into one new note. Comments are left out. Right-clicking a photo still saves that image only."
+    "message": "On Zhihu, right-click the answer or article text and choose “Save answer or article to EdgeEver”. The title, author, text, and photos go into one new note. Comments are left out. Right-clicking a photo still saves that image only."
   },
   "savingZhihu": {
     "message": "Saving this Zhihu answer or article…"
@@ -451,6 +451,6 @@
     "message": "Zhihu answer or article"
   },
   "zhihuSaveWindowTitle": {
-    "message": "Save Zhihu content to EdgeEver"
+    "message": "Save answer or article to EdgeEver"
   }
 }
