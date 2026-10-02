@@ -585,6 +585,15 @@ export const WorkspaceScreen = ({
       return;
     }
 
+    if (incomingShareError && incomingSharePayloads.length === 0) {
+      if (processedShareUrlRef.current !== "invalid-share-resolution") {
+        processedShareUrlRef.current = "invalid-share-resolution";
+        Alert.alert("无法读取分享内容", "请重新分享后再试。");
+        onIncomingShareHandledRef.current?.();
+      }
+      return;
+    }
+
     if (incomingShareError && sharedImages.some((image) => !image.uri.startsWith("file:"))) {
       if (processedShareUrlRef.current !== "invalid-binary-share") {
         processedShareUrlRef.current = "invalid-binary-share";
