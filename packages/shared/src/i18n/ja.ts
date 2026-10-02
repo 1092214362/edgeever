@@ -1481,6 +1481,7 @@ export const ja = {
     instanceUrl: "インスタンス URL",
     instanceVersion: "インスタンスバージョン",
     instanceBuild: "インスタンスビルド",
+    deploymentVersionTime: "インスタンスのデプロイ時刻",
     databaseMigration: "データベースバージョン",
     databaseBackend: "データベースバックエンド",
     databaseBackends: {

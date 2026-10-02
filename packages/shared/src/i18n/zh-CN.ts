@@ -1481,6 +1481,7 @@ export const zhCN = {
     instanceUrl: "实例地址",
     instanceVersion: "实例版本",
     instanceBuild: "实例构建",
+    deploymentVersionTime: "实例部署时间",
     databaseMigration: "数据库版本",
     databaseBackend: "数据库后端",
     databaseBackends: {

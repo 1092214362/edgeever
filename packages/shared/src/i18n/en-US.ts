@@ -1481,6 +1481,7 @@ export const enUS = {
     instanceUrl: "Instance URL",
     instanceVersion: "Instance version",
     instanceBuild: "Instance build",
+    deploymentVersionTime: "Instance deployment time",
     databaseMigration: "Database version",
     databaseBackend: "Database backend",
     databaseBackends: {
