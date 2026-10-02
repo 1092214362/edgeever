@@ -352,10 +352,10 @@
     "message": "トピック"
   },
   "saveXhsToEdgeEver": {
-    "message": "この小紅書ノートを EdgeEver に保存"
+    "message": "小紅書のノートを EdgeEver に保存"
   },
   "xhsSaveHint": {
-    "message": "小紅書でノート本文を右クリックし、「この小紅書ノートを EdgeEver に保存」を選びます。タイトル、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
+    "message": "小紅書でノート本文を右クリックし、「小紅書のノートを EdgeEver に保存」を選びます。タイトル、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
   },
   "savingXhs": {
     "message": "このノートを保存しています…"
@@ -391,7 +391,7 @@
     "message": "小紅書のノート"
   },
   "xhsSaveWindowTitle": {
-    "message": "この小紅書ノートを EdgeEver に保存"
+    "message": "小紅書のノートを EdgeEver に保存"
   },
   "xhsLocationLabel": {
     "message": "場所"

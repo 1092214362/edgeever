@@ -352,10 +352,10 @@
     "message": "Topics"
   },
   "saveXhsToEdgeEver": {
-    "message": "Save this Xiaohongshu note to EdgeEver"
+    "message": "Save Xiaohongshu note to EdgeEver"
   },
   "xhsSaveHint": {
-    "message": "On Xiaohongshu, right-click the note text and choose “Save this Xiaohongshu note to EdgeEver”. The title, text, and photos go into one new note. Comments are left out. Right-clicking a photo still saves that image only."
+    "message": "On Xiaohongshu, right-click the note text and choose “Save Xiaohongshu note to EdgeEver”. The title, text, and photos go into one new note. Comments are left out. Right-clicking a photo still saves that image only."
   },
   "savingXhs": {
     "message": "Saving this note…"
@@ -391,7 +391,7 @@
     "message": "Xiaohongshu note"
   },
   "xhsSaveWindowTitle": {
-    "message": "Save this Xiaohongshu note to EdgeEver"
+    "message": "Save Xiaohongshu note to EdgeEver"
   },
   "xhsLocationLabel": {
     "message": "Location"

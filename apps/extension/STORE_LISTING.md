@@ -89,7 +89,7 @@ Save the current webpage, user-selected text, a user-chosen image, one X post, o
 
 ### Permission justifications
 
-- `activeTab`: Read the active page only after the user clicks the extension's save action or chooses Save selection to EdgeEver, Save image to EdgeEver, Save this post to EdgeEver, Save this Xiaohongshu note to EdgeEver, Save Zhihu content to EdgeEver, or Save this repository to EdgeEver.
+- `activeTab`: Read the active page only after the user clicks the extension's save action or chooses Save selection to EdgeEver, Save image to EdgeEver, Save this post to EdgeEver, Save Xiaohongshu note to EdgeEver, Save Zhihu content to EdgeEver, or Save this repository to EdgeEver.
 - `contextMenus`: Add one top-level item for the thing the user right-clicked: selected text, an image, an X post, a Xiaohongshu note, a Zhihu answer or article, or a GitHub repository page. It runs only after the user selects that item.
 - `scripting`: Inject the packaged capture script into the active page after the user initiates a capture.
 - `storage`: Store the user's EdgeEver instance URL, API token, and default notebook ID locally.

@@ -352,10 +352,10 @@
     "message": "话题"
   },
   "saveXhsToEdgeEver": {
-    "message": "保存这篇小红书笔记到 EdgeEver"
+    "message": "保存小红书笔记到 EdgeEver"
   },
   "xhsSaveHint": {
-    "message": "在小红书笔记正文上右键，选择“保存这篇小红书笔记到 EdgeEver”。标题、正文和笔记里的图片会存成一条新笔记，评论不会写入。右键图片仍然只保存这张图片。"
+    "message": "在小红书笔记正文上右键，选择“保存小红书笔记到 EdgeEver”。标题、正文和笔记里的图片会存成一条新笔记，评论不会写入。右键图片仍然只保存这张图片。"
   },
   "savingXhs": {
     "message": "正在保存这篇笔记……"
@@ -391,7 +391,7 @@
     "message": "一篇小红书笔记"
   },
   "xhsSaveWindowTitle": {
-    "message": "保存这篇小红书笔记到 EdgeEver"
+    "message": "保存小红书笔记到 EdgeEver"
   },
   "xhsLocationLabel": {
     "message": "地点"
