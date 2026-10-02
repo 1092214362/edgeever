@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { createSelfHostedStorageAdapter } from "./self-hosted-storage-adapter.ts";
 import { registerCompanionRoutes } from "./companion-routes.ts";
 import { beginCompanionTurn, checkpointCompanionTurn, clearCompanionHistory, saveCompanionMemory } from "./companion-service.ts";
-import { parseDiagramDocument } from "@edgeever/shared";
+import { createDefaultTableDocument, parseDiagramDocument, serializeTableDocument } from "@edgeever/shared";
 import { createMemoRecord, getMemoDetail, normalizeSearchTimeBound, updateMemoRecord } from "./memo-service.ts";
 import { companionWorkspaceCursor, proposeCompanionToolAction } from "./companion-tool-actions.ts";
 import { getCompanionAction, applyCompanionAction, dismissCompanionAction } from "./companion-actions.ts";
@@ -238,6 +238,24 @@ describe("shared companion MCP adapter", () => {
     expect(parseDiagramDocument((await getMemoDetail(f.db, scope.workspaceId, created.id)).contentMarkdown).nodes.map(node => node.id))
       .toContain("eval");
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM companion_actions").get().n).toBe(0);
+  });
+  test("refuses to replace a structured table with update_memo", async () => {
+    const f = await setup();
+    const table = await createMemoRecord(f.db, scope.workspaceId, {
+      notebookId: "ideas",
+      title: "Tasks",
+      contentMarkdown: serializeTableDocument(createDefaultTableDocument()),
+    }, actor, "owner");
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    const read = await tools.get_memo.execute({ memoId: table.id });
+    expect(read.message).toContain("structured table");
+    expect(read.structuredTable).toBeTruthy();
+    expect(read.content).toContain("|");
+    expect(read.content).not.toContain("edgeever-table-v1");
+    await expect(tools.update_memo.execute({ memoId: table.id, contentMarkdown: "# no" })).rejects.toThrow(
+      "This is a structured table. Do not replace it with update_memo.",
+    );
+    expect((await getMemoDetail(f.db, scope.workspaceId, table.id)).contentMarkdown).toContain("edgeever-table-v1");
   });
   test("create_diagram_memo keeps generated edge IDs out of Agent input", async () => {
     const f = await setup();

@@ -1,4 +1,4 @@
-import { COMPANION_NOTE_EDIT_MAX_CHARS, parseDiagramDocument, type CompanionSource, type CompanionTodo, type CompanionToolCall, type CompanionToolDefinition, type CompanionTurnInput, type MemoDetail, type MemoSummary } from "@edgeever/shared";
+import { COMPANION_NOTE_EDIT_MAX_CHARS, parseDiagramDocument, parseTableDocument, type CompanionSource, type CompanionTodo, type CompanionToolCall, type CompanionToolDefinition, type CompanionTurnInput, type MemoDetail, type MemoSummary } from "@edgeever/shared";
 import type { DatabaseAdapter } from "./storage-contract";
 import type { AppContext } from "./api-context";
 import type { CompanionScope } from "./companion-service";
@@ -318,6 +318,9 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           if (parseDiagramDocument(memo.contentMarkdown)) {
             throw new AppError("invalid_params", "This is an editable diagram. Change it with update_diagram, not update_memo.", 400);
           }
+          if (parseTableDocument(memo.contentMarkdown)) {
+            throw new AppError("invalid_params", "This is a structured table. Do not replace it with update_memo.", 400);
+          }
           if (memo.contentMarkdown.length > COMPANION_NOTE_EDIT_MAX_CHARS || parameters_.contentMarkdown.length > COMPANION_NOTE_EDIT_MAX_CHARS) {
             throw new AppError("invalid_params", "This note edit is too large to review. Split it into a smaller change.", 400);
           }
@@ -409,7 +412,7 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           return done(payload);
         }
         if (definition.name === "get_memo") {
-          const payload = result as { memo: MemoDetail; diagram?: { kind?: string } };
+          const payload = result as { memo: MemoDetail; diagram?: { kind?: string }; structuredTable?: unknown };
           const memo = payload.memo;
           remember(memo);
           if (payload.diagram) {
@@ -424,7 +427,12 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
           if (content.length === memo.contentMarkdown.length) inspected.set(memo.id, memo.revision); else inspected.delete(memo.id);
           return done({ id: memo.id, title: memo.title, notebookId: memo.notebookId, tags: memo.tags, revision: memo.revision,
             createdAt: memo.createdAt, updatedAt: memo.updatedAt,
-            content, truncated: content.length !== memo.contentMarkdown.length });
+            content, truncated: content.length !== memo.contentMarkdown.length,
+            ...(payload.structuredTable ? {
+              structuredTable: payload.structuredTable,
+              message: "This is a structured table. Answer from this content. Do not replace it with update_memo.",
+            } : {}),
+          });
         }
         if (definition.name === "search_memos" || definition.name === "list_memos") {
           const listed = result as { memos: MemoSummary[]; hasMore?: boolean };
