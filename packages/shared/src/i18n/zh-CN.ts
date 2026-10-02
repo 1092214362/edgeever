@@ -1330,7 +1330,7 @@ export const zhCN = {
         ask: "询问",
         actions: "对选中文字",
         explainPrompt: "请解释下面这段文字里的概念。",
-        translatePrompt: "请把下面这段翻译成简体中文。如果原文已经是简体中文，就译成英文，并在第一行说明，空一行后再写译文。否则只写译文。",
+        translatePrompt: "请翻译下面这段文字：如果原文是简体中文，译成英文；否则译成简体中文。只输出译文。",
         translateLanguagePrompt: "请把下面这段翻译成{{language}}。只写译文，不要说明。",
         truncated: "只发送了选区的前 {{count}} 个字符。",
         dismiss: "取消钉选",
