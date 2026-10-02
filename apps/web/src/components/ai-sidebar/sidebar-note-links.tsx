@@ -57,3 +57,20 @@ export function SidebarNoteLink({
 export const sidebarNoteLinkComponents = {
   "edgeever-note": SidebarNoteLink,
 } satisfies Record<string, (props: ComponentProps<typeof SidebarNoteLink>) => ReactNode>;
+
+/** Read a clicked in-app note link. Other anchors stay untouched. */
+export function memoIdFromSidebarLinkEvent(event: {
+  target: EventTarget | null;
+  preventDefault: () => void;
+}): string {
+  const target = event.target;
+  if (!(target instanceof Element)) return "";
+  const link = target.closest("a");
+  if (!(link instanceof HTMLAnchorElement)) return "";
+  const linkedId = parseMemoLinkHref(link.getAttribute("href"))
+    ?? parseMemoLinkHref(link.hash)
+    ?? parseMemoLinkHref(link.href);
+  if (!linkedId) return "";
+  event.preventDefault();
+  return linkedId;
+}

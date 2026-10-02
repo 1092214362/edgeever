@@ -4,7 +4,7 @@ import * as m from "motion/react-m";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronDown, Download, FileText, Loader2, PanelRightClose, Paperclip, Plus, Search, Sparkles, X } from "lucide-react";
 import type { CompanionAction, CompanionAnswer, CompanionEvent, CompanionTurn, CompanionTurnInput } from "@edgeever/shared";
-import { buildRevisionDiffRows, createMemoLinkHref, parseMemoLinkHref } from "@edgeever/shared";
+import { buildRevisionDiffRows, createMemoLinkHref } from "@edgeever/shared";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -84,6 +84,7 @@ import { AiSidebarMessage } from "./AiSidebarMessage";
 import { AiSidebarLocalProcess } from "./AiSidebarLocalProcess";
 import { BuiltinAgentStatus } from "./BuiltinAgentStatus";
 import { InfographicSidebarSession, type InfographicSidebarController } from "./InfographicSidebarSession";
+import { memoIdFromSidebarLinkEvent } from "./sidebar-note-links";
 
 const SIDEBAR_DEFAULT_WIDTH = 380;
 const sidebarThreadClassName = cn(
@@ -1422,15 +1423,9 @@ function AiSidebarSession({
   };
 
   const openLinkedNote = (event: MouseEvent<HTMLElement>, sources: Array<{ id: string; notebookId?: string }>) => {
-    const target = event.target;
-    if (!(target instanceof Element) || !onOpenCompanionNote) return;
-    const link = target.closest("a");
-    if (!(link instanceof HTMLAnchorElement)) return;
-    const linkedId = parseMemoLinkHref(link.getAttribute("href"))
-      ?? parseMemoLinkHref(link.hash)
-      ?? parseMemoLinkHref(link.href);
+    if (!onOpenCompanionNote) return;
+    const linkedId = memoIdFromSidebarLinkEvent(event);
     if (!linkedId) return;
-    event.preventDefault();
     onOpenCompanionNote(linkedId, sources.find((item) => item.id === linkedId)?.notebookId ?? "");
   };
 
@@ -1784,18 +1779,14 @@ export function AiSidebar(props: AiSidebarProps) {
       </AnimatePresence>
       <m.aside
         initial={false}
-        animate={narrow ? { x: open ? 0 : "100%" } : { x: 0 }}
+        animate={narrow ? { x: open ? 0 : "100%", width: panelWidth } : { x: 0, width: open ? width : 0 }}
         transition={resizing ? { duration: 0 } : sidebarRevealTransition}
         aria-hidden={!open}
         aria-label={t("aiAssistant.sidebar.title")}
         inert={open ? undefined : true}
-        style={{ width: narrow ? panelWidth : (open ? width : 0) }}
         className={cn(
           "h-full min-h-0 min-w-0 shrink-0 overflow-hidden bg-card",
-          narrow
-            ? "fixed inset-y-0 right-0 z-50 shadow-xl"
-            : "relative transition-[width] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
-          !narrow && resizing && "transition-none",
+          narrow ? "fixed inset-y-0 right-0 z-50 shadow-xl" : "relative",
         )}
         onDragOverCapture={(event) => {
           if (event.dataTransfer?.types?.includes("Files")) event.preventDefault();
@@ -1841,6 +1832,7 @@ export function AiSidebar(props: AiSidebarProps) {
               session={props.infographic}
               noteTitle={props.noteTitle}
               onOpenChange={onOpenChange}
+              onOpenNote={props.onOpenCompanionNote}
             />
           ) : (
             <AiSidebarSession {...props} addFilesRef={addFilesRef} onStopReady={onStopReady} />

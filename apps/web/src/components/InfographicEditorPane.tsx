@@ -42,6 +42,7 @@ type Props = {
   onToggleDesktopFocusMode: () => void;
   aiAssistantOpenToken: number;
   shortcutSettings: ShortcutSettings;
+  onOpenCompanionNote?: (id: string, notebookId: string) => void;
 };
 
 const plainLine = (value: string) => value.replace(/\s+/g, " ").trim();
@@ -197,6 +198,7 @@ export default function InfographicEditorPane({
   onToggleDesktopFocusMode,
   aiAssistantOpenToken,
   shortcutSettings,
+  onOpenCompanionNote,
 }: Props) {
   const { t, i18n } = useTranslation();
   const parsed = useMemo(() => parseInfographicDocument(memo.contentMarkdown), [memo.contentMarkdown]);
@@ -785,6 +787,7 @@ export default function InfographicEditorPane({
         notebookId={memo.notebookId}
         noteTitle={title}
         infographic={infographicAssistant}
+        onOpenCompanionNote={onOpenCompanionNote}
       />
     </AiSidebarErrorBoundary>
     <Dialog open={galleryDialogOpen} onOpenChange={setGalleryDialogOpen}>
