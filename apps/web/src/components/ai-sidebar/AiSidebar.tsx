@@ -1421,7 +1421,7 @@ function AiSidebarSession({
     }
   };
 
-  const openLinkedNote = (event: MouseEvent<HTMLDivElement>, turn: CompanionTurn) => {
+  const openLinkedNote = (event: MouseEvent<HTMLElement>, sources: Array<{ id: string; notebookId?: string }>) => {
     const target = event.target;
     if (!(target instanceof Element) || !onOpenCompanionNote) return;
     const link = target.closest("a");
@@ -1430,10 +1430,8 @@ function AiSidebarSession({
       ?? parseMemoLinkHref(link.hash)
       ?? parseMemoLinkHref(link.href);
     if (!linkedId) return;
-    const source = turn.sources.find((item) => item.id === linkedId);
-    if (!source?.notebookId) return;
     event.preventDefault();
-    onOpenCompanionNote(linkedId, source.notebookId);
+    onOpenCompanionNote(linkedId, sources.find((item) => item.id === linkedId)?.notebookId ?? "");
   };
 
   const companionThreads = useMemo(() => chatThreadsFromTurns(turns), [turns]);
@@ -1552,7 +1550,7 @@ function AiSidebarSession({
             />
           ) : null}
           {visibleCompanion ? threadTurns.map((turn) => (
-            <div key={turn.id} className="space-y-2">
+            <div key={turn.id} className="space-y-2" onClick={(event) => openLinkedNote(event, turn.sources)}>
               <Message from="user">
                 <MessageContent className={sidebarUserMessageClassName}>{turn.message}</MessageContent>
                 <AttachmentChips items={turn.attachments ?? []} />
@@ -1580,11 +1578,9 @@ function AiSidebarSession({
                   </ul>
                 ) : null}
                 {turn.response ? (
-                  <div onClick={(event) => openLinkedNote(event, turn)}>
-                    <AiSidebarMessage isAnimating={turn.status === "running"}>
-                      {linkedCompanionText(turn.response, turn)}
-                    </AiSidebarMessage>
-                  </div>
+                  <AiSidebarMessage isAnimating={turn.status === "running"}>
+                    {linkedCompanionText(turn.response, turn)}
+                  </AiSidebarMessage>
                 ) : null}
                 {turn.status === "interrupted" && turn.questions?.length && !running ? (
                   <CompanionQuestionForm questions={turn.questions} busy={busy || acting} onSubmit={(answers) => resume(turn, answers)} />
@@ -1602,7 +1598,7 @@ function AiSidebarSession({
               </Message>
             </div>
           )) : localThreadTurns.map((turn) => (
-            <div key={turn.id} className="space-y-2">
+            <div key={turn.id} className="space-y-2" onClick={(event) => openLinkedNote(event, [])}>
               <Message from="user">
                 <MessageContent className={sidebarUserMessageClassName}>{turn.message}</MessageContent>
                 <AttachmentChips items={turn.attachments} />
