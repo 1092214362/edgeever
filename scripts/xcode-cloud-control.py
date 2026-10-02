@@ -595,7 +595,10 @@ def command_cancel_review(args: argparse.Namespace, client: AppStoreConnect) -> 
     if len(matching) != 1:
         raise SystemExit(f"Expected one waiting review submission for {args.version}; found {len(matching)}")
     submission_id = matching[0]["id"]
-    items = client.request("GET", f"/v1/reviewSubmissions/{submission_id}/items?limit=50").get("data") or []
+    items_query = urllib.parse.urlencode(
+        {"fields[reviewSubmissionItems]": "state,appStoreVersion", "include": "appStoreVersion", "limit": 50}
+    )
+    items = client.request("GET", f"/v1/reviewSubmissions/{submission_id}/items?{items_query}").get("data") or []
     item_summary = [
         {
             "id": item.get("id"),

@@ -89,6 +89,8 @@ class Client:
             return {"data": [{"id": "submission", "relationships": {
                 "appStoreVersionForReview": {"data": {"id": "version"}}}}]}
         if "/reviewSubmissions/submission/items" in path:
+            assert "fields%5BreviewSubmissionItems%5D=state%2CappStoreVersion" in path
+            assert "include=appStoreVersion" in path
             return {"data": [{"relationships": {"appStoreVersion": {"data": {"id": "version"}}}}] * self.items}
         raise AssertionError(path)
 args = argparse.Namespace(version="1.98.0", current_build_id="old", replacement_build_id="new")
