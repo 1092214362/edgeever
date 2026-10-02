@@ -279,7 +279,7 @@ Web, PWA, and desktop upload memo edits after 30 seconds of inactivity and check
 
 ## Acknowledgements
 
-- EdgeEver's note-taking product design was also informed by the publicly available product experiences of mature note-taking tools such as [Evernote](https://evernote.com/). The related features were independently designed and implemented by EdgeEver.
+- EdgeEver's note-taking product design was also informed by the publicly available product experiences of mature note-taking tools such as [Evernote](https://evernote.com/) and [Notion](https://www.notion.com/). The related features were independently designed and implemented by EdgeEver.
 - The product design of mind-map and visual-diagram notes was informed by the publicly available product experiences of [XMind](https://xmind.com/) and [ProcessOn](https://www.processon.com/). These features were independently designed and implemented by EdgeEver.
 
 ## Trademark and Brand Use
