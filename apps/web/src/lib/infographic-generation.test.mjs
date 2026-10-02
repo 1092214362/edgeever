@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parseSyntax, getTemplate, getTemplates } from "@antv/infographic";
+import { compileInfographicNote, INFOGRAPHIC_NOTE_TEMPLATES } from "@edgeever/shared";
 import {
   buildInfographicSyntax,
   buildOfficialInfographicSyntax,
@@ -221,6 +222,18 @@ describe("infographic generation", () => {
     expect(candidates[0]).toBe(current);
     expect(candidates.length).toBeLessThanOrEqual(50);
     expect(new Set(candidates.map(officialTemplateFamily))).toEqual(new Set(["chart", "comparison", "hierarchy", "list", "quadrant", "relation", "sequence"]));
+  });
+
+  test("companion infographic templates render with AntV", () => {
+    for (const template of INFOGRAPHIC_NOTE_TEMPLATES) {
+      const compiled = compileInfographicNote(template, sampleOfficialData(template));
+      expect(compiled.ok).toBe(true);
+      if (!compiled.ok) continue;
+      const parsed = parseSyntax(compiled.syntax);
+      expect(parsed.errors).toEqual([]);
+      expect(parsed.options.template).toBe(template);
+      expect(getTemplate(template)).toBeTruthy();
+    }
   });
 
   test("development history prioritizes timeline templates over the current comparison", () => {
