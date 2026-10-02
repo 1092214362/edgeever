@@ -147,3 +147,17 @@ index 8dd50e8..6193748 100644
        return SharePayload().apply {
          value = uri.toString()
          shareType = ShareType.fromMimeType(specificType)
+diff --git a/src/useIncomingShare.ts b/src/useIncomingShare.ts
+index b5431e6..3cd662f 100644
+--- a/src/useIncomingShare.ts
++++ b/src/useIncomingShare.ts
+@@ -60,6 +60,9 @@ export function useIncomingShare(): UseIncomingShareResult {
+         setIsResolving(true);
+         try {
+           const resolved = await getResolvedSharedPayloadsAsync();
++          if (resolved.length === 0) {
++            throw new Error('Shared content could not be resolved');
++          }
+           setResolvedSharedPayloads(resolved);
+         } catch (e) {
+           setError(
