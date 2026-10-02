@@ -1087,7 +1087,7 @@ function AiSidebarSession({
     onStopReady.current = () => { void stop(); };
   }, [onStopReady, stop]);
 
-  const launch = useCallback(async (message: string, options?: { includeCurrentNote?: boolean }): Promise<string> => {
+  const launch = useCallback(async (message: string, options?: { includeCurrentNote?: boolean; readOnly?: boolean }): Promise<string> => {
     const text = message.trim();
     if (!text || locked.current) throw new Error("busy");
     const useCurrentNote = options?.includeCurrentNote ?? includeCurrentNote;
@@ -1141,6 +1141,7 @@ function AiSidebarSession({
           adapterId: adapter.id,
           ...(adapter.path ? { path: adapter.path } : {}),
           prompt: text,
+          ...(options?.readOnly ? { noteAccess: false } : {}),
           ...((noteContext || transcript) ? { contextText: [noteContext, transcript].filter(Boolean).join("\n\n") } : {}),
           ...(snapshot.length ? {
             attachments: snapshot.map((item) => ({
@@ -1205,7 +1206,7 @@ function AiSidebarSession({
         message: text,
         useMemory,
         allowNotes: true,
-        allowWrites: true,
+        allowWrites: !options?.readOnly,
         locale: companionLocale(i18n.resolvedLanguage),
         ...(uploaded.length ? { attachmentIds: uploaded.map((item) => item.id) } : {}),
         ...(focus ? { focus } : {}),
@@ -1294,7 +1295,7 @@ function AiSidebarSession({
   const retranslateSelection = useCallback((language: SelectionAiLanguage) => {
     const message = selectionMessage("translate", language);
     if (!message || locked.current) return;
-    void launch(message).then((id) => {
+    void launch(message, { readOnly: true }).then((id) => {
       rememberSelectionTurn(id, "translate");
     }).catch(() => undefined);
   }, [launch, rememberSelectionTurn, selectionMessage]);
@@ -1311,7 +1312,7 @@ function AiSidebarSession({
     const message = selectionMessage(request.kind);
     if (!message) return;
     handledSelectionRequestId.current = request.id;
-    void launch(message).then((id) => {
+    void launch(message, { readOnly: true }).then((id) => {
       rememberSelectionTurn(id, request.kind === "explain" ? "explain" : "translate");
     }).catch(() => undefined);
   }, [busy, launch, loading, rememberSelectionTurn, selectionMessage, selectionPin, selectionRequest]);
