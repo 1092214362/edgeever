@@ -596,10 +596,21 @@ def command_cancel_review(args: argparse.Namespace, client: AppStoreConnect) -> 
         raise SystemExit(f"Expected one waiting review submission for {args.version}; found {len(matching)}")
     submission_id = matching[0]["id"]
     items = client.request("GET", f"/v1/reviewSubmissions/{submission_id}/items?limit=50").get("data") or []
+    item_summary = [
+        {
+            "id": item.get("id"),
+            "state": (item.get("attributes") or {}).get("state"),
+            "relationships": {
+                name: (relationship.get("data") or {}).get("id")
+                for name, relationship in (item.get("relationships") or {}).items()
+            },
+        }
+        for item in items
+    ]
     if len(items) != 1 or (
         (((items[0].get("relationships") or {}).get("appStoreVersion") or {}).get("data") or {}).get("id") != version.get("id")
     ):
-        raise SystemExit("Review submission contains other items; refusing to cancel it")
+        raise SystemExit(f"Review submission has unexpected items; refusing to cancel: {item_summary}")
 
     response = client.request(
         "PATCH",
