@@ -511,6 +511,7 @@ def command_store_status(args: argparse.Namespace, client: AppStoreConnect) -> N
             "filter[platform]": "IOS",
             "filter[versionString]": args.version,
             "fields[appStoreVersions]": "platform,versionString,appStoreState,releaseType,build",
+            "include": "build",
             "limit": 10,
         }
     )
@@ -518,9 +519,11 @@ def command_store_status(args: argparse.Namespace, client: AppStoreConnect) -> N
     print(f"App Store version records for {args.version}: {len(versions.get('data', []))}")
     for version in versions.get("data", []):
         attributes = version.get("attributes") or {}
+        linked_build = ((version.get("relationships") or {}).get("build") or {}).get("data") or {}
         print(
             f"- version id={version.get('id')} state={attributes.get('appStoreState')} "
-            f"releaseType={attributes.get('releaseType')}"
+            f"releaseType={attributes.get('releaseType')} "
+            f"build_id={linked_build.get('id')}"
         )
     build = client.request(
         "GET",
