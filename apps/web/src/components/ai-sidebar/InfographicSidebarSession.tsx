@@ -14,7 +14,7 @@ import {
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { cn } from "@/lib/utils";
-import { BuiltinAgentStatus } from "./BuiltinAgentStatus";
+import { SidebarAgentModeStatus } from "./SidebarAgentModeStatus";
 
 const threadClassName = cn(
   "gap-3 p-3 text-[13px] leading-[1.6]",
@@ -114,7 +114,7 @@ export function InfographicSidebarSession({
           <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="truncate">{title}</span>
         </span>
-        <BuiltinAgentStatus />
+        <SidebarAgentModeStatus />
         <Button
           type="button"
           size="icon-sm"

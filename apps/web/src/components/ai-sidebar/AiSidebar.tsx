@@ -48,19 +48,16 @@ import {
 } from "@/lib/ai-attachments";
 import { companionLocale } from "@/lib/companion-locale";
 import {
-  AI_SIDEBAR_ADAPTER_KEY,
-  AI_SIDEBAR_ADAPTER_PATH_KEY,
   AI_SIDEBAR_LOCAL_THREAD_KEY,
   AI_SIDEBAR_LOCAL_THREADS_KEY,
   AI_SIDEBAR_OPEN_KEY,
-  AI_SIDEBAR_SOURCE_KEY,
   AI_SIDEBAR_THREAD_KEY,
   AI_SIDEBAR_WIDTH_KEY,
   cancelDesktopAcp,
-  desktopAcpAvailable,
   promptDesktopAcp,
+  readAiSidebarAdapter,
+  readAiSidebarSource,
   subscribeDesktopAcp,
-  type DesktopAcpAdapterId,
   type DesktopAcpEvent,
 } from "@/lib/desktop-acp";
 import {
@@ -232,10 +229,6 @@ export const readAiSidebarWidth = () => {
   return Number.isFinite(parsed) ? clampSidebarWidth(parsed) : SIDEBAR_DEFAULT_WIDTH;
 };
 
-const readAiSidebarSource = (): "builtin" | "local" => (
-  readStorage(AI_SIDEBAR_SOURCE_KEY) === "local" && desktopAcpAvailable() ? "local" : "builtin"
-);
-
 const THREAD_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const THREAD_RECENCY_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -350,12 +343,7 @@ function AiSidebarThreadMenu({
   );
 }
 
-const readLocalAdapter = (): { id: DesktopAcpAdapterId; path?: string } | null => {
-  const id = readStorage(AI_SIDEBAR_ADAPTER_KEY);
-  if (id !== "codex" && id !== "claudeCode" && id !== "antigravity" && id !== "openClaw" && id !== "hermesAgent" && id !== "grokBuild" && id !== "deepseekHarness" && id !== "piAgent" && id !== "workbuddyCn" && id !== "workbuddyIntl") return null;
-  const path = readStorage(AI_SIDEBAR_ADAPTER_PATH_KEY)?.trim();
-  return id === "antigravity" && path ? { id, path } : { id };
-};
+const readLocalAdapter = readAiSidebarAdapter;
 
 const attachmentServerCode = (code: string | undefined) => (
   code === "companion_attachment_unsupported" || code === "companion_attachment_expired" ? code : null

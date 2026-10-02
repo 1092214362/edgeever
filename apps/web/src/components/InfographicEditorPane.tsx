@@ -20,6 +20,8 @@ import { MEMO_EDITOR_METADATA_ROW_CLASS_NAME, MEMO_EDITOR_TOP_ROW_CLASS_NAME, ne
 import { MemoEditorToolbarDivider } from "@/components/MemoEditorToolbarChrome";
 import { MemoTitleInput } from "@/components/MemoTitleInput";
 import { api } from "@/lib/api";
+import { readAiSidebarAdapter, readAiSidebarSource } from "@/lib/desktop-acp";
+import { buildInfographicLocalAgentContext, collectInfographicLocalAgentText, infographicLocalAgentErrorKey, parseInfographicLocalReply } from "@/lib/infographic-local-agent";
 import { formatShortcutBinding, getNotebookMoveOptions, type ShortcutSettings } from "@/lib/app-helpers";
 import { createLocalEditSession, requiresLocalEditSession } from "@/components/editor/editor-pane-helpers";
 import { canvasToPngBlob, downloadBlob, frameInfographicExportSvg, infographicExportBasename, rasterizeInfographicSvg, readInfographicSheetColor } from "@/lib/infographic-image-export";
@@ -481,14 +483,55 @@ export default function InfographicEditorPane({
       if (currentContent.length > INFOGRAPHIC_AGENT_SOURCE_MAX_LENGTH) throw new Error(t("infographic.contentTooLarge"));
       const candidates = infographicAgentCandidates(promptText, getTemplates(), existingTemplate);
       if (!candidates.length) throw new Error(t("infographic.aiInvalidResponse"));
-      await api.streamInfographicAgent({
+      const agentHistory = history.filter((turn) => !turn.undoneAt && turn.kind !== "failed")
+        .slice(-12).map((turn) => ({ prompt: turn.prompt, response: `${turn.kind === "clarified" ? "No infographic change was applied. Clarification: " : ""}${turn.response || turn.resultTitle}${turn.decision ? `\nDecision: ${turn.decision}` : ""}`.slice(0, 2000) }));
+      if (readAiSidebarSource() === "local") {
+        const adapter = readAiSidebarAdapter();
+        if (!adapter) throw new Error(t("aiAssistant.sidebar.localMissing"));
+        let raw = "";
+        try {
+          raw = await collectInfographicLocalAgentText({
+            request: {
+              adapterId: adapter.id,
+              ...(adapter.path ? { path: adapter.path } : {}),
+              prompt: promptText,
+              contextText: buildInfographicLocalAgentContext({
+                prompt: promptText,
+                ...(existingTemplate ? { currentTemplate: existingTemplate } : {}),
+                currentContent,
+                candidates,
+                history: agentHistory,
+              }),
+              noteAccess: false,
+            },
+            signal: controller.signal,
+            onText: (text) => {
+              response = text;
+              setActiveTurn((current) => current ? { ...current, response: text } : current);
+            },
+          });
+        } catch (caught) {
+          if (controller.signal.aborted) throw caught;
+          const message = caught instanceof Error ? caught.message : "";
+          const key = infographicLocalAgentErrorKey(message, adapter.id);
+          throw new Error(key ? t(key) : message || t("infographic.aiError"));
+        }
+        const reply = parseInfographicLocalReply(raw, candidates, promptText);
+        response = reply.visibleText;
+        if (reply.proposal) {
+          proposal = reply.proposal;
+          setActiveTurn((current) => current ? { ...current, response, template: reply.proposal?.template, decision: reply.proposal?.explanation } : current);
+        } else if (reply.question) {
+          question = reply.question;
+          setActiveTurn((current) => current ? { ...current, response, question } : current);
+        } else throw new Error(t("infographic.aiInvalidResponse"));
+      } else await api.streamInfographicAgent({
         prompt: promptText,
         locale: i18n.resolvedLanguage,
         ...(existingTemplate ? { currentTemplate: existingTemplate } : {}),
         currentContent,
         candidates,
-        history: history.filter((turn) => !turn.undoneAt && turn.kind !== "failed")
-          .slice(-12).map((turn) => ({ prompt: turn.prompt, response: `${turn.kind === "clarified" ? "No infographic change was applied. Clarification: " : ""}${turn.response || turn.resultTitle}${turn.decision ? `\nDecision: ${turn.decision}` : ""}`.slice(0, 2000) })),
+        history: agentHistory,
       }, { signal: controller.signal, onEvent: (event) => {
         if (event.type === "text-delta") {
           response += event.text;
