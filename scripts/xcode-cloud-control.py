@@ -535,6 +535,16 @@ def command_store_status(args: argparse.Namespace, client: AppStoreConnect) -> N
         f"processing={attributes.get('processingState')} "
         f"uploaded={attributes.get('uploadedDate')}"
     )
+    linked_build_ids = {
+        (((version.get("relationships") or {}).get("build") or {}).get("data") or {}).get("id")
+        for version in versions.get("data", [])
+    }
+    for build_id in sorted((linked_build_ids | {args.build_id}) - {None}):
+        prerelease = client.request("GET", f"/v1/builds/{build_id}/preReleaseVersion").get("data") or {}
+        print(
+            f"- build id={build_id} marketing_version="
+            f"{(prerelease.get('attributes') or {}).get('version')}"
+        )
 
 
 def build_parser() -> argparse.ArgumentParser:
