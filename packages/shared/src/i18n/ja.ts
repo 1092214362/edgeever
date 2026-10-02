@@ -1320,7 +1320,6 @@ export const ja = {
       stop: "停止",
       placeholder: "AI に質問",
       emptyTitle: "会話を始める",
-      emptyDescription: "ノートを参照したいときは、送信前に「現在のノートを含める」を選択してください。要約・推敲・翻訳では自動的に含まれます。",
       includeCurrentNote: "現在のノートを含める",
       working: "返信しています…",
       selectionBadge: "{{count}} 文字を選択 · 現在のノート",

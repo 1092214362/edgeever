@@ -1320,7 +1320,6 @@ export const enUS = {
       stop: "Stop",
       placeholder: "Ask AI",
       emptyTitle: "Start a conversation",
-      emptyDescription: "Select 'Include current note' before sending when the note is relevant. Summarize, improve, and translate include it automatically.",
       includeCurrentNote: "Include current note",
       working: "Replying…",
       selectionBadge: "{{count}} characters selected · Current note",

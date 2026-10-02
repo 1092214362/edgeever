@@ -1320,7 +1320,6 @@ export const zhCN = {
       stop: "停止",
       placeholder: "询问 AI",
       emptyTitle: "开始对话",
-      emptyDescription: "需要笔记内容时，发送前选择“引用当前笔记”。总结、润色和翻译会自动引用。",
       includeCurrentNote: "引用当前笔记",
       working: "正在回复…",
       selectionBadge: "已选 {{count}} 字 · 当前笔记",

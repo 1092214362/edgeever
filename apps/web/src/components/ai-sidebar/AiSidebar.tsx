@@ -1552,7 +1552,6 @@ function AiSidebarSession({
             <ConversationEmptyState
               icon={<Sparkles className="h-6 w-6" />}
               title={t("aiAssistant.sidebar.emptyTitle")}
-              description={t("aiAssistant.sidebar.emptyDescription")}
             />
           ) : null}
           {visibleCompanion ? threadTurns.map((turn) => (
