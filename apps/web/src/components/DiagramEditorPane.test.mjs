@@ -96,6 +96,9 @@ describe("diagram editor canvas surface", () => {
     expect(source).not.toContain("attachDiagramScroll");
     expect(globalStyles).toContain(".edgeever-diagram-scroller");
     expect(globalStyles).toContain("scrollbar-gutter: stable");
+    expect(globalStyles).toContain("--edgeever-diagram-canvas");
+    expect(globalStyles).toContain("min-width: 100%");
+    expect(globalStyles).toContain("min-height: 100%");
     expect(globalStyles).toContain('data-panning="true"');
     expect(globalStyles).toContain("cursor: grabbing !important");
   });

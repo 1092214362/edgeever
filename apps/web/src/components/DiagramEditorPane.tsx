@@ -777,7 +777,9 @@ const applyDiagramSurface = (
   appearance: DiagramAppearance,
   kind?: DiagramDocument["kind"],
 ) => {
-  graph.drawBackground({ color: diagramCanvasColor(kind ?? "mind-map", theme, appearance) });
+  const color = diagramCanvasColor(kind ?? "mind-map", theme, appearance);
+  graph.drawBackground({ color });
+  getDiagramScroller(graph)?.container.style.setProperty("--edgeever-diagram-canvas", color);
   if (kind === "architecture" || kind === "flowchart") {
     graph.drawGrid({
       type: "dot",

@@ -1784,14 +1784,18 @@ export function AiSidebar(props: AiSidebarProps) {
       </AnimatePresence>
       <m.aside
         initial={false}
-        animate={narrow ? { x: open ? 0 : "100%", width: panelWidth } : { x: 0, width: open ? width : 0 }}
+        animate={narrow ? { x: open ? 0 : "100%" } : { x: 0 }}
         transition={resizing ? { duration: 0 } : sidebarRevealTransition}
         aria-hidden={!open}
         aria-label={t("aiAssistant.sidebar.title")}
         inert={open ? undefined : true}
+        style={{ width: narrow ? panelWidth : (open ? width : 0) }}
         className={cn(
-          "h-full min-h-0 shrink-0 overflow-hidden bg-card",
-          narrow ? "fixed inset-y-0 right-0 z-50 shadow-xl" : "relative",
+          "h-full min-h-0 min-w-0 shrink-0 overflow-hidden bg-card",
+          narrow
+            ? "fixed inset-y-0 right-0 z-50 shadow-xl"
+            : "relative transition-[width] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          !narrow && resizing && "transition-none",
         )}
         onDragOverCapture={(event) => {
           if (event.dataTransfer?.types?.includes("Files")) event.preventDefault();
