@@ -251,6 +251,41 @@ export const infographicAgentCandidates = (request: string, templates: string[],
 
 const plainLine = (value: string) => value.replace(/\s+/g, " ").trim();
 
+export const infographicSyntaxTitle = (syntax: string) => {
+  const line = syntax.split("\n").find((entry) => /^  title \S/.test(entry));
+  return line ? plainLine(line.slice(8)) : "";
+};
+
+export const infographicNoteTitleIsAutomatic = (input: {
+  noteTitle: string;
+  graphicTitle: string;
+  defaultTitle: string;
+  earlierTitles?: string[];
+}) => {
+  const note = plainLine(input.noteTitle);
+  if (!note) return true;
+  return [input.defaultTitle, input.graphicTitle, ...(input.earlierTitles ?? [])].some((title) => plainLine(title) === note);
+};
+
+// The note title follows the infographic title the conversation just applied.
+// A title typed into the note field stays only while that graphic title itself stays put.
+export const nextInfographicNoteTitle = (input: {
+  noteTitle: string;
+  previousGraphicTitle: string;
+  nextGraphicTitle: string;
+  defaultTitle: string;
+  keepCustomTitle?: boolean;
+}) => {
+  const note = plainLine(input.noteTitle);
+  const previous = plainLine(input.previousGraphicTitle);
+  const next = plainLine(input.nextGraphicTitle).slice(0, 160);
+  const fallback = plainLine(input.defaultTitle);
+  if (!next || next === note) return note;
+  if (!note || note === fallback || note === previous || !input.keepCustomTitle) return next;
+  if (previous && next !== previous) return next;
+  return note;
+};
+
 export const buildInfographicSyntax = (input: {
   template: string;
   title: string;

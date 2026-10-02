@@ -32,7 +32,7 @@ export const buildInfographicLocalAgentContext = (input: {
 }) => {
   const history = input.history.slice(-12).map((turn) => `User: ${turn.prompt}\nAssistant: ${turn.response}`).join("\n\n");
   return [
-    "You edit one AntV infographic in EdgeEver. The current infographic content is the source of truth. Keep the current template for content-only changes, including replacing one comparison subject. Change the template when the data relationship changes. Choose only from the allowed template IDs. Preserve information the user did not ask to change.",
+    "You edit one AntV infographic in EdgeEver. The current infographic content is the source of truth. Keep the current template for content-only changes, including replacing one comparison subject. Change the template when the data relationship changes. Choose only from the allowed template IDs. Preserve information the user did not ask to change. data.title is the note title: change it when the subject changes, and keep it when the user only edits details.",
     infographicRequestsTimeline(input.prompt)
       ? "The user requested one subject's development history. Choose an allowed sequence-timeline template and chronological events. Do not ask for clarification."
       : "Ask a short clarification only when you cannot make a useful edit.",

@@ -25,7 +25,7 @@ import { buildInfographicLocalAgentContext, collectInfographicLocalAgentText, in
 import { formatShortcutBinding, getNotebookMoveOptions, type ShortcutSettings } from "@/lib/app-helpers";
 import { createLocalEditSession, requiresLocalEditSession } from "@/components/editor/editor-pane-helpers";
 import { canvasToPngBlob, downloadBlob, frameInfographicExportSvg, infographicExportBasename, rasterizeInfographicSvg, readInfographicSheetColor } from "@/lib/infographic-image-export";
-import { buildInfographicSyntax, buildOfficialInfographicSyntax, infographicAgentCandidates, INFOGRAPHIC_TEMPLATES, parseGeneratedOfficialData, type InfographicItem } from "@/lib/infographic-generation";
+import { buildInfographicSyntax, buildOfficialInfographicSyntax, infographicAgentCandidates, infographicNoteTitleIsAutomatic, infographicSyntaxTitle, INFOGRAPHIC_TEMPLATES, nextInfographicNoteTitle, parseGeneratedOfficialData, type InfographicItem } from "@/lib/infographic-generation";
 import { statusSettleMotion } from "@/lib/motion";
 import type { EdgeEverRepository } from "@/lib/repository";
 import { cn, parseTagsText } from "@/lib/utils";
@@ -202,6 +202,12 @@ export default function InfographicEditorPane({
   const parsed = useMemo(() => parseInfographicDocument(memo.contentMarkdown), [memo.contentMarkdown]);
   const initialTags = memo.tags.join(", ");
   const [title, setTitle] = useState(memo.title ?? "");
+  const titleEditedByUserRef = useRef(!infographicNoteTitleIsAutomatic({
+    noteTitle: memo.title ?? "",
+    graphicTitle: infographicSyntaxTitle(parsed?.syntax ?? ""),
+    defaultTitle: t("infographic.name"),
+    earlierTitles: (parsed?.history ?? []).map((turn) => turn.resultTitle),
+  }));
   const [tagsText, setTagsText] = useState(initialTags);
   const [syntax, setSyntax] = useState(parsed?.syntax ?? "");
   const [history, setHistory] = useState<InfographicConversationTurn[]>(parsed?.history ?? []);
@@ -558,6 +564,14 @@ export default function InfographicEditorPane({
         if (parsedCandidate.errors.length || !parsedCandidate.options.template || !getTemplate(parsedCandidate.options.template)) throw new Error(t("infographic.aiInvalidResponse"));
         const generatedTitle = String(data.title ?? "");
         const turnId = crypto.randomUUID();
+        const previousGraphicTitle = String(existingOptions.data?.title ?? "");
+        const nextTitle = nextInfographicNoteTitle({
+          noteTitle: title,
+          previousGraphicTitle,
+          nextGraphicTitle: generatedTitle,
+          defaultTitle: t("infographic.name"),
+          keepCustomTitle: titleEditedByUserRef.current,
+        });
         setPreviousGeneration({ title, syntax, turnId });
         setHistory((turns) => [...turns, {
           id: turnId, prompt: promptText, createdAt: new Date().toISOString(),
@@ -565,8 +579,7 @@ export default function InfographicEditorPane({
           response: (response.trim() || selected.explanation).slice(0, 4000), decision: selected.explanation.slice(0, 500), template: selected.template,
         }]);
         setSyntax(candidate);
-        const previousGraphicTitle = String(existingOptions.data?.title ?? "").trim();
-        if (!title.trim() || title.trim() === t("infographic.name") || (previousGraphicTitle && title.trim() === previousGraphicTitle)) setTitle(generatedTitle);
+        if (nextTitle !== title) setTitle(nextTitle);
       } else if (question) {
         setHistory((turns) => [...turns, { id: crypto.randomUUID(), prompt: promptText, createdAt: new Date().toISOString(), kind: "clarified", resultTitle: "", response: (response.trim() || question).slice(0, 4000) }]);
       } else throw new Error(t("infographic.aiInvalidResponse"));
@@ -627,7 +640,7 @@ export default function InfographicEditorPane({
                 </IconTooltip>
               )}
               titleInput={(
-                <MemoTitleInput className="w-full min-w-0 px-2" value={title} onValueChange={setTitle} placeholder={t("infographic.name")} readOnly={readOnly} />
+                <MemoTitleInput className="w-full min-w-0 px-2" value={title} onValueChange={(value) => { titleEditedByUserRef.current = true; setTitle(value); }} placeholder={t("infographic.name")} readOnly={readOnly} />
               )}
             />
             <MemoEditorMetadataRow
