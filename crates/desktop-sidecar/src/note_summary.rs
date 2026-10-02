@@ -132,7 +132,9 @@ fn valid_turn(value: &Value) -> bool {
 fn optional_string(object: &Map<String, Value>, key: &str, max_units: Option<usize>) -> bool {
     match object.get(key) {
         None => true,
-        Some(Value::String(value)) => max_units.map(|limit| js_len(value) <= limit).unwrap_or(true),
+        Some(Value::String(value)) => max_units
+            .map(|limit| js_len(value) <= limit)
+            .unwrap_or(true),
         Some(_) => false,
     }
 }
@@ -150,8 +152,14 @@ fn diagram_preview(markdown: &str) -> Option<DiagramPreview> {
     }
     let raw_nodes = document.get("nodes")?.as_array()?;
     let raw_edges = document.get("edges")?.as_array()?;
-    let nodes = raw_nodes.iter().map(parse_node).collect::<Option<Vec<_>>>()?;
-    let edges = raw_edges.iter().map(parse_edge).collect::<Option<Vec<_>>>()?;
+    let nodes = raw_nodes
+        .iter()
+        .map(parse_node)
+        .collect::<Option<Vec<_>>>()?;
+    let edges = raw_edges
+        .iter()
+        .map(parse_edge)
+        .collect::<Option<Vec<_>>>()?;
     let mut ids = HashSet::new();
     for node in &nodes {
         if !ids.insert(node.id.clone()) {
@@ -159,30 +167,47 @@ fn diagram_preview(markdown: &str) -> Option<DiagramPreview> {
         }
     }
     if nodes.iter().any(|node| {
-        node.parent_id.as_ref().is_some_and(|parent| parent == &node.id || !ids.contains(parent))
+        node.parent_id
+            .as_ref()
+            .is_some_and(|parent| parent == &node.id || !ids.contains(parent))
     }) {
         return None;
     }
-    if edges.iter().any(|edge| !ids.contains(&edge.source) || !ids.contains(&edge.target)) {
+    if edges
+        .iter()
+        .any(|edge| !ids.contains(&edge.source) || !ids.contains(&edge.target))
+    {
         return None;
     }
-    let shapes: HashMap<&str, &str> = nodes.iter().map(|node| (node.id.as_str(), node.shape.as_str())).collect();
+    let shapes: HashMap<&str, &str> = nodes
+        .iter()
+        .map(|node| (node.id.as_str(), node.shape.as_str()))
+        .collect();
     if kind == "architecture" {
-        let prose_shape = |shape: &str| matches!(shape, "topic" | "process" | "decision" | "terminator");
+        let prose_shape =
+            |shape: &str| matches!(shape, "topic" | "process" | "decision" | "terminator");
         if nodes.iter().any(|node| prose_shape(&node.shape)) {
             return None;
         }
         if nodes.iter().any(|node| {
-            node.parent_id.as_ref().is_some_and(|parent| shapes.get(parent.as_str()).copied() != Some("boundary"))
+            node.parent_id
+                .as_ref()
+                .is_some_and(|parent| shapes.get(parent.as_str()).copied() != Some("boundary"))
         }) {
             return None;
         }
         if edges.iter().any(|edge| {
-            shapes.get(edge.source.as_str()) == Some(&"boundary") || shapes.get(edge.target.as_str()) == Some(&"boundary")
+            shapes.get(edge.source.as_str()) == Some(&"boundary")
+                || shapes.get(edge.target.as_str()) == Some(&"boundary")
         }) {
             return None;
         }
-    } else if nodes.iter().any(|node| !matches!(node.shape.as_str(), "topic" | "process" | "decision" | "terminator")) {
+    } else if nodes.iter().any(|node| {
+        !matches!(
+            node.shape.as_str(),
+            "topic" | "process" | "decision" | "terminator"
+        )
+    }) {
         return None;
     }
     let labels = preview_labels(kind, &nodes);
@@ -206,8 +231,19 @@ fn parse_node(value: &Value) -> Option<SummaryNode> {
     if id.is_empty()
         || !matches!(
             shape,
-            "topic" | "process" | "decision" | "terminator" | "client" | "frontend" | "service" | "database"
-                | "storage" | "queue" | "security" | "external" | "boundary"
+            "topic"
+                | "process"
+                | "decision"
+                | "terminator"
+                | "client"
+                | "frontend"
+                | "service"
+                | "database"
+                | "storage"
+                | "queue"
+                | "security"
+                | "external"
+                | "boundary"
         )
         || !node.get("x").is_some_and(finite_number)
         || !node.get("y").is_some_and(finite_number)
@@ -220,7 +256,12 @@ fn parse_node(value: &Value) -> Option<SummaryNode> {
         Some(Value::String(parent)) if !parent.is_empty() => Some(parent.clone()),
         _ => None,
     };
-    Some(SummaryNode { id: id.to_owned(), label: label.to_owned(), shape: shape.to_owned(), parent_id })
+    Some(SummaryNode {
+        id: id.to_owned(),
+        label: label.to_owned(),
+        shape: shape.to_owned(),
+        parent_id,
+    })
 }
 
 fn parse_edge(value: &Value) -> Option<SummaryEdge> {
@@ -236,22 +277,46 @@ fn parse_edge(value: &Value) -> Option<SummaryEdge> {
             return None;
         }
     }
-    if edge.get("bidirectional").is_some_and(|value| !value.is_boolean()) {
+    if edge
+        .get("bidirectional")
+        .is_some_and(|value| !value.is_boolean())
+    {
         return None;
     }
-    Some(SummaryEdge { source: source.to_owned(), target: target.to_owned() })
+    Some(SummaryEdge {
+        source: source.to_owned(),
+        target: target.to_owned(),
+    })
 }
 
 fn preview_labels(kind: &str, nodes: &[SummaryNode]) -> Vec<String> {
-    let roots: HashSet<&str> = nodes.iter().filter(|node| node.parent_id.is_none()).map(|node| node.id.as_str()).collect();
+    let roots: HashSet<&str> = nodes
+        .iter()
+        .filter(|node| node.parent_id.is_none())
+        .map(|node| node.id.as_str())
+        .collect();
     let primary: Vec<&SummaryNode> = if kind == "mind-map" {
-        nodes.iter().filter(|node| node.parent_id.as_deref().is_some_and(|parent| roots.contains(parent))).collect()
+        nodes
+            .iter()
+            .filter(|node| {
+                node.parent_id
+                    .as_deref()
+                    .is_some_and(|parent| roots.contains(parent))
+            })
+            .collect()
     } else if kind == "architecture" {
-        nodes.iter().filter(|node| node.shape == "boundary").collect()
+        nodes
+            .iter()
+            .filter(|node| node.shape == "boundary")
+            .collect()
     } else {
         Vec::new()
     };
-    let candidates: Vec<&SummaryNode> = if primary.is_empty() { nodes.iter().collect() } else { primary };
+    let candidates: Vec<&SummaryNode> = if primary.is_empty() {
+        nodes.iter().collect()
+    } else {
+        primary
+    };
     let mut labels = Vec::new();
     for node in candidates {
         let label = collapse_js_whitespace(&node.label);
@@ -263,7 +328,10 @@ fn preview_labels(kind: &str, nodes: &[SummaryNode]) -> Vec<String> {
             break;
         }
     }
-    labels.into_iter().map(|label| js_slice(&label, 48)).collect()
+    labels
+        .into_iter()
+        .map(|label| js_slice(&label, 48))
+        .collect()
 }
 
 fn table_preview(markdown: &str) -> Option<TablePreview> {
@@ -297,7 +365,11 @@ fn table_preview(markdown: &str) -> Option<TablePreview> {
         }
     }
     field_names.truncate(4);
-    Some(TablePreview { field_count: field_ids.len(), record_count: records.len(), field_names })
+    Some(TablePreview {
+        field_count: field_ids.len(),
+        record_count: records.len(),
+        field_names,
+    })
 }
 
 fn parse_field(value: &Value) -> Option<(String, String)> {
@@ -306,13 +378,20 @@ fn parse_field(value: &Value) -> Option<(String, String)> {
     let kind = field.get("type")?.as_str()?;
     if id.is_empty()
         || js_len(id) > 80
-        || !matches!(kind, "text" | "number" | "checkbox" | "date" | "select" | "url" | "attachment")
+        || !matches!(
+            kind,
+            "text" | "number" | "checkbox" | "date" | "select" | "url" | "attachment"
+        )
     {
         return None;
     }
     let raw_name = field.get("name").and_then(Value::as_str).unwrap_or("");
     let collapsed = collapse_js_whitespace(raw_name);
-    let name = if collapsed.is_empty() { "字段".to_owned() } else { collapsed };
+    let name = if collapsed.is_empty() {
+        "字段".to_owned()
+    } else {
+        collapsed
+    };
     Some((id.to_owned(), js_slice(&name, 80)))
 }
 
@@ -351,7 +430,9 @@ fn infographic_payload(markdown: &str) -> Option<String> {
         let comment = offset + relative + 4;
         let after = trim_js_start(&markdown[comment..]);
         if let Some(body) = after.strip_prefix(marker) {
-            let end = body.find(|character: char| !is_base64url_char(character)).unwrap_or(body.len());
+            let end = body
+                .find(|character: char| !is_base64url_char(character))
+                .unwrap_or(body.len());
             if end > 0 && trim_js_start(&body[end..]).starts_with("-->") {
                 return Some(body[..end].to_string());
             }
@@ -425,7 +506,10 @@ fn trim_js_end(value: &str) -> &str {
 }
 
 fn strip_js_whitespace(value: &str) -> String {
-    value.chars().filter(|character| !is_js_whitespace(*character)).collect()
+    value
+        .chars()
+        .filter(|character| !is_js_whitespace(*character))
+        .collect()
 }
 
 fn collapse_js_whitespace(value: &str) -> String {
@@ -469,7 +553,8 @@ fn js_slice(value: &str, max_units: usize) -> String {
 mod tests {
     use super::note_list_metadata;
 
-    const INFOGRAPHIC_FIXTURE: &str = "eyJzY2hlbWFWZXJzaW9uIjoxLCJzeW50YXgiOiJpbmZvZ3JhcGhpYyBjaGFydC1jb2x1bW4tc2ltcGxlIn0";
+    const INFOGRAPHIC_FIXTURE: &str =
+        "eyJzY2hlbWFWZXJzaW9uIjoxLCJzeW50YXgiOiJpbmZvZ3JhcGhpYyBjaGFydC1jb2x1bW4tc2ltcGxlIn0";
     const INFOGRAPHIC_HISTORY_FIXTURE: &str = "eyJzY2hlbWFWZXJzaW9uIjoxLCJzeW50YXgiOiLlraPluqYiLCJoaXN0b3J5IjpbeyJpZCI6Im9uZSIsInByb21wdCI6IuaNouaIkOWwj-exsyIsImNyZWF0ZWRBdCI6IjIwMjYtMTAtMDJUMDA6Mzc6MDAuMDAwWiIsImtpbmQiOiJyZWZpbmVkIiwicmVzdWx0VGl0bGUiOiLokKXmlLYiLCJyZXNwb25zZSI6IuW3suabv-aNouOAgiJ9XX0";
 
     fn wrap(marker: &str, payload: &str) -> String {
@@ -478,9 +563,18 @@ mod tests {
 
     #[test]
     fn plain_and_broken_notes_stay_ordinary() {
-        for markdown in ["ordinary note", "<!-- edgeever-infographic-v1:broken -->", "<!-- edgeever-diagram-v1:broken -->", "<!-- edgeever-table-v1:not-json -->"] {
+        for markdown in [
+            "ordinary note",
+            "<!-- edgeever-infographic-v1:broken -->",
+            "<!-- edgeever-diagram-v1:broken -->",
+            "<!-- edgeever-table-v1:not-json -->",
+        ] {
             let metadata = note_list_metadata(markdown);
-            assert_eq!(metadata["diagramKind"], serde_json::Value::Null, "{markdown}");
+            assert_eq!(
+                metadata["diagramKind"],
+                serde_json::Value::Null,
+                "{markdown}"
+            );
             assert!(metadata.get("diagramPreview").is_none(), "{markdown}");
             assert_eq!(metadata["infographic"], false, "{markdown}");
             assert_eq!(metadata["structuredTable"], false, "{markdown}");
@@ -490,35 +584,57 @@ mod tests {
 
     #[test]
     fn infographic_marker_from_js_base64_is_recognized_with_history() {
-        assert_eq!(note_list_metadata(&wrap("edgeever-infographic-v1", INFOGRAPHIC_FIXTURE))["infographic"], true);
-        assert_eq!(note_list_metadata(&wrap("edgeever-infographic-v1", INFOGRAPHIC_HISTORY_FIXTURE))["infographic"], true);
+        assert_eq!(
+            note_list_metadata(&wrap("edgeever-infographic-v1", INFOGRAPHIC_FIXTURE))
+                ["infographic"],
+            true
+        );
+        assert_eq!(
+            note_list_metadata(&wrap(
+                "edgeever-infographic-v1",
+                INFOGRAPHIC_HISTORY_FIXTURE
+            ))["infographic"],
+            true
+        );
         let broken_history = wrap(
             "edgeever-infographic-v1",
-            &encode_json(r#"{"schemaVersion":1,"syntax":"ok","history":[{"id":"one","prompt":42,"createdAt":"2026-10-02T00:00:00.000Z","kind":"refined","resultTitle":""}]}"#),
+            &encode_json(
+                r#"{"schemaVersion":1,"syntax":"ok","history":[{"id":"one","prompt":42,"createdAt":"2026-10-02T00:00:00.000Z","kind":"refined","resultTitle":""}]}"#,
+            ),
         );
         assert_eq!(note_list_metadata(&broken_history)["infographic"], false);
     }
 
     #[test]
     fn diagram_preview_uses_child_topics_and_ignores_a_wrapped_payload() {
-        let payload = encode_json(r#"{"schemaVersion":1,"kind":"mind-map","nodes":[{"id":"root","label":"根","x":0,"y":0,"width":1,"height":1,"shape":"topic"},{"id":"child","label":"  分支  主题  ","x":1,"y":1,"width":1,"height":1,"shape":"topic","parentId":"root"}],"edges":[{"id":"edge","source":"root","target":"child"}]}"#);
+        let payload = encode_json(
+            r#"{"schemaVersion":1,"kind":"mind-map","nodes":[{"id":"root","label":"根","x":0,"y":0,"width":1,"height":1,"shape":"topic"},{"id":"child","label":"  分支  主题  ","x":1,"y":1,"width":1,"height":1,"shape":"topic","parentId":"root"}],"edges":[{"id":"edge","source":"root","target":"child"}]}"#,
+        );
         let wrapped = format!("<!-- edgeever-diagram-v1:\n{payload}\n-->");
         let metadata = note_list_metadata(&wrapped);
         assert_eq!(metadata["diagramKind"], "mind-map");
         assert_eq!(metadata["diagramPreview"]["nodeCount"], 2);
         assert_eq!(metadata["diagramPreview"]["edgeCount"], 1);
-        assert_eq!(metadata["diagramPreview"]["labels"], serde_json::json!(["分支 主题"]));
+        assert_eq!(
+            metadata["diagramPreview"]["labels"],
+            serde_json::json!(["分支 主题"])
+        );
         assert_eq!(metadata["infographic"], false);
     }
 
     #[test]
     fn table_preview_counts_fields_and_records() {
-        let payload = encode_json(r#"{"schemaVersion":1,"fields":[{"id":"fld_name","name":" 名称 ","type":"text"},{"id":"fld_status","name":"","type":"select"}],"records":[{"id":"rec_1","cells":{}}]}"#);
+        let payload = encode_json(
+            r#"{"schemaVersion":1,"fields":[{"id":"fld_name","name":" 名称 ","type":"text"},{"id":"fld_status","name":"","type":"select"}],"records":[{"id":"rec_1","cells":{}}]}"#,
+        );
         let metadata = note_list_metadata(&wrap("edgeever-table-v1", &payload));
         assert_eq!(metadata["structuredTable"], true);
         assert_eq!(metadata["tablePreview"]["fieldCount"], 2);
         assert_eq!(metadata["tablePreview"]["recordCount"], 1);
-        assert_eq!(metadata["tablePreview"]["fieldNames"], serde_json::json!(["名称", "字段"]));
+        assert_eq!(
+            metadata["tablePreview"]["fieldNames"],
+            serde_json::json!(["名称", "字段"])
+        );
         assert!(metadata.get("contentMarkdown").is_none());
     }
 
@@ -531,7 +647,9 @@ mod tests {
         let mut encoded = String::new();
         let mut index = 0;
         while index + 3 <= bytes.len() {
-            let chunk = ((bytes[index] as u32) << 16) | ((bytes[index + 1] as u32) << 8) | bytes[index + 2] as u32;
+            let chunk = ((bytes[index] as u32) << 16)
+                | ((bytes[index + 1] as u32) << 8)
+                | bytes[index + 2] as u32;
             encoded.push(ALPHABET[((chunk >> 18) & 63) as usize] as char);
             encoded.push(ALPHABET[((chunk >> 12) & 63) as usize] as char);
             encoded.push(ALPHABET[((chunk >> 6) & 63) as usize] as char);
