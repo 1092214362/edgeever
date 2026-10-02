@@ -397,10 +397,25 @@
     "message": "場所"
   },
   "saveZhihuToEdgeEver": {
-    "message": "この知乎の回答または記事を EdgeEver に保存"
+    "message": "知乎の内容を EdgeEver に保存"
+  },
+  "zhihuQuestionLabel": {
+    "message": "質問"
+  },
+  "zhihuArticleLabel": {
+    "message": "記事"
+  },
+  "zhihuAuthorLabel": {
+    "message": "著者："
+  },
+  "zhihuAnswerLabel": {
+    "message": "回答"
+  },
+  "zhihuArticleBodyLabel": {
+    "message": "本文"
   },
   "zhihuSaveHint": {
-    "message": "知乎で回答または記事の本文を右クリックし、「この知乎の回答または記事を EdgeEver に保存」を選びます。タイトル、著者、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
+    "message": "知乎で回答または記事の本文を右クリックし、「知乎の内容を EdgeEver に保存」を選びます。タイトル、著者、本文、画像が 1 件のノートになります。コメントは含めません。画像を右クリックした場合は、その画像だけを保存します。"
   },
   "savingZhihu": {
     "message": "この知乎の回答または記事を保存しています…"
@@ -436,6 +451,6 @@
     "message": "知乎の回答または記事"
   },
   "zhihuSaveWindowTitle": {
-    "message": "この知乎の回答または記事を EdgeEver に保存"
+    "message": "知乎の内容を EdgeEver に保存"
   }
 }

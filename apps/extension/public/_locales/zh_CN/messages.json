@@ -397,10 +397,25 @@
     "message": "地点"
   },
   "saveZhihuToEdgeEver": {
-    "message": "保存这篇知乎回答或文章到 EdgeEver"
+    "message": "保存知乎内容到 EdgeEver"
+  },
+  "zhihuQuestionLabel": {
+    "message": "问题"
+  },
+  "zhihuArticleLabel": {
+    "message": "文章"
+  },
+  "zhihuAuthorLabel": {
+    "message": "作者："
+  },
+  "zhihuAnswerLabel": {
+    "message": "回答"
+  },
+  "zhihuArticleBodyLabel": {
+    "message": "正文"
   },
   "zhihuSaveHint": {
-    "message": "在知乎回答或文章的正文上右键，选择“保存这篇知乎回答或文章到 EdgeEver”。标题、作者、正文和图片会存成一条新笔记，评论不会写入。右键图片仍然只保存这张图片。"
+    "message": "在知乎回答或文章的正文上右键，选择“保存知乎内容到 EdgeEver”。标题、作者、正文和图片会存成一条新笔记，评论不会写入。右键图片仍然只保存这张图片。"
   },
   "savingZhihu": {
     "message": "正在保存这篇知乎内容……"
@@ -436,6 +451,6 @@
     "message": "一篇知乎内容"
   },
   "zhihuSaveWindowTitle": {
-    "message": "保存这篇知乎回答或文章到 EdgeEver"
+    "message": "保存知乎内容到 EdgeEver"
   }
 }

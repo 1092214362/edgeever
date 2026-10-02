@@ -908,6 +908,7 @@ const saveLocatedZhihu = async (
     if (stored) images.push({ ...stored, sourceUrl: image.url });
   }
   await saveCapturedZhihuNote(imageNoteClient(settings), {
+    kind: note.kind,
     notebookId: settings.notebookId,
     title: zhihuNoteTitle({
       title: note.title,
@@ -925,6 +926,11 @@ const saveLocatedZhihu = async (
     sourceLabel: t("sourceLabel"),
     capturedAtLabel: t("capturedAtLabel"),
     timeLabel: t("tweetTimeLabel"),
+    questionLabel: t("zhihuQuestionLabel"),
+    articleLabel: t("zhihuArticleLabel"),
+    authorLabel: t("zhihuAuthorLabel"),
+    answerLabel: t("zhihuAnswerLabel"),
+    articleBodyLabel: t("zhihuArticleBodyLabel"),
   });
 };
 
@@ -1189,8 +1195,10 @@ const registerClipMenus = () => {
   // saves the repository, the rest of a Xiaohongshu note saves the note, and
   // the rest of a Zhihu answer or article saves that item.
   // Link context is omitted because a linked image would otherwise show both
-  // commands. Recreate from scratch so a previous registration cannot keep an
-  // overlapping item.
+  // commands. Recreate from scratch on install/update so a previous
+  // registration cannot keep an overlapping item. Context menus persist across
+  // service worker and event page restarts; removing them at module startup can
+  // leave the browser with no menus while the background is waking up.
   chrome.contextMenus.removeAll(() => {
     void chrome.runtime.lastError;
     createClipMenus();
@@ -1249,7 +1257,6 @@ const createClipMenus = () => {
 };
 
 chrome.runtime.onInstalled.addListener(registerClipMenus);
-registerClipMenus();
 
 chrome.contextMenus.onClicked.addListener((info: { menuItemId?: string | number; srcUrl?: string; pageUrl?: string; frameId?: number; selectionText?: string }, tab?: { id?: number; url?: string; title?: string }) => {
   if (info.menuItemId === SELECTION_MENU_ID) {
