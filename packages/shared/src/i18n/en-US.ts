@@ -759,7 +759,6 @@ export const enUS = {
     imageCompressionTitle: "Compress note images",
     imageCompressionAria: "Compress note images",
     showDescendantNotesTitle: "Show notes from sub-notebooks",
-    showDescendantNotesDescription: "When on, opening a parent notebook also lists notes from all of its sub-notebooks. When off, only notes stored directly in that notebook are listed.",
     showDescendantNotesAria: "Show notes from sub-notebooks in parent notebooks",
     aiSelectionMenuTitle: "Show AI assistant when text is selected",
     aiSelectionMenuAria: "Show the AI assistant action when text is selected",

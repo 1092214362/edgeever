@@ -205,7 +205,7 @@ export const NotesView = ({
             : []),
         ]
         : undefined}
-      emptyDescription={hiddenDescendantMemoCount > 0 ? `子笔记本中还有 ${hiddenDescendantMemoCount} 条笔记。可以打开子笔记本查看，或在设置中开启“显示子笔记本中的笔记”。` : searchActive ? "换个关键词再试" : filterActive ? "试试切换筛选条件，或调整搜索关键词。" : memoView === "trash" ? "删除的笔记会显示在这里。" : "先创建一条笔记，之后可以在这里快速预览、搜索和批量整理。"}
+      emptyDescription={hiddenDescendantMemoCount > 0 ? `子笔记本中还有 ${hiddenDescendantMemoCount} 条笔记。可以打开子笔记本查看，或在设置中开启“父笔记本中显示子笔记本笔记”。` : searchActive ? "换个关键词再试" : filterActive ? "试试切换筛选条件，或调整搜索关键词。" : memoView === "trash" ? "删除的笔记会显示在这里。" : "先创建一条笔记，之后可以在这里快速预览、搜索和批量整理。"}
       emptyTitle={hiddenDescendantMemoCount > 0 ? "本级暂无笔记" : searchActive ? "没有找到匹配笔记" : filterActive ? "没有符合筛选的笔记" : memoView === "trash" ? "回收站为空" : "暂无笔记"}
       error={error}
       initialSyncProgress={initialSyncProgress}

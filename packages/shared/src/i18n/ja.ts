@@ -759,7 +759,6 @@ export const ja = {
     imageCompressionTitle: "ノート内の画像を圧縮",
     imageCompressionAria: "ノート内の画像を圧縮する",
     showDescendantNotesTitle: "サブノートブックのノートを表示",
-    showDescendantNotesDescription: "オンにすると、親ノートブックを開いたときにすべてのサブノートブックのノートも一覧表示します。オフにすると、そのノートブックに直接保存されたノートのみを表示します。",
     showDescendantNotesAria: "親ノートブックにサブノートブックのノートを表示する",
     aiSelectionMenuTitle: "文字選択時に AI アシスタントを表示",
     aiSelectionMenuAria: "文字選択時に AI アシスタント操作を表示する",

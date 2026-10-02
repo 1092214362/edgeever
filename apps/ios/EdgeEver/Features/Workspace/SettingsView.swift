@@ -340,12 +340,7 @@ struct SettingsView: View {
                 }
 
                 preferenceBlock(
-                    title: env.preferences.t("显示子笔记本中的笔记", en: "Show notes from sub-notebooks", ja: "サブノートブックのノートを表示"),
-                    description: env.preferences.t(
-                        "开启后，打开父笔记本会同时列出所有子笔记本中的笔记；关闭后只列出直接放在该笔记本中的笔记。",
-                        en: "When on, opening a parent notebook also lists notes from all of its sub-notebooks. When off, only notes stored directly in that notebook are listed.",
-                        ja: "オンにすると、親ノートブックを開いたときにすべてのサブノートブックのノートも一覧表示します。オフにすると、そのノートブックに直接保存されたノートのみを表示します。"
-                    ),
+                    title: env.preferences.t("父笔记本中显示子笔记本笔记", en: "Show notes from sub-notebooks", ja: "サブノートブックのノートを表示"),
                     showTopBorder: true
                 ) {
                     Toggle("", isOn: Bindable(env.preferences).showDescendantNotes)
@@ -893,7 +888,7 @@ struct SettingsView: View {
 
     private func preferenceBlock<Content: View>(
         title: String,
-        description: String,
+        description: String? = nil,
         showTopBorder: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
@@ -902,10 +897,12 @@ struct SettingsView: View {
                 Text(title)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(AppTheme.title)
-                Text(description)
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppTheme.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let description {
+                    Text(description)
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppTheme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             content()
         }

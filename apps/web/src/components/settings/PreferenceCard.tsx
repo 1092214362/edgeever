@@ -368,23 +368,6 @@ export const PreferenceCard = ({
         </div>
 
         <div className="flex min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <ListTree className={SETTINGS_ITEM_ICON_CLASSNAME} />
-            <div className="min-w-0">
-              <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("settings.showDescendantNotesTitle")}</div>
-              <div className={SETTINGS_ITEM_DESCRIPTION_CLASSNAME}>{t("settings.showDescendantNotesDescription")}</div>
-            </div>
-          </div>
-          <div className="flex w-full shrink-0 justify-start sm:w-44 sm:justify-end">
-            <Switch
-              checked={showDescendantNotes}
-              onCheckedChange={writeShowDescendantNotesPreference}
-              aria-label={t("settings.showDescendantNotesAria")}
-            />
-          </div>
-        </div>
-
-        <div className="flex min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <AppWindow className="h-4 w-4 shrink-0 text-slate-500" />
             <div className="min-w-0">
@@ -397,6 +380,22 @@ export const PreferenceCard = ({
             onChange={updateUiFont}
           />
         </div>
+
+        <div className="flex min-h-16 flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <ListTree className={SETTINGS_ITEM_ICON_CLASSNAME} />
+            <div className="min-w-0">
+              <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("settings.showDescendantNotesTitle")}</div>
+            </div>
+          </div>
+          <div className="flex w-full shrink-0 justify-start sm:w-44 sm:justify-end">
+            <Switch
+              checked={showDescendantNotes}
+              onCheckedChange={writeShowDescendantNotesPreference}
+              aria-label={t("settings.showDescendantNotesAria")}
+            />
+          </div>
+        </div>
       </PreferenceSection>
 
       <PreferenceSection title={t("settings.groups.reading")}>
@@ -405,7 +404,6 @@ export const PreferenceCard = ({
             <AlignHorizontalJustifyCenter className="h-4 w-4 shrink-0 text-slate-500" />
             <div className="min-w-0">
               <div className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("settings.editorContentWidthTitle")}</div>
-              <p className="text-xs leading-5 text-slate-500">{t("settings.editorContentWidthDescription")}</p>
             </div>
           </div>
           <div className="w-full shrink-0 sm:w-80">

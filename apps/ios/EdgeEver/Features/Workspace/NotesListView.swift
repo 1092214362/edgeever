@@ -422,7 +422,7 @@ struct NotesListView: View {
         let hiddenCount = hiddenDescendantMemoCount
         if hiddenCount > 0 {
             return env.preferences.t(
-                "子笔记本中还有 \(hiddenCount) 条笔记。可以打开子笔记本查看，或在设置中开启“显示子笔记本中的笔记”。",
+                "子笔记本中还有 \(hiddenCount) 条笔记。可以打开子笔记本查看，或在设置中开启“父笔记本中显示子笔记本笔记”。",
                 en: "Its sub-notebooks still contain \(hiddenCount) notes. Open a sub-notebook to see them, or turn on \"Show notes from sub-notebooks\" in Settings.",
                 ja: "サブノートブックにはまだ \(hiddenCount) 件のノートがあります。サブノートブックを開くか、設定で「サブノートブックのノートを表示」をオンにしてください。"
             )
