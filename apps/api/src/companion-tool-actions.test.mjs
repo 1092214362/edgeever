@@ -11,7 +11,7 @@ import { companionWorkspaceCursor, proposeCompanionToolAction } from "./companio
 import { getCompanionAction, applyCompanionAction, dismissCompanionAction } from "./companion-actions.ts";
 import { COMPANION_MCP_TOOLS, validateCompanionTool } from "./companion-tool-catalog.ts";
 import { MCP_TOOLS } from "./mcp-tools.ts";
-import { companionToolDefinitions, createCompanionTools, explicitDiagramKind } from "./companion-agent-tools.ts";
+import { companionToolDefinitions, createCompanionTools, explicitDiagramKind, resolveWorkspaceInboxId } from "./companion-agent-tools.ts";
 import { companionExecutionReceipts } from "./companion-runtime.ts";
 
 const databases = [];
@@ -272,7 +272,16 @@ describe("shared companion MCP adapter", () => {
     const agentInput = { ...f.input, message: "帮我生成一个架构图笔记作为说明。" };
     const definition = companionToolDefinitions(agentInput).find(tool => tool.name === "create_diagram_memo");
     expect(definition.inputSchema.properties.kind.enum).toEqual(["architecture"]);
+    expect(definition.inputSchema.required ?? []).not.toContain("notebookId");
     expect(definition.description).toContain("use exactly that kind");
+    expect(definition.description).toContain("等待分类");
+    const plain = companionToolDefinitions(f.input);
+    for (const name of ["create_memo", "create_diagram_memo", "use_note_template"]) {
+      const tool = plain.find(item => item.name === name);
+      expect(tool.inputSchema.required ?? []).not.toContain("notebookId");
+      expect(tool.description).toContain("等待分类");
+    }
+    expect(plain.find(item => item.name === "ask_user_question").description).toContain("Do not use this to choose a notebook");
 
     const tools = createCompanionTools({ ...f, input: agentInput, scope, signal: new AbortController().signal,
       assertActive: async () => {}, sources: [] });
@@ -286,6 +295,62 @@ describe("shared companion MCP adapter", () => {
     expect(f.sqlite.query("SELECT COUNT(*) AS n FROM memos WHERE title = ?").get(graph.title).n).toBe(0);
     expect(await tools.create_diagram_memo.execute({ ...graph, kind: "architecture" }))
       .toMatchObject({ applied: true, diagramKind: "architecture" });
+  });
+  test("a new note or diagram without a named notebook is saved in the inbox", async () => {
+    const f = await setup();
+    const inboxId = `${scope.workspaceId}_inbox`;
+    f.sqlite.query("INSERT INTO notebooks(id, workspace_id, name, slug) VALUES (?, ?, '等待分类', 'inbox')").run(inboxId, scope.workspaceId);
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    const note = await tools.create_memo.execute({ title: "Inbox note", contentMarkdown: "Saved without asking" });
+    expect(note.memo.notebookId).toBe(inboxId);
+    const diagram = await tools.create_diagram_memo.execute({
+      title: "模型蒸馏",
+      kind: "flowchart",
+      nodes: [
+        { id: "teacher", label: "教师模型", type: "process" },
+        { id: "student", label: "学生模型", type: "process" },
+      ],
+      edges: [{ source: "teacher", target: "student" }],
+    });
+    expect(diagram).toMatchObject({ applied: true, notebookId: inboxId, diagramKind: "flowchart" });
+    const named = await tools.create_memo.execute({ notebookId: "ideas", title: "Named", contentMarkdown: "Stay put" });
+    expect(named.memo.notebookId).toBe("ideas");
+    expect(await resolveWorkspaceInboxId(f.db, scope.workspaceId)).toBe(inboxId);
+  });
+  test("a diagram request cannot pause to ask which notebook", async () => {
+    const f = await setup();
+    const run = { tools: [], todos: [], questions: [], pause: { ask: false } };
+    const tools = createCompanionTools({
+      ...f,
+      input: { ...f.input, message: "给我生成一个模型蒸馏的流程图" },
+      scope,
+      signal: new AbortController().signal,
+      assertActive: async () => {},
+      sources: [],
+      run,
+    });
+    const blocked = await tools.ask_user_question.execute({
+      questions: [{ id: "notebook", prompt: "流程图要保存到哪个笔记本？请提供笔记本名称。", inputType: "free_text" }],
+    });
+    expect(blocked).toMatchObject({ waiting: false, error: expect.stringContaining("等待分类") });
+    expect(run.pause.ask).toBe(false);
+    expect(run.questions).toEqual([]);
+    const allowed = await tools.ask_user_question.execute({
+      questions: [{
+        id: "strategy",
+        prompt: "按主题合并，还是按时间合并？",
+        inputType: "single_select",
+        options: [{ id: "topic", label: "主题" }, { id: "time", label: "时间" }],
+      }],
+    });
+    expect(allowed).toMatchObject({ waiting: true });
+    expect(run.questions).toHaveLength(1);
+  });
+  test("creating a note without a notebook fails when the inbox is missing", async () => {
+    const f = await setup();
+    const tools = createCompanionTools({ ...f, scope, signal: new AbortController().signal, assertActive: async () => {}, sources: [] });
+    await expect(tools.create_memo.execute({ title: "Nowhere", contentMarkdown: "body" })).rejects.toMatchObject({ code: "inbox_notebook_missing" });
+    expect(f.sqlite.query("SELECT COUNT(*) AS n FROM memos WHERE title = 'Nowhere'").get().n).toBe(0);
   });
   test("note templates and AI instructions execute immediately including deletes", async () => {
     const f = await setup();

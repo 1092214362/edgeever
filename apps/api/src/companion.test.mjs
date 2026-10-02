@@ -79,7 +79,11 @@ describe("companion turn context", () => {
     expect(companionUserContent(input({
       message: "帮我新建一个RAG原理的思维导图。",
       focus: { memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示" },
-    }))).toContain("use this open notebook");
+    }))).toContain("saved in the inbox notebook (等待分类)");
+    expect(companionUserContent(input({
+      message: "帮我新建一个RAG原理的思维导图。",
+      focus: { memoId: "memo_1", notebookId: "nb_demo_features", notebookTitle: "功能演示" },
+    }))).toContain("Do not ask which notebook");
     expect(companionUserContent(input({
       message: "根据这篇做思维导图",
       focus: {
@@ -550,6 +554,9 @@ describe("actual AI SDK companion runtime", () => {
     expect(COMPANION_INSTRUCTIONS).toContain("use_note_template");
     expect(COMPANION_INSTRUCTIONS).toContain("todo_write");
     expect(COMPANION_INSTRUCTIONS).toContain("ask_user_question");
+    expect(COMPANION_INSTRUCTIONS).toContain("Omit notebookId and it is saved in the inbox notebook (等待分类)");
+    expect(COMPANION_INSTRUCTIONS).toContain("Do not ask which notebook, and do not use the open notebook unless the user named it");
+    expect(COMPANION_INSTRUCTIONS).not.toContain("use the open notebook from Focus DATA");
     expect(COMPANION_INSTRUCTIONS).toContain("Do not narrate");
     expect(COMPANION_INSTRUCTIONS).toContain("AI instructions");
     expect(COMPANION_INSTRUCTIONS).toContain("cannot empty the trash");
