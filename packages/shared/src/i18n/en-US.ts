@@ -766,7 +766,7 @@ export const enUS = {
     aiSpaceShortcutAria: "Open AI with Space in an empty block",
     linkOpenModifierTitle: "Open web links with Ctrl/⌘ + click while editing",
     linkOpenModifierAria: "Require Ctrl or ⌘ click to open web links while editing",
-    mermaidThemeTitle: "Diagram theme",
+    mermaidThemeTitle: "Mermaid diagram theme",
     markdownThemeTitle: "Markdown source theme",
     markdownThemeDescription: "Follow the app appearance or choose a fixed syntax highlighting theme for Markdown source editing.",
     editorThemeTitle: "Editor theme",

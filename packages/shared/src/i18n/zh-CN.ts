@@ -766,7 +766,7 @@ export const zhCN = {
     aiSpaceShortcutAria: "空白段落按 Space 是否唤起 AI",
     linkOpenModifierTitle: "编辑时用 Ctrl/⌘ + 点击打开网页链接",
     linkOpenModifierAria: "编辑时是否需要 Ctrl 或 ⌘ 再点击才能打开网页链接",
-    mermaidThemeTitle: "图表主题",
+    mermaidThemeTitle: "Mermaid 图表主题",
     markdownThemeTitle: "Markdown 源码主题",
     markdownThemeDescription: "跟随应用外观，或为 Markdown 源码编辑模式选择固定的代码高亮配色。",
     editorThemeTitle: "编辑器主题",

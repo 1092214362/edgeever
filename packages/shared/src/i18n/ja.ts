@@ -766,7 +766,7 @@ export const ja = {
     aiSpaceShortcutAria: "空のブロックで Space から AI を開く",
     linkOpenModifierTitle: "編集中は Ctrl/⌘ + クリックでウェブリンクを開く",
     linkOpenModifierAria: "編集中のウェブリンクは Ctrl または ⌘ クリックで開く",
-    mermaidThemeTitle: "図のテーマ",
+    mermaidThemeTitle: "Mermaid 図のテーマ",
     markdownThemeTitle: "Markdown ソースのテーマ",
     markdownThemeDescription: "アプリの外観に合わせるか、Markdown ソース編集のシンタックスハイライトを固定します。",
     editorThemeTitle: "エディタテーマ",
