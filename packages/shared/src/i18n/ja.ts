@@ -1318,7 +1318,7 @@ export const ja = {
       historyEmpty: "一致するチャットがありません",
       resize: "幅を調整",
       stop: "停止",
-      placeholder: "質問するか、/ でノート用スキルを入力",
+      placeholder: "AI に質問",
       emptyTitle: "会話を始める",
       emptyDescription: "ノートを参照したいときは、送信前に「現在のノートを含める」を選択してください。要約・推敲・翻訳では自動的に含まれます。",
       includeCurrentNote: "現在のノートを含める",

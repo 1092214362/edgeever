@@ -1318,7 +1318,7 @@ export const enUS = {
       historyEmpty: "No matching chats",
       resize: "Resize assistant",
       stop: "Stop",
-      placeholder: "Ask anything, or type / for a note skill",
+      placeholder: "Ask AI",
       emptyTitle: "Start a conversation",
       emptyDescription: "Select 'Include current note' before sending when the note is relevant. Summarize, improve, and translate include it automatically.",
       includeCurrentNote: "Include current note",
