@@ -241,7 +241,7 @@ export function companionToolDefinitions(input: CompanionTurnInput): CompanionTo
     },
     {
       name: "ask_user_question",
-      description: "Ask the user 1-3 structured questions when you cannot proceed without a choice among existing notes or strategies. Do not use this to choose a notebook for a new note, diagram, infographic, or template. Do not use this to narrate writes you can already perform. Stop after calling it.",
+      description: "Ask the user 1-3 structured questions only when a necessary choice remains unresolved after checking the current request and recent conversation. Reuse a recent translation when the user asks to apply that translated content; do not ask for its language again. Do not use this to choose a notebook for a new note, diagram, infographic, or template. Do not use this to narrate writes you can already perform. Stop after calling it.",
       inputSchema: ASK_USER_QUESTION_SCHEMA,
     },
   ];

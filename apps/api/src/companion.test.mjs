@@ -105,6 +105,24 @@ describe("companion turn context", () => {
     expect(parseCompanionMentionQuery("see @note", 9)).toEqual({ query: "note", start: 4, end: 9 });
     expect(parseCompanionMentionQuery("hello", 5)).toBeNull();
   });
+
+  test("a replacement follow-up retains the latest translation after an older, unrelated translation", () => {
+    const next = input({ allowNotes: true, useMemory: false, message: "用翻译后的内容替换原笔记。",
+      focus: { memoId: "memo_current", title: "Napoleon quote" } });
+    const base = { thread_id: next.threadId, status: "completed", memory_revision: 3, use_memory: 0,
+      allow_notes: 1, sources_json: "[]" };
+    const history = [
+      { ...base, id: "latest", message: "翻译一下当前笔记。", response: "拿破仑说：当你的敌人正在犯错时，千万不要打断他。" },
+      { ...base, id: "older", message: "请把下面这段翻译成日文：极客知识库", response: "ギーク知識ベース" },
+    ];
+    const messages = companionMessages(next, history, 3);
+    expect(messages.map(message => message.content)).toEqual([
+      history[1].message, history[1].response, history[0].message, history[0].response,
+      expect.stringContaining("用翻译后的内容替换原笔记。"),
+    ]);
+    expect(messages.at(-1).content).toContain("[note:memo_current]");
+    expect(COMPANION_INSTRUCTIONS).toContain("An older translation of different text does not override the latest relevant translation.");
+  });
 });
 
 describe("companion organization proposals", () => {
