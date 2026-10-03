@@ -124,12 +124,21 @@ describe("companion turn context", () => {
     expect(COMPANION_INSTRUCTIONS).toContain("An older translation of different text does not override the latest relevant translation.");
   });
 
-  test("unqualified translations follow the interface language before asking", () => {
-    const instructions = locale => companionAgentInstructions(input({ locale, message: "翻译一下当前笔记。", allowNotes: true }), [], []);
-    expect(instructions("zh-CN")).toContain("otherwise translate it into Simplified Chinese. Do not ask the user to choose a target language.");
-    expect(instructions("zh-CN")).toContain("source is mainly Simplified Chinese, translate it into English");
-    expect(instructions("ja")).toContain("source is mainly Japanese, translate it into English; otherwise translate it into Japanese");
-    expect(instructions("en-US")).toContain("source is mainly English, translate it into Simplified Chinese; otherwise translate it into English");
+  test("unqualified translations follow conversation language and ask only when source already matches", () => {
+    const instructions = (message, locale) => companionAgentInstructions(input({ locale, message, allowNotes: true }), [], []);
+    expect(instructions("翻译一下当前笔记。", "ja")).toContain("Simplified Chinese (current request)");
+    expect(instructions("このノートを翻訳して", "zh-CN")).toContain("Japanese (current request)");
+    expect(instructions("このノートを翻訳して", "zh-CN")).toContain("Reply in Japanese unless the user asks otherwise.");
+    expect(instructions("Translate this note", "zh-CN")).toContain("English (current request)");
+    expect(instructions("Translate this note", "zh-CN")).toContain("source is already mainly in English");
+    expect(instructions("Translate this note", "zh-CN")).toContain("otherwise ask which other language");
+    const next = input({ locale: "zh-CN", message: "🔄", useMemory: false });
+    const prior = { id: "prior", thread_id: next.threadId, status: "completed", memory_revision: 3, use_memory: 0,
+      allow_notes: 0, sources_json: "[]", message: "このノートを翻訳して", response: "Translation" };
+    expect(companionAgentInstructions(next, [], [], [prior], 3)).toContain("Japanese (recent conversation)");
+    expect(companionAgentInstructions(next, [], [], [{ ...prior, use_memory: 1 }], 3)).toContain("Simplified Chinese (interface)");
+    expect(companionAgentInstructions({ ...next, message: "请翻译我正在看的内容，并把译文作为回复写给我。" }, [], [], [prior], 3))
+      .toContain("Japanese (recent conversation)");
   });
 });
 

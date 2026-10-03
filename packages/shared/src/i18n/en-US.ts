@@ -1329,7 +1329,7 @@ export const enUS = {
         ask: "Ask",
         actions: "Selected text",
         explainPrompt: "Explain the ideas in the passage below.",
-        translatePrompt: "Translate the passage below: if it is in English, translate it into Simplified Chinese; otherwise translate it into English. Output only the translation.",
+        translatePrompt: "Translate the passage below into the language of this conversation. If the source is already in that language and no target was specified, ask only which other language to use; otherwise output only the translation.",
         translateLanguagePrompt: "Translate the passage below into {{language}}. Write only the translation, with no preamble.",
         truncated: "Only the first {{count}} characters of the selection were sent.",
         dismiss: "Unpin",
