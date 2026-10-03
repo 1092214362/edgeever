@@ -461,5 +461,29 @@
   },
   "zhihuSaveWindowTitle": {
     "message": "Save answer or article to EdgeEver"
+  },
+  "saveRedditToEdgeEver": {
+    "message": "Save Reddit post to EdgeEver"
+  },
+  "savingReddit": {
+    "message": "Saving this Reddit post…"
+  },
+  "redditSaved": {
+    "message": "Saved this Reddit post as a note."
+  },
+  "redditNotFound": {
+    "message": "Could not find that Reddit post. Right-click directly on a post."
+  },
+  "redditRightClickAgain": {
+    "message": "Reddit posts can be recognized now. Right-click that post again."
+  },
+  "redditAuthorLabel": {
+    "message": "Author"
+  },
+  "redditCommunityLabel": {
+    "message": "Community"
+  },
+  "redditLinkLabel": {
+    "message": "Linked page"
   }
 }

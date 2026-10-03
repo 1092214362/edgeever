@@ -461,5 +461,29 @@
   },
   "zhihuSaveWindowTitle": {
     "message": "保存回答/文章到 EdgeEver"
+  },
+  "saveRedditToEdgeEver": {
+    "message": "保存 Reddit 帖子到 EdgeEver"
+  },
+  "savingReddit": {
+    "message": "正在保存这条 Reddit 帖子……"
+  },
+  "redditSaved": {
+    "message": "已把这条 Reddit 帖子存成笔记。"
+  },
+  "redditNotFound": {
+    "message": "没有定位到这条 Reddit 帖子。请直接在帖子上右键。"
+  },
+  "redditRightClickAgain": {
+    "message": "现在可以识别 Reddit 帖子了。请在同一条帖子上再次右键。"
+  },
+  "redditAuthorLabel": {
+    "message": "作者"
+  },
+  "redditCommunityLabel": {
+    "message": "社区"
+  },
+  "redditLinkLabel": {
+    "message": "外部链接"
   }
 }

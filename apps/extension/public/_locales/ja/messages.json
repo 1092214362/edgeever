@@ -461,5 +461,29 @@
   },
   "zhihuSaveWindowTitle": {
     "message": "回答・記事を EdgeEver に保存"
+  },
+  "saveRedditToEdgeEver": {
+    "message": "Reddit の投稿を EdgeEver に保存"
+  },
+  "savingReddit": {
+    "message": "Reddit の投稿を保存しています…"
+  },
+  "redditSaved": {
+    "message": "Reddit の投稿をノートに保存しました。"
+  },
+  "redditNotFound": {
+    "message": "Reddit の投稿が見つかりません。投稿の上で右クリックしてください。"
+  },
+  "redditRightClickAgain": {
+    "message": "Reddit の投稿を認識できるようになりました。同じ投稿をもう一度右クリックしてください。"
+  },
+  "redditAuthorLabel": {
+    "message": "投稿者"
+  },
+  "redditCommunityLabel": {
+    "message": "コミュニティ"
+  },
+  "redditLinkLabel": {
+    "message": "外部リンク"
   }
 }
