@@ -1328,7 +1328,7 @@ export const enUS = {
         translate: "Translate",
         ask: "Ask",
         actions: "Selected text",
-        explainPrompt: "Explain the ideas in the passage below.",
+        explainPrompt: "Explain the ideas in the passage below:",
         translatePrompt: "Translate the passage below into the language of this conversation. If the source is already in that language and no target was specified, ask only which other language to use; otherwise output only the translation.",
         translateLanguagePrompt: "Translate the passage below into {{language}}. Write only the translation, with no preamble.",
         truncated: "Only the first {{count}} characters of the selection were sent.",
