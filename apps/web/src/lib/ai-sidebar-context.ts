@@ -12,11 +12,15 @@ export type SidebarNoteContext = {
 export const sidebarCompanionFocus = (context: SidebarNoteContext, includeCurrentNote: boolean): CompanionTurnInput["focus"] => {
   const selection = context.selectionMarkdown?.trim().slice(0, 2000) ?? "";
   const next: NonNullable<CompanionTurnInput["focus"]> = {};
+  // The open note's identity lets the agent resolve "this note" without
+  // attaching its body to every unrelated request.
+  if (context.memoId) {
+    next.memoId = context.memoId;
+    if (context.noteTitle?.trim()) next.title = context.noteTitle.trim();
+  }
   if (includeCurrentNote) {
-    if (context.memoId) next.memoId = context.memoId;
     if (context.notebookId) next.notebookId = context.notebookId;
     if (context.notebookTitle) next.notebookTitle = context.notebookTitle;
-    if (context.noteTitle?.trim()) next.title = context.noteTitle.trim();
     const content = context.contentMarkdown?.trim() ?? "";
     if (content) {
       next.contentMarkdown = content.slice(0, 4000);
@@ -31,8 +35,8 @@ export const sidebarLocalContextText = (context: SidebarNoteContext, includeCurr
   const selection = context.selectionMarkdown?.trim().slice(0, 2000);
   const content = includeCurrentNote ? context.contentMarkdown?.trim().slice(0, 2000) : "";
   return [
+    context.memoId ? `Open EdgeEver note for this turn. When the user refers to this note, use its ID with the connected EdgeEver MCP get_memo tool to read the full content if available:\nID: ${context.memoId}\nTitle (data): ${context.noteTitle?.trim() || "(untitled)"}` : "",
     selection ? `Selected text from the current note (data):\n${selection}` : "",
-    includeCurrentNote && context.noteTitle?.trim() ? `Current note title (data): ${context.noteTitle.trim()}` : "",
     content ? `Current note body (data):\n${content}` : "",
   ].filter(Boolean).join("\n\n");
 };
