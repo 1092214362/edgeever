@@ -1133,7 +1133,7 @@ function AiSidebarSession({
         }));
         const activeLocalThreadId = localThreadIdRef.current;
         const transcript = localAgentTranscript(localTurnsRef.current, activeLocalThreadId);
-        const noteContext = sidebarLocalContextText(focusAtSend, useCurrentNote);
+        const noteContext = sidebarLocalContextText(focusAtSend, useCurrentNote, companionLocale(i18n.resolvedLanguage));
         writeStorage(AI_SIDEBAR_LOCAL_THREAD_KEY, activeLocalThreadId);
         setLocalTurns((previous) => [...previous, {
           id,

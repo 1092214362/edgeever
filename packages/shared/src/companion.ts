@@ -41,6 +41,12 @@ export const CompanionTurnInputSchema = z.object({
 }).strict();
 export type CompanionTurnInput = z.infer<typeof CompanionTurnInputSchema>;
 
+export const defaultTranslationRule = (locale: CompanionTurnInput["locale"]): string => {
+  if (locale === "zh-CN") return "If the source is mainly Simplified Chinese, translate it into English; otherwise translate it into Simplified Chinese.";
+  if (locale === "ja") return "If the source is mainly Japanese, translate it into English; otherwise translate it into Japanese.";
+  return "If the source is mainly English, translate it into Simplified Chinese; otherwise translate it into English.";
+};
+
 export type CompanionModelContentPart =
   | { type: "text"; text: string }
   | { type: "image"; image: string; mediaType: string }

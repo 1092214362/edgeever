@@ -1,4 +1,4 @@
-import type { CompanionTurnInput } from "@edgeever/shared";
+import { defaultTranslationRule, type CompanionTurnInput } from "@edgeever/shared";
 
 export type SidebarNoteContext = {
   memoId?: string;
@@ -31,10 +31,11 @@ export const sidebarCompanionFocus = (context: SidebarNoteContext, includeCurren
   return Object.keys(next).length ? next : undefined;
 };
 
-export const sidebarLocalContextText = (context: SidebarNoteContext, includeCurrentNote: boolean): string => {
+export const sidebarLocalContextText = (context: SidebarNoteContext, includeCurrentNote: boolean, locale: CompanionTurnInput["locale"]): string => {
   const selection = context.selectionMarkdown?.trim().slice(0, 2000);
   const content = includeCurrentNote ? context.contentMarkdown?.trim().slice(0, 2000) : "";
   return [
+    `For a translation request without an explicit target language, use this default: ${defaultTranslationRule(locale)} Do not ask the user to choose a target language. An explicit target for this text takes precedence.`,
     context.memoId ? `Open EdgeEver note for this turn. When the user refers to this note, use its ID with the connected EdgeEver MCP get_memo tool to read the full content if available:\nID: ${context.memoId}\nTitle (data): ${context.noteTitle?.trim() || "(untitled)"}` : "",
     selection ? `Selected text from the current note (data):\n${selection}` : "",
     content ? `Current note body (data):\n${content}` : "",

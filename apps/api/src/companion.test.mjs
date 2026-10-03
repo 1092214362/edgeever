@@ -9,7 +9,7 @@ import { registerCompanionRoutes } from "./companion-routes.ts";
 import { beginCompanionTurn, checkpointCompanionTurn, clearCompanionHistory, companionRevision, forgetCompanionMemory,
   getCompanionTurn, importCompanionMemories, listCompanionMemories, listCompanionTurns, saveCompanionMemory } from "./companion-service.ts";
 import { parseCompanionMentionQuery } from "@edgeever/shared";
-import { COMPANION_INSTRUCTIONS, companionMessages, companionTurnInstructions, companionUserContent, selectCompanionMemories, streamCompanion } from "./companion-runtime.ts";
+import { COMPANION_INSTRUCTIONS, companionAgentInstructions, companionMessages, companionTurnInstructions, companionUserContent, selectCompanionMemories, streamCompanion } from "./companion-runtime.ts";
 import { applyCompanionAction, proposeCompanionAction, listCompanionActions, dismissCompanionAction } from "./companion-actions.ts";
 import { createMemoRecord, getMemoDetail, updateMemoRecord } from "./memo-service.ts";
 import { COMPANION_MCP_TOOLS } from "./companion-tool-catalog.ts";
@@ -122,6 +122,14 @@ describe("companion turn context", () => {
     ]);
     expect(messages.at(-1).content).toContain("[note:memo_current]");
     expect(COMPANION_INSTRUCTIONS).toContain("An older translation of different text does not override the latest relevant translation.");
+  });
+
+  test("unqualified translations follow the interface language before asking", () => {
+    const instructions = locale => companionAgentInstructions(input({ locale, message: "翻译一下当前笔记。", allowNotes: true }), [], []);
+    expect(instructions("zh-CN")).toContain("otherwise translate it into Simplified Chinese. Do not ask the user to choose a target language.");
+    expect(instructions("zh-CN")).toContain("source is mainly Simplified Chinese, translate it into English");
+    expect(instructions("ja")).toContain("source is mainly Japanese, translate it into English; otherwise translate it into Japanese");
+    expect(instructions("en-US")).toContain("source is mainly English, translate it into Simplified Chinese; otherwise translate it into English");
   });
 });
 
