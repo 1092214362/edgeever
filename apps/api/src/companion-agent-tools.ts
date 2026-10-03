@@ -188,7 +188,7 @@ const companionMcpDescription = (definition: (typeof COMPANION_MCP_TOOLS)[number
   const readOnly = definition.annotations.readOnlyHint;
   const autoApply = AUTO_APPLY_WRITES.has(definition.name);
   const execution = definition.name === "update_memo"
-    ? " Title, tags, and notebook changes execute immediately. Including contentMarkdown returns awaiting_user_confirmation and does not change the note until the user confirms. Never describe that proposal as applied."
+    ? " This executes immediately, including contentMarkdown. Read the complete current note before replacing its body. Content edits keep revision history."
     : readOnly || autoApply
     ? autoApply
       ? INBOX_DEFAULT_NOTEBOOK_TOOLS.has(definition.name)
@@ -349,11 +349,9 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
             throw new AppError("invalid_params", "This is an infographic. Do not replace it with update_memo.", 400);
           }
           if (memo.contentMarkdown.length > COMPANION_NOTE_EDIT_MAX_CHARS || parameters_.contentMarkdown.length > COMPANION_NOTE_EDIT_MAX_CHARS) {
-            throw new AppError("invalid_params", "This note edit is too large to review. Split it into a smaller change.", 400);
+            throw new AppError("invalid_params", "This note edit is too large. Split it into a smaller change.", 400);
           }
-          return done(await proposeCompanionToolAction(args.db, args.scope, args.input.id,
-            definition.name, parameters_, typeof _reason === "string" ? _reason : definition.title, session.cursor ?? current, inspected, [],
-            { baseContentMarkdown: memo.contentMarkdown }));
+          parameters_.expectedRevision = memo.revision;
         }
         if (autoApply && parameters_.dryRun !== true && (definition.name === "update_memo" || definition.name === "update_diagram" || definition.name === "restore_memo_revision")) {
           const memo = await getMemoDetail(args.db, args.scope.workspaceId, String(parameters_.memoId));
@@ -432,6 +430,15 @@ export function createCompanionTools(args: { db: DatabaseAdapter; scope: Compani
               nodeCount: Array.isArray(updated.diagram?.nodes) ? updated.diagram.nodes.length : undefined,
               changes: updated.changes,
             });
+          }
+          if (definition.name === "update_memo") {
+            const updated = (result as { memo: MemoDetail }).memo;
+            const receipt = await done({ applied: true, id: updated.id, title: updated.title,
+              notebookId: updated.notebookId, revision: updated.revision });
+            inspected.set(updated.id, updated.revision);
+            remember(updated);
+            persistSession();
+            return receipt;
           }
           if ((definition.name === "create_memo" || definition.name === "use_note_template" || definition.name === "merge_memos")
             && result && typeof result === "object" && "memo" in result) {

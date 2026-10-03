@@ -565,11 +565,11 @@ describe("companion client-direct HTTP contracts", () => {
 });
 
 describe("actual AI SDK companion runtime", () => {
-  test("proposal reasons contain evidence instead of card boilerplate", () => {
-    expect(COMPANION_INSTRUCTIONS).toContain("awaiting_user_confirmation");
-    expect(COMPANION_INSTRUCTIONS).toContain("Never describe that proposal as applied");
-    expect(COMPANION_INSTRUCTIONS).not.toContain("All available write tools execute immediately");
-    expect(COMPANION_INSTRUCTIONS).not.toContain("user must confirm the suggestion card");
+  test("assistant instructions describe direct note edits and trustworthy receipts", () => {
+    expect(COMPANION_INSTRUCTIONS).toContain("update_memo with contentMarkdown, execute immediately");
+    expect(COMPANION_INSTRUCTIONS).toContain("Read the complete current note before replacing its body");
+    expect(COMPANION_INSTRUCTIONS).toContain("Only report a note operation as completed when the tool result says applied");
+    expect(COMPANION_INSTRUCTIONS).not.toContain("awaiting_user_confirmation");
     expect(COMPANION_INSTRUCTIONS).toContain("[Note title](#memo=memo_abc123)");
     expect(COMPANION_INSTRUCTIONS).toContain("Do not drop memo_");
     expect(COMPANION_INSTRUCTIONS).toContain("not as a heading");
@@ -623,7 +623,27 @@ describe("actual AI SDK companion runtime", () => {
     expect(await listCompanionActions(db, scope)).toEqual([]);
   });
 
-  test("truncated notes cannot be used for a write proposal", async () => {
+  test("the real tool loop replaces note content without a confirmation card", async () => {
+    const { db, notes, row, complete, context } = await organizationFixture();
+    const calls = [
+      { toolName: "get_memo", input: JSON.stringify({ memoId: notes[0].id }) },
+      { toolName: "update_memo", input: JSON.stringify({ memoId: notes[0].id, contentMarkdown: "Translated content" }) },
+    ];
+    const model = new MockLanguageModelV4({ doStream: async () => {
+      const call = calls.shift();
+      return { stream: simulateReadableStream({ chunks: call ? [
+        { type: "tool-call", toolCallId: crypto.randomUUID(), ...call }, { ...finish, finishReason: { unified: "tool-calls" } },
+      ] : [{ type: "text-start", id: "1" }, { type: "text-delta", id: "1", delta: "Updated." }, { type: "text-end", id: "1" }, finish] }) };
+    } });
+    const result = await streamCompanion({ db, context, scope, input: input({ id: row.id, threadId: row.thread_id, allowNotes: true }), model,
+      memories: [], history: [], revision: 0, signal: new AbortController().signal, sources: [], assertActive: async () => {} });
+    expect(await result.text).toBe("Updated.");
+    expect((await getMemoDetail(db, scope.workspaceId, notes[0].id)).contentMarkdown).toBe("Translated content");
+    await complete();
+    expect(await listCompanionActions(db, scope)).toEqual([]);
+  });
+
+  test("truncated notes cannot be used for a body edit", async () => {
     const { db, notes, row, context } = await organizationFixture();
     await updateMemoRecord(db, scope.workspaceId, notes[0].id, { contentMarkdown: "x".repeat(9000) }, { actorType: "user", actorId: scope.ownerId }, scope.ownerId);
     const calls = [
