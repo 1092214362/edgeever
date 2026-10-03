@@ -84,7 +84,7 @@ The public demo resets every day at 3:00 AM (China Standard Time) and restores s
 - **Revision History**: Inspect and restore previous iterations of your notes with built-in version tracking.
 - **Public Note Sharing**: Share a note publicly and stop sharing it at any time. Optionally protect the link with an auto-generated access password.
 - **WeChat Article Clipping**: Share a WeChat Official Account article to EdgeEver on your phone to extract its content and save it as an editable note.
-- **WeChat Chat Archive Import**: The macOS app can parse and import WeChat "Merged and Forwarded" chat history archives (ZIP files) via the system share sheet into structured notes with one click, preserving senders, timelines, quoted replies, and WeChat emojis, with images embedded and videos/files attached automatically.
+- **WeChat Chat Archive Import**: The macOS app can parse and import WeChat "Merged and Forwarded" chat history via the system share sheet into structured notes with one click, preserving senders, timelines, quoted replies, and WeChat emojis, with images embedded and videos/files attached automatically.
 - **Smart Local Image Compression**: Client-side WebP compression reduces file sizes by 50%-90% before uploading, saving storage and speeding up page loads without extra server costs.
 - **Universal File Attachments**: Attach and preview PDFs, Office documents, zip files, audio, and video directly within notes. Chunked uploads and streaming safely support files up to 1 GiB.
 - **Batch Operations & Flexible Sorting**: Easily merge or relocate multiple notes, with drag-and-drop notebook reordering.
