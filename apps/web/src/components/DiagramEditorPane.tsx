@@ -1949,6 +1949,9 @@ export const DiagramEditorPane = ({
       mousewheel: { enabled: true, modifiers: ["ctrl", "meta"], minScale: DIAGRAM_ZOOM_SCALE_MIN, maxScale: DIAGRAM_ZOOM_SCALE_MAX },
       interacting: () => !readOnly && !spacePanActiveRef.current,
       connecting: {
+        // The port's transparent hit area is larger than the visible node.
+        // Connect to its center so arrowheads reach the node border.
+        connectionPoint: document.kind === "architecture" ? "anchor" : "boundary",
         allowBlank: document.kind === "flowchart",
         allowLoop: false,
         allowNode: false,
