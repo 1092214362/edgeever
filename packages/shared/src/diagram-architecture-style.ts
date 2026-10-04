@@ -71,6 +71,63 @@ export const architectureEdgePorts = (
     : { source: "top", target: "bottom" };
 };
 
+export type ArchitectureEdgeTerminal = { side: ArchitectureEdgePortName; offset: number };
+
+export const architectureTerminalAnchor = ({ side, offset }: ArchitectureEdgeTerminal) => ({
+  name: side,
+  args: side === "left" || side === "right" ? { dy: offset } : { dx: offset },
+});
+
+/** Spread edges on a node face so separate relationships do not leave through one point. */
+export const architectureEdgeTerminals = (
+  nodes: Array<ArchitectureEdgeBox & { id: string }>,
+  edges: Array<{ id: string; source: string; target: string }>,
+) => {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const terminals = new Map<string, { source: ArchitectureEdgeTerminal; target: ArchitectureEdgeTerminal }>();
+  const faces = new Map<string, Array<{ edgeId: string; end: "source" | "target"; opposite: number }>>();
+  for (const edge of edges) {
+    const source = nodeById.get(edge.source);
+    const target = nodeById.get(edge.target);
+    if (!source || !target) continue;
+    const ports = architectureEdgePorts(source, target);
+    terminals.set(edge.id, {
+      source: { side: ports.source, offset: 0 },
+      target: { side: ports.target, offset: 0 },
+    });
+    for (const [end, node, side, oppositeNode] of [
+      ["source", source, ports.source, target],
+      ["target", target, ports.target, source],
+    ] as const) {
+      const key = `${node.id}:${side}`;
+      const face = faces.get(key) ?? [];
+      face.push({
+        edgeId: edge.id,
+        end,
+        opposite: side === "left" || side === "right"
+          ? oppositeNode.y + oppositeNode.height / 2
+          : oppositeNode.x + oppositeNode.width / 2,
+      });
+      faces.set(key, face);
+    }
+  }
+  for (const [key, face] of faces) {
+    if (face.length < 2) continue;
+    const separator = key.lastIndexOf(":");
+    const node = nodeById.get(key.slice(0, separator));
+    const side = key.slice(separator + 1);
+    if (!node) continue;
+    const length = side === "left" || side === "right" ? node.height : node.width;
+    const span = Math.min(Math.max(0, length - 28), (face.length - 1) * 16);
+    face.sort((a, b) => a.opposite - b.opposite || a.edgeId.localeCompare(b.edgeId));
+    face.forEach(({ edgeId, end }, index) => {
+      const terminal = terminals.get(edgeId);
+      if (terminal) terminal[end].offset = Math.round(-span / 2 + span * index / (face.length - 1));
+    });
+  }
+  return terminals;
+};
+
 export type ArchitectureComponentShape = Exclude<
   DiagramNodeShape,
   "topic" | "process" | "decision" | "terminator" | "boundary"
