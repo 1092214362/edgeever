@@ -1,9 +1,10 @@
-import { createMemoLinkHref, parseMemoLinkHref, type CompanionToolCall } from "@edgeever/shared";
+import { createMemoLinkHref, type CompanionToolCall } from "@edgeever/shared";
+import { parseAssistantNoteLinkHref } from "@/lib/assistant-note-links";
 
 export function missingCreatedNoteLinks(response: string, tools: CompanionToolCall[]) {
   const linkedIds = new Set<string>();
   for (const match of response.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)) {
-    const memoId = parseMemoLinkHref(match[1]);
+    const memoId = parseAssistantNoteLinkHref(match[1]);
     if (memoId) linkedIds.add(memoId);
   }
   for (const match of response.matchAll(/\[note:([^\]]+)\]/g)) linkedIds.add(match[1]);

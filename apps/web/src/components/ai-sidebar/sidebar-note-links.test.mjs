@@ -45,4 +45,15 @@ describe("sidebar note links", () => {
     expect(rewritten).toContain(`\`\`\`\n${id}\n\`\`\``);
     expect(render(markdown)).toContain(`href="#memo=${id}"`);
   });
+
+  test("opens an agent's EdgeEver URL inside the current workspace", () => {
+    const id = "memo_328cb20d4b4040edb3ecb24638abc2d5";
+    const markdown = `已创建 [大模型蒸馏流程图](https://edgeever.ai/memo/${id})。`;
+    const rewritten = rewriteSidebarNoteLinks(markdown);
+    expect(rewritten).toContain(`<edgeever-note data-memo-id="${id}">大模型蒸馏流程图</edgeever-note>`);
+    const markup = render(markdown);
+    expect(markup).toContain(`href="#memo=${id}"`);
+    expect(markup).not.toContain("Open external link");
+    expect(markup).not.toContain("https://edgeever.ai/memo/");
+  });
 });
