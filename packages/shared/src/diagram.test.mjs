@@ -194,6 +194,21 @@ describe("diagram document", () => {
     expect(projectedEdge.target.port).toBe("left");
   });
 
+  test("routes aligned architecture edges around intervening components", () => {
+    const document = createDefaultDiagramDocument("architecture");
+    document.nodes.find((node) => node.id === "client").x = 32;
+    document.nodes.find((node) => node.id === "client").y = 32;
+    document.nodes.find((node) => node.id === "api").x = 32;
+    document.nodes.find((node) => node.id === "api").y = 400;
+    document.nodes.find((node) => node.id === "database").x = 32;
+    document.nodes.find((node) => node.id === "database").y = 216;
+    const projected = diagramDocumentToX6Cells(document, "light");
+    const edge = projected.edges.find((item) => item.source.cell === "client" && item.target.cell === "api");
+    expect(edge.router.name).toBe("manhattan");
+    expect(edge.router.args.excludeNodes).toContain("system");
+    expect(edge.router.args.excludeNodes).not.toContain("database");
+  });
+
   test("projects architecture edge labels below component typography", () => {
     const document = createDefaultDiagramDocument("architecture");
     const projectedLabel = diagramDocumentToX6Cells(document, "light").edges[0].labels[0].attrs.label;

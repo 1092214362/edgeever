@@ -7,6 +7,7 @@ import {
   ARCHITECTURE_EDGE_LABEL_LINE_HEIGHT,
   ARCHITECTURE_SURFACES,
   architectureEdgePorts,
+  architectureEdgeRouter,
   architectureEdgeVisual,
   architectureIconElements,
   architectureMermaidClassDefs,
@@ -40,6 +41,19 @@ describe("architecture semantic paint", () => {
     const lowerLeft = { x: 194, y: 711, width: 170, height: 64 };
     const upperRight = { x: 446, y: 658, width: 170, height: 68 };
     expect(architectureEdgePorts(lowerLeft, upperRight)).toEqual({ source: "right", target: "left" });
+  });
+
+  test("exits leftward connections from the side facing their target", () => {
+    const source = { x: 520, y: 340, width: 156, height: 64 };
+    const target = { x: 240, y: 700, width: 156, height: 64 };
+    expect(architectureEdgePorts(source, target)).toEqual({ source: "left", target: "right" });
+  });
+
+  test("keeps architecture endpoints and group containers out of obstacle routing", () => {
+    const router = architectureEdgeRouter("from", "to", ["group", "group"]);
+    expect(router.name).toBe("manhattan");
+    expect(router.args.excludeNodes).toEqual(["from", "to", "group"]);
+    expect(router.args.padding).toBeGreaterThan(0);
   });
 
   test("keeps every component fill distinct in light and dark", () => {

@@ -116,6 +116,7 @@ import {
   ARCHITECTURE_NODE_LINE_HEIGHT,
   ARCHITECTURE_SHAPE_RESOURCE,
   architectureEdgePorts,
+  architectureEdgeRouter,
   architectureEdgeVisual,
   architectureIconOffset,
   architectureNodeVisual,
@@ -1348,7 +1349,9 @@ const edgeMetadata = (
     id: edge.id,
     source: { cell: edge.source },
     target: { cell: edge.target },
-    router: usesOrthogonalDiagramEdges(kind) ? FLOWCHART_EDGE_ROUTER : undefined,
+    router: kind === "architecture"
+      ? architectureEdgeRouter(edge.source, edge.target, [])
+      : usesOrthogonalDiagramEdges(kind) ? FLOWCHART_EDGE_ROUTER : undefined,
     connector: kind === "mind-map"
       ? { name: MIND_MAP_CONNECTOR_NAME, args: { sourceWidth: mindEdge?.sourceWidth, targetWidth: mindEdge?.targetWidth, structure } }
       : { name: "rounded", args: { radius: 10 } },
@@ -1370,6 +1373,9 @@ const edgeMetadata = (
 };
 
 const applyOrthogonalEdgePorts = (graph: Graph, kind: DiagramDocument["kind"]) => {
+  const boundaryIds = kind === "architecture"
+    ? graph.getNodes().filter((node) => node.getData<NodeData>()?.shape === "boundary").map((node) => node.id)
+    : [];
   for (const edge of graph.getEdges()) {
     const source = edge.getSourceNode();
     const target = edge.getTargetNode();
@@ -1381,7 +1387,9 @@ const applyOrthogonalEdgePorts = (graph: Graph, kind: DiagramDocument["kind"]) =
       : flowchartEdgePorts(sourceBox, targetBox);
     edge.setSource({ cell: source.id, port: ports.source });
     edge.setTarget({ cell: target.id, port: ports.target });
-    edge.setRouter(flowchartEdgeIsStraight(sourceBox, targetBox) ? { name: "normal" } : FLOWCHART_EDGE_ROUTER);
+    edge.setRouter(kind === "architecture"
+      ? architectureEdgeRouter(source.id, target.id, boundaryIds)
+      : flowchartEdgeIsStraight(sourceBox, targetBox) ? { name: "normal" } : FLOWCHART_EDGE_ROUTER);
   }
 };
 
@@ -1949,7 +1957,9 @@ export const DiagramEditorPane = ({
         allowMulti: false,
         highlight: isConnectableDiagram(document.kind),
         snap: { radius: 24 },
-        router: usesOrthogonalDiagramEdges(document.kind) ? FLOWCHART_EDGE_ROUTER : "normal",
+        router: document.kind === "architecture"
+          ? architectureEdgeRouter("", "", [])
+          : usesOrthogonalDiagramEdges(document.kind) ? FLOWCHART_EDGE_ROUTER : "normal",
         connector: document.kind === "mind-map" ? MIND_MAP_CONNECTOR_NAME : "rounded",
         validateConnection: ({ sourceCell, targetCell, sourcePort, targetPort }) => {
           if (!isConnectableDiagram(document.kind) || !sourceCell || !sourcePort) return false;
@@ -2053,6 +2063,16 @@ export const DiagramEditorPane = ({
     }, SCROLLER_AUTORESIZE_SETTLE_MS);
 
     const updateHistory = () => setHistoryState({ undo: graph.canUndo(), redo: graph.canRedo() });
+    const refreshArchitecturePorts = () => {
+      if (document.kind !== "architecture") return;
+      const historyEnabled = graph.isHistoryEnabled();
+      if (historyEnabled) graph.disableHistory();
+      try {
+        applyOrthogonalEdgePorts(graph, document.kind);
+      } finally {
+        if (historyEnabled) graph.enableHistory();
+      }
+    };
     const markDirty = () => {
       if (viewOnlyRef.current) return;
       if (!readOnly) {
@@ -2064,6 +2084,7 @@ export const DiagramEditorPane = ({
       updateHistory();
     };
     const clearSelectionAfterHistory = () => {
+      refreshArchitecturePorts();
       applyGraphPalette(graph, themeRef.current, document.kind, appearanceRef.current, structureRef.current);
       graph.cleanSelection();
       if (isConnectableDiagram(document.kind)) setOnlyFlowNodePortsActive(graph);
@@ -2100,6 +2121,10 @@ export const DiagramEditorPane = ({
     });
     graph.on("node:dblclick", ({ node }: { node: Node }) => beginNodeEdit(node));
     graph.on("node:mouseup", () => {
+      if (document.kind === "architecture") {
+        refreshArchitecturePorts();
+        return;
+      }
       if (document.kind !== "mind-map") return;
       const historyEnabled = graph.isHistoryEnabled();
       if (historyEnabled) graph.disableHistory();

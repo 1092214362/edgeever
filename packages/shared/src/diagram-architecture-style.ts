@@ -23,6 +23,22 @@ export type ArchitectureAppearance = "light" | "dark";
 export type ArchitectureEdgePortName = "top" | "right" | "bottom" | "left";
 export type ArchitectureEdgeBox = { x: number; y: number; width: number; height: number };
 
+export const architectureEdgeRouter = (
+  sourceId: string,
+  targetId: string,
+  boundaryIds: string[],
+) => ({
+  name: "manhattan" as const,
+  args: {
+    padding: 12,
+    step: 8,
+    maxLoopCount: 5000,
+    // Boundaries are visual containers; components and endpoints are the obstacles.
+    // Per-edge exclusions also keep X6's shared obstacle map specific to this edge.
+    excludeNodes: [...new Set([sourceId, targetId, ...boundaryIds])],
+  },
+});
+
 export const architectureEdgePorts = (
   source: ArchitectureEdgeBox,
   target: ArchitectureEdgeBox,
@@ -30,7 +46,7 @@ export const architectureEdgePorts = (
   const sourceRight = source.x + source.width;
   const targetRight = target.x + target.width;
   if (target.x >= sourceRight) return { source: "right", target: "left" };
-  if (targetRight <= source.x) return { source: "top", target: "top" };
+  if (targetRight <= source.x) return { source: "left", target: "right" };
 
   const sourceCenterY = source.y + source.height / 2;
   const targetCenterY = target.y + target.height / 2;
