@@ -35,6 +35,7 @@ export interface MarkdownSourceEditorRef {
   getScrollContainer: () => HTMLElement | null;
   getSelection: () => { from: number; to: number };
   setSelection: (from: number, to: number) => void;
+  replaceDocument: (value: string) => void;
   focus: () => void;
   insertText: (text: string, from?: number, to?: number) => void;
   sliceText: (from: number, to: number) => string;
@@ -177,6 +178,15 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorRef, Markdown
           view.dispatch({
             selection: { anchor: safeFrom, head: safeTo },
             scrollIntoView: true,
+          });
+        },
+        replaceDocument: (value: string) => {
+          const view = cmRef.current?.view;
+          if (!view || view.state.doc.toString() === value) return;
+          const anchor = Math.min(view.state.selection.main.anchor, value.length);
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: value },
+            selection: { anchor },
           });
         },
         focus: () => {

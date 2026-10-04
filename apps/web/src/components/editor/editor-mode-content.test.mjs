@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { docToMarkdown, markdownToDoc } from "@edgeever/shared";
 import {
+  analyzeMarkdownModeContent,
   createMarkdownModeSnapshot,
   docToEditableMarkdown,
   isMarkdownSourceUnchanged,
@@ -97,13 +98,31 @@ describe("Markdown editor mode content preservation", () => {
     expect(docToMarkdown(resolved)).toContain("新增段落");
   });
 
-  test("parses a rich table cell only when that cell was actually edited", () => {
+  test("preserves a rich table task item when its source text changes", () => {
     const snapshot = createMarkdownModeSnapshot("memo-1", tableTaskListDocument);
     const changedSource = snapshot.markdownSource.replace("待办", "待办 updated");
-    const resolved = resolveMarkdownModeContent(snapshot, "memo-1", changedSource);
+    const result = analyzeMarkdownModeContent(snapshot, "memo-1", changedSource);
 
-    expect(docToMarkdown(resolved)).toContain("updated");
-    expect(resolved.content[0].content[1].content[0].content[0].type).toBe("paragraph");
+    expect(result.hasUnsafeRichTableEdit).toBe(false);
+    expect(docToMarkdown(result.contentJson)).toContain("updated");
+    expect(result.contentJson.content[0].content[1].content[0].content[0].type).toBe("taskList");
+    expect(result.contentJson.content[0].content[1].content[0].content[0].content[0].attrs.checked).toBe(false);
+  });
+
+  test("updates a rich table task item when its Markdown checkbox is toggled", () => {
+    const snapshot = createMarkdownModeSnapshot("memo-1", tableTaskListDocument);
+    const changedSource = snapshot.markdownSource.replace("- [ ] 待办", "- [x] 待办");
+    const result = analyzeMarkdownModeContent(snapshot, "memo-1", changedSource);
+
+    expect(result.hasUnsafeRichTableEdit).toBe(false);
+    expect(result.contentJson.content[0].content[1].content[0].content[0].content[0].attrs.checked).toBe(true);
+  });
+
+  test("flags table shape changes rather than silently discarding a rich cell", () => {
+    const snapshot = createMarkdownModeSnapshot("memo-1", tableTaskListDocument);
+    const changedSource = snapshot.markdownSource.replace("| - [ ] 待办 |", "");
+
+    expect(analyzeMarkdownModeContent(snapshot, "memo-1", changedSource).hasUnsafeRichTableEdit).toBe(true);
   });
 
   test("never reuses a snapshot belonging to another memo", () => {

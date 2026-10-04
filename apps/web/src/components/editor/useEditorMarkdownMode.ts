@@ -8,8 +8,8 @@ import {
 import type { Editor } from "@tiptap/react";
 import type { TiptapDoc } from "@edgeever/shared";
 import {
+  analyzeMarkdownModeContent,
   createMarkdownModeSnapshot,
-  resolveMarkdownModeContent,
   selectMarkdownSourceForDocument,
   shouldKeepLiveMarkdownSource,
   type MarkdownModeSnapshot,
@@ -25,15 +25,17 @@ export const useEditorMarkdownMode = ({
   effectiveReadOnly,
   getMemoId,
   hydratingRef,
+  onUnsafeRichTableEdit,
 }: {
   editor: Editor | null;
   editorScrollContainerRef: RefObject<HTMLDivElement | null>;
   effectiveReadOnly: boolean;
   getMemoId: () => string | null | undefined;
   hydratingRef: MutableRefObject<boolean>;
+  onUnsafeRichTableEdit: (unsafe: boolean) => void;
 }) => {
   const [isMarkdownMode, setIsMarkdownMode] = useState(false);
-  const [markdownSource, setMarkdownSource] = useState("");
+  const [markdownSource, setMarkdownSourceState] = useState("");
   const markdownSourceRef = useRef(markdownSource);
   markdownSourceRef.current = markdownSource;
   const markdownSourceEditorRef = useRef<MarkdownSourceEditorRef | null>(null);
@@ -41,6 +43,23 @@ export const useEditorMarkdownMode = ({
   const pendingSourceSelectionRef = useRef<{ memoId: string; from: number; to: number } | null>(null);
   const getMemoIdRef = useRef(getMemoId);
   getMemoIdRef.current = getMemoId;
+
+  const setMarkdownSource = useCallback((next: string | ((current: string) => string)): boolean => {
+    const value = typeof next === "function" ? next(markdownSourceRef.current) : next;
+    const snapshot = markdownModeSnapshotRef.current;
+    const unsafe = Boolean(snapshot?.hasRichOnlyTableCells) && analyzeMarkdownModeContent(
+      snapshot,
+      getMemoIdRef.current(),
+      value,
+    ).hasUnsafeRichTableEdit;
+    onUnsafeRichTableEdit(unsafe);
+    if (unsafe) return false;
+    markdownSourceRef.current = value;
+    setMarkdownSourceState(value);
+    return true;
+  }, [onUnsafeRichTableEdit]);
+
+  const getMarkdownSource = useCallback(() => markdownSourceRef.current, []);
 
   const handleMarkdownSourceReady = useCallback(() => {
     const sourceEditor = markdownSourceEditorRef.current;
@@ -75,11 +94,16 @@ export const useEditorMarkdownMode = ({
     }
 
     const currentMemoId = getMemoId();
-    const content = resolveMarkdownModeContent(
+    const resolved = analyzeMarkdownModeContent(
       markdownModeSnapshotRef.current,
       currentMemoId,
       markdownSourceRef.current,
     );
+    if (resolved.hasUnsafeRichTableEdit) {
+      onUnsafeRichTableEdit(true);
+      return;
+    }
+    const content = resolved.contentJson;
     const sourceSelection = markdownSourceEditorRef.current?.getSelection();
     hydratingRef.current = true;
     editor.commands.setContent(content);
@@ -104,7 +128,7 @@ export const useEditorMarkdownMode = ({
     window.setTimeout(() => {
       hydratingRef.current = false;
     }, 0);
-  }, [editor, getMemoId, hydratingRef, restoreScrollAfterModeChange]);
+  }, [editor, getMemoId, hydratingRef, onUnsafeRichTableEdit, restoreScrollAfterModeChange]);
 
   const handleMarkdownModeChange = useCallback(() => {
     if (effectiveReadOnly || !isEditorReady(editor)) {
@@ -145,7 +169,9 @@ export const useEditorMarkdownMode = ({
       contentJson,
       markdown,
     );
-    setMarkdownSource(markdown);
+    setMarkdownSourceState(markdown);
+    markdownSourceRef.current = markdown;
+    onUnsafeRichTableEdit(false);
     setIsMarkdownMode(true);
     if (!pendingSourceSelectionRef.current) restoreScrollAfterModeChange("markdown", scrollProgress);
   }, [
@@ -155,15 +181,18 @@ export const useEditorMarkdownMode = ({
     effectiveReadOnly,
     getMemoId,
     isMarkdownMode,
+    onUnsafeRichTableEdit,
     restoreScrollAfterModeChange,
   ]);
 
   const resetMarkdownMode = useCallback(() => {
     markdownModeSnapshotRef.current = null;
     pendingSourceSelectionRef.current = null;
-    setMarkdownSource("");
+    setMarkdownSourceState("");
+    markdownSourceRef.current = "";
+    onUnsafeRichTableEdit(false);
     setIsMarkdownMode(false);
-  }, []);
+  }, [onUnsafeRichTableEdit]);
 
   const hydrateMarkdownSource = useCallback((
     memoId: string,
@@ -182,11 +211,13 @@ export const useEditorMarkdownMode = ({
       });
     const nextSource = keepLiveSource ? markdownSourceRef.current : markdown;
     if (!keepLiveSource) {
-      setMarkdownSource(markdown);
+      setMarkdownSourceState(markdown);
+      markdownSourceRef.current = markdown;
     }
+    onUnsafeRichTableEdit(false);
     markdownModeSnapshotRef.current = createMarkdownModeSnapshot(memoId, content, nextSource);
     return keepLiveSource;
-  }, [isMarkdownMode]);
+  }, [isMarkdownMode, onUnsafeRichTableEdit]);
 
   const clearMarkdownSnapshot = useCallback(() => {
     markdownModeSnapshotRef.current = null;
@@ -197,6 +228,7 @@ export const useEditorMarkdownMode = ({
     clearMarkdownSnapshot,
     handleMarkdownModeChange,
     handleMarkdownSourceReady,
+    getMarkdownSource,
     hydrateMarkdownSource,
     isMarkdownMode,
     markdownModeSnapshotRef,

@@ -42,7 +42,7 @@
 
 - 当前保存链路同时存储 `contentJson` 和 `contentMarkdown`。源码视图保存时发送用户原文；富文本视图保存时服务端从 JSON 生成 Markdown。因此 C 不承诺富文本编辑后的源码逐字相同。
 - 现有单元测试覆盖普通 `[`、`]`、`&` 的可读源码、危险转义保留、未编辑源码的快照恢复、未编辑的复杂表格单元格以及部分光标映射；本地浏览器验证了普通标点后的连续输入。
-- D 尚未全面满足：直接改动含待办列表的富文本表格单元格时，当前解析会把该单元格降为普通段落，且尚无转换提示。此场景在补齐保护或提示前必须标记失败。
+- 含待办列表的富文本表格单元格现在可安全接收源码中的待办文字修改和勾选状态切换，并保留原有列表结构。若修改无法安全映射回富文本，例如改变表格形状，编辑器撤回该次修改并给出说明；用户可在富文本视图中修改结构。其他富文本专有结构仍须按上述样本逐项验证，不能仅凭该案例宣称 D 全面通过。
 - Windows 10 / Chrome 154 的真实复验和全部样本的保存后重开尚未完成。真实旧版本跨版本验证也尚未完成；如引入存储或跨版本读取变更，须以此作为发布门禁。现有证据不足以宣称 Issue #469 已满足完整无损验收。
 
 相关实现：[`editor-mode-content.ts`](../apps/web/src/components/editor/editor-mode-content.ts)、[`useEditorMarkdownMode.ts`](../apps/web/src/components/editor/useEditorMarkdownMode.ts)、[`content.ts`](../packages/shared/src/content.ts)、[`memo-service.ts`](../apps/api/src/memo-service.ts)。
