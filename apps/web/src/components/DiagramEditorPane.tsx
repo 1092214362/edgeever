@@ -1388,7 +1388,7 @@ const applyOrthogonalEdgePorts = (graph: Graph, kind: DiagramDocument["kind"]) =
     edge.setSource({ cell: source.id, port: ports.source });
     edge.setTarget({ cell: target.id, port: ports.target });
     edge.setRouter(kind === "architecture"
-      ? architectureEdgeRouter(source.id, target.id, boundaryIds)
+      ? architectureEdgeRouter(source.id, target.id, boundaryIds, ports)
       : flowchartEdgeIsStraight(sourceBox, targetBox) ? { name: "normal" } : FLOWCHART_EDGE_ROUTER);
   }
 };

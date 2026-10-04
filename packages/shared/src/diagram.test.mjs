@@ -207,6 +207,8 @@ describe("diagram document", () => {
     expect(edge.router.name).toBe("manhattan");
     expect(edge.router.args.excludeNodes).toContain("system");
     expect(edge.router.args.excludeNodes).not.toContain("database");
+    expect(edge.router.args.startDirections).toEqual([edge.source.port]);
+    expect(edge.router.args.endDirections).toEqual([edge.target.port]);
   });
 
   test("projects architecture edge labels below component typography", () => {

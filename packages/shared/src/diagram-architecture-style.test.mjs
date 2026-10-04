@@ -49,11 +49,19 @@ describe("architecture semantic paint", () => {
     expect(architectureEdgePorts(source, target)).toEqual({ source: "left", target: "right" });
   });
 
+  test("approaches a nearby column from below when the target is far above", () => {
+    const source = { x: 68, y: 1264, width: 156, height: 60 };
+    const target = { x: 246, y: 908, width: 156, height: 64 };
+    expect(architectureEdgePorts(source, target)).toEqual({ source: "right", target: "bottom" });
+  });
+
   test("keeps architecture endpoints and group containers out of obstacle routing", () => {
-    const router = architectureEdgeRouter("from", "to", ["group", "group"]);
+    const router = architectureEdgeRouter("from", "to", ["group", "group"], { source: "left", target: "right" });
     expect(router.name).toBe("manhattan");
     expect(router.args.excludeNodes).toEqual(["from", "to", "group"]);
     expect(router.args.padding).toBeGreaterThan(0);
+    expect(router.args.startDirections).toEqual(["left"]);
+    expect(router.args.endDirections).toEqual(["right"]);
   });
 
   test("keeps every component fill distinct in light and dark", () => {

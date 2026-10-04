@@ -200,7 +200,7 @@ export const diagramDocumentToX6Cells = (
           ? { cell: edge.target, port: orthogonalPorts.target }
           : { cell: edge.target },
       router: document.kind === "architecture"
-        ? architectureEdgeRouter(edge.source, edge.target, architectureBoundaryIds)
+        ? architectureEdgeRouter(edge.source, edge.target, architectureBoundaryIds, orthogonalPorts ?? undefined)
         : document.kind === "flowchart"
           ? (orthogonalStraight ? { name: "normal" } : FLOWCHART_EDGE_ROUTER)
           : undefined,

@@ -22,20 +22,24 @@ export const ARCHITECTURE_ICON_INSET = 10;
 export type ArchitectureAppearance = "light" | "dark";
 export type ArchitectureEdgePortName = "top" | "right" | "bottom" | "left";
 export type ArchitectureEdgeBox = { x: number; y: number; width: number; height: number };
+const NARROW_COLUMN_GAP = 32;
+const CLEAR_VERTICAL_GAP = 64;
 
 export const architectureEdgeRouter = (
   sourceId: string,
   targetId: string,
   boundaryIds: string[],
+  ports?: { source: ArchitectureEdgePortName; target: ArchitectureEdgePortName },
 ) => ({
   name: "manhattan" as const,
   args: {
-    padding: 12,
+    padding: 8,
     step: 8,
     maxLoopCount: 5000,
     // Boundaries are visual containers; components and endpoints are the obstacles.
     // Per-edge exclusions also keep X6's shared obstacle map specific to this edge.
     excludeNodes: [...new Set([sourceId, targetId, ...boundaryIds])],
+    ...(ports ? { startDirections: [ports.source], endDirections: [ports.target] } : {}),
   },
 });
 
@@ -45,8 +49,20 @@ export const architectureEdgePorts = (
 ): { source: ArchitectureEdgePortName; target: ArchitectureEdgePortName } => {
   const sourceRight = source.x + source.width;
   const targetRight = target.x + target.width;
-  if (target.x >= sourceRight) return { source: "right", target: "left" };
-  if (targetRight <= source.x) return { source: "left", target: "right" };
+  const verticalGapAbove = source.y - (target.y + target.height);
+  const verticalGapBelow = target.y - (source.y + source.height);
+  if (target.x >= sourceRight) {
+    // A narrow side corridor cannot accommodate a horizontal approach when
+    // the target is several rows away; enter from its nearer vertical side.
+    if (target.x - sourceRight < NARROW_COLUMN_GAP && verticalGapAbove > CLEAR_VERTICAL_GAP) return { source: "right", target: "bottom" };
+    if (target.x - sourceRight < NARROW_COLUMN_GAP && verticalGapBelow > CLEAR_VERTICAL_GAP) return { source: "right", target: "top" };
+    return { source: "right", target: "left" };
+  }
+  if (targetRight <= source.x) {
+    if (source.x - targetRight < NARROW_COLUMN_GAP && verticalGapAbove > CLEAR_VERTICAL_GAP) return { source: "left", target: "bottom" };
+    if (source.x - targetRight < NARROW_COLUMN_GAP && verticalGapBelow > CLEAR_VERTICAL_GAP) return { source: "left", target: "top" };
+    return { source: "left", target: "right" };
+  }
 
   const sourceCenterY = source.y + source.height / 2;
   const targetCenterY = target.y + target.height / 2;
