@@ -1346,6 +1346,7 @@ const RichEditorPane = ({
   const {
     clearMarkdownSnapshot,
     handleMarkdownModeChange,
+    handleMarkdownSourceReady,
     hydrateMarkdownSource,
     isMarkdownMode,
     markdownModeSnapshotRef,
@@ -4218,6 +4219,7 @@ const RichEditorPane = ({
                     }}
                     onLinkShortcut={openExternalLinkDialog}
                     onSelectionChange={syncMarkdownAiMenu}
+                    onReady={handleMarkdownSourceReady}
                     className="absolute inset-0 h-full w-full"
                   />
                 </Suspense>

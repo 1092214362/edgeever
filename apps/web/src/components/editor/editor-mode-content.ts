@@ -12,6 +12,20 @@ export type MarkdownModeSnapshot = {
 
 const normalizeMarkdownSource = (value: string) => value.replace(/\r\n?/g, "\n");
 
+/** Keep harmless punctuation readable in the source editor without changing the shared export codec. */
+export const docToEditableMarkdown = (contentJson: TiptapDoc): string => {
+  const serialized = docToMarkdown(contentJson);
+  const readable = serialized
+    .replaceAll("\\[", "[")
+    .replaceAll("\\]", "]")
+    .replaceAll("&amp;", "&");
+
+  return readable !== serialized
+    && JSON.stringify(markdownToDoc(readable)) === JSON.stringify(markdownToDoc(serialized))
+    ? readable
+    : serialized;
+};
+
 const cloneContentJson = (contentJson: TiptapDoc): TiptapDoc =>
   JSON.parse(JSON.stringify(contentJson)) as TiptapDoc;
 
@@ -117,7 +131,7 @@ const restoreUnchangedRichTableCells = (
 export const createMarkdownModeSnapshot = (
   memoId: string,
   contentJson: TiptapDoc,
-  markdownSource = docToMarkdown(contentJson),
+  markdownSource = docToEditableMarkdown(contentJson),
 ): MarkdownModeSnapshot => ({
   memoId,
   contentJson: cloneContentJson(contentJson),

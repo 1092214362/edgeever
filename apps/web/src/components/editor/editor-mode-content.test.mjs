@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { docToMarkdown, markdownToDoc } from "@edgeever/shared";
 import {
   createMarkdownModeSnapshot,
+  docToEditableMarkdown,
   isMarkdownSourceUnchanged,
   resolveMarkdownModeContent,
   selectMarkdownSourceForDocument,
@@ -39,6 +40,36 @@ const tableTaskListDocument = {
 };
 
 describe("Markdown editor mode content preservation", () => {
+  test("shows literal brackets and ampersands when they remain plain text", () => {
+    const content = markdownToDoc("Alpha [ ] & Bravo");
+
+    expect(docToMarkdown(content)).toBe("Alpha \\[ \\] &amp; Bravo");
+    expect(docToEditableMarkdown(content)).toBe("Alpha [ ] & Bravo");
+    expect(markdownToDoc(docToEditableMarkdown(content))).toEqual(content);
+  });
+
+  test("keeps escapes when removing them would create a link or change literal entities", () => {
+    const content = markdownToDoc("Literal \\[link\\](https://example.com) and &amp;amp;");
+    const canonical = docToMarkdown(content);
+
+    expect(docToEditableMarkdown(content)).toBe(canonical);
+  });
+
+  test("retains the stored source of an older note until its rich content changes", () => {
+    const storedSource = "Alpha \\[ \\] &amp; Bravo";
+    const content = markdownToDoc(storedSource);
+    const snapshot = createMarkdownModeSnapshot("memo-1", content, storedSource);
+    const changedContent = markdownToDoc("Alpha [ ] & Bravo updated");
+
+    expect(selectMarkdownSourceForDocument(snapshot, "memo-1", content, docToEditableMarkdown(content))).toBe(storedSource);
+    expect(selectMarkdownSourceForDocument(
+      snapshot,
+      "memo-1",
+      changedContent,
+      docToEditableMarkdown(changedContent),
+    )).toBe("Alpha [ ] & Bravo updated");
+  });
+
   test("preserves rich-only table task lists when source was only viewed", () => {
     const snapshot = createMarkdownModeSnapshot("memo-1", tableTaskListDocument);
     const restored = resolveMarkdownModeContent(snapshot, "memo-1", snapshot.markdownSource);
