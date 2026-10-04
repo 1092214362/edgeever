@@ -18,7 +18,12 @@ const escapeAttr = (value: string) => escapeText(value).replace(/"/g, "&quot;");
  */
 export function rewriteSidebarNoteLinks(markdown: string): string {
   return markdown.split(CODE_REGION).map((part, index) => {
-    if (index % 2 === 1) return part;
+    if (index % 2 === 1) {
+      // Local agents sometimes report a new note only as an inline-code ID.
+      // Turn that exact ID into the same workspace link as a Markdown citation.
+      const memoId = /^`(memo_[0-9a-f]{32})`$/i.exec(part)?.[1];
+      return memoId ? `<edgeever-note data-memo-id="${memoId}">${memoId}</edgeever-note>` : part;
+    }
     return part.replace(MARKDOWN_LINK, (match, label: string, href: string) => {
       const memoId = parseMemoLinkHref(href);
       if (!memoId) return match;
