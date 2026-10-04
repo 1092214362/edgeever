@@ -19,7 +19,8 @@
   <p>
     <a href="https://t.me/+wwUx1BYLrIdiZjY1">💬 Telegram Group</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 Live Demo</a> &nbsp;|&nbsp;
-    <a href="#client-downloads">📱 Client Downloads</a>
+    <a href="#client-downloads">📱 Client Downloads</a> &nbsp;|&nbsp;
+    <a href="docs/best-practices.md">💡 Best Practices</a>
   </p>
 </div>
 

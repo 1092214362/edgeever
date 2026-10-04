@@ -9,6 +9,7 @@
 - [5. Reddit 讨论帖一键剪藏](#5-reddit-讨论帖一键剪藏)
 - [6. 一键复制笔记到微信公众号排版](#6-一键复制笔记到微信公众号排版)
 - [7. AI RSS 智能订阅日报与精美长图分享](#7-ai-rss-智能订阅日报与精美长图分享)
+- [8. GitHub 开源仓库信息一键剪藏](#8-github-开源仓库信息一键剪藏)
 
 ---
 
@@ -93,5 +94,17 @@ EdgeEver 内置的 AI RSS 订阅能力可自动聚合行业前沿资讯，智能
 | 1. 自动生成 RSS 日报并选择「分享为图片」 | 2. 自定义主题、字体与卡片版式 | 3. 导出的高清长图卡片效果 |
 | :---: | :---: | :---: |
 | ![EdgeEver 笔记菜单点击分享为图片](assets/best-practices/rss-daily-menu-share-image.png) | ![EdgeEver 分享为图片配置弹窗](assets/best-practices/rss-daily-poster-modal.png) | ![导出的高清 RSS 日报长图](assets/best-practices/rss-daily-exported-poster.png) |
+
+---
+
+## 8. GitHub 开源仓库信息一键剪藏
+
+在浏览器浏览 GitHub 仓库时，使用 EdgeEver Web Clipper 插件在任意区域右键点击「保存仓库信息到 EdgeEver」，即可一键将该项目元数据沉淀为结构化卡片。
+
+插件会自动提取仓库名称（Owner/Repo）、项目简介（About）、官方主页、主要开发语言、开源许可证、话题标签（Topics）及仓库链接，统一打上 `#web-clip` 标签方便技术选型与工具库积累。
+
+| 1. 仓库页面右键「保存仓库信息到 EdgeEver」 | 2. 自动生成包含技术标签与元数据的仓库卡片 |
+| :---: | :---: |
+| ![右键保存 GitHub 仓库信息到 EdgeEver](assets/best-practices/github-clip-menu.png) | ![EdgeEver 剪藏后的 GitHub 仓库卡片笔记](assets/best-practices/github-clipped-note.png) |
 
 ---

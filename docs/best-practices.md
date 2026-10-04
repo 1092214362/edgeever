@@ -9,6 +9,7 @@
 - [5. One-Click Reddit Discussion Post Clipping](#5-one-click-reddit-discussion-post-clipping)
 - [6. One-Click Note Copy to WeChat Official Account & Blogs](#6-one-click-note-copy-to-wechat-official-account--blogs)
 - [7. AI RSS Daily Digest & Elegant Image Poster Sharing](#7-ai-rss-daily-digest--elegant-image-poster-sharing)
+- [8. One-Click GitHub Repository Metadata Clipping](#8-one-click-github-repository-metadata-clipping)
 
 ---
 
@@ -93,5 +94,17 @@ Paired with the **"Share as Image"** (分享为图片) feature, you can customiz
 | 1. Auto-generated RSS daily & select "Share as Image" | 2. Customize theme, typography & card layout | 3. Crisp exported image poster |
 | :---: | :---: | :---: |
 | ![EdgeEver note menu select Share as Image](assets/best-practices/rss-daily-menu-share-image.png) | ![EdgeEver share as image configuration modal](assets/best-practices/rss-daily-poster-modal.png) | ![Exported high-res RSS daily image poster](assets/best-practices/rss-daily-exported-poster.png) |
+
+---
+
+## 8. One-Click GitHub Repository Metadata Clipping
+
+When browsing open-source projects on GitHub, right-click anywhere on the repository page and choose **"Save Repository Info to EdgeEver"** (保存仓库信息到 EdgeEver) to capture key project facts into a structured card.
+
+The extension automatically parses the repository name (Owner/Repo), About description, official homepage, primary language, open-source license, topic tags, and GitHub URL—tagged with `#web-clip` for streamlined developer tooling and technology stacks research.
+
+| 1. Right-click "Save Repository Info to EdgeEver" | 2. Repository card generated with topics & metadata |
+| :---: | :---: |
+| ![Right-click save GitHub repo info to EdgeEver](assets/best-practices/github-clip-menu.png) | ![GitHub repo clipped into EdgeEver note card](assets/best-practices/github-clipped-note.png) |
 
 ---

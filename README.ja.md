@@ -19,7 +19,8 @@
   <p>
     <a href="https://t.me/+wwUx1BYLrIdiZjY1">💬 Telegram グループ</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 オンラインデモ</a> &nbsp;|&nbsp;
-    <a href="#クライアントのダウンロード">📱 ダウンロード</a>
+    <a href="#クライアントのダウンロード">📱 ダウンロード</a> &nbsp;|&nbsp;
+    <a href="docs/best-practices.md">💡 ベストプラクティス</a>
   </p>
 </div>
 

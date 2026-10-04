@@ -19,7 +19,8 @@
   <p>
     <a href="#wechat-group">💬 微信交流群</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 在线演示</a> &nbsp;|&nbsp;
-    <a href="#客户端下载">📱 客户端下载</a>
+    <a href="#客户端下载">📱 客户端下载</a> &nbsp;|&nbsp;
+    <a href="docs/best-practices.zh-CN.md">💡 最佳实践</a>
   </p>
 </div>
 
