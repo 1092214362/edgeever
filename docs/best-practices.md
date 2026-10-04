@@ -10,6 +10,8 @@
 - [6. One-Click Note Copy to WeChat Official Account & Blogs](#6-one-click-note-copy-to-wechat-official-account--blogs)
 - [7. AI RSS Daily Digest & Elegant Image Poster Sharing](#7-ai-rss-daily-digest--elegant-image-poster-sharing)
 - [8. One-Click GitHub Repository Metadata Clipping](#8-one-click-github-repository-metadata-clipping)
+- [9. One-Click Mobile Image Sharing to Notes](#9-one-click-mobile-image-sharing-to-notes)
+- [10. One-Click WeChat Article Clipping on Mobile](#10-one-click-wechat-article-clipping-on-mobile)
 
 ---
 
@@ -106,5 +108,29 @@ The extension automatically parses the repository name (Owner/Repo), About descr
 | 1. Right-click "Save Repository Info to EdgeEver" | 2. Repository card generated with topics & metadata |
 | :---: | :---: |
 | ![Right-click save GitHub repo info to EdgeEver](assets/best-practices/github-clip-menu.png) | ![GitHub repo clipped into EdgeEver note card](assets/best-practices/github-clipped-note.png) |
+
+---
+
+## 9. One-Click Mobile Image Sharing to Notes
+
+When discovering inspiring images across any social media or community apps on your phone (such as X / Twitter, Reddit, Instagram, Pixiv, Zhihu, Bilibili, Weibo, etc.), directly tap the share button to save them into your notes.
+
+Select **EdgeEver** in the system share sheet: the app launches automatically, uploads the full-resolution image silently, and creates a standalone note titled "Shared Image" (分享的图片)—ready for immediate annotation or tag categorization.
+
+| 1. Tap share button in social media app | 2. Select EdgeEver in system share sheet | 3. Note generated with instant image upload |
+| :---: | :---: | :---: |
+| ![Tap share in social app](assets/best-practices/mobile-share-image-trigger.jpg) | ![Select EdgeEver in share sheet](assets/best-practices/mobile-share-image-sheet.jpg) | ![Note created with uploaded image](assets/best-practices/mobile-share-image-note.jpg) |
+
+---
+
+## 10. One-Click WeChat Article Clipping on Mobile
+
+When reading WeChat Official Account articles on your phone, tap the top-right menu and choose **"Open with EdgeEver"** (用 EdgeEver 打开) to clip the entire post with a single tap.
+
+The app automatically extracts the complete article title, structured prose, and embedded images while filtering out noisy ads—converting the post into an editable Markdown note tagged with `#web-clip` and `#wechat`.
+
+| 1. Tap menu & select "Open with EdgeEver" | 2. Mobile app launches & extracts article | 3. Clean, beautifully formatted note saved |
+| :---: | :---: | :---: |
+| ![WeChat share menu select Open with EdgeEver](assets/best-practices/wechat-article-share-trigger.jpg) | ![EdgeEver clipping WeChat article modal](assets/best-practices/wechat-article-clipping-modal.jpg) | ![Clean WeChat article note generated](assets/best-practices/wechat-article-clipped-note.jpg) |
 
 ---

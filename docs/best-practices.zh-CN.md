@@ -10,6 +10,8 @@
 - [6. 一键复制笔记到微信公众号排版](#6-一键复制笔记到微信公众号排版)
 - [7. AI RSS 智能订阅日报与精美长图分享](#7-ai-rss-智能订阅日报与精美长图分享)
 - [8. GitHub 开源仓库信息一键剪藏](#8-github-开源仓库信息一键剪藏)
+- [9. 移动端社媒图片一键转存笔记](#9-移动端社媒图片一键转存笔记)
+- [10. 手机端一键剪藏微信公众号文章](#10-手机端一键剪藏微信公众号文章)
 
 ---
 
@@ -106,5 +108,29 @@ EdgeEver 内置的 AI RSS 订阅能力可自动聚合行业前沿资讯，智能
 | 1. 仓库页面右键「保存仓库信息到 EdgeEver」 | 2. 自动生成包含技术标签与元数据的仓库卡片 |
 | :---: | :---: |
 | ![右键保存 GitHub 仓库信息到 EdgeEver](assets/best-practices/github-clip-menu.png) | ![EdgeEver 剪藏后的 GitHub 仓库卡片笔记](assets/best-practices/github-clipped-note.png) |
+
+---
+
+## 9. 移动端社媒图片一键转存笔记
+
+在手机浏览各大社交媒体与内容平台（如 X / Twitter、Reddit、Instagram、Pixiv，以及知乎、B站、微博等）看到想要收藏的图片时，直接点击分享按钮即可直达笔记。
+
+在系统分享面板中选择 **EdgeEver**，应用会自动拉起并静默上传原图，一键生成以「分享的图片」为标题的独立笔记，随时补充文字批注或打上标签分类。
+
+| 1. 点击社媒 App 图片分享按钮 | 2. 系统分享面板选择 EdgeEver | 3. 自动生成笔记并极速上传原图 |
+| :---: | :---: | :---: |
+| ![社媒App点击图片分享](assets/best-practices/mobile-share-image-trigger.jpg) | ![系统分享面板选择EdgeEver](assets/best-practices/mobile-share-image-sheet.jpg) | ![自动生成笔记并上传图片](assets/best-practices/mobile-share-image-note.jpg) |
+
+---
+
+## 10. 手机端一键剪藏微信公众号文章
+
+在手机微信中阅读公众号文章时，点击右上角菜单并选择「用 EdgeEver 打开」，即可一键完成全文章节剪藏。
+
+应用会自动提取完整标题、正文结构与配图链接，去除页面多余噪点与排版干扰，转换为纯净优美的 Markdown 笔记，自动打上 `#web-clip` 与 `#wechat` 标签。
+
+| 1. 文章分享菜单选择「用 EdgeEver 打开」 | 2. 自动拉起 App 提取标题与正文 | 3. 自动生成排版工整的纯净笔记 |
+| :---: | :---: | :---: |
+| ![微信文章分享菜单选择用EdgeEver打开](assets/best-practices/wechat-article-share-trigger.jpg) | ![EdgeEver正在剪藏文章提取中](assets/best-practices/wechat-article-clipping-modal.jpg) | ![生成排版工整的微信文章笔记](assets/best-practices/wechat-article-clipped-note.jpg) |
 
 ---
