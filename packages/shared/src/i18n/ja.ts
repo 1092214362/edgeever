@@ -529,6 +529,8 @@ export const ja = {
     navHintPan: "ドラッグしてキャンバスを移動",
     navHintHoldShift: "押しながら",
     navHintBoxSelect: "で範囲選択",
+    navHintAddChild: "子ノードを追加",
+    navHintAddSibling: "同階層のノードを追加",
     undo: "元に戻す",
     redo: "やり直す",
     zoomIn: "拡大",

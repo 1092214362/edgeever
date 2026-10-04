@@ -529,6 +529,8 @@ export const zhCN = {
     navHintPan: "拖动画布",
     navHintHoldShift: "按住",
     navHintBoxSelect: "框选多选",
+    navHintAddChild: "新增子节点",
+    navHintAddSibling: "新增同级节点",
     undo: "撤销",
     redo: "重做",
     zoomIn: "放大",

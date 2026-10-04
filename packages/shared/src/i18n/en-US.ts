@@ -529,6 +529,8 @@ export const enUS = {
     navHintPan: "Drag to move canvas",
     navHintHoldShift: "Hold",
     navHintBoxSelect: "to box-select",
+    navHintAddChild: "Add child node",
+    navHintAddSibling: "Add sibling node",
     undo: "Undo",
     redo: "Redo",
     zoomIn: "Zoom in",

@@ -3108,6 +3108,8 @@ export const DiagramEditorPane = ({
     : saveStatus === "saved"
       ? "bg-slate-100 text-slate-500"
       : "bg-slate-100 text-slate-700";
+  const selectedMindMapNode = selectedNodeId ? graphRef.current?.getCellById(selectedNodeId) : null;
+  const mindMapEnterAddsSibling = selectedMindMapNode?.isNode() && Boolean(selectedMindMapNode.getData<NodeData>()?.parentId);
 
   return (
     <TooltipProvider>
@@ -3369,7 +3371,7 @@ export const DiagramEditorPane = ({
           readOnly={readOnly}
           selectionEditor={(
             <>
-              {selectedNodeId && !readOnly && (() => {
+              {selectedNodeId && !readOnly && document.kind !== "mind-map" && (() => {
                 const selectedNode = graphRef.current?.getCellById(selectedNodeId);
                 const selectedData = selectedNode?.isNode() ? selectedNode.getData<NodeData>() : undefined;
                 const isArchitecture = document?.kind === "architecture";
@@ -3437,6 +3439,20 @@ export const DiagramEditorPane = ({
                 </kbd>
                 <span>{t("diagram.navHintBoxSelect")}</span>
               </span>
+              {document.kind === "mind-map" && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-600">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <kbd className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Tab</kbd>
+                    {t("diagram.navHintAddChild")}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <kbd className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Enter</kbd>
+                    {t(mindMapEnterAddsSibling ? "diagram.navHintAddSibling" : "diagram.navHintAddChild")}
+                  </span>
+                </>
+              )}
             </div>
           )}
           {pendingArchitectureItem ? (
