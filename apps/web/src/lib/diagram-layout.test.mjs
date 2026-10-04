@@ -286,6 +286,35 @@ describe("diagram auto layout", () => {
     expect(new Set(boundaries.map((node) => node.y)).size).toBeGreaterThan(1);
   });
 
+  test("uses two rows of architecture groups when a single column wastes horizontal space", () => {
+    const nodes = [];
+    const edges = [];
+    let previousId;
+    for (let groupIndex = 0; groupIndex < 4; groupIndex += 1) {
+      const boundaryId = `group-${groupIndex}`;
+      nodes.push({ id: boundaryId, label: boundaryId, type: "boundary" });
+      for (let nodeIndex = 0; nodeIndex < 2; nodeIndex += 1) {
+        const id = `${boundaryId}-node-${nodeIndex}`;
+        nodes.push({ id, label: id, type: "service", parentId: boundaryId });
+        if (previousId) edges.push({ source: previousId, target: id });
+        previousId = id;
+      }
+    }
+    const document = compileDiagramIr({ kind: "architecture", nodes, edges });
+    const boundaries = document.nodes.filter((node) => node.shape === "boundary");
+    const width = Math.max(...boundaries.map((node) => node.x + node.width))
+      - Math.min(...boundaries.map((node) => node.x));
+    expect(width).toBeGreaterThan(900);
+    expect(width).toBeLessThanOrEqual(1480);
+    expect(new Set(boundaries.map((node) => node.y)).size).toBe(2);
+    const relayout = computeDiagramLayoutResult(document);
+    const relayoutWidth = Math.max(...boundaries.map((node) => relayout.nodes[node.id].x + relayout.nodes[node.id].width))
+      - Math.min(...boundaries.map((node) => relayout.nodes[node.id].x));
+    expect(relayoutWidth).toBeGreaterThan(900);
+    const vertical = computeDiagramLayoutResult(document, { direction: "top-to-bottom" });
+    expect(vertical.nodes["group-1"].y).toBeGreaterThan(vertical.nodes["group-0"].y);
+  });
+
   test("returns a complete strategy result for every diagram kind", () => {
     for (const kind of ["mind-map", "flowchart", "architecture"]) {
       const document = createDefaultDiagramDocument(kind);
