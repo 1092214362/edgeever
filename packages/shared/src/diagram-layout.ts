@@ -121,7 +121,7 @@ const ARCHITECTURE_GROUP_VERTICAL_GAP = 88;
 const ARCHITECTURE_GROUP_PAD_X = 36;
 const ARCHITECTURE_GROUP_PAD_Y = 56;
 const ARCHITECTURE_LAYOUT_SPACING = { rank: 96, node: 40 };
-const ARCHITECTURE_META_SPACING = { rank: 88, node: 56 };
+const ARCHITECTURE_META_SPACING = { rank: 128, node: 56 };
 const ARCHITECTURE_ORIGIN = 32;
 
 export const compactArchitectureNodeSize = (
@@ -876,11 +876,18 @@ const computeArchitectureLayout = (document: DiagramDocument, options: DiagramLa
   const groupMetaNodes = groups.map((group) => {
     const memberIds = new Set(group.members.map((node) => node.id));
     const intraEdges = document.edges.filter((edge) => memberIds.has(edge.source) && memberIds.has(edge.target));
+    const crossEdgeCount = document.edges.filter((edge) => (
+      memberIds.has(edge.source) !== memberIds.has(edge.target)
+    )).length;
+    // Cross-boundary relations need separate vertical lanes beside their nodes.
+    // Keep sparse groups compact while giving dense groups room for labels.
+    const nodeGap = Math.min(112, ARCHITECTURE_LAYOUT_SPACING.node
+      + Math.round(crossEdgeCount / group.members.length * 22));
     const inner = layoutArchitectureGraph(
       group.members,
       intraEdges,
       direction,
-      ARCHITECTURE_LAYOUT_SPACING,
+      { ...ARCHITECTURE_LAYOUT_SPACING, node: nodeGap },
       { x: 0, y: 0 },
       ARCHITECTURE_LAYOUT_ROW_WIDTH - ARCHITECTURE_GROUP_PAD_X * 2,
     );

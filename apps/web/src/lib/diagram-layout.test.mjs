@@ -196,6 +196,25 @@ describe("diagram auto layout", () => {
     expect(heights.long).toBeGreaterThan(heights.medium);
   });
 
+  test("opens vertical lanes for groups with many cross-boundary relations", () => {
+    const nodes = [
+      { id: "business", type: "boundary", label: "业务层" },
+      { id: "data", type: "boundary", label: "数据层" },
+      ...Array.from({ length: 4 }, (_, index) => ({ id: `service-${index}`, type: "service", label: `服务 ${index}`, parentId: "business" })),
+      ...Array.from({ length: 4 }, (_, index) => ({ id: `store-${index}`, type: "database", label: `存储 ${index}`, parentId: "data" })),
+    ];
+    const edges = Array.from({ length: 4 }, (_, service) => Array.from({ length: 4 }, (_, store) => ({
+      source: `service-${service}`, target: `store-${store}`,
+    }))).flat();
+    const rowGap = (document) => {
+      const services = document.nodes.filter((node) => node.parentId === "business").sort((a, b) => a.y - b.y);
+      return Math.min(...services.slice(1).map((node, index) => node.y - services[index].y - services[index].height));
+    };
+    const sparse = compileDiagramIr({ kind: "architecture", nodes, edges: edges.slice(0, 1) });
+    const dense = compileDiagramIr({ kind: "architecture", nodes, edges });
+    expect(rowGap(dense)).toBeGreaterThan(rowGap(sparse) + 40);
+  });
+
   test("turns a long ungrouped architecture pipeline downward on creation and auto layout", () => {
     const nodes = Array.from({ length: 17 }, (_, index) => ({
       id: `service-${index}`,

@@ -1697,6 +1697,9 @@ export const DiagramEditorPane = ({
   const editSessionRef = useRef<MemoEditSession | null>(null);
   const saveRef = useRef<() => void>(() => undefined);
   const document = parseDiagramDocument(memo.contentMarkdown);
+  const denseArchitecture = document?.kind === "architecture"
+    && document.edges.length >= 16
+    && document.edges.length / Math.max(1, document.nodes.filter((node) => node.shape !== "boundary").length) >= 1.1;
   const documentTheme = document?.kind === "architecture"
     ? resolveDiagramTheme(document.theme ?? "brand")
     : document?.kind === "flowchart"
@@ -1719,6 +1722,7 @@ export const DiagramEditorPane = ({
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [selectedEdgeLabel, setSelectedEdgeLabel] = useState("");
   const [hasSelection, setHasSelection] = useState(false);
+  const [showAllArchitectureLabels, setShowAllArchitectureLabels] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [tagsDirty, setTagsDirty] = useState(false);
   const [dirtyVersion, setDirtyVersion] = useState(0);
@@ -3414,6 +3418,7 @@ export const DiagramEditorPane = ({
       <div className="flex min-h-0 flex-1 flex-col">
         <DiagramToolbar
           appearance={resolvedTheme}
+          architectureLabels={denseArchitecture ? { showAll: showAllArchitectureLabels, onToggle: () => setShowAllArchitectureLabels((current) => !current) } : undefined}
           canRedo={historyState.redo}
           canUndo={historyState.undo}
           hasSelection={hasSelection}
@@ -3520,6 +3525,7 @@ export const DiagramEditorPane = ({
             data-architecture-placement={pendingArchitectureItem ? "active" : undefined}
             data-diagram-appearance={resolvedTheme}
             data-diagram-kind={document.kind}
+            data-label-mode={denseArchitecture && !showAllArchitectureLabels ? "focus" : "all"}
             data-diagram-theme={theme}
             data-shift-select={shiftSelectActive ? "active" : undefined}
             data-space-pan={spacePanActive ? "active" : undefined}
@@ -3540,6 +3546,12 @@ export const DiagramEditorPane = ({
                 </kbd>
                 <span>{t("diagram.navHintBoxSelect")}</span>
               </span>
+              {denseArchitecture && !showAllArchitectureLabels ? (
+                <>
+                  <span className="text-slate-300 dark:text-slate-600">·</span>
+                  <span>{t("diagram.navHintFocusRelations")}</span>
+                </>
+              ) : null}
               {document.kind === "mind-map" && (
                 <>
                   <span className="text-slate-300 dark:text-slate-600">·</span>
