@@ -502,6 +502,23 @@ const layoutDagreGraph = (
   }));
 };
 
+const layoutArchitectureGraph = (
+  nodes: Array<{ id: string; width: number; height: number }>,
+  edges: Array<{ source: string; target: string }>,
+  direction: "left-to-right" | "top-to-bottom",
+  spacing: { rank: number; node: number },
+  margin: { x: number; y: number },
+  maxWidth = ARCHITECTURE_LAYOUT_ROW_WIDTH,
+): DiagramLayoutPositions => {
+  const positions = layoutDagreGraph(nodes, edges, direction, spacing, margin);
+  if (direction === "top-to-bottom" || nodes.length < 2) return positions;
+  const width = (candidate: DiagramLayoutPositions) => Math.max(...nodes.map((node) => candidate[node.id].x + node.width))
+    - Math.min(...nodes.map((node) => candidate[node.id].x));
+  if (width(positions) <= maxWidth) return positions;
+  const vertical = layoutDagreGraph(nodes, edges, "top-to-bottom", spacing, margin);
+  return width(vertical) < width(positions) ? vertical : positions;
+};
+
 const wrapArchitectureGroups = (
   document: DiagramDocument,
   positions: DiagramLayoutPositions,
@@ -592,6 +609,51 @@ const placeUnpositionedArchitectureNodes = (
     positions[node.id] = { x: cursorX, y: cursorY };
     cursorX += node.width + 40;
     rowHeight = Math.max(rowHeight, node.height);
+  }
+  return positions;
+};
+
+const placeEmptyArchitectureBoundaries = (
+  document: DiagramDocument,
+  positions: DiagramLayoutPositions,
+) => {
+  const nodeById = new Map(document.nodes.map((node) => [node.id, node]));
+  const empty = document.nodes.filter((node) => (
+    node.shape === "boundary"
+    && !node.parentId
+    && !document.nodes.some((member) => (
+      member.shape !== "boundary" && architectureTopLevelBoundaryId(member.id, nodeById) === node.id
+    ))
+  )).sort((left, right) => left.y - right.y || left.x - right.x || left.id.localeCompare(right.id));
+  if (empty.length === 0) return positions;
+
+  const emptyIds = new Set(empty.map((node) => node.id));
+  const placed = document.nodes.filter((node) => (
+    positions[node.id]
+    && !emptyIds.has(node.id)
+    && !empty.some((boundary) => architectureTopLevelBoundaryId(node.id, nodeById) === boundary.id)
+  ));
+  const contentBottom = placed.length > 0
+    ? Math.max(...placed.map((node) => positions[node.id].y + node.height))
+    : ARCHITECTURE_ORIGIN - ARCHITECTURE_GROUP_VERTICAL_GAP;
+  let cursorX = ARCHITECTURE_ORIGIN;
+  let cursorY = contentBottom + ARCHITECTURE_GROUP_VERTICAL_GAP;
+  let rowHeight = 0;
+  for (const boundary of empty) {
+    if (cursorX > ARCHITECTURE_ORIGIN
+      && cursorX + boundary.width > ARCHITECTURE_ORIGIN + ARCHITECTURE_LAYOUT_ROW_WIDTH) {
+      cursorX = ARCHITECTURE_ORIGIN;
+      cursorY += rowHeight + ARCHITECTURE_GROUP_VERTICAL_GAP;
+      rowHeight = 0;
+    }
+    const deltaX = cursorX - positions[boundary.id].x;
+    const deltaY = cursorY - positions[boundary.id].y;
+    for (const node of document.nodes) {
+      if (node.id !== boundary.id && architectureTopLevelBoundaryId(node.id, nodeById) !== boundary.id) continue;
+      positions[node.id] = { x: positions[node.id].x + deltaX, y: positions[node.id].y + deltaY };
+    }
+    cursorX += boundary.width + ARCHITECTURE_GROUP_HORIZONTAL_GAP;
+    rowHeight = Math.max(rowHeight, boundary.height);
   }
   return positions;
 };
@@ -733,14 +795,31 @@ const computeArchitectureLayout = (document: DiagramDocument, options: DiagramLa
     return members.length > 0 ? [{ boundary, members }] : [];
   });
   if (groups.length === 0) {
-    return computeDagreLayout(document, { ...options, direction }, true, ARCHITECTURE_LAYOUT_SPACING);
+    const positions = layoutArchitectureGraph(
+      document.nodes.filter((node) => node.shape !== "boundary"),
+      document.edges,
+      direction,
+      ARCHITECTURE_LAYOUT_SPACING,
+      { x: 32, y: 32 },
+    );
+    for (const boundary of document.nodes.filter((node) => node.shape === "boundary")) {
+      positions[boundary.id] = { x: boundary.x, y: boundary.y };
+    }
+    return placeEmptyArchitectureBoundaries(document, positions);
   }
 
   const innerByGroup = new Map<string, DiagramLayoutPositions>();
   const groupMetaNodes = groups.map((group) => {
     const memberIds = new Set(group.members.map((node) => node.id));
     const intraEdges = document.edges.filter((edge) => memberIds.has(edge.source) && memberIds.has(edge.target));
-    const inner = layoutDagreGraph(group.members, intraEdges, direction, ARCHITECTURE_LAYOUT_SPACING, { x: 0, y: 0 });
+    const inner = layoutArchitectureGraph(
+      group.members,
+      intraEdges,
+      direction,
+      ARCHITECTURE_LAYOUT_SPACING,
+      { x: 0, y: 0 },
+      ARCHITECTURE_LAYOUT_ROW_WIDTH - ARCHITECTURE_GROUP_PAD_X * 2,
+    );
     const left = Math.min(...group.members.map((node) => inner[node.id].x));
     const top = Math.min(...group.members.map((node) => inner[node.id].y));
     const normalized = Object.fromEntries(group.members.map((node) => [node.id, {
@@ -790,12 +869,13 @@ const computeArchitectureLayout = (document: DiagramDocument, options: DiagramLa
   }
 
   const metaMargin = { x: ARCHITECTURE_ORIGIN, y: ARCHITECTURE_ORIGIN };
-  const metaLr = layoutDagreGraph(metaNodes, metaEdges, direction, ARCHITECTURE_META_SPACING, metaMargin);
-  const lrWidth = Math.max(...metaNodes.map((node) => metaLr[node.id].x + node.width))
-    - Math.min(...metaNodes.map((node) => metaLr[node.id].x));
-  const metaPositions = groups.length > 1 && lrWidth > ARCHITECTURE_LAYOUT_ROW_WIDTH
-    ? layoutDagreGraph(metaNodes, metaEdges, "top-to-bottom", ARCHITECTURE_META_SPACING, metaMargin)
-    : metaLr;
+  const metaPositions = layoutArchitectureGraph(
+    metaNodes,
+    metaEdges,
+    direction,
+    ARCHITECTURE_META_SPACING,
+    metaMargin,
+  );
 
   const positions: DiagramLayoutPositions = Object.fromEntries(
     document.nodes.filter((node) => node.shape === "boundary").map((node) => [node.id, { x: node.x, y: node.y }]),
@@ -817,7 +897,7 @@ const computeArchitectureLayout = (document: DiagramDocument, options: DiagramLa
 
   wrapArchitectureGroups(document, positions);
   placeUnpositionedArchitectureNodes(document, positions);
-  return positions;
+  return placeEmptyArchitectureBoundaries(document, positions);
 };
 
 const irNodeShape = (kind: DiagramKind, type: DiagramIrNodeType | undefined): DiagramNodeShape => {

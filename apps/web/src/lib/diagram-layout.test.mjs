@@ -180,6 +180,67 @@ describe("diagram auto layout", () => {
     expect(compactArchitectureNodeSize("boundary", { width: 640, height: 360 })).toEqual({ width: 640, height: 360 });
   });
 
+  test("turns a long ungrouped architecture pipeline downward on creation and auto layout", () => {
+    const nodes = Array.from({ length: 17 }, (_, index) => ({
+      id: `service-${index}`,
+      label: `Service ${index}`,
+      type: "service",
+    }));
+    const edges = nodes.slice(1).map((node, index) => ({ source: nodes[index].id, target: node.id }));
+    const document = compileDiagramIr({ kind: "architecture", nodes, edges });
+    const bounds = (geometry) => ({
+      width: Math.max(...nodes.map((node) => geometry[node.id].x + geometry[node.id].width))
+        - Math.min(...nodes.map((node) => geometry[node.id].x)),
+      height: Math.max(...nodes.map((node) => geometry[node.id].y + geometry[node.id].height))
+        - Math.min(...nodes.map((node) => geometry[node.id].y)),
+    });
+    const created = Object.fromEntries(document.nodes.map((node) => [node.id, node]));
+    expect(bounds(created).width).toBeLessThanOrEqual(1480);
+    expect(bounds(created).height).toBeGreaterThan(bounds(created).width);
+    const relayout = computeDiagramLayoutResult(document);
+    expect(bounds(relayout.nodes).width).toBeLessThanOrEqual(1480);
+    expect(relayout.nodes["service-0"].y).toBeLessThan(relayout.nodes["service-16"].y);
+  });
+
+  test("keeps a long architecture pipeline inside one boundary within the width limit", () => {
+    const nodes = [{ id: "system", label: "System", type: "boundary" }];
+    const edges = [];
+    for (let index = 0; index < 12; index += 1) {
+      const id = `service-${index}`;
+      nodes.push({ id, label: `Service ${index}`, type: "service", parentId: "system" });
+      if (index > 0) edges.push({ source: `service-${index - 1}`, target: id });
+    }
+    const document = compileDiagramIr({ kind: "architecture", nodes, edges });
+    const system = document.nodes.find((node) => node.id === "system");
+    expect(system.width).toBeLessThanOrEqual(1480);
+    expect(system.height).toBeGreaterThan(system.width);
+    for (const node of document.nodes.filter((item) => item.parentId === "system")) {
+      expect(node.x).toBeGreaterThan(system.x);
+      expect(node.x + node.width).toBeLessThan(system.x + system.width);
+    }
+  });
+
+  test("places unassigned architecture boundaries after the pipeline without covering nodes", () => {
+    const services = Array.from({ length: 14 }, (_, index) => ({
+      id: `service-${index}`,
+      label: `Service ${index}`,
+      type: "service",
+    }));
+    const boundaries = ["访问层", "业务服务层", "数据与基础设施层"].map((label, index) => ({
+      id: `boundary-${index}`,
+      label,
+      type: "boundary",
+    }));
+    const edges = services.slice(1).map((node, index) => ({ source: services[index].id, target: node.id }));
+    const document = compileDiagramIr({ kind: "architecture", nodes: [...services, ...boundaries], edges });
+    const result = computeDiagramLayoutResult(document);
+    const bottom = Math.max(...services.map((node) => result.nodes[node.id].y + result.nodes[node.id].height));
+    for (const boundary of boundaries) expect(result.nodes[boundary.id].y).toBeGreaterThan(bottom);
+    const width = Math.max(...Object.values(result.nodes).map((node) => node.x + node.width))
+      - Math.min(...Object.values(result.nodes).map((node) => node.x));
+    expect(width).toBeLessThanOrEqual(1480);
+  });
+
   test("separates generated architecture boundaries and keeps their children inside", () => {
     const document = compileDiagramIr({
       kind: "architecture",
