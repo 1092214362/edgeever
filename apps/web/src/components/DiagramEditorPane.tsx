@@ -174,6 +174,7 @@ import { api } from "@/lib/api";
 import { EDITOR_LOCAL_SAVE_DELAY_MS, formatShortcutBinding, getNotebookMoveOptions, type ShortcutSettings } from "@/lib/app-helpers";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
+  architectureNodeHeight,
   compactArchitectureNodeSize,
   compactFlowchartNodeSize,
   flowchartNodePresentation,
@@ -1114,7 +1115,14 @@ const diagramNodePresentation = (
     fontSize, 'font-size': fontSize, 'font-weight': kind === "architecture" ? ARCHITECTURE_NODE_FONT_WEIGHT : !node.parentId ? 650 : 500,
     lineHeight,
   });
-  return { ...size, height: Math.max(size.height, text.split("\n").length * lineHeight + 16), text };
+  const lineCount = text.split("\n").length;
+  return {
+    ...size,
+    height: kind === "architecture"
+      ? architectureNodeHeight(node.shape, lineCount)
+      : Math.max(size.height, lineCount * lineHeight + 16),
+    text,
+  };
 };
 
 const diagramNodeSize = (node: DiagramDocument["nodes"][number], kind: DiagramDocument["kind"], structure?: DiagramStructure) => {

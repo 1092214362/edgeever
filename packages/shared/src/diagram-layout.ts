@@ -1,4 +1,4 @@
-import { compactFlowchartNodeSize, flowchartNodePresentation } from "./diagram-node-presentation";
+import { compactFlowchartNodeSize, flowchartNodePresentation, visualTextUnits } from "./diagram-node-presentation";
 export { compactFlowchartNodeSize, flowchartNodePresentation } from "./diagram-node-presentation";
 import { DIAGRAM_READABLE_MIN_SCALE, FLOWCHART_LAYOUT_SPACING } from "./diagram-flowchart-style";
 export {
@@ -131,8 +131,25 @@ export const compactArchitectureNodeSize = (
   if (shape === "boundary") return authored ?? { width: 560, height: 320 };
   if (shape === "database") return { width: 150, height: 72 };
   if (shape === "queue") return { width: 156, height: 60 };
-  if (shape === "security") return { width: 148, height: 68 };
-  return { width: 156, height: 64 };
+  if (shape === "security") return { width: 148, height: 60 };
+  return { width: 156, height: 56 };
+};
+
+export const architectureNodeHeight = (shape: DiagramNodeShape, lineCount: number) => {
+  const baseHeight = compactArchitectureNodeSize(shape).height;
+  return Math.max(baseHeight, lineCount <= 1 ? 56 : lineCount === 2 ? 60 : lineCount * 17 + 20);
+};
+
+const architectureNodeSizeForLabel = (shape: DiagramNodeShape, label: string) => {
+  const { width } = compactArchitectureNodeSize(shape);
+  if (shape === "boundary") return compactArchitectureNodeSize(shape);
+  // Reserve space during semantic layout before the browser measures the final wrapping.
+  const capacity = (width - 66) / 12;
+  const lineCount = label.split("\n").reduce(
+    (count, paragraph) => count + Math.max(1, Math.ceil(visualTextUnits(paragraph) / capacity)),
+    0,
+  );
+  return { width, height: architectureNodeHeight(shape, lineCount) };
 };
 
 const computeMindMapLayout = (
@@ -1115,7 +1132,7 @@ export const compileDiagramIr = (ir: DiagramIr): DiagramDocument => {
     const size = ir.kind === "mind-map"
       ? mindMapNodePresentation(node.label, mindMapNodeRole(ir.nodes, node.id), ir.structure)
       : ir.kind === "architecture"
-        ? compactArchitectureNodeSize(shape)
+        ? architectureNodeSizeForLabel(shape, node.label)
         : flowchartNodePresentation(shape, node.label);
     return {
       id: node.id,

@@ -180,6 +180,22 @@ describe("diagram auto layout", () => {
     expect(compactArchitectureNodeSize("boundary", { width: 640, height: 360 })).toEqual({ width: 640, height: 360 });
   });
 
+  test("reserves height for wrapped architecture labels while shortening compact nodes", () => {
+    const document = compileDiagramIr({
+      kind: "architecture",
+      nodes: [
+        { id: "short", type: "service", label: "API" },
+        { id: "medium", type: "service", label: "商品与库存查询服务" },
+        { id: "long", type: "service", label: "商品与库存查询服务及活动规则配置中心" },
+      ],
+      edges: [],
+    });
+    const heights = Object.fromEntries(document.nodes.map((node) => [node.id, node.height]));
+    expect(heights.short).toBe(56);
+    expect(heights.medium).toBe(60);
+    expect(heights.long).toBeGreaterThan(heights.medium);
+  });
+
   test("turns a long ungrouped architecture pipeline downward on creation and auto layout", () => {
     const nodes = Array.from({ length: 17 }, (_, index) => ({
       id: `service-${index}`,
