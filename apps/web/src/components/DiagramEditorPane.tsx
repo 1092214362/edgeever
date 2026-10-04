@@ -3426,15 +3426,14 @@ export const DiagramEditorPane = ({
           />
           {!readOnly && (
             <div
-              className="pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-6.5rem)] flex-wrap select-none items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/90 px-3 py-1 text-xs text-slate-500 shadow-xs backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-400"
+              className="pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-6.5rem)] flex-wrap select-none items-center gap-1 rounded-xl border border-slate-200/80 bg-white/90 px-2 py-0.5 text-[11px] text-slate-500 shadow-xs backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-400"
               role="status"
               aria-live="polite"
             >
               <span>{t("diagram.navHintPan")}</span>
               <span className="text-slate-300 dark:text-slate-600">·</span>
-              <span className={cn("inline-flex items-center transition-colors duration-150", shiftSelectActive && "font-medium text-slate-950")}>
-                <span className="mr-1">{t("diagram.navHintHoldShift")}</span>
-                <kbd className={cn("mr-1 inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-semibold transition-colors duration-150", shiftSelectActive ? "border-slate-400 bg-slate-100 text-slate-950" : "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300")}>
+              <span className={cn("inline-flex items-center gap-1 transition-colors duration-150", shiftSelectActive && "font-medium text-slate-950")}>
+                <kbd className={cn("inline-flex items-center rounded border px-1 py-px font-medium transition-colors duration-150", shiftSelectActive ? "border-slate-400 bg-slate-100 text-slate-950" : "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300")}>
                   Shift
                 </kbd>
                 <span>{t("diagram.navHintBoxSelect")}</span>
@@ -3443,12 +3442,12 @@ export const DiagramEditorPane = ({
                 <>
                   <span className="text-slate-300 dark:text-slate-600">·</span>
                   <span className="inline-flex items-center gap-1">
-                    <kbd className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Tab</kbd>
+                    <kbd className="rounded border border-slate-200 bg-slate-100 px-1 py-px font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Tab</kbd>
                     {t("diagram.navHintAddChild")}
                   </span>
                   <span className="text-slate-300 dark:text-slate-600">·</span>
                   <span className="inline-flex items-center gap-1">
-                    <kbd className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Enter</kbd>
+                    <kbd className="rounded border border-slate-200 bg-slate-100 px-1 py-px font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">Enter</kbd>
                     {t(mindMapEnterAddsSibling ? "diagram.navHintAddSibling" : "diagram.navHintAddChild")}
                   </span>
                 </>
