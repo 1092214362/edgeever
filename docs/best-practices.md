@@ -1,5 +1,6 @@
-# EdgeEver Best Practices
+# EdgeEver Showcase & Workflows
 
+A curated collection of practical workflows, showcase examples, and real-world scenarios for daily productivity with EdgeEver.
 ## Table of Contents
 
 - [1. One-Click WeChat Chat History Archiving](#1-one-click-wechat-chat-history-archiving)
