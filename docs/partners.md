@@ -14,18 +14,21 @@ EdgeEver is an open-source, AI-native personal knowledge base and Evernote alter
 
 ## What We Accept
 
-We welcome flexible and diverse forms of collaboration:
+We prioritize and warmly welcome the following key forms of collaboration:
 
-* **Infrastructure & Compute Resources**:
-  * Cloud VMs, S3-compatible object storage, and global CDN distribution for our public demo (demo.edgeever.org) and live services;
-  * CI/CD build instances, physical test device clusters, and multi-platform automation pipelines;
-  * AI model API quota and developer access.
-* **Developer Tools & Licensing**:
-  * Professional software licenses, platform subscriptions, security auditing, and code-signing certificates.
-* **Financial Sponsorship**:
-  * Offsetting annual developer program fees (Apple, Microsoft, app stores), domain registrations, hardware testing devices, and long-term community maintenance.
-* **Co-Marketing & Community Initiatives**:
-  * Joint technical articles, cross-community meetups, open-source advocacy, and ecosystem promotions.
+* **Direct Financial Sponsorship (Preferred)**:
+  * Sustaining dedicated core development and long-term maintenance;
+  * Covering developer program renewals (Apple Developer, Microsoft Store, app stores) and code-signing certificates;
+  * Covering domain registrations, physical test device procurement, and ongoing infrastructure overhead.
+* **Co-Marketing & Community Initiatives (Preferred)**:
+  * Joint technical articles, featured case studies, social media highlights, and open-source advocacy;
+  * Collaborative developer workshops, community meetups, and ecosystem synergies.
+* **Infrastructure & Key Resources**:
+  * High-availability cloud compute, object storage (S3/OSS), and global CDN acceleration for our public demo (demo.edgeever.org);
+  * CI/CD build environments and physical device testing clusters;
+  * Generous AI model API quotas and developer access.
+* **Professional Tooling & Platform Licenses**:
+  * Professional developer software licenses, security audits, and developer platform enterprise subscriptions.
 
 ---
 
