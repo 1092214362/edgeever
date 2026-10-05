@@ -14,13 +14,13 @@ EdgeEver is an open-source, AI-native personal knowledge base and Evernote alter
 
 ## What We Accept
 
-We prioritize and warmly welcome the following key forms of collaboration:
+We welcome and support the following forms of collaboration:
 
-* **Direct Financial Sponsorship (Preferred)**:
+* **Direct Financial Sponsorship**:
   * Sustaining dedicated core development and long-term maintenance;
   * Covering developer program renewals (Apple Developer, Microsoft Store, app stores) and code-signing certificates;
   * Covering domain registrations, physical test device procurement, and ongoing infrastructure overhead.
-* **Co-Marketing & Community Initiatives (Preferred)**:
+* **Co-Marketing & Community Initiatives**:
   * Joint technical articles, featured case studies, social media highlights, and open-source advocacy;
   * Collaborative developer workshops, community meetups, and ecosystem synergies.
 * **Infrastructure & Key Resources**:
