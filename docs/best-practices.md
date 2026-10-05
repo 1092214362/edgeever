@@ -16,6 +16,7 @@ A curated collection of practical workflows, showcase examples, and real-world s
 - [11. AI Conversational Generation of Mind Maps, Flowcharts & Architecture Diagrams](#11-ai-conversational-generation-of-mind-maps-flowcharts--architecture-diagrams)
 - [12. AI-Powered Generation of Professional Infographics](#12-ai-powered-generation-of-professional-infographics)
 - [13. Instant Multi-Dimensional Database Table Generation via AI Prompt](#13-instant-multi-dimensional-database-table-generation-via-ai-prompt)
+- [14. One-Click Public Online Form Collection from Database Tables](#14-one-click-public-online-form-collection-from-database-tables)
 
 ---
 
@@ -172,5 +173,17 @@ The AI automatically architects the full table schema—intelligently choosing a
 | 1. AI prompt creating media creator topic bank | 2. AI prompt creating employee roster database |
 | :---: | :---: |
 | ![AI generated media creator topic database](assets/best-practices/ai-database-media-topics.png) | ![AI generated employee roster database](assets/best-practices/ai-database-employee-roster.png) |
+
+---
+
+## 14. One-Click Public Online Form Collection from Database Tables
+
+Click **"Form Collection"** (表单收集) at the top of any multi-dimensional database table in EdgeEver to instantly generate a public-facing online submission link.
+
+Respondents can fill out and submit responses on mobile or desktop browsers without registering or logging in. Form fields, dropdown selections, and date pickers stay completely synchronized with the database schema, piping submitted data directly into your table in real time for effortless surveys, event registrations, and staff rosters.
+
+| 1. Click "Form Collection" in database header | 2. Auto-generated public form submission page |
+| :---: | :---: |
+| ![Click Form Collection button in database header](assets/best-practices/database-form-collection-btn.png) | ![Public online form submission webpage](assets/best-practices/database-public-form-page.png) |
 
 ---
