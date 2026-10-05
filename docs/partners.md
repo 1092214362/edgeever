@@ -63,3 +63,4 @@ Upon mutual confirmation, we can feature your company's **Name, Logo, Descriptio
 If your organization is interested in supporting EdgeEver or exploring infrastructure, cloud services, and co-marketing partnerships, please reach out to us:
 
 - **Partnership Email**: [yingwaizhiying@gmail.com](mailto:yingwaizhiying@gmail.com)
+- **WeChat**: `m1245207870` (Please note: **EdgeEver Partner** along with your organization/name)
