@@ -1,281 +1,261 @@
-# EdgeEver 浏览器插件：视频内容抓取、字幕识别、AI 归纳与转存笔记技术方案（YouTube & 哔哩哔哩）
+# EdgeEver 网页剪藏：YouTube 与哔哩哔哩视频笔记
 
-本文档梳理 EdgeEver 浏览器扩展（Chrome / Firefox / Edge 等）支持**网络视频内容智能提取、AI 总结归纳并一键转存笔记**的产品设计与技术实现方案。初期重点适配 **YouTube** 与 **哔哩哔哩（Bilibili）** 两大主流长视频平台，整体架构设计采用插件化适配器模式（Adapter Pattern），以便未来平滑扩展更多音视频平台。
+用户在 YouTube 或哔哩哔哩的视频播放页点一次，把当前这一集保存成 EdgeEver 笔记。笔记带来源、可点击的时间戳、平台字幕实录；工作区已经配置默认模型时，再补一句话总结和分段大纲。字幕在用户正在看的页面里读取。插件不下载音视频，也不自己选择模型供应商。
 
+## 第一期
 
----
+第一期只做这两类播放页：
 
-## 1. 核心目标与用户场景
+- YouTube：`youtube.com`、`www.youtube.com`、`m.youtube.com` 的 `/watch` 与 `/shorts/{id}`，以及 `youtu.be/{id}`。
+- 哔哩哔哩：`bilibili.com`、`www.bilibili.com`、`m.bilibili.com` 的 `/video/BV…` 与 `/video/av…`。分 P 以 URL 的 `p` 为准，没有 `p` 时保存第 1 P。
 
-### 1.1 核心目标
-* **一键总结转存**：用户在 YouTube 或哔哩哔哩视频播放页浏览时，可通过**右键上下文菜单**或**插件弹窗快捷键**，一键对当前视频（或选定分 P）进行智能提炼并保存笔记。
-* **精准元数据提取**：自动捕获视频标题、UP主/频道名称、分P信息、封面、视频时长与规范化源链接。
-* **智能结构化提炼**：由 AI 归纳生成**一句话结论（TL;DR）、带精确跳转时间戳的分段重点大纲、核心知识点清单与思维框架**。
-* **精准回溯播放**：大纲中的所有时间戳均渲染为可点击跳转链接，点击即可直接定位到原视频对应秒数播放。
-* **高性价比与秒级响应**：优先直接获取官方人工字幕与平台自动生成字幕（耗时 `<1s`，成本 `$0`）；对于无字幕冷门视频，提供透明降级的语音识别（ASR）转录机制。
-* **可扩展架构**：核心业务抽象为统一接口，初期适配 YouTube 与 Bilibili，未来低成本接入 Vimeo、播客、小红书视频等更多平台。
+规范化后的来源链接只保留视频和分 P。播放列表、电台和 `t` 参数不写入来源链接；时间戳链接单独生成。
 
-### 1.2 平台范围与阶段规划
-* **初期适配**：
-  1. **YouTube**：全球最大的视频分享平台，覆盖中英文为主的科技、教程、演讲等内容。
-  2. **哔哩哔哩（Bilibili）**：国内泛知识、学术公开课、技能教程与长视频核心社区。
-* **未来扩展**：Vimeo、播客平台（Apple Podcasts / 小宇宙 Web 版）、Twitter/X 视频、小红书视频等。
+直播、首播、尚未开播的预告、番剧、影视、课程页，以及 `music.youtube.com`、嵌入式播放器和其他站点，第一期提示不支持，不创建笔记。
 
----
+## 本期不做
 
-## 2. 整体架构与分级处理流程
+- 不从音视频流做语音识别，不把音频送到 Groq、Gemini、Cloudflare Workers AI 或任何写死的供应商。
+- 插件不保存模型 API Key，不调用 `/api/v1/plugins/ai/generate/prepare`。该接口会把供应商凭据返回给调用方。
+- 不注入常驻 content script。播放页的地址就能确定视频，不需要像时间线那样记住指针下的条目。
+- 不增加清单里的 `commands` 快捷键。
+- 不承诺秒级完成，也不把模型费用写进产品文案。
+- 不为了这一期接入 Vimeo、播客、小红书或 X 的视频。
 
-核心设计哲学：**“免费原生字幕优先（毫秒级 / 零成本），无字幕透明降级转录”**。
+## 触发
 
-```mermaid
-flowchart TD
-    A[用户在视频播放页触发右键菜单或快捷键] --> B[Content Script 捕获当前 Tab URL 与宿主环境]
-    B --> C{识别目标平台}
-    
-    C -- YouTube --> D1[调用 YouTubeAdapter<br/>提取页面上下文与字幕轨]
-    C -- 哔哩哔哩 --> D2[调用 BilibiliAdapter<br/>解析分P信息与 CC/AI 字幕]
-    C -- 其他平台 --> D3[提示暂不支持该平台]
+右键菜单新增一条「保存视频笔记到 EdgeEver」。它只出现在上面两类播放页，上下文是 `page` 和 `video`。选中文字仍走现有的选区命令，图片仍走现有的图片命令。Chrome 和 Firefox 会在同一页面同时出现多条本扩展菜单时，把它们收进子菜单。`registerClipMenus` 会清空并重建全部菜单，新条目的 `documentUrlPatterns` 必须与选区、图片、X、GitHub、小红书、知乎、Reddit 互不重叠。
 
-    D1 --> E{检测是否存在可用字幕轨?}
-    D2 --> E
+工具栏弹窗发给后台的 `captureCurrentPage`，在当前标签是受支持的播放页时走同一条视频保存。其他网页仍按现在的正文提取保存。
 
-    E -- 存在官方或自动字幕 (90%+ 场景) --> F[拉取并解析原始字幕数据<br/>耗时 <1s / 成本 $0]
-    E -- 无任何字幕轨 (边缘场景) --> G[透明降级: 提取音频流并调用<br/>云端 ASR / 多模态理解]
+文案放进 `apps/extension/public/_locales/` 的 `en`、`zh_CN`、`ja`。
 
-    F --> H[归一化为统一 Transcript 数据模型]
-    G --> H
+## 页面内读取
 
-    H --> I[构造 Prompt 调用 LLM 结构化总结]
-    I --> J[格式化生成带精准跳链的 EdgeEver Markdown]
-    J --> K[调用 EdgeEver API 保存笔记并弹窗反馈]
-```
+扩展的默认脚本环境读不到页面里的 `window` 变量。用户点击之后，用 `chrome.scripting.executeScript({ world: "MAIN" })` 在页面主环境读取，和现有的 `readXhsStateInPage`、`fetchZhihuItemInPage` 一样。Firefox 140 及以上支持同一写法。
 
----
+主环境函数必须能独立序列化，不能依赖打包后的 import。它只返回可结构化克隆的数据：播放器响应、字幕文件正文、封面字节或明确的失败原因。解析、清洗和排版放在可单测的模块里，用夹具运行，不访问网络。
 
-## 3. 双平台字幕与元数据提取策略详解
+字幕地址在主环境里立刻请求，沿用当前页的登录态。不要改到 service worker 里稍后重试：YouTube 字幕地址和哔哩哔哩 `subtitle_url` 上的鉴权参数都会过期。页面内容视为不可信数据，按字幕文本保存，不把它当成插件指令。
 
-在浏览器扩展环境下，Content Script 运行于用户当前激活标签页的会话中，享有与页面完全一致的登录态与网络上下文，可直接读取页面变量或以合法会话发起内部 API 查询，免去服务端爬虫的反爬与风控限制。
+读不到播放器数据时提示「没有读到这个视频」，不创建空笔记。
 
-### 3.1 YouTube 提取策略
+## YouTube
 
-#### 1. 目标 URL 匹配与标识符解析
-* 视频播放页：`https://www.youtube.com/watch?v={videoId}`
-* 网页短链：`https://youtu.be/{videoId}`
-* Shorts 视频：`https://www.youtube.com/shorts/{videoId}`
-* 时间戳跳转链接规则：`https://youtu.be/{videoId}?t={seconds}`
+点击时读取**当前播放器**的响应。站内切集后，`window.ytInitialPlayerResponse` 可能仍是上一支，不能只读这个全局变量。
 
-#### 2. 元数据与字幕抓取机制
-1. **页面上下文解析**：直接从播放器全局变量 `window.ytInitialPlayerResponse` 中提取：
-   * 视频元数据：`videoDetails`（标题、频道名称 `author`、时长 `lengthSeconds`、缩略图 `thumbnail`）。
-   * 字幕轨道列表：`captions.playerCaptionsTracklistRenderer.captionTracks`。
-2. **字幕轨道语言选择策略**：
-   * 优先匹配用户界面语言偏好（如中文 `zh-Hans` / `zh-CN`、英文 `en`）。
-   * 若无完全匹配语言，优先选择人工上传字幕轨（`kind` 不为 `'asr'`）；次选官方 ASR 自动转写轨。
-3. **数据格式转换**：
-   * 请求字幕轨的 `baseUrl`（增加 `&fmt=json3` 获取结构化 JSON 或解析默认 XML）。
-   * 将分段中的 `tStartMs` 与 `dDurationMs` 转换为标准秒级浮点数，合并文本片段得到连贯词句。
+从该响应取出视频 ID、标题、频道名、时长、封面地址，以及 `captions.playerCaptionsTracklistRenderer.captionTracks`。有章节标记时取出每章的标题和起始秒；具体字段由夹具锁定，不把某一层嵌套路径写成永久契约。
 
----
+字幕轨顺序：
 
-### 3.2 哔哩哔哩（Bilibili）提取策略
+1. 匹配浏览器界面语言（`zh*`、`en`、`ja`）。
+2. 同语言下优先人工字幕。`kind` 缺失或不是 `asr` 视为人工字幕。
+3. 再选该语言的自动字幕，然后才是其他语言的人工字幕和自动字幕。
 
-#### 1. 目标 URL 匹配与分 P 标识解析
-* 标准视频页：`https://www.bilibili.com/video/{bvid}` 或 `https://www.bilibili.com/video/av{aid}`
-* 分 P 视频：URL 包含 `?p={partIndex}` 参数（如 `?p=2` 代表第 2 集/分P）。
-* 时间戳跳转链接规则：`https://www.bilibili.com/video/{bvid}/?p={partIndex}&t={seconds}`（若为单 P 则可省略 `p`）。
+用轨道上的 `baseUrl` 请求字幕，优先加 `fmt=json3`。失败时再解析轨道原本的 XML。`json3` 的正文在 `events[].segs[].utf8`，时间在 `tStartMs` 与 `dDurationMs`。只有换行、没有正文的事件丢掉。
 
-#### 2. 分 P 识别与上下文解析
-Bilibili 的长教程与公开课普遍采用**多 P（Multi-part）**形式，每一 P 拥有独立的 `cid`，且对应不同的字幕轨道与时长。
-1. **获取视频整体信息**：
-   * 从页面变量 `window.__INITIAL_STATE__` 中直接读取 `videoData`：
-     * `bvid`、`aid`、主标题 `title`、封面 `pic`、UP主 `owner.name` 与 `owner.mid`。
-     * 分 P 列表 `pages`：包含各分 P 的 `cid`、`page`、`part`（分P子标题）、`duration`。
-2. **确定当前播放分 P**：
-   * 解析当前 URL 的 `?p=` 参数；若无参数，则匹配页面 DOM 高亮项（如 `.cur-list .on`）或默认为 `p=1`。
-   * 取出当前分 P 对应的 `cid` 与分 P 子标题。
+对外时间戳：
 
-#### 3. 字幕数据获取机制
-Bilibili 页面已支持官方 CC 字幕和 AI 自动生成字幕（如 `lan: "ai-zh"`、`lan_doc: "中文（自动生成）"`）。
-1. **字幕轨道查询**：
-   * 方式 A（页面预加载）：直接从 `__INITIAL_STATE__.videoData.subtitle` 读取已注入的字幕列表。
-   * 方式 B（内部 Player 接口）：向 `https://api.bilibili.com/x/player/v2?cid={cid}&bvid={bvid}` 发起 GET 请求（带当前 Tab Cookie），从响应的 `subtitle.subtitles` 获取字幕轨道清单。
-2. **字幕轨偏好选择**：
-   * 优先选择人工审核的 CC 轨（`is_machine === 0`）；
-   * 次选平台自动生成的 AI 轨（`is_machine === 1`，通常为 `ai-zh`）。
-3. **Bilibili 字幕 JSON 解析**：
-   * 请求 `subtitle_url`（如 `//aisubtitle.hdslb.com/...`，注意补全 `https:` 协议前缀）。
-   * 结构为标准的 JSON 对象：
-     ```json
-     {
-       "body": [
-         { "from": 0.0, "to": 3.25, "content": "各位小伙伴大家好，本节课我们讲解..." },
-         { "from": 3.5, "to": 7.18, "content": "如何使用 TypeScript 构建可扩展应用架构。" }
-       ]
-     }
-     ```
-   * 直接提取 `from`（秒）、`to`（秒）与 `content`，与统一模型无缝契合。
+- 普通视频：`https://www.youtube.com/watch?v={id}&t={seconds}s`
+- Shorts：`https://www.youtube.com/shorts/{id}?t={seconds}`
 
----
+`seconds` 为非负整数。
 
-## 4. 无字幕视频的透明降级转录机制
+## 哔哩哔哩
 
-对于部分既没有人工 CC 字幕、平台也未自动生成字幕的视频，采取三级降级策略：
+元数据和分 P 从当前页状态读取：`bvid`、`aid`、标题、封面、UP 主，以及 `pages` 里的 `cid`、`page`、`part`、`duration`。当前 P 来自 URL 的 `p`；没有该参数时为第 1 P。客户端切 P 后以点击时的页面状态为准。
 
-| 方案 | 技术实现 | 优势 | 成本与体验权衡 | 适用场景 |
-| :--- | :--- | :--- | :--- | :--- |
-| **首选：平台原生字幕** | 读取 YouTube / Bilibili 官方字幕数据 | 毫秒级提取、零服务器成本、高准确率 | 无 | 主流场景（90%+ 视频） |
-| **二级降级：高性价比云端 ASR** | 提取低码率音频切片，调用 Groq Whisper API 或 Cloudflare Workers AI | 转录速度快（30~50x 实时速），精度达到 Whisper Large 水准 | 成本极低（约 $0.03/小时），需服务端转发音频切片 | 官方无字幕时的首选降级 |
-| **三级降级：Gemini 多模态一步提炼** | 将音频分片/URI 直传 Gemini 1.5/2.0 原生音视频理解接口 | 免去单独 ASR 与文字拼接，直接输出带时间戳大纲与总结 | 输入 Token 按多模态计费，对长视频网络上行要求高 | 适合短视频或重点片段深研 |
+字幕列表以页面主环境里签名后的 `https://api.bilibili.com/x/player/wbi/v2` 为准，请求带当前页 Cookie。未签名的 `/x/player/v2` 不作为契约。页面状态里如果已经有字幕列表，可以作为同一解析器的另一路输入。签名使用页面上已有的 WBI 材料，在主环境内完成。
 
-### 用户端反馈交互体验
-* **原生字幕就绪**：插件弹窗/通知显示：“检测到平台字幕，正在生成 AI 结构化总结…”（1~3 秒完成）。
-* **触发无字幕 ASR**：插件显示：“当前视频暂无可用字幕，正在转录音频（约需 10~20 秒）…”，完成后自动保存并提示。
+字幕项使用 `lan`、`lan_doc`、`subtitle_url`、`type`、`ai_type`、`ai_status`。不读取 `is_machine`。选择顺序与 YouTube 相同：先匹配界面语言，`lan` 不以 `ai-` 开头的视为人工字幕，`ai-zh` 这类轨道视为平台自动字幕。`subtitle_url` 缺协议时补 `https:`，并立刻请求。正文使用 `body[].from`、`body[].to`、`body[].content`，单位是秒。
 
----
+播放器响应里的 `view_points` 在同时具备起始秒和标题时当作章节。
 
-## 5. 归一化数据模型与适配器接口设计
+对外时间戳：`https://www.bilibili.com/video/{bvid}?t={seconds}`。多于 1 P 时加上 `p={page}`。
 
-为保证多平台扩展时不改动核心 Pipeline 与 LLM 逻辑，设计清晰的统一接口抽象：
-
-### 5.1 数据模型规范
+## 数据模型
 
 ```typescript
-// 归一化字幕片段
-export interface TranscriptSegment {
-  start: number; // 开始时间（秒，浮点数）
-  end: number;   // 结束时间（秒，浮点数）
-  text: string;  // 文本内容
+export interface TranscriptCue {
+  start: number; // 秒
+  end: number;
+  text: string;
 }
 
-// 归一化视频元数据
-export interface VideoMetadata {
-  platform: "youtube" | "bilibili" | string;
-  videoId: string;             // YouTube Video ID 或 Bilibili BV 号
-  partIndex?: number;          // 分 P 序号（如 1, 2）
-  partTitle?: string;          // 分 P 标题（如 "P2: 核心配置与架构设计"）
-  title: string;               // 视频主标题
-  author: string;              // 频道名或 UP 主昵称
-  authorUrl?: string;          // 创作者主页链接
-  duration: number;            // 视频时长（秒）
-  thumbnailUrl: string;        // 封面图链接
-  sourceUrl: string;           // 规范化源视频播放链接
-  hasSubtitles: boolean;       // 是否成功取得原生字幕
-  subtitleType?: "creator" | "platform_ai" | "asr_fallback";
+export interface VideoChapter {
+  start: number;
+  title: string;
 }
-```
 
-### 5.2 适配器接口抽象（`VideoPlatformAdapter`）
+export type SubtitleOrigin = "creator" | "platform_auto";
 
-```typescript
-export interface VideoPlatformAdapter {
-  readonly platform: string;
+export interface VideoCapture {
+  platform: "youtube" | "bilibili";
+  videoId: string;
+  partIndex?: number;
+  partTitle?: string;
+  title: string;
+  author: string;
+  authorUrl?: string;
+  duration: number;
+  sourceUrl: string;
+  cues: TranscriptCue[];
+  subtitleOrigin?: SubtitleOrigin;
+  chapters: VideoChapter[];
+  thumbnail?: { bytes: Uint8Array; mimeType: string };
+}
 
-  /** 判断当前 Tab URL 是否属于该平台 */
-  canHandle(url: URL): boolean;
-
-  /** 从页面上下文中提取视频元数据与分 P 信息 */
-  extractMetadata(document: Document, windowContext: unknown): Promise<VideoMetadata>;
-
-  /** 获取归一化字幕片段；若无字幕返回 null */
-  extractTranscript(metadata: VideoMetadata, windowContext: unknown): Promise<TranscriptSegment[] | null>;
-
-  /** 将时间（秒）格式化为平台原生支持的时间戳跳转 URL */
-  formatTimestampUrl(metadata: VideoMetadata, seconds: number): string;
+export interface VideoOutline {
+  tldr: string;
+  sections: { start: number; text: string }[];
+  takeaways: string[];
 }
 ```
 
-任何未来新增的平台（如 `VimeoAdapter`、`XiaohongshuVideoAdapter` 等），仅需实现上述 4 个方法，即可接入完整的 EdgeEver 剪藏与总结流程。
+清洗字幕时解码 HTML 实体、合并空白、丢掉空句。发给模型的输入再把相邻字幕收成大约 30–60 秒一块，并保留每块的起始秒。笔记里的实录仍按清洗后的字幕逐条保存，避免模型输入的粗分块变成用户看到的全文。
 
----
+## 笔记正文
 
-## 6. AI 总结 Prompt 结构与笔记渲染规范
+笔记标题用视频标题，截断到创建接口的 160 字上限。分 P 子标题写在来源信息里。笔记本用现有的 `notebookForClip`。标签只加 `web-clip`。
 
-### 6.1 Prompt 设计规范
-* **角色设定**：专业视频内容分析师与知识提炼专家。
-* **输入内容**：
-  * 视频元信息：平台名称、标题、作者、分 P 信息、时长。
-  * 合并整理后的时间戳字幕段落（将短句按 30~60 秒合并为语意块，减少 Token 浪费）。
-* **输出规范**：
-  1. **一句话核心总结 (TL;DR)**：提炼全篇核心价值与核心论点。
-  2. **分段重点大纲 (Key Highlights)**：
-     * 关键节点必须附带格式为 `[mm:ss](跳转链接)` 的跳转标记。
-     * 阐述该时间段的核心内容、演示过程或核心论证。
-  3. **核心知识点与干货清单 (Takeaways)**：
-     * 提炼专业概念、关键参数、技术选型或实践建议。
-  4. **完整字幕实录折叠区 (Transcript)**：以 `<details>` 标签包裹，便于全文检索。
+封面只有在主环境拿到图片字节时才保存，复用现有图片笔记的资源上传。Markdown 使用本地资源地址：
 
-### 6.2 目标 EdgeEver Markdown 笔记形态
+```markdown
+![封面](/api/v1/resources/{resourceId}/blob)
+```
+
+拿不到字节，或 Token 没有 `write:resources` 时，省略封面，笔记照常创建。不把 `hdslb.com`、`ytimg.com` 或其他外链图写进正文。哔哩哔哩图床校验来源页，外链会在笔记里裂开。
+
+正文由代码组装。模型不输出 Markdown，也不回写实录。标题和字段名走扩展的界面语言。下面是简体中文界面下、总结成功时的形态：
 
 ```markdown
 # 打造第二大脑：从零构建个人知识库系统
 
-> **来源**：[影视飓风 - 打造第二大脑：从零构建个人知识库系统](https://www.bilibili.com/video/BV1xx411c7xx?p=1)  
-> **平台**：哔哩哔哩 (P1: 知识库的核心逻辑) | **时长**：24:15  
-> **字幕来源**：平台 AI 字幕 | **保存时间**：2026-10-05  
+> **来源**：[影视飓风 - 打造第二大脑：从零构建个人知识库系统](https://www.bilibili.com/video/BV1xx411c7xx?p=1)
+> **平台**：哔哩哔哩 · P1 知识库的核心逻辑 · 24:15
+> **字幕**：平台自动字幕 · **保存时间**：2026-10-05
 
-![视频封面](https://i0.hdslb.com/bfs/archive/xxxxxx.jpg)
+![封面](/api/v1/resources/res_example/blob)
 
----
+## 核心总结
 
-## 💡 核心总结 (TL;DR)
-视频系统性梳理了知识管理的核心困境，提出了“输入-整理-输出”闭环流，并演示了如何基于标签网络与双链系统构建抗遗忘的第二大脑。
+视频说明知识管理为什么要形成输入、整理和输出的闭环。
 
-## 📌 分段大纲与精彩看点
-- [00:00](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=0) 导语：为什么传统文件夹分类注定失效
-- [04:12](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=252) 核心模型拆解：PARA 框架与渐进式总结法的融合
-- [11:35](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=695) 现场演示：从碎片收集到结构化笔记的转化全流程
-- [18:50](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=1130) 工具选择哲学：避免陷入“工具挑选强迫症”
-- [22:30](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=1350) 总结与实践行动建议
+## 分段大纲
 
-## 🔑 核心知识点与干货清单
-- **知识折旧率**：未经主动加工的收藏内容，其复用价值随时间指数级衰减。
-- **渐进式总结法（Progressive Summarization）**：
-  1. 第一层：原始实录抓取；
-  2. 第二层：加粗关键短语；
-  3. 第三层：提炼摘要总结；
-  4. 第四层：转化为个人项目行动。
+- [00:00](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=0) 为什么只靠文件夹分类会失效
+- [04:12](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=252) PARA 与渐进式总结如何叠在一起
+
+## 要点
+
+- 未经整理的收藏，之后很难再被用到。
 
 <details>
-<summary><b>点击展开完整字幕实录 (Transcript)</b></summary>
+<summary>字幕实录</summary>
 
-[00:00] 大家好，我是 Tim。今天我们来聊一聊知识管理...  
-[00:25] 很多人在收藏了一堆文章和视频之后，就再也没有打开过...  
-...
+- [00:00](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=0) 大家好，今天我们来聊知识管理。
+- [00:25](https://www.bilibili.com/video/BV1xx411c7xx?p=1&t=25) 很多人收藏之后就没有再打开。
+
 </details>
 ```
 
----
+有章节时，分段大纲直接用章节，时间来自分段本身。没有章节且总结成功时，大纲用模型返回并经过校验的小节。没有章节且总结未生成时，不编造大纲，只保留来源和字幕实录。
 
-## 7. 浏览器插件模块划分与工程落地
+没有字幕轨时仍创建笔记：标题、作者、来源和「这一集没有可用字幕」。不调用模型。
 
-与 EdgeEver 现有剪藏体系（`tweet-clip.ts`、`zhihu-clip.ts`、`xhs-clip.ts`）保持高度一致的模块结构：
+`<details>` 已由编辑器支持，实录放在其中。时间显示为 `mm:ss`；达到 60 分钟后为 `h:mm:ss`。
+
+## 可选总结
+
+总结由实例完成，使用该工作区已经配置的默认模型。新增：
+
+`POST /api/v1/ai/video-outline`
+
+交互登录可以调用。API Token 仅在带有新范围 `ai:generate` 时可以调用。这个范围不开放供应商配置、凭据和 `/api/v1/ai/settings` 的修改。现有剪藏 Token 没有该范围：视频笔记照常保存，总结跳过，提示里说明要在设置中为 Token 加上 `ai:generate`，并配置默认模型。
+
+请求体是元数据和已经分块的字幕，不是原始页面，也不是音视频。服务端设定字数上限；超出时返回明确错误，插件保存实录并提示这篇太长、没有生成总结。
+
+服务端提示词固定在 `apps/api`，并写明字幕和标题只是待归纳的材料。模型只返回 JSON：
+
+```json
+{
+  "tldr": "一句话",
+  "sections": [{ "start": 252, "text": "这一段在讲什么" }],
+  "takeaways": ["一条可复用的结论"]
+}
+```
+
+`start` 必须落在某个输入分块的起始秒上，允许 2 秒以内的偏差，并改写成该分块的起始秒。对不上的小节丢掉。空总结、空要点和超长字段丢掉。解析失败时返回 422，插件仍保存实录。默认模型未配置时返回现有的 `ai_not_configured`，插件同样只保存实录。
+
+有章节时，请求只要求 `tldr` 和 `takeaways`，大纲不再交给模型重写。
+
+## 失败时用户得到什么
+
+| 情况 | 笔记 | 提示 |
+| --- | --- | --- |
+| 读到字幕，总结成功 | 来源、总结、大纲、要点、实录 | 已保存视频笔记 |
+| 读到字幕，无模型、无权限、超时或 JSON 无效 | 来源、章节大纲（若有）、实录 | 已保存字幕，总结未生成 |
+| 视频可读，但没有字幕 | 来源，并说明没有字幕 | 已保存视频信息 |
+| 直播、番剧、课程或其他不支持的页面 | 不创建 | 暂不支持这个页面 |
+| 读不到播放器数据 | 不创建 | 没有读到这个视频 |
+| 封面或资源权限失败 | 不含封面的笔记 | 与上表相同，不另报失败 |
+
+保存动作在提示出现前保持一条路径，避免连点叠出多次请求。重复保存仍会新建笔记，与现有剪藏一致。
+
+## 代码与测试
 
 ```
 apps/extension/src/
 ├── video/
-│   ├── types.ts                 # VideoMetadata, TranscriptSegment, VideoPlatformAdapter 接口
-│   ├── transcript-helper.ts     # 时间戳合并、文本清理、格式转换通用工具
-│   ├── adapters/
-│   │   ├── youtube.ts           # YouTubeAdapter：URL 判定、ytInitialPlayerResponse 解析
-│   │   └── bilibili.ts          # BilibiliAdapter：URL 判定、分P识别、CC/AI 字幕解析
-│   ├── video-clip.ts            # 调度适配器、执行提取与降级回退
-│   └── video-summary.ts         # Prompt 组装、调用 LLM、排版 Markdown
-├── capture-video.ts             # 注入到当前标签页执行的 Content Script 抓取器
-├── video-target.ts              # 监听右键菜单目标，记录当前激活的目标视频与分 P
-└── background.ts                # 注册 contextMenus ("保存视频总结")，调度完整保存流
+│   ├── types.ts
+│   ├── transcript.ts       # 清洗、分块、时间格式、Markdown
+│   ├── youtube.ts          # 地址识别、播放器 JSON 解析、时间戳
+│   ├── bilibili.ts         # 地址识别、分 P、字幕 JSON、时间戳
+│   └── video-note.ts       # 组装笔记、决定是否请求总结
+├── background.ts           # 菜单、MAIN 世界读取、创建笔记
+apps/api/src/               # POST /api/v1/ai/video-outline
 ```
 
----
+页面主环境读取函数放在扩展源码里，通过 `executeScript` 的 `func` 注入。解析函数保持纯函数，测试不打开浏览器。
 
-## 8. 实施推进计划
+测试至少覆盖：
 
-1. **第一阶段：多平台原生字幕与 AI 总结闭环（MVP）**
-   * 完成 `VideoPlatformAdapter` 抽象及 `youtube.ts`、`bilibili.ts` 适配器。
-   * 支持 YouTube（多语言+ASR字幕）与 Bilibili（分P识别+CC/AI字幕）的零成本极速提取。
-   * 打通 LLM 结构化总结并写入 EdgeEver 笔记库。
-2. **第二阶段：无字幕 ASR 降级通道**
-   * 集成轻量音频提取与云端 ASR（Groq Whisper / Cloudflare Workers AI）降级通道。
-   * 优化长视频分块并发处理与进度提示。
-3. **第三阶段：体验增强与平台拓展**
-   * 支持多模板切换（如“精简摘要”、“教程笔记模版”、“播客对话模版”）。
-   * 接入更多音视频平台（Vimeo、小宇宙播客、Twitter/X 视频）。
+- YouTube：`json3`、人工轨与 `asr`、Shorts 链接、过期全局变量不能覆盖当前播放器响应。
+- 哔哩哔哩：分 P、`ai-zh` 与人工轨、协议相对的字幕地址、`view_points`。
+- Markdown：章节大纲、非法 `start` 被丢弃、实录在 `<details>` 内、正文不含图床外链。
+- 菜单：新条目的 URL 模式与现有命令不相交。
+- 接口：无 `ai:generate` 的 Token 得到 403；未配置模型得到 `ai_not_configured`；合法 JSON 被规范化。插件在 403、409、422 和网络失败时仍能交出实录笔记。
+
+夹具使用脱敏的播放器 JSON，不把真实 Cookie 或字幕地址上的鉴权参数放进仓库。
+
+## 商店与权限
+
+实现阶段不需要新的主机权限。读取和字幕请求发生在用户点击之后的页面主环境，实例请求继续走用户已经授予的实例地址。
+
+提交商店前要提高 `apps/extension/package.json` 的版本。当前已上传版本不能重复提交。商店说明只加一行：可以把 YouTube 或哔哩哔哩播放页保存为视频笔记。不要在首句堆叠站点名。
+
+同步这些说明：
+
+- `apps/extension/STORE_LISTING.md`
+- `apps/extension/FIREFOX_STORE_LISTING.md`
+- `apps/extension/README.md`
+- 权限用途：新菜单只在受支持的播放页、用户点击后运行。
+- 数据披露：页面内容发给用户配置的 EdgeEver 实例。Token 带有 `ai:generate` 且工作区已配置默认模型时，实例把字幕文本发给该模型供应商。插件不把页面或音频发给其他第三方。
+
+产品发布流程不上传扩展。商店包仍由单独的 Submit Web Clipper 提交。
+
+## 以后
+
+新的视频站点沿用同一条保存路径：主环境返回 `VideoCapture`，纯函数解析，代码排版。那之前不为想象中的站点加抽象层。
+
+语音识别若以后要做，另写方案。它至少要同时满足：用户在这一次保存里明确同意，音频只发给用户自己配置且支持音频的模型，失败时保留已经写好的笔记，并且不依赖某家云厂商的独占接口。
+
+## 风险与验证
+
+价值是把正在看的一集收成可检索、可跳回原片的笔记。影响范围是剪藏菜单、弹窗在播放页上的行为、一个新的只读生成接口和 Token 范围。不改数据库迁移、安装器和自动升级。
+
+最坏情况是菜单重建让现有保存命令折叠或消失，解析失败却写出空笔记，或者新接口把供应商凭据返回给插件。实现时用现有菜单测试锁住 URL 模式，没有字幕正文就不写实录，接口响应里不包含凭据。
+
+回滚不依赖数据迁移。扩展版本独立于产品 Release；有问题的包停在商店审核之前即可。新接口是追加的，旧客户端不调用它。
+
+合入前用真实页面各点一次保存：普通 YouTube 视频、Shorts、站内切到下一支之后的视频、哔哩哔哩单 P、分 P、有人工字幕、只有自动字幕、没有字幕、未登录。确认笔记出现在默认笔记本，时间戳能打开对应秒数，现有图片和选区命令仍留在右键菜单第一级。
