@@ -278,6 +278,13 @@ Docker は Cloudflare と同じフロントエンド、API、サービス、認�
 
 Web、PWA、デスクトップは、編集が 30 秒止まったあとでノートをアップロードし、表示中は 5 分ごとに遠隔の変更を見ます。フォーカスと手動更新はすぐです。`DEFERRED_MEMO_SYNC_DELAY_MS` と `BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS` は [`apps/web/src/lib/workspace-refresh.ts`](apps/web/src/lib/workspace-refresh.ts) で変えられます。
 
+## スポンサーと支援
+
+EdgeEver は無料のオープンソースプロジェクトです。クロスプラットフォームクライアント（macOS、Windows、Linux、iOS、Android）の継続的な開発、実機テスト、コード署名、複数ランタイムのエコシステム維持には、継続的な時間とリソースの投入が必要です。
+
+- [EdgeEver を支援する](docs/sponsor.md) — WeChat Pay または Alipay による自発的な寄付
+- [スポンサーとパートナーシップ](docs/sponsor.md#sponsorship--partnerships) — インフラ、開発ツール、クラウドサービス、コミュニティ連携の支援
+
 ## 謝辞
 
 - ノート製品の設計は、[Evernote](https://evernote.com/) や [Notion](https://www.notion.com/) など成熟したノートツールの公開されている製品体験も参考にしています。関連機能は EdgeEver が独自に設計し、実装しています。

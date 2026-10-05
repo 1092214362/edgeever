@@ -279,6 +279,13 @@ Docker runs the same frontend, API routes, services, authentication, MCP impleme
 
 Web, PWA, and desktop upload memo edits after 30 seconds of inactivity and check for remote changes every 5 minutes while visible; focus and manual refresh remain immediate. Adjust `DEFERRED_MEMO_SYNC_DELAY_MS` and `BACKGROUND_WORKSPACE_REFRESH_INTERVAL_MS` in [`apps/web/src/lib/workspace-refresh.ts`](apps/web/src/lib/workspace-refresh.ts).
 
+## Sponsor & Support
+
+EdgeEver is a free and open-source project. Sustaining cross-platform client development, continuous device testing, code signing, and multi-runtime ecosystem maintenance requires ongoing dedication and resources.
+
+- [Support EdgeEver](docs/sponsor.md) — Voluntary donation via WeChat Pay or Alipay
+- [Sponsorship & Partnerships](docs/sponsor.md#sponsorship--partnerships) — Support infrastructure, developer tools, cloud services, or community collaboration
+
 ## Acknowledgements
 
 - EdgeEver's note-taking product design was also informed by the publicly available product experiences of mature note-taking tools such as [Evernote](https://evernote.com/) and [Notion](https://www.notion.com/). The related features were independently designed and implemented by EdgeEver.
