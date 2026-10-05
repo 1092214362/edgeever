@@ -17,7 +17,7 @@
     <a href="README.zh-CN.md">简体中文</a> | <a href="README.zh-TW.md">繁體中文</a> | <a href="README.md">English</a> | <b>日本語</b>
   </p>
   <p>
-    <a href="https://t.me/+wwUx1BYLrIdiZjY1">💬 Telegram グループ</a> &nbsp;|&nbsp;
+    <a href="https://t.me/+wwUx1BYLrIdiZjY1"><img src="assets/readme/community/telegram.svg" alt="Telegram" width="16" height="16" align="absmiddle" /> Telegram グループ</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 オンラインデモ</a> &nbsp;|&nbsp;
     <a href="#クライアントのダウンロード">📱 ダウンロード</a> &nbsp;|&nbsp;
     <a href="docs/best-practices.md">✨ 活用シーンとショーケース</a>
