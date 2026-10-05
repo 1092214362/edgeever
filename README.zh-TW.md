@@ -285,7 +285,7 @@ Web、PWA 與桌面版會在停止編輯 30 秒後上傳筆記，並在頁面可
 EdgeEver 是免費開源專案。保持跨平台用戶端（macOS、Windows、Linux、iOS、Android）的持續演進、真機測試、憑證簽章以及多執行時期生態建設，都需要長期的精力與資源投入。
 
 - [支持 EdgeEver](docs/sponsor.zh-CN.md) —— 透過微信支付或支付寶自願贊助
-- [贊助商與商務合作](docs/sponsor.zh-CN.md#赞助商与商务合作) —— 支持基礎設施、雲端服務、開發工具或社群合作
+- [贊助商與合作夥伴](docs/partners.zh-CN.md) —— 支持基礎設施、開發工具、服務或社群合作
 
 ## 致謝
 

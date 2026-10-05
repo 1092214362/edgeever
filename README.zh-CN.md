@@ -287,7 +287,7 @@ Web、PWA 与桌面端会在停止编辑 30 秒后上传笔记，并在页面可
 EdgeEver 是免费开源项目。保持跨平台客户端（macOS、Windows、Linux、iOS、Android）的持续演进、真机测试、证书签名以及多运行时生态建设，都需要长期的精力与资源投入。
 
 - [支持 EdgeEver](docs/sponsor.zh-CN.md) —— 通过微信支付或支付宝自愿赞助
-- [赞助商与商务合作](docs/sponsor.zh-CN.md#赞助商与商务合作) —— 支持基础设施、云服务、开发工具或社区合作
+- [赞助商与合作伙伴](docs/partners.zh-CN.md) —— 支持基础设施、开发工具、服务或社区合作
 
 ## 致谢
 

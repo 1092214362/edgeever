@@ -32,24 +32,3 @@ You can scan the QR code via WeChat Pay or Alipay to sponsor the project directl
 
 > 💡 **Tip:**
 > When sponsoring, you are welcome to include your GitHub username or a personal message in the payment note!
-
----
-
-## Sponsorship & Partnerships
-
-EdgeEver is committed to being open-source, transparent, and neutral, while welcoming sustainable collaborations with the broader commercial and developer ecosystems. We look forward to partnering with enterprises, cloud platforms, AI services, and developer tool teams whose mission aligns with ours.
-
-### Forms of Collaboration (Flexible & Negotiable)
-
-* **Infrastructure & In-Kind Support**: Providing developer credits, cloud compute, object storage/CDN, or AI model API quotas to support EdgeEver's testing and public demo infrastructure.
-* **Brand Exposure & Co-Marketing**: Prominent Logo placement and backlinks within the GitHub README, official demo site, and release announcements.
-* **Ecosystem & Integration Synergy**: Building integrated workflows around Model Context Protocol (MCP), data pipelines, or developer tooling.
-
-### Principles
-
-1. **Open & Neutral**: Sponsorship does not alter EdgeEver’s open-source license, architecture autonomy, or neutral technical direction.
-2. **User-First**: We only partner with high-quality products and services that genuinely benefit developers, self-hosters, and knowledge workers.
-
-If your organization is interested in supporting or collaborating with EdgeEver, please reach out to us:
-
-- **Partnership Email**: [yingwaizhiying@gmail.com](mailto:yingwaizhiying@gmail.com)

@@ -284,7 +284,7 @@ Web, PWA, and desktop upload memo edits after 30 seconds of inactivity and check
 EdgeEver is a free and open-source project. Sustaining cross-platform client development, continuous device testing, code signing, and multi-runtime ecosystem maintenance requires ongoing dedication and resources.
 
 - [Support EdgeEver](docs/sponsor.md) — Voluntary donation via WeChat Pay or Alipay
-- [Sponsorship & Partnerships](docs/sponsor.md#sponsorship--partnerships) — Support infrastructure, developer tools, cloud services, or community collaboration
+- [Sponsors & Partners](docs/partners.md) — Support infrastructure, developer tools, services, or community collaboration
 
 ## Acknowledgements
 
