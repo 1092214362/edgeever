@@ -2,6 +2,8 @@
 
 用户在 YouTube 或哔哩哔哩的视频播放页点一次，把当前这一集保存成 EdgeEver 笔记。笔记带来源、可点击的时间戳、平台字幕实录；工作区已经配置默认模型时，再补一句话总结和分段大纲。字幕在用户正在看的页面里读取。插件不下载音视频，也不自己选择模型供应商。
 
+状态：第一期已实现，扩展版本 0.1.17。商店包尚未提交。合入前仍要用真实播放页点一次保存，确认时间戳和现有右键命令。
+
 ## 第一期
 
 第一期只做这两类播放页：
@@ -208,12 +210,15 @@ export interface VideoOutline {
 apps/extension/src/
 ├── video/
 │   ├── types.ts
-│   ├── transcript.ts       # 清洗、分块、时间格式、Markdown
-│   ├── youtube.ts          # 地址识别、播放器 JSON 解析、时间戳
-│   ├── bilibili.ts         # 地址识别、分 P、字幕 JSON、时间戳
-│   └── video-note.ts       # 组装笔记、决定是否请求总结
-├── background.ts           # 菜单、MAIN 世界读取、创建笔记
-apps/api/src/               # POST /api/v1/ai/video-outline
+│   ├── patterns.ts
+│   ├── transcript.ts              # 清洗、分块、时间格式
+│   ├── youtube.ts                 # 地址识别、播放器 JSON 解析、时间戳
+│   ├── bilibili.ts                # 地址识别、分 P、字幕 JSON、时间戳
+│   ├── video-note.ts              # 组装笔记、决定是否请求总结
+│   ├── read-youtube-in-page.ts    # 主环境读取，单独序列化
+│   └── read-bilibili-in-page.ts
+├── background.ts                  # 菜单、MAIN 世界读取、创建笔记
+apps/api/src/video-outline.ts      # POST /api/v1/ai/video-outline
 ```
 
 页面主环境读取函数放在扩展源码里，通过 `executeScript` 的 `func` 注入。解析函数保持纯函数，测试不打开浏览器。
