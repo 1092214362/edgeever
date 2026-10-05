@@ -44,11 +44,24 @@ We welcome and support the following forms of collaboration:
 
 ## Sponsor Showcase & Benefits
 
-Upon mutual confirmation, we can feature your company's **Name, Logo, Description, and Official Website Backlink** on this page, and express appreciation in relevant release notes and community channels.
+Upon mutual confirmation, we can feature your company's **Name, Logo, Description, and Official Website Backlink** on the **project homepage (README) and this page**, as well as express appreciation in relevant release notes and community channels.
 
-| Sponsor | Description | Link |
-| :--- | :--- | :--- |
-| *(Open for Discussion)* | *(Cloud Services / AI Infrastructure / Developer Tools)* | [Get in touch](#interested-in-partnering) |
+<table>
+  <thead>
+    <tr>
+      <th align="left" width="180">Sponsor</th>
+      <th align="left">Description</th>
+      <th align="left" width="140">Link</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>(Open for Discussion)</em></td>
+      <td><em>(Cloud Services / AI Infrastructure / Developer Tools)</em></td>
+      <td><a href="#interested-in-partnering">Get in touch</a></td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
