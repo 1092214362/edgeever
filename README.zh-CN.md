@@ -20,7 +20,7 @@
     <a href="#wechat-group"><img src="assets/readme/community/wechat.svg" alt="WeChat" width="16" height="16" align="absmiddle" /> 微信交流群</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 在线演示</a> &nbsp;|&nbsp;
     <a href="#客户端下载">📱 客户端下载</a> &nbsp;|&nbsp;
-    <a href="docs/best-practices.zh-CN.md">✨ 场景与最佳实践</a>
+    <a href="#features">✨ 核心特性与场景</a>
   </p>
 </div>
 
@@ -65,6 +65,7 @@ EdgeEver 是一款现代化的开源笔记与个人知识库工作区。它为�
 
 > iOS 客户端需要使用非中国大陆区 Apple ID 下载。
 
+<a id="features"></a>
 ## ✨ 核心特性与场景
 
 从跨渠道内容捕获到深度知识表达与业务协作，EdgeEver 为个人与团队提供了高效流畅的端到端工作流：

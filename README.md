@@ -20,7 +20,7 @@
     <a href="https://t.me/+wwUx1BYLrIdiZjY1"><img src="assets/readme/community/telegram.svg" alt="Telegram" width="16" height="16" align="absmiddle" /> Telegram Group</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 Live Demo</a> &nbsp;|&nbsp;
     <a href="#client-downloads">📱 Client Downloads</a> &nbsp;|&nbsp;
-    <a href="docs/best-practices.md">✨ Showcase & Workflows</a>
+    <a href="#features">✨ Key Features & Workflows</a>
   </p>
 </div>
 
@@ -65,6 +65,7 @@ The public demo resets every day at 3:00 AM (China Standard Time) and restores s
 
 > The iOS app requires an Apple ID from outside mainland China.
 
+<a id="features"></a>
 ## ✨ Key Features & Workflows
 
 From multi-channel inspiration capture to deep visual expression and team collaboration, EdgeEver delivers frictionless, end-to-end workflows:

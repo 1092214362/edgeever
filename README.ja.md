@@ -20,7 +20,7 @@
     <a href="https://t.me/+wwUx1BYLrIdiZjY1"><img src="assets/readme/community/telegram.svg" alt="Telegram" width="16" height="16" align="absmiddle" /> Telegram グループ</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 オンラインデモ</a> &nbsp;|&nbsp;
     <a href="#クライアントのダウンロード">📱 ダウンロード</a> &nbsp;|&nbsp;
-    <a href="docs/best-practices.md">✨ 活用シーンとショーケース</a>
+    <a href="#features">✨ 主な機能と活用シーン</a>
   </p>
 </div>
 
@@ -65,6 +65,7 @@ EdgeEver は、オープンソースのノートと知識ベースの作業領�
 
 > iOS アプリは、中国本土以外の Apple ID が必要です。
 
+<a id="features"></a>
 ## ✨ 主な機能と活用シーン
 
 マルチチャネルでの情報収集からビジュアル表現、チーム連携まで、EdgeEver は摩擦のないエンドツーエンドのワークフローを提供します：
