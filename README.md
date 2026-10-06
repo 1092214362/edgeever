@@ -44,9 +44,6 @@ Many long-time **Evernote** users simply want a **reliable, open, and fast** per
 
 **EdgeEver fills this gap**: The entire stack is open source, including sync and self-hosting. It keeps the three-pane layout you know, stays silky-smooth and lightweight even with 10,000+ notes, and ships native AI agents with zero-cost deployment.
 
-> 💡 **Recommended Workflow:**
-> Capture inspiration seamlessly across all devices and organize deeply in the classic three-pane view. Powered by native MCP and ACP, external agents can retrieve and organize your notes seamlessly, while the desktop app lets you collaborate deeply with local AI agents on your machine. Publish anywhere with one-click formatting—100% self-hosted at zero cost, building an open and truly owned second brain.
-
 ## Online Demo
 
 - Demo: [https://demo.edgeever.org](https://demo.edgeever.org)
