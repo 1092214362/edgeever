@@ -20,7 +20,7 @@
     <a href="https://t.me/+wwUx1BYLrIdiZjY1"><img src="assets/readme/community/telegram.svg" alt="Telegram" width="16" height="16" align="absmiddle" /> Telegram グループ</a> &nbsp;|&nbsp;
     <a href="https://demo.edgeever.org">🌐 オンラインデモ</a> &nbsp;|&nbsp;
     <a href="#クライアントのダウンロード">📱 ダウンロード</a> &nbsp;|&nbsp;
-    <a href="#features">✨ 主な機能と活用シーン</a>
+    <a href="#features">主な機能と活用シーン</a>
   </p>
 </div>
 
@@ -63,30 +63,30 @@ EdgeEver は、オープンソースのノートと知識ベースの作業領�
 > iOS アプリは、中国本土以外の Apple ID が必要です。
 
 <a id="features"></a>
-## ✨ 主な機能と活用シーン
+## 主な機能と活用シーン
 
 マルチチャネルでの情報収集からビジュアル表現、チーム連携まで、EdgeEver は摩擦のないエンドツーエンドのワークフローを提供します：
 
-### 💬 全方位のクリッピングとメディア蓄積
+### 全方位のクリッピングとメディア蓄積
 - **クロスプラットフォームのワンクリック保存**：ブラウザ拡張による[小紅書ギャラリー](docs/best-practices.md#2-one-click-xiaohongshu-red-note-clipping)、[X (Twitter) 投稿と引用](docs/best-practices.md#3-one-click-x-twitter-post--quote-clipping)、[知乎の回答](docs/best-practices.md#4-one-click-zhihu-answer--column-article-clipping)、[Reddit ディスカッション](docs/best-practices.md#5-one-click-reddit-discussion-post-clipping)、[GitHub リポジトリ](docs/best-practices.md#8-one-click-github-repository-metadata-clipping) のワンクリック保存（より多くのプラットフォームへの深層対応も順次追加予定）；スマホのシステム共有による[画像](docs/best-practices.md#9-one-click-mobile-image-sharing-to-notes)や[微信記事](docs/best-practices.md#10-one-click-wechat-article-clipping-on-mobile)のワンクリック保存。
 - **微信チャット履歴の完全取り込み**：macOS 版の微信で「他のアプリへ転送 → EdgeEver」を選ぶだけで、発言者、タイムライン、引用返信、スタンプを保持したまま構造化ノートとして一括取り込み。画像は自動埋め込みされ、動画やファイルは添付ファイルに変換されます。詳細は[微信チャット履歴の一括取り込み](docs/best-practices.md#1-one-click-wechat-chat-history-archiving)。
 - **汎用ファイル添付とクライアント側画像圧縮**：PDF、Office 文書、圧縮ファイル、動画・音声など各種添付ファイルを最大 1 GiB までチャンク分割・ストリーミング処理で安全にアップロード；ブラウザ側で静かに画像を自動圧縮し、スクリーンショットや大判画像を 50%〜90% 軽量化。
 
-### 🚀 インテリジェントなビジュアル表現と多次元データ協調
+### インテリジェントなビジュアル表現と多次元データ協調
 - **ビジュアル図解ノートとプロフェッショナルインフォグラフィック**：外部描画ツール不要で、AI アシスタントへの自然言語指示だけで編集可能な[マインドマップ・フローチャート・アーキテクチャ図](docs/best-practices.md#11-ai-conversational-generation-of-mind-maps-flowcharts--architecture-diagrams) を生成（詳細は[ビジュアル図解ノート設計ガイド](docs/visual-diagram-notes.md)、Mermaid コードブロックのネイティブ描画に対応）；豊富なテンプレートから洗練された[多種多様なプロフェッショナルインフォグラフィック（タイムライン、比較図、象限マトリクスなど）](docs/best-practices.md#12-ai-powered-generation-of-professional-infographics) をその場で作成。
-- **AI 多次元テーブルと公開集計フォーム**：AI プロンプトから[あらゆる業務シーンに応じた多次元テーブル](docs/best-practices.md#13-instant-multi-dimensional-database-table-generation-via-ai-prompt)（プロジェクト管理、コンテンツ企画、人事・資産台帳など）を自動構築し、タグや日付などのフィールドとサンプルデータを自動生成；ログイン不要の[一般公開オンライン集計フォーム](docs/best-practices.md#14-one-click-public-online-form-collection-from-database-tables) をワンクリックで発行し、回答データをリアルタイムで収集・蓄積。
+- **AI 多次元テーブルと公開集計フォーム**：AI プロンプトから[あらゆる業務シーンに応じた多次元テーブル](docs/best-practices.md#13-instant-multi-dimensional-database-table-generation-via-ai-prompt)（プロジェクト管理、コンテンツ企画、人事・資産台仗など）を自動構築し、タグや日付などのフィールドとサンプルデータを自動生成；ログイン不要の[一般公開オンライン集計フォーム](docs/best-practices.md#14-one-click-public-online-form-collection-from-database-tables) をワンクリックで発行し、回答データをリアルタイムで収集・蓄積。
 - **デュアルビュー編集とノート空間整理**：リッチテキストと Markdown ソースビューを自在に切り替え可能；クラシックな 3 ペイン構成、集中モード、無制限階層のノートブック、ノートの一括結合・移動、ドラッグ＆ドロップ並べ替え；自動リビジョン履歴とパスワード保護付きのノート公開共有。
 
-### ✍️ クリエイター向けワンクリック配信
+### クリエイター向けワンクリック配信
 - **微信公式アカウント向け一括整形**：インライン CSS を保持した美化フォーマットに一発変換し、[微信公式アカウントへの直接コピー＆ペースト](docs/best-practices.md#6-one-click-note-copy-to-wechat-official-account--blogs) に対応。外部整形ツールは不要です。
 - **高解像度ポスター画像共有とマルチ形式書き出し**：任意のノートをワンクリックで[美しいポスター画像カードとして共有](docs/best-practices.md#7-ai-rss-daily-digest--elegant-image-poster-sharing) 可能。8 種類のテーマ、フォントやカードレイアウトをカスタマイズして SNS に発信でき、単一ノートの Markdown、HTML、PDF への書き出しにも対応。
 - **AI RSS 購読日報**：組み込みの公式 AI RSS 購読プラグインが、フィードやブログを自動巡回。AI がノイズを除去し、要点を整理した構造化日報ノートを定期生成します。
 
-### 🤖 ネイティブ AI Agent とオープンなエコシステム
+### ネイティブ AI Agent とオープンなエコシステム
 - **ネイティブ Agent プロトコル連携（MCP & ACP）**：組み込みの Model Context Protocol (MCP) により外部 AI Agent がノートを直接閲覧・整理可能；デスクトップ版は Agent Client Protocol (ACP) を通じてローカルで動作する各種 Agent（Codex、Antigravity、Claude Code、WorkBuddy など）を直接呼び出して共同作成。
 - **独自モデル連携とオープンなプラグイン API**：複数の OpenAI、Anthropic、Gemini 互換プロバイダやカスタム中継サービスと接続し、要約、論点整理、翻訳、推敲を支援；充実した[プラグイン開発 API](docs/plugin-development.md) で機能を自由に拡張可能。
 
-### 🛡️ オープンアーキテクチャ・マルチプラットフォーム・強固なセキュリティ
+### オープンアーキテクチャ・マルチプラットフォーム・強固なセキュリティ
 - **柔軟なデプロイとオープンなデータ構造**：Cloudflare Serverless（無料枠で約 15 万件の短文ノートと約 5 万枚の画像を収容）でのゼロコスト運用、または VPS/NAS/自宅サーバーへの Docker デプロイ（数百万件規模に対応）；標準 SQLite を採用し、REST API、CLI、完全な可逆 ZIP アーカイブ入出力によりデータロックインを排除。
 - **全プラットフォーム対応とエンタープライズ品質の安全性**：Web、[Android](https://play.google.com/store/apps/details?id=org.edgeever.mobile&hl=ja)、[macOS](https://github.com/tianma-if/edgeever/releases), [Windows](https://github.com/tianma-if/edgeever/releases/latest)、[Linux](https://github.com/tianma-if/edgeever/releases/latest)、[iOS](https://apps.apple.com/jp/app/edgeever/id6792625631) に公式対応（Web クリッパーは [Chrome](https://chromewebstore.google.com/detail/edgeever-web-clipper/gjadpfmanienmlofajibkfkkpfdkclgo)、[Edge](https://chromewebstore.google.com/detail/edgeever-web-clipper/gjadpfmanienmlofajibkfkkpfdkclgo)、[Firefox](https://addons.mozilla.org/ja/firefox/addon/edgeever-web-clipper/) をサポート）；セルフホストでデバイス台数制限なし、メモリ消費を抑えた軽量デスクトップ動作、オフライン下書きと同期キュー、ブルートフォース攻撃対策、複数アカウントの完全な空間分離。
 
