@@ -82,7 +82,8 @@ EdgeEver 是一款現代化的開源筆記與個人知識庫工作區。它為�
 
 ### ✍️ 創作者排版與一鍵發布
 - **微信公眾號一鍵排版與複製**：專為中文創作者設計，支援將筆記一鍵轉換為帶行內樣式的公眾號美化格式，[一鍵複製內聯富文本到微信公眾號](docs/best-practices.zh-CN.md#6-一键复制笔记到微信公众号排版)後台直接貼上發布，告別複雜的第三方排版工具。
-- **AI RSS 日報與高質感長圖**：AI RSS 智慧訂閱日報一鍵產生[高質感長圖海報](docs/best-practices.zh-CN.md#7-ai-rss-智能订阅日报与精美长图分享)；支援單篇筆記獨立便捷匯出為 Markdown、HTML 或 PDF。
+- **高質感長圖分享與多格式匯出**：任意筆記均可一鍵[分享為高質感長圖海報](docs/best-practices.zh-CN.md#7-ai-rss-智能订阅日报与精美长图分享)，內建 8 款主題風格、自訂字型與卡片版式，優雅分發至社群平台；支援單篇筆記獨立便捷匯出為 Markdown、HTML 或 PDF。
+- **AI RSS 智慧訂閱日報**：內建官方 AI RSS 訂閱外掛，自動定時聚合產業資訊與部落格源，AI 過濾雜訊並產生結構嚴謹、重點清晰的精煉日報筆記。
 
 ### 🤖 原生 AI Agent 與開放生態
 - **原生 Agent 協定深度互聯（MCP & ACP）**：內建 MCP（Model Context Protocol）協定，支援外部 AI Agent 直接讀取與整理筆記；桌面端支援透過 ACP（Agent Client Protocol）協定直接調用本機執行的 AI Agent（如 Codex、Antigravity、Claude Code、WorkBuddy 等）協同創作。

@@ -82,7 +82,8 @@ EdgeEver は、オープンソースのノートと知識ベースの作業領�
 
 ### ✍️ クリエイター向けワンクリック配信
 - **微信公式アカウント向け一括整形**：インライン CSS を保持した美化フォーマットに一発変換し、[微信公式アカウントへの直接コピー＆ペースト](docs/best-practices.md#6-one-click-note-copy-to-wechat-official-account--blogs) に対応。外部整形ツールは不要です。
-- **AI RSS 日報と高解像度ポスター画像**：AI RSS 日報から[高解像度ポスター画像書き出し](docs/best-practices.md#7-ai-rss-daily-digest--elegant-image-poster-sharing) をワンクリックで実行；単一ノートの Markdown、HTML、PDF への書き出しにも対応。
+- **高解像度ポスター画像共有とマルチ形式書き出し**：任意のノートをワンクリックで[美しいポスター画像カードとして共有](docs/best-practices.md#7-ai-rss-daily-digest--elegant-image-poster-sharing) 可能。8 種類のテーマ、フォントやカードレイアウトをカスタマイズして SNS に発信でき、単一ノートの Markdown、HTML、PDF への書き出しにも対応。
+- **AI RSS 購読日報**：組み込みの公式 AI RSS 購読プラグインが、フィードやブログを自動巡回。AI がノイズを除去し、要点を整理した構造化日報ノートを定期生成します。
 
 ### 🤖 ネイティブ AI Agent とオープンなエコシステム
 - **ネイティブ Agent プロトコル連携（MCP & ACP）**：組み込みの Model Context Protocol (MCP) により外部 AI Agent がノートを直接閲覧・整理可能；デスクトップ版は Agent Client Protocol (ACP) を通じてローカルで動作する各種 Agent（Codex、Antigravity、Claude Code、WorkBuddy など）を直接呼び出して共同作成。

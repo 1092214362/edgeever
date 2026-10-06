@@ -82,7 +82,8 @@ From multi-channel inspiration capture to deep visual expression and team collab
 
 ### ✍️ Creator Publishing & Effortless Distribution
 - **WeChat Official Account & Rich Copy**: Designed for creators, transform notes into beautifully formatted rich text with inline CSS, featuring [one-click note copy to WeChat Official Account](docs/best-practices.md#6-one-click-note-copy-to-wechat-official-account--blogs) editor, newsletters, or blogs without extra tools.
-- **AI RSS Daily Digests & Long-Image Posters**: Generate [elegant long-image posters from AI RSS daily digests](docs/best-practices.md#7-ai-rss-daily-digest--elegant-image-poster-sharing) with one click; export individual notes to Markdown, HTML, or PDF effortlessly.
+- **Elegant Long-Image Posters & Multi-Format Export**: Turn any note into an [elegant image poster card](docs/best-practices.md#7-ai-rss-daily-digest--elegant-image-poster-sharing) with one click, featuring 8 refined themes, custom typography, and layout options for sharing on social platforms; export individual notes to Markdown, HTML, or PDF effortlessly.
+- **AI RSS Daily Digests**: Built-in official AI RSS subscription plugin that automatically aggregates feeds and blogs, filters out noise with AI, and compiles concise, well-structured daily digest notes.
 
 ### 🤖 Native AI Agents & Open Ecosystem
 - **Native Agent Protocols (MCP & ACP)**: Built-in Model Context Protocol (MCP) enables external AI Agents to read and organize notes; desktop app integrates Agent Client Protocol (ACP) to drive local agents (Codex, Antigravity, Claude Code, WorkBuddy, etc.) directly for collaborative creation.
