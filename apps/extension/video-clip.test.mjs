@@ -646,7 +646,11 @@ test("ships the video-note phrases in the extension locales", () => {
   expect(zh.videoPageUnsupported.message).toBe("暂不支持这个页面");
   expect(zh.videoNotRead.message).toBe("没有读到这个视频");
   expect(zh.videoNoCaptions.message).toBe("这一集没有可用字幕");
-  for (const locale of ["en", "ja"]) {
+  const pl = messages("pl");
+  expect(pl.saveVideoNoteToEdgeEver.message).toBe("Zapisz notatkę z wideo w EdgeEver");
+  expect(pl.videoSummaryHeading.message).toBe("Podsumowanie");
+  expect(pl.videoTranscriptHeading.message).toBe("Transkrypcja");
+  for (const locale of ["en", "ja", "pl"]) {
     const catalog = messages(locale);
     for (const key of ["saveVideoNoteToEdgeEver", "videoNoteSaved", "videoTranscriptSaved", "videoPageUnsupported", "videoNotRead"]) {
       expect(catalog[key].message.length).toBeGreaterThan(0);
