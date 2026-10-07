@@ -120,7 +120,14 @@ describe("AI route contracts", () => {
       databaseEnvironment,
     );
     expect(saved.status).toBe(201);
-    expect(JSON.stringify(await saved.json())).not.toContain("secret");
+    const settings = await saved.json();
+    expect(JSON.stringify(settings)).not.toContain("secret");
+
+    const credentialPath = `/api/v1/ai/transcription-providers/${settings.providers[0].id}/direct-credential`;
+    const credential = await app.request(credentialPath, { method: "POST" }, databaseEnvironment);
+    expect(credential.status).toBe(200);
+    expect(credential.headers.get("Cache-Control")).toBe("no-store");
+    expect(await credential.json()).toEqual({ apiKey: "secret" });
 
     const transcript = await app.request(
       "/api/v1/memos/missing/resources/missing/transcription-target",
@@ -136,6 +143,11 @@ describe("AI route contracts", () => {
       databaseEnvironment,
     );
     expect(denied.status).toBe(403);
+    const deniedCredential = await scopedApp.request(credentialPath, { method: "POST" }, databaseEnvironment);
+    expect(deniedCredential.status).toBe(403);
+    const otherWorkspaceApp = createApp({ currentAuth: { ...auth, workspaceId: "ws_other" } });
+    const otherWorkspaceCredential = await otherWorkspaceApp.request(credentialPath, { method: "POST" }, databaseEnvironment);
+    expect(otherWorkspaceCredential.status).toBe(404);
   });
 
   test("accepts the shared semantic action catalog with required parameters", () => {

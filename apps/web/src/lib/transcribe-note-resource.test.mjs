@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { ALL_FORMATS, BufferSource, Input } from "mediabunny";
-import { extractAudioParts, transcribePreparedAudioParts } from "./transcribe-note-resource.ts";
+import { extractAudioParts, testSpeechService, transcribePreparedAudioParts } from "./transcribe-note-resource.ts";
 
 const fixturePath = fileURLToPath(new URL("./fixtures/transcription-video.mp4", import.meta.url));
 
@@ -49,6 +49,39 @@ describe("client-side note media preparation", () => {
     expect(await input.getPrimaryAudioTrack()).not.toBeNull();
     expect(await input.getPrimaryVideoTrack()).toBeNull();
     input.dispose();
+  });
+
+  test("bundles a real spoken MP3 for provider connection checks", async () => {
+    const bytes = await readFile(fileURLToPath(new URL("./fixtures/speech-service-check.mp3", import.meta.url)));
+    expect(bytes.byteLength).toBeGreaterThan(1_000);
+    const input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) });
+    expect(await input.canRead()).toBe(true);
+    expect(await input.getPrimaryAudioTrack()).not.toBeNull();
+    input.dispose();
+  });
+
+  test("connection check sends its sample from the client without saving settings", async () => {
+    const bytes = await readFile(fileURLToPath(new URL("./fixtures/speech-service-check.mp3", import.meta.url)));
+    const requests = [];
+    const transcript = await testSpeechService(
+      { baseUrl: "https://speech.example/v1/", modelId: "whisper-1", apiKey: "test-token" },
+      undefined,
+      {
+        sampleFetch: async (url) => {
+          requests.push({ kind: "sample", url: String(url) });
+          return new Response(bytes, { status: 200 });
+        },
+        providerFetch: async (url, init) => {
+          requests.push({ kind: "provider", url: String(url), init });
+          return Response.json({ text: "Hello, this is a speech recognition test." });
+        },
+      },
+    );
+    expect(transcript).toContain("speech recognition test");
+    expect(requests.map((request) => request.kind)).toEqual(["sample", "provider"]);
+    expect(requests[1].url).toBe("https://speech.example/v1/audio/transcriptions");
+    expect(requests[1].init.body.get("file")).toBeInstanceOf(File);
+    expect(requests[1].init.body.get("model")).toBe("whisper-1");
   });
 
   test("sends each prepared segment directly to the configured speech endpoint", async () => {

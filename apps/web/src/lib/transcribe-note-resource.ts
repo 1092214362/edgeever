@@ -175,6 +175,7 @@ export async function transcribePreparedAudioParts(
   providerFetch: typeof fetch,
   signal?: AbortSignal,
   onProgress?: (completedSegments: number) => void,
+  requestTimeoutMs = 180_000,
 ): Promise<string> {
   const transcripts: string[] = [];
   for await (const file of parts) {
@@ -190,8 +191,8 @@ export async function transcribePreparedAudioParts(
         body: form,
         redirect: "error",
         signal: signal
-          ? AbortSignal.any([signal, AbortSignal.timeout(180_000)])
-          : AbortSignal.timeout(180_000),
+          ? AbortSignal.any([signal, AbortSignal.timeout(requestTimeoutMs)])
+          : AbortSignal.timeout(requestTimeoutMs),
       });
     } catch {
       if (signal?.aborted) signal.throwIfAborted();
@@ -207,4 +208,30 @@ export async function transcribePreparedAudioParts(
     onProgress?.(transcripts.length);
   }
   return transcripts.join("\n\n");
+}
+
+export async function testSpeechService(
+  target: { baseUrl: string; modelId: string; apiKey: string },
+  signal?: AbortSignal,
+  transport: { sampleFetch?: typeof fetch; providerFetch?: typeof fetch } = {},
+): Promise<string> {
+  const sampleResponse = await (transport.sampleFetch ?? fetch)(
+    new URL("./fixtures/speech-service-check.mp3", import.meta.url),
+    { signal },
+  );
+  if (!sampleResponse.ok) throw new Error("The built-in speech test audio is unavailable.");
+  const sample = new File(
+    [await sampleResponse.arrayBuffer()],
+    "speech-service-check.mp3",
+    { type: "audio/mpeg" },
+  );
+  async function* parts() { yield sample; }
+  return transcribePreparedAudioParts(
+    { ...target, baseUrl: target.baseUrl.trim().replace(/\/+$/, ""), modelId: target.modelId.trim() },
+    parts(),
+    transport.providerFetch ?? directProviderFetch,
+    signal,
+    undefined,
+    30_000,
+  );
 }

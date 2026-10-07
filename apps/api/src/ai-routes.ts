@@ -272,6 +272,27 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
     }
   });
 
+  app.post("/api/v1/ai/transcription-providers/:providerId/direct-credential", async (context) => {
+    const denied = requireUser(context);
+    if (denied) return denied;
+    if (dependencies.isDemoMode(context.env)) {
+      return forbidden(context, "Speech transcription is unavailable in demo mode.");
+    }
+    try {
+      const provider = await getAiTranscriptionProvider(
+        context.env.storage.db,
+        getWorkspaceId(context),
+        context.req.param("providerId"),
+      );
+      if (!provider) return notFound(context, "Speech service not found.");
+      const apiKey = await decryptAiCredential(provider.api_key_encrypted, context.env);
+      context.header("Cache-Control", "no-store");
+      return context.json({ apiKey });
+    } catch (error) {
+      return withAiError(context, error, "ai_transcription_failed");
+    }
+  });
+
   app.post(
     "/api/v1/ai/transcription-providers",
     zValidator("json", AiTranscriptionProviderCreateSchema, invalidTranscriptionSettings),

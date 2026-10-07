@@ -1,7 +1,7 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type AiTranscriptionSettings, type AiTranscriptionStandard } from "@edgeever/shared";
-import { AudioLines, Loader2, Plus, TriangleAlert } from "lucide-react";
+import { AudioLines, CheckCircle2, Loader2, Plus, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { aiErrorMessage } from "@/components/settings/ai-provider-options";
 import { SpeechProviderCard } from "@/components/settings/SpeechProviderCard";
@@ -42,6 +42,7 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
   });
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
+  const testAbortRef = useRef<AbortController | null>(null);
 
   const settings = settingsQuery.data;
   const providers = settings?.providers ?? [];
@@ -71,6 +72,22 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
       setDraft(emptyDraft);
     },
   });
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const controller = new AbortController();
+      testAbortRef.current = controller;
+      try {
+        const { testSpeechService } = await import("@/lib/transcribe-note-resource");
+        return await testSpeechService({
+          baseUrl: draft.baseUrl,
+          modelId: draft.initialModelId,
+          apiKey: draft.apiKey.trim(),
+        }, controller.signal);
+      } finally {
+        if (testAbortRef.current === controller) testAbortRef.current = null;
+      }
+    },
+  });
   const defaultMutation = useMutation({
     mutationFn: api.updateDefaultAiTranscriptionModel,
     onSuccess: applySettings,
@@ -83,9 +100,15 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
   const handleAddDialogChange = (open: boolean) => {
     setShowAdd(open);
     if (!open) {
+      testAbortRef.current?.abort();
       setDraft(emptyDraft);
       createMutation.reset();
+      testMutation.reset();
     }
+  };
+  const updateDraft = (change: Partial<typeof emptyDraft>) => {
+    setDraft((current) => ({ ...current, ...change }));
+    testMutation.reset();
   };
 
   return (
@@ -185,7 +208,7 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
                   className="grid gap-4"
                   onSubmit={(event: FormEvent) => {
                     event.preventDefault();
-                    if (!canAdd || createMutation.isPending) return;
+                    if (!canAdd || createMutation.isPending || testMutation.isPending) return;
                     createMutation.mutate();
                   }}
                 >
@@ -194,22 +217,34 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
                   </DialogHeader>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label={t("speechTranscription.displayName")}>
-                      <Input className="h-9 text-xs" value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} required maxLength={80} />
+                      <Input className="h-9 text-xs" value={draft.displayName} onChange={(event) => updateDraft({ displayName: event.target.value })} required maxLength={80} disabled={testMutation.isPending || createMutation.isPending} />
                     </Field>
                     <SpeechStandardField
                       value={draft.provider}
-                      onChange={(provider) => setDraft({ ...draft, provider })}
+                      onChange={(provider) => updateDraft({ provider })}
+                      disabled={testMutation.isPending || createMutation.isPending}
                     />
                   </div>
                   <Field label={t("speechTranscription.baseUrl")} hint={t("speechTranscription.baseUrlHint")}>
-                    <Input className="h-9 text-xs" value={draft.baseUrl} onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })} placeholder={t("speechTranscription.baseUrlPlaceholder")} required inputMode="url" autoComplete="off" spellCheck={false} maxLength={500} />
+                    <Input className="h-9 text-xs" value={draft.baseUrl} onChange={(event) => updateDraft({ baseUrl: event.target.value })} placeholder={t("speechTranscription.baseUrlPlaceholder")} required inputMode="url" autoComplete="off" spellCheck={false} maxLength={500} disabled={testMutation.isPending || createMutation.isPending} />
                   </Field>
                   <Field label={t("speechTranscription.modelId")}>
-                    <Input className="h-9 text-xs" value={draft.initialModelId} onChange={(event) => setDraft({ ...draft, initialModelId: event.target.value })} placeholder={t("speechTranscription.modelIdPlaceholder")} required autoComplete="off" spellCheck={false} maxLength={200} />
+                    <Input className="h-9 text-xs" value={draft.initialModelId} onChange={(event) => updateDraft({ initialModelId: event.target.value })} placeholder={t("speechTranscription.modelIdPlaceholder")} required autoComplete="off" spellCheck={false} maxLength={200} disabled={testMutation.isPending || createMutation.isPending} />
                   </Field>
                   <Field label={t("speechTranscription.apiToken")} hint={t("speechTranscription.apiTokenHint")}>
-                    <Input className="h-9 text-xs" type="password" value={draft.apiKey} onChange={(event) => setDraft({ ...draft, apiKey: event.target.value })} required autoComplete="new-password" maxLength={4096} />
+                    <Input className="h-9 text-xs" type="password" value={draft.apiKey} onChange={(event) => updateDraft({ apiKey: event.target.value })} required autoComplete="new-password" maxLength={4096} disabled={testMutation.isPending || createMutation.isPending} />
                   </Field>
+                  <p className="text-xs leading-5 text-slate-500">{t("speechTranscription.testHint")}</p>
+                  {testMutation.isSuccess ? (
+                    <p className="flex items-start gap-1.5 text-xs font-medium text-emerald-700" role="status">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />{t("speechTranscription.testSucceeded", { transcript: testMutation.data.slice(0, 160) })}
+                    </p>
+                  ) : null}
+                  {testMutation.isError ? (
+                    <p className="text-xs font-medium text-rose-600" role="alert">
+                      {aiErrorMessage(testMutation.error, t("speechTranscription.testFailed"), t("aiModel.encryptionKeyMissing"), t("speechTranscription.savedCredentialsUnavailable"))}
+                    </p>
+                  ) : null}
                   {createMutation.isError ? (
                     <p className="text-xs font-medium text-rose-600" role="alert">
                       {aiErrorMessage(createMutation.error, t("speechTranscription.failed"), t("aiModel.encryptionKeyMissing"), t("speechTranscription.savedCredentialsUnavailable"))}
@@ -217,7 +252,10 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
                   ) : null}
                   <DialogFooter className="gap-2 sm:space-x-0">
                     <Button type="button" variant="outline" className="text-xs font-normal" onClick={() => handleAddDialogChange(false)}>{t("common.cancel")}</Button>
-                    <Button type="submit" variant="solid" className="text-xs font-normal" disabled={!canAdd || createMutation.isPending}>
+                    <Button type="button" variant="outline" className="text-xs font-normal" disabled={!canAdd || !draft.baseUrl.trim() || !draft.initialModelId.trim() || !draft.apiKey.trim() || createMutation.isPending || testMutation.isPending} onClick={() => testMutation.mutate()}>
+                      {testMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t("speechTranscription.test")}
+                    </Button>
+                    <Button type="submit" variant="solid" className="text-xs font-normal" disabled={!canAdd || createMutation.isPending || testMutation.isPending}>
                       {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t("speechTranscription.addProvider")}
                     </Button>
                   </DialogFooter>

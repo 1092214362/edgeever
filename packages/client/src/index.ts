@@ -958,6 +958,12 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
         { method: "POST", signal },
       ),
 
+    getAiTranscriptionDirectCredential: (providerId: string, signal?: AbortSignal) =>
+      request<{ apiKey: string }>(
+        `/api/v1/ai/transcription-providers/${encodeURIComponent(providerId)}/direct-credential`,
+        { method: "POST", signal },
+      ),
+
     createAiProvider: (payload: AiProviderCreatePayload) =>
       request<AiSettings>("/api/v1/ai/providers", {
         method: "POST",
