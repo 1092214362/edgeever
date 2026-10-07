@@ -1236,7 +1236,7 @@ export const zhCN = {
     copied: "已复制",
     insertIntoNote: "插入笔记",
     retry: "重试转写",
-    attachmentNotice: "仅转写笔记内已上传的音视频附件。音轨在本机提取并分段（每段不超过 24 MB），由客户端直接发送到您配置的模型服务。模型密钥会交给当前已登录客户端；浏览器直连还需模型服务支持跨域请求。",
+    attachmentNotice: "在当前客户端提取音轨并分段，逐段直连所选语音识别服务。",
   },
   aiPrompts: {
     title: "指令库",
