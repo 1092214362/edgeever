@@ -62,7 +62,8 @@ const renderCard = async (settings, demoMode = false) => {
 describe("speech transcription settings card", () => {
   test("lists every saved speech service and the one used for extraction", async () => {
     const html = await renderCard(saved);
-    expect(html).toContain("语音识别");
+    expect(html).toContain("语音识别模型配置");
+    expect(html).not.toContain("语音识别服务当前主要用于视频字幕识别");
     expect(html).toContain("默认语音模型");
     expect(html).toContain("添加模型服务");
     expect(html).toContain("Groq");
@@ -88,6 +89,12 @@ describe("speech transcription settings card", () => {
     expect(html).toContain("还没有语音识别服务");
     expect(html).toContain("默认语音模型");
     expect(html).toContain("添加模型服务");
+    expect(html).toContain("yt-dlp 复用的浏览器登录状态");
+    expect(html).not.toContain("提取字幕下载音频时");
+    expect(html).toContain("yt-dlp 版本");
+    expect(html).toContain("尚未下载");
+    expect(html).toContain("yt-dlp 路径");
+    expect(html).toContain("未知");
   });
 
   test("is its own settings page under models and agents", () => {
@@ -102,6 +109,14 @@ describe("speech transcription settings card", () => {
     expect(pane.indexOf('key: "ai"')).toBeLessThan(pane.indexOf('key: "mcp"'));
     expect(pane.indexOf('key: "mcp"')).toBeLessThan(pane.indexOf('key: "speech"'));
     expect(card).toContain("createAiTranscriptionProvider");
+    expect(card).not.toContain("speechTranscription.description");
+    expect(card).toContain("speechTranscription.cookieBrowser");
+    expect(card).not.toContain("cookieBrowserHint");
+    const localToolStart = card.lastIndexOf("rounded-lg border border-slate-200 bg-card divide-y", card.indexOf('id="video-cookie-browser"'));
+    const localToolEnd = card.indexOf('t("systemInfo.ytDlpPath")');
+    expect(localToolStart).toBeGreaterThan(-1);
+    expect(localToolStart).toBeLessThan(localToolEnd);
+    expect(card.slice(localToolStart, localToolEnd)).toContain('t("systemInfo.ytDlpVersion")');
     expect(card).toContain("speechTranscription.standard");
     expect(card).toContain('value="openai-compatible"');
     expect(provider).toContain("apiKey.trim() ? { apiKey: apiKey.trim() } : {}");

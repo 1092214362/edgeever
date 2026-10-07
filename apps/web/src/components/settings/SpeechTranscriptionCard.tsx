@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { aiErrorMessage } from "@/components/settings/ai-provider-options";
 import { SpeechProviderCard } from "@/components/settings/SpeechProviderCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import {
-  SETTINGS_CARD_DESCRIPTION_CLASSNAME,
   SETTINGS_CARD_HEADER_CLASSNAME,
   SETTINGS_CARD_ICON_CLASSNAME,
   SETTINGS_CARD_TITLE_CLASSNAME,
@@ -32,6 +31,50 @@ const emptyDraft = {
   baseUrl: "",
   apiKey: "",
   initialModelId: "",
+};
+
+type YtDlpStatus = {
+  state: "idle" | "checking" | "downloading" | "ready" | "failed";
+  version: string | null;
+  path: string;
+  errorCode: string | null;
+  httpStatus: number | null;
+};
+
+const ytDlpReason = (
+  t: (key: string, options?: Record<string, string>) => string,
+  status: YtDlpStatus,
+) => {
+  if (!status.errorCode) return "";
+  if (status.errorCode === "http") {
+    return t("systemInfo.ytDlpErrors.http", { status: String(status.httpStatus ?? "") });
+  }
+  const key = `systemInfo.ytDlpErrors.${status.errorCode}`;
+  const translated = t(key);
+  return translated === key ? t("systemInfo.ytDlpFailed") : translated;
+};
+
+const ytDlpVersionValue = (
+  t: (key: string, options?: Record<string, string>) => string,
+  status: YtDlpStatus | undefined,
+) => {
+  if (!status || status.state === "idle" || status.state === "checking") {
+    return status?.version || t("systemInfo.ytDlpMissing");
+  }
+  const reason = ytDlpReason(t, status);
+  if (status.state === "downloading") {
+    return status.version
+      ? t("systemInfo.ytDlpUpdating", { version: status.version })
+      : t("systemInfo.ytDlpDownloading");
+  }
+  if (status.state === "failed") return reason || t("systemInfo.ytDlpFailed");
+  if (status.errorCode && status.version) {
+    return t("systemInfo.ytDlpUpdateFailed", {
+      version: status.version,
+      reason: reason || t("systemInfo.ytDlpFailed"),
+    });
+  }
+  return status.version || t("systemInfo.ytDlpMissing");
 };
 
 export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => {
@@ -47,8 +90,16 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
     queryFn: () => window.edgeeverDesktop!.videoCookieBrowser(),
     enabled: desktop,
   });
+  const ytDlpStatusQuery = useQuery({
+    queryKey: ["desktop-yt-dlp-status"],
+    queryFn: () => window.edgeeverDesktop!.ytDlpStatus(),
+    enabled: desktop,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState(emptyDraft);
+  const [previewBrowser, setPreviewBrowser] = useState<VideoCookieBrowser | null>(null);
 
   const settings = settingsQuery.data;
   const providers = settings?.providers ?? [];
@@ -88,6 +139,13 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
       queryClient.setQueryData(["video-cookie-browser"], saved.browser);
     },
   });
+  const browserNotice = desktop
+    ? (cookieBrowserMutation.isSuccess ? cookieBrowserMutation.data.browser : null)
+    : previewBrowser;
+  const ytDlpStatus = ytDlpStatusQuery.data;
+  const ytDlpFailed = ytDlpStatusQuery.isError || ytDlpStatus?.state === "failed" || (ytDlpStatus?.state === "ready" && Boolean(ytDlpStatus.errorCode));
+  const ytDlpVersion = ytDlpStatusQuery.isError ? t("systemInfo.ytDlpFailed") : ytDlpVersionValue(t, ytDlpStatus);
+  const ytDlpPath = ytDlpStatus?.path || t("systemInfo.unknown");
   const addDisabledReason = readOnly
     ? t("speechTranscription.demoDisabled")
     : !encryptionConfigured
@@ -108,9 +166,6 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
           <AudioLines className={SETTINGS_CARD_ICON_CLASSNAME} />
           {t("speechTranscription.title")}
         </CardTitle>
-        <CardDescription className={SETTINGS_CARD_DESCRIPTION_CLASSNAME}>
-          {t("speechTranscription.description")}
-        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-5 p-4 pt-0 sm:px-5 sm:pb-5">
         {settingsQuery.isLoading ? (
@@ -194,43 +249,58 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
               )}
             </section>
             {readOnly ? <p className="text-xs leading-5 text-slate-500">{t("speechTranscription.demoDisabled")}</p> : null}
-            {desktop ? (
-              <div className="grid gap-1.5">
-                <label className="grid gap-1.5 text-xs font-normal leading-5 text-slate-700" htmlFor="video-cookie-browser">
-                  {t("speechTranscription.cookieBrowser")}
-                </label>
-                <Select
-                  value={cookieBrowserQuery.data ?? "chrome"}
-                  onValueChange={(value) => cookieBrowserMutation.mutate(value as VideoCookieBrowser)}
-                  disabled={cookieBrowserQuery.isLoading || cookieBrowserMutation.isPending}
-                >
-                  <SelectTrigger id="video-cookie-browser" className="h-10 bg-card">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VIDEO_COOKIE_BROWSERS.map((browser) => (
-                      <SelectItem key={browser} value={browser}>
-                        {t(`speechTranscription.cookieBrowsers.${browser}`)}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="none">{t("speechTranscription.cookieBrowserNone")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs font-normal leading-4 text-slate-500">{t("speechTranscription.cookieBrowserHint")}</p>
-                {cookieBrowserMutation.isSuccess ? (
+            <section className="overflow-hidden rounded-lg border border-slate-200 bg-card divide-y divide-slate-100">
+              <div className="grid gap-2 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <label className={`${SETTINGS_ITEM_TITLE_CLASSNAME} min-w-0`} htmlFor="video-cookie-browser">
+                    {t("speechTranscription.cookieBrowser")}
+                  </label>
+                  <div className="w-56 max-w-[60%] shrink-0 sm:w-72">
+                    <Select
+                      value={(desktop ? cookieBrowserQuery.data : previewBrowser) ?? "chrome"}
+                      onValueChange={(value) => {
+                        const browser = value as VideoCookieBrowser;
+                        if (desktop) cookieBrowserMutation.mutate(browser);
+                        else setPreviewBrowser(browser);
+                      }}
+                      disabled={desktop && (cookieBrowserQuery.isLoading || cookieBrowserMutation.isPending)}
+                    >
+                      <SelectTrigger id="video-cookie-browser" className="h-8 bg-card text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VIDEO_COOKIE_BROWSERS.map((browser) => (
+                          <SelectItem key={browser} value={browser}>
+                            {t(`speechTranscription.cookieBrowsers.${browser}`)}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="none">{t("speechTranscription.cookieBrowserNone")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {browserNotice ? (
                   <p className="text-xs font-medium text-emerald-700">
-                    {cookieBrowserMutation.data.browser === "none"
+                    {browserNotice === "none"
                       ? t("speechTranscription.cookieBrowserOff")
                       : t("speechTranscription.cookieBrowserApplied", {
-                        browser: t(`speechTranscription.cookieBrowsers.${cookieBrowserMutation.data.browser}`),
+                        browser: t(`speechTranscription.cookieBrowsers.${browserNotice}`),
                       })}
                   </p>
                 ) : null}
-                {cookieBrowserQuery.isError || cookieBrowserMutation.isError ? (
+                {desktop && (cookieBrowserQuery.isError || cookieBrowserMutation.isError) ? (
                   <p className="text-xs font-medium text-rose-600" role="alert">{t("speechTranscription.cookieBrowserFailed")}</p>
                 ) : null}
               </div>
-            ) : null}
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <p className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("systemInfo.ytDlpVersion")}</p>
+                <p className={`text-right text-xs font-medium leading-5 ${ytDlpFailed ? "text-rose-600" : "text-slate-900"}`}>{ytDlpVersion}</p>
+              </div>
+              <div className="flex items-start justify-between gap-3 px-4 py-3">
+                <p className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("systemInfo.ytDlpPath")}</p>
+                <p className="max-w-[60%] break-all text-right font-mono text-xs leading-5 text-slate-900">{ytDlpPath}</p>
+              </div>
+            </section>
             <Dialog open={showAdd} onOpenChange={handleAddDialogChange}>
               <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">
                 <form
