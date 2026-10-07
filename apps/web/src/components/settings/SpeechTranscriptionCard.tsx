@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { VIDEO_COOKIE_BROWSERS, type AiTranscriptionSettings, type AiTranscriptionStandard, type VideoCookieBrowser } from "@edgeever/shared";
-import { AudioLines, Loader2, Plus, TriangleAlert } from "lucide-react";
+import { AudioLines, Loader2, Plus, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { aiErrorMessage } from "@/components/settings/ai-provider-options";
 import { SpeechProviderCard } from "@/components/settings/SpeechProviderCard";
@@ -279,6 +279,9 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
                     </Select>
                   </div>
                 </div>
+                <p className="text-xs leading-4 text-slate-500">
+                  {t("speechTranscription.cookieBrowserNotice")}
+                </p>
                 {browserNotice ? (
                   <p className="text-xs font-medium text-emerald-700">
                     {browserNotice === "none"
@@ -300,6 +303,17 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
                 <p className={SETTINGS_ITEM_TITLE_CLASSNAME}>{t("systemInfo.ytDlpPath")}</p>
                 <p className="max-w-[60%] break-all text-right font-mono text-xs leading-5 text-slate-900">{ytDlpPath}</p>
               </div>
+            </section>
+            <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-4 text-xs leading-5 text-slate-600">
+              <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>{t("speechTranscription.complianceNoticeTitle")}</span>
+              </div>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-slate-500">
+                <li>{t("speechTranscription.complianceNoticePersonalUse")}</li>
+                <li>{t("speechTranscription.complianceNoticeCopyright")}</li>
+                <li>{t("speechTranscription.complianceNoticeLocalSecurity")}</li>
+              </ul>
             </section>
             <Dialog open={showAdd} onOpenChange={handleAddDialogChange}>
               <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">

@@ -1224,6 +1224,11 @@ export const zhCN = {
       vivaldi: "Vivaldi",
       whale: "Whale",
     },
+    complianceNoticeTitle: "使用规范与版权说明",
+    complianceNoticePersonalUse: "字幕提取与音视频转录功能仅供个人学习、离线研读及辅助记录使用，请勿将提取内容公开发布、传播或用于商业营利。",
+    complianceNoticeCopyright: "音视频素材及其原始台词、字幕等衍生内容的知识产权均归原作者及发布平台所有。",
+    complianceNoticeLocalSecurity: "相关解析与下载逻辑完全在您的本地设备运行，浏览器登录状态仅用于读取您有权访问的公开或已购媒体流，绝不上报或云端存储。",
+    cookieBrowserNotice: "仅在本地用于读取当前浏览器已登录的媒体流以获取音轨与字幕。",
   },
   aiPrompts: {
     title: "指令库",

@@ -88,9 +88,13 @@ describe("speech transcription settings card", () => {
     });
     expect(html).toContain("还没有语音识别服务");
     expect(html).toContain("默认语音模型");
-    expect(html).toContain("添加模型服务");
     expect(html).toContain("yt-dlp 复用的浏览器登录状态");
     expect(html).not.toContain("提取字幕下载音频时");
+    expect(html).toContain("仅在本地用于读取当前浏览器已登录的媒体流以获取音轨与字幕");
+    expect(html).toContain("使用规范与版权说明");
+    expect(html).toContain("字幕提取与音视频转录功能仅供个人学习、离线研读及辅助记录使用");
+    expect(html).toContain("音视频素材及其原始台词、字幕等衍生内容的知识产权均归原作者及发布平台所有");
+    expect(html).toContain("相关解析与下载逻辑完全在您的本地设备运行");
     expect(html).toContain("yt-dlp 版本");
     expect(html).toContain("尚未下载");
     expect(html).toContain("yt-dlp 路径");

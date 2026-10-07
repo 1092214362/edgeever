@@ -1224,6 +1224,11 @@ export const pl = {
       vivaldi: "Vivaldi",
       whale: "Whale",
     },
+    complianceNoticeTitle: "Zasady użytkowania i prawa autorskie",
+    complianceNoticePersonalUse: "Funkcje wyodrębniania napisów i transkrypcji mowy są przeznaczone wyłącznie do nauki osobistej, badań offline i pomocy w sporządzaniu notatek. Nie należy publicznie rozpowszechniać ani wykorzystywać wyodrębnionych treści w celach komercyjnych.",
+    complianceNoticeCopyright: "Prawa autorskie i własność intelektualna do materiałów wideo, oryginalnych dialogów i napisów należą do ich twórców oraz platform źródłowych.",
+    complianceNoticeLocalSecurity: "Wszystkie operacje przetwarzania i pobierania działają wyłącznie na Twoim urządzeniu lokalnym. Zalogowane sesje przeglądarki są używane tylko lokalnie i nigdy nie są wysyłane do chmury.",
+    cookieBrowserNotice: "Używane tylko lokalnie do odczytu strumieni multimediów w Twojej aktywnej przeglądarce.",
   },
   aiPrompts: {
     title: "Biblioteka promptów",

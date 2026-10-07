@@ -1224,6 +1224,11 @@ export const enUS = {
       vivaldi: "Vivaldi",
       whale: "Whale",
     },
+    complianceNoticeTitle: "Usage Guidelines & Copyright Notice",
+    complianceNoticePersonalUse: "Subtitle extraction and audio transcription features are intended solely for personal study, offline research, and assistive note-taking. Do not publicly distribute, broadcast, or use extracted content for commercial purposes.",
+    complianceNoticeCopyright: "Intellectual property rights for all media assets, original scripts, and subtitles belong to the original creators and respective hosting platforms.",
+    complianceNoticeLocalSecurity: "Parsing and download operations run entirely on your local device. Reused browser sign-in states are only used locally to access media streams you are authorized to view and are never uploaded or stored in the cloud.",
+    cookieBrowserNotice: "Used only locally to access media streams in your active browser session for audio and subtitle tracks.",
   },
   aiPrompts: {
     title: "Prompt library",

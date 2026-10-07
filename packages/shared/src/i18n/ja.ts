@@ -1224,6 +1224,11 @@ export const ja = {
       vivaldi: "Vivaldi",
       whale: "Whale",
     },
+    complianceNoticeTitle: "利用規約と著作権に関する注意事項",
+    complianceNoticePersonalUse: "字幕抽出および音声文字起こし機能は、個人の学習、オフライン研究、およびメモ作成の補助のみを目的としています。抽出したコンテンツを公開、配布、または商用利用しないでください。",
+    complianceNoticeCopyright: "動画・音声素材およびその台詞、字幕等の知的財産権は、原作者および配信プラットフォームに帰属します。",
+    complianceNoticeLocalSecurity: "関連する処理やダウンロードはすべてお使いのローカル端末上で実行されます。ブラウザのログイン状態はアクセス権のあるメディアの読み取りのみに利用され、クラウドに送信または保存されることはありません。",
+    cookieBrowserNotice: "音声や字幕を取得するために、現在ログイン中のブラウザセッションをローカルでのみ利用します。",
   },
   aiPrompts: {
     title: "プロンプトライブラリ",
