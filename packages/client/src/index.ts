@@ -53,10 +53,8 @@ import type {
   TagSummary,
   TiptapDoc,
   AiSettings,
-  AiTranscriptionSettings,
   AiDiscoveredModel,
   AiProvider,
-  AiTranscriptionStandard,
   AiPromptTemplate,
   AiPromptTemplateCreateInput,
   AiPromptTemplateUpdateInput,
@@ -298,23 +296,6 @@ export type AiProviderCreatePayload = {
 
 export type AiProviderUpdatePayload = {
   provider: AiProvider;
-  displayName: string;
-  baseUrl: string;
-  apiKey?: string;
-  isEnabled: boolean;
-};
-
-export type AiTranscriptionProviderCreatePayload = {
-  provider: AiTranscriptionStandard;
-  displayName: string;
-  baseUrl: string;
-  apiKey: string;
-  isEnabled: boolean;
-  initialModelId?: string;
-};
-
-export type AiTranscriptionProviderUpdatePayload = {
-  provider: AiTranscriptionStandard;
   displayName: string;
   baseUrl: string;
   apiKey?: string;
@@ -913,50 +894,6 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
       const search = locale ? `?locale=${encodeURIComponent(locale)}` : "";
       return request<AiSettings>(`/api/v1/ai/settings${search}`);
     },
-
-    getAiTranscriptionSettings: () =>
-      request<AiTranscriptionSettings>("/api/v1/ai/transcription-settings"),
-
-    createAiTranscriptionProvider: (payload: AiTranscriptionProviderCreatePayload) =>
-      request<AiTranscriptionSettings>("/api/v1/ai/transcription-providers", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-
-    updateAiTranscriptionProvider: (providerId: string, payload: AiTranscriptionProviderUpdatePayload) =>
-      request<AiTranscriptionSettings>(`/api/v1/ai/transcription-providers/${encodeURIComponent(providerId)}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      }),
-
-    deleteAiTranscriptionProvider: (providerId: string) =>
-      request<AiTranscriptionSettings>(`/api/v1/ai/transcription-providers/${encodeURIComponent(providerId)}`, {
-        method: "DELETE",
-      }),
-
-    addAiTranscriptionModel: (providerId: string, payload: { modelId: string; displayName?: string }) =>
-      request<AiTranscriptionSettings>(`/api/v1/ai/transcription-providers/${encodeURIComponent(providerId)}/models`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-
-    deleteAiTranscriptionModel: (providerId: string, modelConfigId: string) =>
-      request<AiTranscriptionSettings>(
-        `/api/v1/ai/transcription-providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelConfigId)}`,
-        { method: "DELETE" },
-      ),
-
-    updateDefaultAiTranscriptionModel: (modelConfigId: string | null) =>
-      request<AiTranscriptionSettings>("/api/v1/ai/transcription-default-model", {
-        method: "PUT",
-        body: JSON.stringify({ modelConfigId }),
-      }),
-
-    extractVideoTranscript: (memoId: string) =>
-      request<{ status: "queued" | "running" }>(
-        `/api/v1/video-transcript-jobs/${encodeURIComponent(memoId)}/extract`,
-        { method: "POST" },
-      ),
 
     createAiProvider: (payload: AiProviderCreatePayload) =>
       request<AiSettings>("/api/v1/ai/providers", {

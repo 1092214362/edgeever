@@ -1,5 +1,4 @@
 import {
-  AudioLines,
   ChevronLeft,
   ChevronRight,
   Database,
@@ -38,7 +37,6 @@ import { PasswordCard } from "./settings/PasswordCard";
 import { UserManagementCard } from "./settings/UserManagementCard";
 import { ObjectStorageCard } from "./settings/ObjectStorageCard";
 import { AiModelCard } from "./settings/AiModelCard";
-import { SpeechTranscriptionCard } from "./settings/SpeechTranscriptionCard";
 import { DesktopAcpAgentCard } from "./settings/DesktopAcpAgentCard";
 import { ThemeToggle } from "./ThemeToggle";
 import type { AuthUser } from "@edgeever/shared";
@@ -75,7 +73,7 @@ const SettingsGroup = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
-type TabKey = "general" | "shortcuts" | "users" | "data" | "ai" | "speech" | "mcp" | "advanced" | "account" | "system";
+type TabKey = "general" | "shortcuts" | "users" | "data" | "ai" | "mcp" | "advanced" | "account" | "system";
 
 interface TabItem {
   key: TabKey;
@@ -131,11 +129,6 @@ export const SettingsPane = ({
       key: "mcp",
       label: t("settings.tabs.mcp"),
       icon: KeyRound,
-    },
-    {
-      key: "speech",
-      label: t("settings.tabs.speech"),
-      icon: AudioLines,
     },
     {
       key: "data",
@@ -241,12 +234,6 @@ export const SettingsPane = ({
           <SettingsGroup>
             <DesktopAcpAgentCard />
             <AiModelCard />
-          </SettingsGroup>
-        );
-      case "speech":
-        return (
-          <SettingsGroup>
-            <SpeechTranscriptionCard demoMode={demoMode} />
           </SettingsGroup>
         );
       case "mcp":
