@@ -942,6 +942,7 @@ export const enUS = {
       general: "General",
       shortcuts: "Shortcuts",
       ai: "Models and agents",
+      speech: "Subtitle recognition",
       mcp: "API / MCP",
       data: "Import & Export",
       advanced: "Advanced",

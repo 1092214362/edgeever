@@ -942,6 +942,7 @@ export const ja = {
       general: "一般",
       shortcuts: "ショートカット",
       ai: "モデルとエージェント",
+      speech: "字幕認識",
       mcp: "API / MCP",
       data: "インポートとエクスポート",
       advanced: "詳細",

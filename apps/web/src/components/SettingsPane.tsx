@@ -1,4 +1,5 @@
 import {
+  AudioLines,
   ChevronLeft,
   ChevronRight,
   Database,
@@ -74,7 +75,7 @@ const SettingsGroup = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
-type TabKey = "general" | "shortcuts" | "users" | "data" | "ai" | "mcp" | "advanced" | "account" | "system";
+type TabKey = "general" | "shortcuts" | "users" | "data" | "ai" | "mcp" | "speech" | "advanced" | "account" | "system";
 
 interface TabItem {
   key: TabKey;
@@ -130,6 +131,11 @@ export const SettingsPane = ({
       key: "mcp",
       label: t("settings.tabs.mcp"),
       icon: KeyRound,
+    },
+    {
+      key: "speech",
+      label: t("settings.tabs.speech"),
+      icon: AudioLines,
     },
     {
       key: "data",
@@ -235,6 +241,11 @@ export const SettingsPane = ({
           <SettingsGroup>
             <DesktopAcpAgentCard />
             <AiModelCard />
+          </SettingsGroup>
+        );
+      case "speech":
+        return (
+          <SettingsGroup>
             <SpeechTranscriptionCard demoMode={demoMode} />
           </SettingsGroup>
         );

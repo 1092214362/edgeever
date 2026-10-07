@@ -942,6 +942,7 @@ export const zhCN = {
       general: "常规设置",
       shortcuts: "快捷键",
       ai: "模型与代理",
+      speech: "字幕识别",
       mcp: "API / MCP",
       data: "导入导出",
       advanced: "高级设置",
