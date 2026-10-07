@@ -20,7 +20,6 @@ import {
   filterNotebookTree,
   getExpandableNotebookIds,
   getNotebookAncestorIds,
-  notebookTreeContainsId,
 } from "@/lib/app-helpers";
 
 const MobileBottomNavButton = ({
@@ -332,7 +331,6 @@ const MobileNotebookPickerItem = ({
   const { t } = useTranslation();
   const selected = node.id === selectedNotebookId;
   const hasChildren = node.children.length > 0;
-  const hasSelectedDescendant = selectedNotebookId ? notebookTreeContainsId(node.children, selectedNotebookId) : false;
   const expanded = searchActive || expandedNotebookIds.has(node.id);
 
   return (
@@ -342,10 +340,8 @@ const MobileNotebookPickerItem = ({
         className={cn(
           "flex h-12 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition",
           selected
-            ? "bg-slate-100 font-semibold text-slate-950"
-            : hasSelectedDescendant
-              ? "bg-slate-50 text-slate-900 hover:bg-slate-100"
-              : "text-slate-800 hover:bg-slate-50"
+            ? "bg-slate-100 font-semibold text-black dark:text-slate-950"
+            : "text-slate-800 hover:bg-slate-50"
         )}
         style={{ paddingLeft: `${12 + depth * 18}px` }}
       >
