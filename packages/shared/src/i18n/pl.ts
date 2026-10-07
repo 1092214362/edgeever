@@ -942,7 +942,7 @@ export const pl = {
       general: "Ogólne",
       shortcuts: "Skróty",
       ai: "Modele i agenci",
-      speech: "Rozpoznawanie napisów",
+      speech: "Transkrypcja audio i wideo",
       mcp: "API / MCP",
       data: "Import i eksport",
       advanced: "Zaawansowane",
