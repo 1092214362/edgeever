@@ -451,23 +451,28 @@ pub(crate) fn sync_outbox_ack(database: &Connection, params: &Value) -> Result<V
         .unchecked_transaction()
         .map_err(|e| e.to_string())?;
     let deleted = if let Some(version) = requested_version {
-        tx
-            .execute(
-                "DELETE FROM _edgeever_sidecar_outbox WHERE id = ?1 AND version = ?2",
-                rusqlite::params![id, version],
-            )
-            .map_err(|e| e.to_string())?
+        tx.execute(
+            "DELETE FROM _edgeever_sidecar_outbox WHERE id = ?1 AND version = ?2",
+            rusqlite::params![id, version],
+        )
+        .map_err(|e| e.to_string())?
     } else {
-        tx
-            .execute("DELETE FROM _edgeever_sidecar_outbox WHERE id = ?1", [id])
+        tx.execute("DELETE FROM _edgeever_sidecar_outbox WHERE id = ?1", [id])
             .map_err(|e| e.to_string())?
     };
-    if deleted == 1 && matches!(kind.as_str(), "memo.delete" | "memo.deleteBatch" | "memo.emptyTrash") {
+    if deleted == 1
+        && matches!(
+            kind.as_str(),
+            "memo.delete" | "memo.deleteBatch" | "memo.emptyTrash"
+        )
+    {
         let payload: Value = serde_json::from_str(&payload_json).unwrap_or_else(|_| json!({}));
         let memo_ids: Vec<&str> = if kind == "memo.delete" {
             vec![entity_id.as_str()]
         } else {
-            payload.get("memoIds").and_then(Value::as_array)
+            payload
+                .get("memoIds")
+                .and_then(Value::as_array)
                 .map(|ids| ids.iter().filter_map(Value::as_str).collect())
                 .unwrap_or_default()
         };

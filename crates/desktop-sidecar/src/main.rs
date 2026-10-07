@@ -199,23 +199,31 @@ mod tests {
     fn acknowledged_deletes_clear_only_older_conflicted_memo_edits() {
         for (kind, entity_id, payload) in [
             ("memo.delete", "memo-a", json!({ "memoId": "memo-a" })),
-            ("memo.deleteBatch", "batch", json!({ "memoIds": ["memo-a"] })),
+            (
+                "memo.deleteBatch",
+                "batch",
+                json!({ "memoIds": ["memo-a"] }),
+            ),
             ("memo.emptyTrash", "trash", json!({ "memoIds": ["memo-a"] })),
         ] {
             let database = Connection::open_in_memory().unwrap();
-            database.execute_batch(
-                "CREATE TABLE _edgeever_sidecar_outbox (
+            database
+                .execute_batch(
+                    "CREATE TABLE _edgeever_sidecar_outbox (
                     id INTEGER PRIMARY KEY, kind TEXT NOT NULL, entity_id TEXT NOT NULL,
                     payload_json TEXT NOT NULL, status TEXT NOT NULL, version INTEGER NOT NULL
                 );
                 INSERT INTO _edgeever_sidecar_outbox VALUES
                     (1, 'memo.update', 'memo-a', '{}', 'conflict', 1),
                     (2, 'memo.update', 'memo-b', '{}', 'conflict', 1);",
-            ).unwrap();
-            database.execute(
-                "INSERT INTO _edgeever_sidecar_outbox VALUES (3, ?1, ?2, ?3, 'pending', 1)",
-                rusqlite::params![kind, entity_id, payload.to_string()],
-            ).unwrap();
+                )
+                .unwrap();
+            database
+                .execute(
+                    "INSERT INTO _edgeever_sidecar_outbox VALUES (3, ?1, ?2, ?3, 'pending', 1)",
+                    rusqlite::params![kind, entity_id, payload.to_string()],
+                )
+                .unwrap();
             database.execute(
                 "INSERT INTO _edgeever_sidecar_outbox VALUES (4, 'memo.update', 'memo-a', '{}', 'conflict', 1)",
                 [],
@@ -223,18 +231,28 @@ mod tests {
 
             let stale = sync_outbox_ack(&database, &json!({ "id": 3, "version": 0 })).unwrap();
             assert_eq!(stale["superseded"], true);
-            let count: i64 = database.query_row(
-                "SELECT COUNT(*) FROM _edgeever_sidecar_outbox WHERE status = 'conflict'",
-                [], |row| row.get(0),
-            ).unwrap();
+            let count: i64 = database
+                .query_row(
+                    "SELECT COUNT(*) FROM _edgeever_sidecar_outbox WHERE status = 'conflict'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
             assert_eq!(count, 3, "stale acknowledgement must preserve drafts");
 
             sync_outbox_ack(&database, &json!({ "id": 3, "version": 1 })).unwrap();
-            let remaining: Vec<i64> = database.prepare(
-                "SELECT id FROM _edgeever_sidecar_outbox ORDER BY id"
-            ).unwrap().query_map([], |row| row.get(0)).unwrap()
-                .collect::<Result<_, _>>().unwrap();
-            assert_eq!(remaining, vec![2, 4], "{kind} must clear only the deleted memo's older conflict");
+            let remaining: Vec<i64> = database
+                .prepare("SELECT id FROM _edgeever_sidecar_outbox ORDER BY id")
+                .unwrap()
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap();
+            assert_eq!(
+                remaining,
+                vec![2, 4],
+                "{kind} must clear only the deleted memo's older conflict"
+            );
         }
     }
 

@@ -240,7 +240,12 @@ pub(crate) fn empty_trash(database: &Connection) -> Result<Value, String> {
         .execute("DELETE FROM memos WHERE is_deleted = 1", [])
         .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
-    enqueue_change(database, "memo.emptyTrash", "trash", &json!({ "memoIds": memo_ids }))?;
+    enqueue_change(
+        database,
+        "memo.emptyTrash",
+        "trash",
+        &json!({ "memoIds": memo_ids }),
+    )?;
     Ok(json!({ "ok": true, "deleted": deleted }))
 }
 
