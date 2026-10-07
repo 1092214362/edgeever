@@ -486,6 +486,11 @@ export interface PluginContext {
             resourceId: string;
             filename: string;
         }>;
+        transcribeMedia(media: Blob, options?: {
+            signal?: AbortSignal;
+        }): Promise<{
+            text: string;
+        }>;
     };
     notes: {
         query(input?: PluginNoteQuery): Promise<PluginNoteQueryResult>;

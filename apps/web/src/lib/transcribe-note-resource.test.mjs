@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { ALL_FORMATS, BufferSource, Input } from "mediabunny";
-import { extractAudioParts, testSpeechService, transcribePreparedAudioParts } from "./transcribe-note-resource.ts";
+import { extractAudioParts, testSpeechService, transcribeMediaBlob, transcribePreparedAudioParts } from "./transcribe-note-resource.ts";
 import { SpeechProviderReachabilityError } from "./speech-transcription-error.ts";
 
 const fixturePath = fileURLToPath(new URL("./fixtures/transcription-video.mp4", import.meta.url));
@@ -50,6 +50,53 @@ describe("client-side note media preparation", () => {
     expect(await input.getPrimaryAudioTrack()).not.toBeNull();
     expect(await input.getPrimaryVideoTrack()).toBeNull();
     input.dispose();
+  });
+
+  test.each([
+    ["transcription-audio.mp3", "audio/mpeg"],
+    ["transcription-video.mp4", "video/mp4"],
+  ])("transcribes a plugin-supplied %s locally without uploading it", async (filename, mediaType) => {
+    const bytes = await readFile(fileURLToPath(new URL(`./fixtures/${filename}`, import.meta.url)));
+    const source = new File([bytes], filename, { type: mediaType });
+    const requests = [];
+    const controller = new AbortController();
+    const result = await transcribeMediaBlob(source, controller.signal, {
+      getSettings: async () => ({
+        enabled: true,
+        encryptionConfigured: true,
+        readOnly: false,
+        defaultModelId: "model-1",
+        providers: [{
+          id: "provider-1",
+          provider: "openai-compatible",
+          displayName: "Speech",
+          baseUrl: "https://speech.example/v1",
+          isEnabled: true,
+          hasApiKey: true,
+          models: [{ id: "model-1", providerId: "provider-1", modelId: "whisper-1", displayName: "Whisper" }],
+        }],
+      }),
+      getCredential: async (providerId, signal) => {
+        requests.push({ kind: "credential", providerId, signal });
+        return { apiKey: "test-token" };
+      },
+      providerFetch: async (url, init) => {
+        requests.push({ kind: "provider", url: String(url), init });
+        return Response.json({ text: "Recognized speech" });
+      },
+    });
+    expect(result).toEqual({ text: "Recognized speech" });
+    expect(requests.map(({ kind }) => kind)).toEqual(["credential", "provider"]);
+    expect(requests[0]).toMatchObject({ providerId: "provider-1", signal: controller.signal });
+    expect(requests[1].url).toBe("https://speech.example/v1/audio/transcriptions");
+    expect(requests[1].init.signal.aborted).toBe(false);
+    expect(requests[1].init.headers.Authorization).toBe("Bearer test-token");
+    expect(requests[1].init.body.get("model")).toBe("whisper-1");
+    const submittedAudio = requests[1].init.body.get("file");
+    expect(submittedAudio).toBeInstanceOf(File);
+    expect(submittedAudio.type).toStartWith("audio/");
+    controller.abort();
+    expect(requests[1].init.signal.aborted).toBe(true);
   });
 
   test.each([

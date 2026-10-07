@@ -498,6 +498,7 @@ export interface PluginContext {
     status(): Promise<{ configured: boolean; modelName?: string }>;
     generate(input: { system: string; prompt: string; maxOutputTokens?: number; signal?: AbortSignal }): Promise<{ text: string }>;
     transcribeResource(noteId: string, resourceId: string): Promise<{ text: string; resourceId: string; filename: string }>;
+    transcribeMedia(media: Blob, options?: { signal?: AbortSignal }): Promise<{ text: string }>;
   };
   notes: {
     query(input?: PluginNoteQuery): Promise<PluginNoteQueryResult>;

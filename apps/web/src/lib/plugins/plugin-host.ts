@@ -1091,6 +1091,15 @@ export class EdgeEverPluginHost {
           lifetime.signal.throwIfAborted();
           return result;
         },
+        transcribeMedia: async (media, options) => {
+          assertPermission(manifest, 'ai:generate');
+          lifetime.signal.throwIfAborted();
+          const signal = AbortSignal.any([lifetime.signal, ...(options?.signal ? [options.signal] : [])]);
+          const { transcribeMediaBlob } = await import("@/lib/transcribe-note-resource");
+          const result = await transcribeMediaBlob(media, signal);
+          signal.throwIfAborted();
+          return result;
+        },
       },
       notes: {
         query: async (input = {}) => {
