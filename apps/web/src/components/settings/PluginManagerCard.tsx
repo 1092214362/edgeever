@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -651,10 +650,9 @@ export const PluginManagerCard = ({
           />
         ) : null}
         <Dialog open={submissionOpen} onOpenChange={setSubmissionOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>{t("plugins.marketplace.submissionTitle")}</DialogTitle>
-              <DialogDescription className="leading-5">{t("plugins.marketplace.submissionHint")}</DialogDescription>
             </DialogHeader>
             <a
               href={communityReadmeUrl}
