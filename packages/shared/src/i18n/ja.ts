@@ -2057,7 +2057,6 @@ export const ja = {
     },
     placeholder: "スペースで AI · / コマンド · @ ノート",
     placeholderCommands: "/ コマンド · @ ノート",
-    dragHandle: "ブロックをドラッグ",
     noteBodyAria: "ノート本文",
     markdownSourceAria: "Markdown ソース",
     richTableSourceProtection: "この表のセルには Markdown で完全に表現できないリッチテキスト構造があります。直前の変更は適用されませんでした。この構造はリッチテキスト表示で編集してください。セル以外のソースは編集できます。",

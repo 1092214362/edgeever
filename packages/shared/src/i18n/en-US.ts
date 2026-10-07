@@ -2057,7 +2057,6 @@ export const enUS = {
     },
     placeholder: "space for AI · / commands · @ notes",
     placeholderCommands: "/ commands · @ notes",
-    dragHandle: "Drag block",
     noteBodyAria: "Note body",
     markdownSourceAria: "Markdown source",
     richTableSourceProtection: "This table cell has rich content that Markdown cannot fully represent. The last change was not applied. Edit this structure in rich text view; source outside the cell remains editable.",

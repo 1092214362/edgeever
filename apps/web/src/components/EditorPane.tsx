@@ -105,7 +105,6 @@ import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { MathFormulaDialog } from "./dialogs/MathFormulaDialog";
 import { AttachmentTranscriptDialog } from "./dialogs/AttachmentTranscriptDialog";
 import { SpeechProviderReachabilityError } from "@/lib/speech-transcription-error";
-import { EditorBlockDragHandle } from "./editor/EditorBlockDragHandle";
 import {
   applyMathFormula,
   deleteMathFormula,
@@ -4339,9 +4338,6 @@ const RichEditorPane = ({
                     onAsk={() => requestSelectionAi("ask")}
                   />
                 </BubbleMenu>
-                {!isMobileViewport && !effectiveReadOnly && isEditorReady(editor) ? (
-                  <EditorBlockDragHandle editor={editor} />
-                ) : null}
                 <EditorContent editor={editor} />
               </div>
             )}

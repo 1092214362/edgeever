@@ -2057,7 +2057,6 @@ export const pl = {
     },
     placeholder: "spacja: AI · /: polecenia · @: notatki",
     placeholderCommands: "/: polecenia · @: notatki",
-    dragHandle: "Przeciągnij blok",
     noteBodyAria: "Treść notatki",
     markdownSourceAria: "Źródło Markdown",
     richTableSourceProtection: "Ta komórka tabeli zawiera sformatowaną treść, której Markdown nie potrafi w pełni odwzorować. Ostatnia zmiana nie została zastosowana. Edytuj tę strukturę w widoku tekstu sformatowanego; źródło poza komórką nadal można edytować.",
