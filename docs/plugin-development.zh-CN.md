@@ -598,9 +598,13 @@ const result = await context.ai.generate({
   maxOutputTokens: 1000,
   signal: controller.signal,
 });
+const transcript = await context.ai.transcribeResource(noteId, resourceId);
+// { text, resourceId, filename }。附件必须已属于该笔记；不接受在线视频 URL。
 ```
 
 `system` 最多 8,000 字符，`prompt` 最多 90,000 字符。`maxOutputTokens` 必须是正整数，省略时默认 3,000；宿主不设置输出 token 的最大值。生成最长 120 秒。模型或供应商可能有自己的限制，也可能因可用额度不足拒绝请求。后端要求交互式用户会话，公开演示模式禁用 AI，供应商错误脱敏。每个后端实例对每工作区的 AI 调用设置四路并发保护，不是分布式配额。模型费用沿用已配置供应商的计费；停用插件会中止其调用。
+
+`transcribeResource` 仅识别当前工作区笔记中已上传、大小不超过 24 MiB 的音视频附件；实例读取附件并发送给用户配置的语音模型服务。插件拿到文本后自行决定如何展示或写入笔记。它不解析 URL、不下载第三方媒体，也不向插件返回语音模型密钥。
 
 默认的 `network.fetch(url, init)` 是受信任的浏览器请求，可以访问任意 HTTP／HTTPS 地址，使用任意方法、正文、`Authorization` 等请求头以及调用方指定的浏览器凭据模式；它仍受所在运行时的 CORS 与 Cookie 策略约束。`networkHosts` 仅为兼容旧版保留，不是安全边界。需要无凭据读取跨域公开订阅或 API 时，显式选择 `transport: "public"` 即可；列出 `network` 和 `network:public` 仍有助于披露用途，但不是必需条件：
 

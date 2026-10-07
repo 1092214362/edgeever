@@ -598,9 +598,13 @@ const result = await context.ai.generate({
   maxOutputTokens: 1000,
   signal: controller.signal,
 });
+const transcript = await context.ai.transcribeResource(noteId, resourceId);
+// { text, resourceId, filename }. The attachment must already belong to the note; online video URLs are not accepted.
 ```
 
 `system` is limited to 8,000 characters and `prompt` to 90,000. `maxOutputTokens` must be a positive integer and defaults to 3,000 when omitted; the host does not impose a maximum output-token value. Generation is limited to 120 seconds. The model or provider may impose its own limit or reject a request based on available credits. The backend requires an interactive user session, disables AI in public demo mode, and redacts provider errors. AI calls have a four-request per-workspace guard in each backend instance; this is not a distributed quota. Model charges follow the configured provider. Plugin deactivation aborts outstanding calls.
+
+`transcribeResource` accepts only audio or video attachments already uploaded to a note in the current workspace, up to 24 MiB. The instance reads the attachment and sends it to the user's configured speech model service. The plugin receives text and decides how to display or save it. This API does not resolve URLs, download third-party media, or expose speech model credentials to plugins.
 
 The default `network.fetch(url, init)` transport is a trusted browser request. It accepts arbitrary HTTP/HTTPS destinations, methods, bodies, request headers such as `Authorization`, and the requested browser credential mode. It remains subject to the runtime browser's CORS and cookie policy. `networkHosts` is legacy descriptive metadata and is not a security boundary. To read a cross-origin public feed or API without credentials, explicitly select `transport: "public"`; listing `network` and `network:public` remains useful disclosure but is optional.
 

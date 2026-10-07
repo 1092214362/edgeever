@@ -481,6 +481,11 @@ export interface PluginContext {
         }): Promise<{
             text: string;
         }>;
+        transcribeResource(noteId: string, resourceId: string): Promise<{
+            text: string;
+            resourceId: string;
+            filename: string;
+        }>;
     };
     notes: {
         query(input?: PluginNoteQuery): Promise<PluginNoteQueryResult>;

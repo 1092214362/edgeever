@@ -107,6 +107,37 @@ const validSettings = {
 };
 
 describe("AI route contracts", () => {
+  test("speech settings stay encrypted and transcription requires a note-owned resource", async () => {
+    const app = createApp();
+    const { environment: databaseEnvironment } = createDatabaseEnvironment();
+    const saved = await app.request(
+      "/api/v1/ai/transcription-providers",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...validSettings, initialModelId: "whisper-1" }),
+      },
+      databaseEnvironment,
+    );
+    expect(saved.status).toBe(201);
+    expect(JSON.stringify(await saved.json())).not.toContain("secret");
+
+    const transcript = await app.request(
+      "/api/v1/memos/missing/resources/missing/transcribe",
+      { method: "POST" },
+      databaseEnvironment,
+    );
+    expect(transcript.status).toBe(404);
+
+    const scopedApp = createApp({ currentAuth: { ...auth, kind: "agent", scopes: ["read:resources"] } });
+    const denied = await scopedApp.request(
+      "/api/v1/memos/missing/resources/missing/transcribe",
+      { method: "POST" },
+      databaseEnvironment,
+    );
+    expect(denied.status).toBe(403);
+  });
+
   test("accepts the shared semantic action catalog with required parameters", () => {
     for (const action of AI_ACTIONS) {
       const parsed = AiGenerateSchema.safeParse({

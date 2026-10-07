@@ -103,6 +103,7 @@ import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { MathFormulaDialog } from "./dialogs/MathFormulaDialog";
+import { AttachmentTranscriptDialog } from "./dialogs/AttachmentTranscriptDialog";
 import { EditorBlockDragHandle } from "./editor/EditorBlockDragHandle";
 import {
   applyMathFormula,
@@ -497,6 +498,14 @@ const RichEditorPane = ({
     canRemove: false,
   });
   const [mathFormulaOpen, setMathFormulaOpen] = useState(false);
+  const [attachmentTranscript, setAttachmentTranscript] = useState<{
+    memoId: string;
+    filename: string;
+    text: string;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
+  const attachmentTranscriptAbortRef = useRef<AbortController | null>(null);
   const [mathFormulaDraft, setMathFormulaDraft] = useState<MathFormulaDraft | null>(null);
   const {
     menuTarget: resourceMenuTarget,
@@ -1821,6 +1830,11 @@ const RichEditorPane = ({
   }, [memo?.id, isMarkdownMode, resetResourceActions]);
 
   useEffect(() => () => {
+    attachmentTranscriptAbortRef.current?.abort();
+    attachmentTranscriptAbortRef.current = null;
+  }, [memo?.id]);
+
+  useEffect(() => () => {
     if (resourceMenuHideTimerRef.current !== null) {
       window.clearTimeout(resourceMenuHideTimerRef.current);
     }
@@ -3115,6 +3129,30 @@ const RichEditorPane = ({
     downloadResourceDirectly(target);
   }, [clearResourceActionError, downloadResourceDirectly, hideResourceMenu]);
 
+  const handleResourceTranscribe = useCallback(async (target: ResourceMenuTarget) => {
+    const currentMemoId = memoRef.current?.id;
+    if (!currentMemoId || !target.resourceId) return;
+    attachmentTranscriptAbortRef.current?.abort();
+    const controller = new AbortController();
+    attachmentTranscriptAbortRef.current = controller;
+    hideResourceMenu();
+    setAttachmentTranscript({ memoId: currentMemoId, filename: target.filename, text: "", loading: true, error: null });
+    try {
+      const result = await api.transcribeNoteResource(currentMemoId, target.resourceId, controller.signal);
+      if (attachmentTranscriptAbortRef.current !== controller) return;
+      setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
+        ? { ...current, text: result.text, loading: false }
+        : current);
+    } catch (error) {
+      if (attachmentTranscriptAbortRef.current !== controller || controller.signal.aborted) return;
+      setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
+        ? { ...current, loading: false, error: error instanceof Error ? error.message : t("speechTranscription.recognizeFailed") }
+        : current);
+    } finally {
+      if (attachmentTranscriptAbortRef.current === controller) attachmentTranscriptAbortRef.current = null;
+    }
+  }, [hideResourceMenu, t]);
+
   const handleResourceSaveAs = useCallback(async (target: ResourceMenuTarget) => {
     hideResourceMenu();
     clearResourceActionError();
@@ -3602,6 +3640,7 @@ const RichEditorPane = ({
   const resourceMenuLabels = {
     download: t("editor.resourceActions.download"),
     saveAs: t("editor.resourceActions.saveAs"),
+    transcribe: t("editor.resourceActions.transcribe"),
     rename: t("editor.resourceActions.rename"),
     delete: t("editor.resourceActions.delete"),
     unavailable: t("editor.resourceActions.unavailable"),
@@ -4350,15 +4389,48 @@ const RichEditorPane = ({
               resourceMenuTarget.resourceId && !resourceMenuTarget.resourceId.startsWith("local_resource_")
             ))
           )}
+          canTranscribe={Boolean(
+            memo?.id &&
+            resourceMenuTarget.kind === "attachment" &&
+            resourceMenuTarget.resourceId &&
+            !resourceMenuTarget.resourceId.startsWith("local_resource_") &&
+            /\.(flac|mp3|mp4|mpeg|mpga|m4a|ogg|wav|webm)$/i.test(resourceMenuTarget.filename)
+          )}
           labels={resourceMenuLabels}
           onDownload={() => void handleResourceDownload(resourceMenuTarget)}
           onSaveAs={() => void handleResourceSaveAs(resourceMenuTarget)}
+          onTranscribe={() => void handleResourceTranscribe(resourceMenuTarget)}
           onRename={() => openResourceDialog("rename", resourceMenuTarget)}
           onDelete={() => openResourceDialog("delete", resourceMenuTarget)}
           onMouseEnter={cancelResourceMenuHide}
           onMouseLeave={scheduleResourceMenuHide}
         />
       )}
+
+      <AttachmentTranscriptDialog
+        open={Boolean(attachmentTranscript && attachmentTranscript.memoId === memo?.id)}
+        filename={attachmentTranscript?.filename ?? ""}
+        text={attachmentTranscript?.text ?? ""}
+        loading={attachmentTranscript?.loading ?? false}
+        error={attachmentTranscript?.error ?? null}
+        canInsert={Boolean(editor && editor.isEditable && !effectiveReadOnly && !useMarkdownSourceEditor && !useMobilePlainTextEditor)}
+        onOpenChange={(open) => {
+          if (!open) {
+            attachmentTranscriptAbortRef.current?.abort();
+            attachmentTranscriptAbortRef.current = null;
+            setAttachmentTranscript(null);
+          }
+        }}
+        onInsert={() => {
+          if (!editor || !attachmentTranscript?.text || attachmentTranscript.memoId !== memo?.id) return;
+          const paragraphs = attachmentTranscript.text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+          editor.chain().focus().insertContentAt(editor.state.doc.content.size, [
+            { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: t("speechTranscription.resultTitle") }] },
+            ...paragraphs.map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })),
+          ]).run();
+          setAttachmentTranscript(null);
+        }}
+      />
 
       <EditorResourceDialogs
         dialog={resourceDialog}

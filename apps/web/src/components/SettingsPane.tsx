@@ -37,6 +37,7 @@ import { PasswordCard } from "./settings/PasswordCard";
 import { UserManagementCard } from "./settings/UserManagementCard";
 import { ObjectStorageCard } from "./settings/ObjectStorageCard";
 import { AiModelCard } from "./settings/AiModelCard";
+import { SpeechTranscriptionCard } from "./settings/SpeechTranscriptionCard";
 import { DesktopAcpAgentCard } from "./settings/DesktopAcpAgentCard";
 import { ThemeToggle } from "./ThemeToggle";
 import type { AuthUser } from "@edgeever/shared";
@@ -234,6 +235,7 @@ export const SettingsPane = ({
           <SettingsGroup>
             <DesktopAcpAgentCard />
             <AiModelCard />
+            <SpeechTranscriptionCard demoMode={demoMode} />
           </SettingsGroup>
         );
       case "mcp":

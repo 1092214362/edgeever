@@ -4,9 +4,13 @@ On a YouTube or Bilibili watch page, the user chooses **Save video note to EdgeE
 
 Supported pages are ordinary YouTube videos and Shorts, and ordinary Bilibili videos including multipart videos. Live streams, series, courses, and other pages do not create video notes. Without captions, the note contains source information and a **No captions available for this video** message. It does not start speech transcription. Video notes have no command to extract captions again and do not download videos or audio tracks from external platforms.
 
-## Withdrawn speech transcription design: technical notes
+## Speech transcription for note attachments
 
-The following records the important design choices of an unreleased proposal for possible future evaluation of authorized use. **It does not describe current product behavior or a planned feature.** The withdrawn scope includes external audio retrieval, browser session reuse, automatic yt-dlp installation and updates, video transcription jobs, speech model settings, and desktop polling.
+Users can explicitly transcribe an audio or MP4/WebM video attachment already uploaded to a note. A workspace configures an OpenAI-compatible speech provider and default model. The API accepts only a note ID and an attachment ID belonging to that note; it does not accept a media URL. Attachments are limited to 24 MiB, and provider credentials remain encrypted on the instance. The EdgeEver instance reads the attachment and sends it to the configured `/audio/transcriptions` service. The result is shown for copying or insertion into the current note. Plugins can use the same capability through `context.ai.transcribeResource(noteId, resourceId)`.
+
+## Withdrawn external media retrieval design: technical notes
+
+The following records an unreleased external media retrieval design for possible future evaluation of authorized use. **It does not describe current product behavior or a planned feature.** The withdrawn scope includes external audio retrieval, browser session reuse, automatic yt-dlp installation and updates, external video transcription jobs, and desktop polling. Note attachment transcription above is a separate implementation.
 
 ### Jobs and data boundaries
 
@@ -18,7 +22,7 @@ The following records the important design choices of an unreleased proposal for
 
 - The proposed design checked an HTTPS source against a platform allowlist, then used yt-dlp locally to select only the best audio track, without saving video. It limited known duration to roughly 30 minutes, audio to roughly 24 MiB, and both download and transcription time. Temporary audio was deleted after the job. Resource limits do not grant copyright permission.
 - The standalone yt-dlp executable came from its releases and was checked against SHA-256; the desktop client checked for updates in the background. Optional `--cookies-from-browser` reused a local browser session, with the browser choice stored only on that device. This widened the range of accessible media; local execution did not establish permission from a platform or rights holder.
-- A workspace could configure speech providers, models, and a default model. API tokens were stored encrypted on the instance and not returned by settings reads. An authenticated desktop client obtained credentials when running a job and sent audio directly to the user's chosen OpenAI-compatible `/audio/transcriptions` endpoint. Audio bypassed the note server but reached the model service, which would require clear disclosure.
+- The old design let an authenticated desktop client obtain speech credentials and send audio directly to the chosen OpenAI-compatible `/audio/transcriptions` endpoint. Current attachment transcription sends media from the EdgeEver instance, so the old claim that audio bypasses the note server no longer applies.
 - Segments with timestamps became transcript links back to the source; a plain-text-only response became a text block. Failures recorded error codes without writing API tokens to diagnostics.
 
 Any future revival should first establish content rights, platform terms, target markets, and the transcription provider's data handling, then redesign the entry point and verification scope. The retrieval path above should not simply be re-enabled.
