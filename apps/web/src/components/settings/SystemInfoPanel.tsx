@@ -30,6 +30,51 @@ export type SystemInfoItem = {
   colSpan?: "full" | "two" | "double-sm";
   status?: "connected" | "connecting" | "failed" | "warning" | "error" | "default";
   localOnly?: boolean;
+  breakAll?: boolean;
+};
+
+type YtDlpStatus = {
+  state: "idle" | "checking" | "downloading" | "ready" | "failed";
+  version: string | null;
+  path: string;
+  errorCode: string | null;
+  httpStatus: number | null;
+};
+
+const ytDlpReason = (
+  t: (key: string, options?: Record<string, string>) => string,
+  status: YtDlpStatus,
+) => {
+  if (!status.errorCode) return "";
+  if (status.errorCode === "http") {
+    return t("systemInfo.ytDlpErrors.http", { status: String(status.httpStatus ?? "") });
+  }
+  const key = `systemInfo.ytDlpErrors.${status.errorCode}`;
+  const translated = t(key);
+  return translated === key ? t("systemInfo.ytDlpFailed") : translated;
+};
+
+const ytDlpVersionValue = (
+  t: (key: string, options?: Record<string, string>) => string,
+  status: YtDlpStatus | undefined,
+) => {
+  if (!status || status.state === "idle" || status.state === "checking") {
+    return status?.version || t("systemInfo.ytDlpMissing");
+  }
+  const reason = ytDlpReason(t, status);
+  if (status.state === "downloading") {
+    return status.version
+      ? t("systemInfo.ytDlpUpdating", { version: status.version })
+      : t("systemInfo.ytDlpDownloading");
+  }
+  if (status.state === "failed") return reason || t("systemInfo.ytDlpFailed");
+  if (status.errorCode && status.version) {
+    return t("systemInfo.ytDlpUpdateFailed", {
+      version: status.version,
+      reason: reason || t("systemInfo.ytDlpFailed"),
+    });
+  }
+  return status.version || t("systemInfo.ytDlpMissing");
 };
 
 type InstanceSystemDiagnostics = Pick<InstanceHealth, "build" | "containerImageSource" | "deployment" | "deploymentVersionCreatedAt" | "migration" | "objectStorageProvider" | "storage"> & {
@@ -311,6 +356,13 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
     refetchInterval: (query) => query.state.data?.state === "available" ? 1_000 : false,
     retry: 1,
   });
+  const ytDlpStatusQuery = useQuery({
+    queryKey: ["desktop-yt-dlp-status"],
+    queryFn: () => desktopBridge!.ytDlpStatus(),
+    enabled: active && desktopAvailable,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
   useEffect(() => {
     if (active) markSeen();
   }, [active, markSeen]);
@@ -348,6 +400,28 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
       ? syncDiagnosticsQuery.data.error + syncDiagnosticsQuery.data.conflict
       : null;
 
+    if (desktopAvailable) {
+      const clientGroup = groups.find((group) => group.id === "client");
+      const ytDlpStatus = ytDlpStatusQuery.data;
+      clientGroup?.items.push(
+        {
+          label: t("systemInfo.ytDlpVersion"),
+          value: ytDlpStatusQuery.isError ? t("systemInfo.ytDlpFailed") : ytDlpVersionValue(t, ytDlpStatus),
+          mono: true,
+          status: ytDlpStatusQuery.isError || ytDlpStatus?.state === "failed" || (ytDlpStatus?.state === "ready" && ytDlpStatus.errorCode)
+            ? "failed"
+            : "default",
+        },
+        {
+          label: t("systemInfo.ytDlpPath"),
+          value: ytDlpStatus?.path || t("systemInfo.unknown"),
+          mono: true,
+          colSpan: "full",
+          localOnly: true,
+          breakAll: true,
+        },
+      );
+    }
     groups.push({
       id: "connection",
       title: t("systemInfo.connectionSection"),
@@ -396,6 +470,8 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
     syncDiagnosticsQuery.data,
     t,
     viewportRevision,
+    ytDlpStatusQuery.data,
+    ytDlpStatusQuery.isError,
   ]);
   const releaseTag = release ? getReleaseTagForVersion(release.version) : null;
   const releaseUrl = releaseTag
@@ -586,6 +662,7 @@ export const SystemInfoPanel = ({ active = true }: { active?: boolean }) => {
                         className={cn(
                           "break-words text-xs leading-5",
                           item.mono ? "font-mono font-medium" : "font-sans font-medium",
+                          item.breakAll && "break-all",
                           item.status === "failed" || item.status === "error"
                             ? "font-semibold text-rose-600"
                             : item.status === "warning"

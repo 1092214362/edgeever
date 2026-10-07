@@ -37,6 +37,19 @@ describe("system information diagnostic fields", () => {
     expect(feedbackSource).toContain("clientRuntime: clientRuntimeQuery.data");
   });
 
+  test("shows the desktop yt-dlp version and local path", () => {
+    expect(source).toContain('t("systemInfo.ytDlpVersion")');
+    expect(source).toContain('t("systemInfo.ytDlpPath")');
+    expect(source).toContain("desktopBridge!.ytDlpStatus()");
+    expect(source).toContain("ytDlpVersionValue");
+    expect(source).toContain("localOnly: true");
+    expect(source).toContain("breakAll: true");
+    expect(source).toContain("desktopAvailable");
+    expect(source).toContain('t("systemInfo.ytDlpMissing")');
+    expect(source).toContain("refetchInterval: 30_000");
+    expect(source).not.toContain('ytDlpStatus?.state === "downloading"');
+  });
+
   test("includes current screen resolution", () => {
     expect(source).toContain('t("systemInfo.screenResolution")');
     expect(source).toContain('t("systemInfo.screenResolutionValue", parts)');

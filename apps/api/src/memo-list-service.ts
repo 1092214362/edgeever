@@ -6,6 +6,7 @@ import {
   getDiagramSummary,
   getInfographicSummary,
   getTableSummary,
+  getVideoNoteSummary,
   type MemoSummary,
 } from "@edgeever/shared";
 import { clampNumber, parseJsonArray } from "./entity-utils";
@@ -74,6 +75,7 @@ export const mapMemoSummary = (row: MemoSummaryRow): MemoSummary => ({
   ...getDiagramSummary(row.content_markdown),
   ...getInfographicSummary(row.content_markdown),
   ...getTableSummary(row.content_markdown),
+  ...getVideoNoteSummary(row.content_markdown),
   tags: parseJsonArray(row.tags_json),
   isPinned: Boolean(row.is_pinned),
   isArchived: Boolean(row.is_archived),
