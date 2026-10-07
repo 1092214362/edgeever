@@ -16,6 +16,7 @@ import {
   type OutputFormat,
 } from "mediabunny";
 import { api, directProviderFetch } from "./api";
+import { SpeechProviderReachabilityError } from "./speech-transcription-error";
 
 const MAX_SOURCE_BYTES = 1024 * 1024 * 1024;
 const MAX_PROVIDER_FILE_BYTES = 24_000_000;
@@ -196,9 +197,9 @@ export async function transcribePreparedAudioParts(
       });
     } catch {
       if (signal?.aborted) signal.throwIfAborted();
-      throw new Error(typeof window !== "undefined" && window.edgeeverDesktop?.isAvailable
-        ? "Could not reach the speech provider directly. Check the provider URL and network connection."
-        : "Could not reach the speech provider directly. Check its browser CORS policy or network connection.");
+      throw new SpeechProviderReachabilityError(
+        typeof window !== "undefined" && window.edgeeverDesktop?.isAvailable ? "desktop" : "browser",
+      );
     }
     if (!response.ok) throw new Error(`The speech provider returned HTTP ${response.status}.`);
     const result = await response.json().catch(() => null) as { text?: unknown } | null;

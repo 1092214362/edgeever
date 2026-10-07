@@ -10,6 +10,9 @@ Users can explicitly transcribe an audio or MP4/WebM video attachment already up
 
 When adding a service, users can test the unsaved URL, model ID, and token. When editing, they can select an existing model and test with either the stored token or a replacement. The current client sends a short bundled speech sample directly to the model service and shows its returned transcript. Testing does not save the form and may incur a small provider charge. Browser CORS limitations are the same as for normal transcription.
 
+When a browser cannot establish a direct connection, the client can only report an incomplete check; this does not establish that the token, model, or speech endpoint is invalid. If the provider blocks cross-origin requests, test in the desktop app. Do not relay the transcription request through the instance merely to make the browser test pass.
+"OpenAI-compatible" describes an API shape and does not guarantee that the provider implements `/audio/transcriptions`. Once the desktop app avoids the browser CORS restriction, a real short-speech request is still needed to verify that endpoint and the selected model.
+
 ## Withdrawn external media retrieval design: technical notes
 
 The following records an unreleased external media retrieval design for possible future evaluation of authorized use. **It does not describe current product behavior or a planned feature.** The withdrawn scope includes external audio retrieval, browser session reuse, automatic yt-dlp installation and updates, external video transcription jobs, and desktop polling. Note attachment transcription above is a separate implementation.

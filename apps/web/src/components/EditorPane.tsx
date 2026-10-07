@@ -104,6 +104,7 @@ import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { MathFormulaDialog } from "./dialogs/MathFormulaDialog";
 import { AttachmentTranscriptDialog } from "./dialogs/AttachmentTranscriptDialog";
+import { SpeechProviderReachabilityError } from "@/lib/speech-transcription-error";
 import { EditorBlockDragHandle } from "./editor/EditorBlockDragHandle";
 import {
   applyMathFormula,
@@ -3153,7 +3154,10 @@ const RichEditorPane = ({
     } catch (error) {
       if (attachmentTranscriptAbortRef.current !== controller || controller.signal.aborted) return;
       setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
-        ? { ...current, loading: false, error: error instanceof Error ? error.message : t("speechTranscription.recognizeFailed") }
+        ? { ...current, loading: false, error: error instanceof SpeechProviderReachabilityError
+          ? t(error.platform === "browser"
+            ? "speechTranscription.browserDirectUnavailable" : "speechTranscription.desktopDirectUnavailable")
+          : error instanceof Error ? error.message : t("speechTranscription.recognizeFailed") }
         : current);
     } finally {
       if (attachmentTranscriptAbortRef.current === controller) attachmentTranscriptAbortRef.current = null;

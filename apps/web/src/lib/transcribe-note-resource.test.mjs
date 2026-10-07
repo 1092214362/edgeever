@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { ALL_FORMATS, BufferSource, Input } from "mediabunny";
 import { extractAudioParts, testSpeechService, transcribePreparedAudioParts } from "./transcribe-note-resource.ts";
+import { SpeechProviderReachabilityError } from "./speech-transcription-error.ts";
 
 const fixturePath = fileURLToPath(new URL("./fixtures/transcription-video.mp4", import.meta.url));
 
@@ -82,6 +83,19 @@ describe("client-side note media preparation", () => {
     expect(requests[1].url).toBe("https://speech.example/v1/audio/transcriptions");
     expect(requests[1].init.body.get("file")).toBeInstanceOf(File);
     expect(requests[1].init.body.get("model")).toBe("whisper-1");
+  });
+
+  test("a browser transport failure does not claim the token or model is invalid", async () => {
+    async function* parts() { yield new File(["audio"], "sample.mp3", { type: "audio/mpeg" }); }
+    await expect(transcribePreparedAudioParts(
+      { baseUrl: "https://speech.example/v1", modelId: "whisper-1", apiKey: "test-token" },
+      parts(),
+      async () => { throw new TypeError("Failed to fetch"); },
+    )).rejects.toMatchObject({
+      code: "speech_provider_direct_unreachable",
+      platform: "browser",
+    });
+    expect(new SpeechProviderReachabilityError("browser").message).not.toMatch(/token|model/i);
   });
 
   test("sends each prepared segment directly to the configured speech endpoint", async () => {

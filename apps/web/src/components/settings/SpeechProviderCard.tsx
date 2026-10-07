@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
+import { SpeechProviderReachabilityError } from "@/lib/speech-transcription-error";
 
 export const SpeechProviderCard = ({
   provider: saved,
@@ -322,7 +323,10 @@ export const SpeechProviderCard = ({
             ) : null}
             {testMutation.isError ? (
               <p className="text-xs font-medium text-rose-600" role="alert">
-                {aiErrorMessage(testMutation.error, t("speechTranscription.testFailed"), t("aiModel.encryptionKeyMissing"), t("speechTranscription.savedCredentialsUnavailable"))}
+                {testMutation.error instanceof SpeechProviderReachabilityError
+                  ? t(testMutation.error.platform === "browser"
+                    ? "speechTranscription.browserDirectUnavailable" : "speechTranscription.desktopDirectUnavailable")
+                  : aiErrorMessage(testMutation.error, t("speechTranscription.testFailed"), t("aiModel.encryptionKeyMissing"), t("speechTranscription.savedCredentialsUnavailable"))}
               </p>
             ) : null}
             {saveMutation.isError ? (
