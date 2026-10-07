@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { resolvePrimaryAiCredentialEncryptionKey } from "./ai-service.ts";
 import { encryptSecret } from "./secret-encryption.ts";
-import { isTranscribableAttachment, transcribeNoteResource } from "./resource-transcription.ts";
+import { isTranscribableAttachment, prepareNoteResourceTranscription } from "./resource-transcription.ts";
 
 const makeEnvironment = async (resource) => {
   const env = {
     EDGE_EVER_AUTH_PASSWORD: "test-password-long-enough",
     storage: {
       resources: {
-        get: async () => ({ body: new Blob(["audio bytes"]).stream() }),
+        get: async () => { throw new Error("The instance must not read media bytes"); },
       },
       db: {
         prepare: (sql) => ({
@@ -21,7 +21,6 @@ const makeEnvironment = async (resource) => {
                 base_url: "https://speech.example/v1",
                 api_key_encrypted: await encryptSecret("secret-token", resolvePrimaryAiCredentialEncryptionKey(env)),
               };
-              if (sql.includes("FROM object_storage_configs")) return { id: "builtin", provider: "builtin" };
               return null;
             },
           }),
@@ -51,25 +50,21 @@ describe("note attachment transcription boundary", () => {
     expect(isTranscribableAttachment({ ...resource, kind: "image" })).toBe(false);
   });
 
-  test("rejects an attachment from another note before reading it", async () => {
+  test("rejects an attachment from another note before returning credentials", async () => {
     const env = await makeEnvironment(resource);
-    await expect(transcribeNoteResource(env, "ws_one", "memo_other", "res_one", () => {
-      throw new Error("Provider must not be called");
-    })).rejects.toMatchObject({ code: "resource_not_found", status: 404 });
+    await expect(prepareNoteResourceTranscription(env, "ws_one", "memo_other", "res_one"))
+      .rejects.toMatchObject({ code: "resource_not_found", status: 404 });
   });
 
-  test("sends only the note attachment to the configured model and returns text", async () => {
+  test("returns a direct model target without reading or forwarding media", async () => {
     const env = await makeEnvironment(resource);
-    const calls = [];
-    const result = await transcribeNoteResource(env, "ws_one", "memo_one", "res_one", async (url, init) => {
-      calls.push({ url, init });
-      return Response.json({ text: " Meeting notes. " });
+    const result = await prepareNoteResourceTranscription(env, "ws_one", "memo_one", "res_one");
+    expect(result).toEqual({
+      baseUrl: "https://speech.example/v1",
+      modelId: "whisper-1",
+      apiKey: "secret-token",
+      resourceId: "res_one",
+      filename: "meeting.mp4",
     });
-    expect(result).toEqual({ text: "Meeting notes.", resourceId: "res_one", filename: "meeting.mp4" });
-    expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe("https://speech.example/v1/audio/transcriptions");
-    expect(calls[0].init.headers.Authorization).toBe("Bearer secret-token");
-    expect(calls[0].init.body.get("model")).toBe("whisper-1");
-    expect((await calls[0].init.body.get("file").text())).toBe("audio bytes");
   });
 });

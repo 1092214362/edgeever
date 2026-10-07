@@ -1086,7 +1086,8 @@ export class EdgeEverPluginHost {
           assertPermission(manifest, 'ai:generate');
           assertPermission(manifest, 'resources:read');
           lifetime.signal.throwIfAborted();
-          const result = await api.transcribeNoteResource(noteId, resourceId, lifetime.signal);
+          const { transcribeNoteResource } = await import("@/lib/transcribe-note-resource");
+          const result = await transcribeNoteResource(noteId, resourceId, lifetime.signal);
           lifetime.signal.throwIfAborted();
           return result;
         },

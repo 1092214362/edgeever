@@ -123,7 +123,7 @@ describe("AI route contracts", () => {
     expect(JSON.stringify(await saved.json())).not.toContain("secret");
 
     const transcript = await app.request(
-      "/api/v1/memos/missing/resources/missing/transcribe",
+      "/api/v1/memos/missing/resources/missing/transcription-target",
       { method: "POST" },
       databaseEnvironment,
     );
@@ -131,7 +131,7 @@ describe("AI route contracts", () => {
 
     const scopedApp = createApp({ currentAuth: { ...auth, kind: "agent", scopes: ["read:resources"] } });
     const denied = await scopedApp.request(
-      "/api/v1/memos/missing/resources/missing/transcribe",
+      "/api/v1/memos/missing/resources/missing/transcription-target",
       { method: "POST" },
       databaseEnvironment,
     );

@@ -952,9 +952,9 @@ export const createEdgeEverClient = (options: EdgeEverClientOptions = {}) => {
         body: JSON.stringify({ modelConfigId }),
       }),
 
-    transcribeNoteResource: (memoId: string, resourceId: string, signal?: AbortSignal) =>
-      request<{ text: string; resourceId: string; filename: string }>(
-        `/api/v1/memos/${encodeURIComponent(memoId)}/resources/${encodeURIComponent(resourceId)}/transcribe`,
+    prepareNoteResourceTranscription: (memoId: string, resourceId: string, signal?: AbortSignal) =>
+      request<{ baseUrl: string; modelId: string; apiKey: string; resourceId: string; filename: string }>(
+        `/api/v1/memos/${encodeURIComponent(memoId)}/resources/${encodeURIComponent(resourceId)}/transcription-target`,
         { method: "POST", signal },
       ),
 

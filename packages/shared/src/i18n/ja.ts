@@ -1210,11 +1210,12 @@ export const ja = {
     statusOff: "無効",
     resultTitle: "文字起こし結果",
     recognizing: "文字起こし中…",
+    recognizingProgress: "文字起こし中…音声の {{count}} セグメントが完了しました。",
     recognizeFailed: "文字起こしに失敗しました",
     copy: "テキストをコピー",
     copied: "コピーしました",
     insertIntoNote: "ノートに挿入",
-    attachmentNotice: "ノートにアップロード済みの音声・動画添付ファイルのみ文字起こしできます（最大 24 MiB）。添付ファイルは EdgeEver インスタンスを経由して設定したモデルサービスに送信されます。",
+    attachmentNotice: "ノートにアップロード済みの音声・動画添付ファイルのみ文字起こしできます。音声は端末上で抽出・分割され（各部分は最大 24 MB）、クライアントから設定したモデルサービスへ直接送信されます。モデルキーは現在ログイン中のクライアントに渡され、ブラウザーからの通信には提供元の CORS 対応も必要です。",
   },
   aiPrompts: {
     title: "プロンプトライブラリ",

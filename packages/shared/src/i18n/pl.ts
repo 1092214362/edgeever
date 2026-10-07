@@ -1210,11 +1210,12 @@ export const pl = {
     statusOff: "Wyłączone",
     resultTitle: "Transkrypcja",
     recognizing: "Trwa transkrypcja…",
+    recognizingProgress: "Trwa transkrypcja… Ukończono {{count}} segmentów dźwięku.",
     recognizeFailed: "Transkrypcja nie powiodła się",
     copy: "Kopiuj tekst",
     copied: "Skopiowano",
     insertIntoNote: "Wstaw do notatki",
-    attachmentNotice: "Transkrypcja działa tylko dla plików audio i wideo już dodanych do notatek (do 24 MiB). Załącznik jest wysyłany przez instancję EdgeEver do skonfigurowanej usługi modelu.",
+    attachmentNotice: "Transkrypcja działa tylko dla plików audio i wideo dodanych do notatek. Dźwięk jest wyodrębniany i dzielony na urządzeniu (do 24 MB na segment), a następnie wysyłany bezpośrednio z klienta do skonfigurowanej usługi modelu. Klucz modelu trafia do aktualnie zalogowanego klienta; przeglądarka wymaga też obsługi CORS przez dostawcę.",
   },
   aiPrompts: {
     title: "Biblioteka promptów",

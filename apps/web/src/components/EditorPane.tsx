@@ -503,6 +503,7 @@ const RichEditorPane = ({
     filename: string;
     text: string;
     loading: boolean;
+    completedSegments: number;
     error: string | null;
   } | null>(null);
   const attachmentTranscriptAbortRef = useRef<AbortController | null>(null);
@@ -3136,9 +3137,15 @@ const RichEditorPane = ({
     const controller = new AbortController();
     attachmentTranscriptAbortRef.current = controller;
     hideResourceMenu();
-    setAttachmentTranscript({ memoId: currentMemoId, filename: target.filename, text: "", loading: true, error: null });
+    setAttachmentTranscript({ memoId: currentMemoId, filename: target.filename, text: "", loading: true, completedSegments: 0, error: null });
     try {
-      const result = await api.transcribeNoteResource(currentMemoId, target.resourceId, controller.signal);
+      const { transcribeNoteResource } = await import("@/lib/transcribe-note-resource");
+      const result = await transcribeNoteResource(currentMemoId, target.resourceId, controller.signal, (completedSegments) => {
+        if (attachmentTranscriptAbortRef.current !== controller) return;
+        setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
+          ? { ...current, completedSegments }
+          : current);
+      });
       if (attachmentTranscriptAbortRef.current !== controller) return;
       setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
         ? { ...current, text: result.text, loading: false }
@@ -4412,6 +4419,7 @@ const RichEditorPane = ({
         filename={attachmentTranscript?.filename ?? ""}
         text={attachmentTranscript?.text ?? ""}
         loading={attachmentTranscript?.loading ?? false}
+        completedSegments={attachmentTranscript?.completedSegments ?? 0}
         error={attachmentTranscript?.error ?? null}
         canInsert={Boolean(editor && editor.isEditable && !effectiveReadOnly && !useMarkdownSourceEditor && !useMobilePlainTextEditor)}
         onOpenChange={(open) => {

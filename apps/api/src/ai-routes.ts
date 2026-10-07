@@ -68,7 +68,7 @@ import {
 } from "./video-outline";
 import { encryptSecret } from "./secret-encryption";
 import { listTagSummaries } from "./tag-service";
-import { transcribeNoteResource } from "./resource-transcription";
+import { prepareNoteResourceTranscription } from "./resource-transcription";
 
 type AiRouteDependencies = {
   isDemoMode: (environment: Bindings) => boolean;
@@ -252,21 +252,21 @@ export const registerAiRoutes = (app: Hono<AppEnv>, dependencies: AiRouteDepende
     return context.json(await readTranscriptionSettings(context, dependencies));
   });
 
-  app.post("/api/v1/memos/:memoId/resources/:resourceId/transcribe", async (context) => {
-    const denied = requireScopes(context, "read:resources", "ai:generate");
+  app.post("/api/v1/memos/:memoId/resources/:resourceId/transcription-target", async (context) => {
+    const denied = requireUser(context);
     if (denied) return denied;
     if (dependencies.isDemoMode(context.env)) {
       return forbidden(context, "Speech transcription is unavailable in demo mode.");
     }
     try {
-      return context.json(await transcribeNoteResource(
+      const target = await prepareNoteResourceTranscription(
         context.env,
         getWorkspaceId(context),
         context.req.param("memoId"),
         context.req.param("resourceId"),
-        fetch,
-        context.req.raw.signal,
-      ));
+      );
+      context.header("Cache-Control", "no-store");
+      return context.json(target);
     } catch (error) {
       return withAiError(context, error, "ai_transcription_failed");
     }

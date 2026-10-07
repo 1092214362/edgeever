@@ -8,6 +8,7 @@ export const AttachmentTranscriptDialog = ({
   filename,
   text,
   loading,
+  completedSegments,
   error,
   canInsert,
   onOpenChange,
@@ -17,6 +18,7 @@ export const AttachmentTranscriptDialog = ({
   filename: string;
   text: string;
   loading: boolean;
+  completedSegments: number;
   error: string | null;
   canInsert: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,7 +33,9 @@ export const AttachmentTranscriptDialog = ({
           <DialogTitle>{t("speechTranscription.resultTitle")}</DialogTitle>
         </DialogHeader>
         <p className="break-all text-xs text-slate-500">{filename}</p>
-        {loading ? <p className="text-sm" role="status">{t("speechTranscription.recognizing")}</p> : null}
+        {loading ? <p className="text-sm" role="status">{completedSegments > 0
+          ? t("speechTranscription.recognizingProgress", { count: completedSegments })
+          : t("speechTranscription.recognizing")}</p> : null}
         {error ? <p className="text-sm text-rose-600" role="alert">{error}</p> : null}
         {text ? (
           <>

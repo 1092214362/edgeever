@@ -1210,11 +1210,12 @@ export const zhCN = {
     statusOff: "未开启",
     resultTitle: "语音识别结果",
     recognizing: "正在识别音视频…",
+    recognizingProgress: "正在转写，已完成 {{count}} 段音频…",
     recognizeFailed: "语音识别失败",
     copy: "复制文本",
     copied: "已复制",
     insertIntoNote: "插入笔记",
-    attachmentNotice: "仅识别笔记内已上传的音视频附件（不超过 24 MiB）。识别时附件会经 EdgeEver 实例发送到您配置的模型服务。",
+    attachmentNotice: "仅转写笔记内已上传的音视频附件。音轨在本机提取并分段（每段不超过 24 MB），由客户端直接发送到您配置的模型服务。模型密钥会交给当前已登录客户端；浏览器直连还需模型服务支持跨域请求。",
   },
   aiPrompts: {
     title: "指令库",
