@@ -267,6 +267,7 @@ const imageNoteClient = (settings: ExtensionSettings): ImageNoteClient => ({
     form.append("title", body.title);
     form.append("contentMarkdown", body.contentMarkdown);
     form.append("tags", JSON.stringify(body.tags));
+    if (body.videoTranscript) form.append("videoTranscript", JSON.stringify(body.videoTranscript));
     form.append("file", new File([buffer], body.filename, { type: body.mimeType }));
     const created = await edgeEverFormRequest<{ memo: { id: string }; resourceId: string }>(
       settings,

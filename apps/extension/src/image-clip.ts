@@ -289,6 +289,14 @@ export type ImageNoteClient = {
     filename: string;
     mimeType: string;
     bytes: Uint8Array;
+    videoTranscript?: {
+      platform: "youtube" | "bilibili";
+      videoId: string;
+      sourceUrl: string;
+      durationSeconds: number;
+      placeholderText: string;
+      transcriptLabel: string;
+    };
   }) => Promise<{ memoId: string; resourceId: string }>;
 };
 
