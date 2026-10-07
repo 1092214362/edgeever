@@ -13,8 +13,8 @@
  * 3. Real cross-version upgrade to v1.3.0 with live ACP handshake validation, atomic swap,
  *    manifest persistence, and immediate fallback retention (v1.2.1 kept on disk).
  * 4. Version pruning lifecycle, confirming retention of active and fallback versions.
- * 5. Practical enforcement of the 500 MiB archive limit and 2 GiB extracted limits against
- *    real-world binary payloads.
+ * 5. Official archives exceed the former 300 MiB download limit; extracted payloads remain
+ *    below the former 1 GiB limit, with the 2 GiB limit providing room for future releases.
  */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -298,7 +298,7 @@ export async function runRealAcpAdapterCrossVersionVerification({
     const statHarness121 = statSync(path.join(versionRoot, "1.2.1", "localharness_external"));
     const totalExtracted121 = statBinary121.size + statHarness121.size;
     log(`  v1.2.1 files extracted: agy_acp_server.par (${(statBinary121.size / 1024 / 1024).toFixed(2)} MiB), localharness_external (${(statHarness121.size / 1024 / 1024).toFixed(2)} MiB)`);
-    log(`  Total extracted bytes: ${totalExtracted121} bytes (~${(totalExtracted121 / 1024 / 1024 / 1024).toFixed(2)} GiB, confirming >1 GiB extraction cap)`);
+    log(`  Total extracted bytes: ${totalExtracted121} bytes (~${(totalExtracted121 / 1024 / 1024 / 1024).toFixed(2)} GiB, below the former 1 GiB cap)`);
 
     // Verify ACP handshake against committed install path
     const liveHandshake121 = await executeRealAcpHandshake(installed121.command);

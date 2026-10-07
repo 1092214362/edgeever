@@ -138,10 +138,10 @@ export async function runAcpAdapterCrossVersionVerification({ silent = false } =
     assert.ok(!existsSync(orphanedStage2), "Orphaned stage dir from uninstalled state must be pruned");
     log("[4/5] Verified prune lifecycle: cleaned older version and orphaned stages while keeping 1.3.0 and 1.2.1.");
 
-    // Phase 5: Size limit boundary enforcement
+    // Phase 5: Confirm the configured size limits
     assert.equal(MAX_ARCHIVE_BYTES, 500 * 1024 * 1024, "MAX_ARCHIVE_BYTES must be 500 MiB");
     assert.equal(MAX_EXTRACTED_BYTES, 2 * 1024 * 1024 * 1024, "MAX_EXTRACTED_BYTES must be 2 GiB");
-    log("[5/5] Verified size caps: 500 MiB archive cap and 2 GiB extracted cap verified.");
+    log("[5/5] Confirmed configured size caps: 500 MiB archive and 2 GiB extracted.");
 
     log("=================================================================");
     log("ACP Adapter Installer Simulated Cross-Version Regression: ALL PASSED");
