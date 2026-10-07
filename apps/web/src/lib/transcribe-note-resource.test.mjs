@@ -52,8 +52,11 @@ describe("client-side note media preparation", () => {
     input.dispose();
   });
 
-  test("bundles a real spoken MP3 for provider connection checks", async () => {
-    const bytes = await readFile(fileURLToPath(new URL("./fixtures/speech-service-check.mp3", import.meta.url)));
+  test.each([
+    "speech-service-check.en-US.mp3",
+    "speech-service-check.zh-CN.mp3",
+  ])("bundles a real spoken MP3 for provider connection checks: %s", async (filename) => {
+    const bytes = await readFile(fileURLToPath(new URL(`./fixtures/${filename}`, import.meta.url)));
     expect(bytes.byteLength).toBeGreaterThan(1_000);
     const input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) });
     expect(await input.canRead()).toBe(true);
@@ -61,8 +64,11 @@ describe("client-side note media preparation", () => {
     input.dispose();
   });
 
-  test("connection check sends its sample from the client without saving settings", async () => {
-    const bytes = await readFile(fileURLToPath(new URL("./fixtures/speech-service-check.mp3", import.meta.url)));
+  test.each([
+    ["default English", undefined, "speech-service-check.en-US.mp3"],
+    ["Chinese", "zh-CN", "speech-service-check.zh-CN.mp3"],
+  ])("connection check selects %s sample and sends it from the client", async (_label, sampleLocale, filename) => {
+    const bytes = await readFile(fileURLToPath(new URL(`./fixtures/${filename}`, import.meta.url)));
     const requests = [];
     const transcript = await testSpeechService(
       { baseUrl: "https://speech.example/v1/", modelId: "whisper-1", apiKey: "test-token" },
@@ -76,12 +82,15 @@ describe("client-side note media preparation", () => {
           requests.push({ kind: "provider", url: String(url), init });
           return Response.json({ text: "Hello, this is a speech recognition test." });
         },
+        sampleLocale,
       },
     );
     expect(transcript).toContain("speech recognition test");
     expect(requests.map((request) => request.kind)).toEqual(["sample", "provider"]);
+    expect(requests[0].url).toEndWith(`/fixtures/${filename}`);
     expect(requests[1].url).toBe("https://speech.example/v1/audio/transcriptions");
     expect(requests[1].init.body.get("file")).toBeInstanceOf(File);
+    expect(requests[1].init.body.get("file").name).toBe(filename);
     expect(requests[1].init.body.get("model")).toBe("whisper-1");
   });
 

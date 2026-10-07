@@ -37,7 +37,7 @@ export const SpeechProviderCard = ({
   readOnly: boolean;
   onChanged: (settings: AiTranscriptionSettings) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [provider, setProvider] = useState<AiTranscriptionStandard>(saved.provider);
   const [displayName, setDisplayName] = useState(saved.displayName);
   const [baseUrl, setBaseUrl] = useState(saved.baseUrl);
@@ -83,7 +83,11 @@ export const SpeechProviderCard = ({
         const key = apiKey.trim()
           || (await api.getAiTranscriptionDirectCredential(saved.id, controller.signal)).apiKey;
         const { testSpeechService } = await import("@/lib/transcribe-note-resource");
-        return await testSpeechService({ baseUrl, modelId: selectedModel.modelId, apiKey: key }, controller.signal);
+        return await testSpeechService(
+          { baseUrl, modelId: selectedModel.modelId, apiKey: key },
+          controller.signal,
+          { sampleLocale: i18n.resolvedLanguage ?? i18n.language },
+        );
       } finally {
         if (testAbortRef.current === controller) testAbortRef.current = null;
       }

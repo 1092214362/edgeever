@@ -35,7 +35,7 @@ const emptyDraft = {
 };
 
 export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     queryKey: ["ai-transcription-settings"],
@@ -83,7 +83,7 @@ export const SpeechTranscriptionCard = ({ demoMode }: { demoMode: boolean }) => 
           baseUrl: draft.baseUrl,
           modelId: draft.initialModelId,
           apiKey: draft.apiKey.trim(),
-        }, controller.signal);
+        }, controller.signal, { sampleLocale: i18n.resolvedLanguage ?? i18n.language });
       } finally {
         if (testAbortRef.current === controller) testAbortRef.current = null;
       }

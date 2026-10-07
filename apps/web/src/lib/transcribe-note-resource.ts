@@ -214,16 +214,22 @@ export async function transcribePreparedAudioParts(
 export async function testSpeechService(
   target: { baseUrl: string; modelId: string; apiKey: string },
   signal?: AbortSignal,
-  transport: { sampleFetch?: typeof fetch; providerFetch?: typeof fetch } = {},
+  transport: { sampleFetch?: typeof fetch; providerFetch?: typeof fetch; sampleLocale?: string } = {},
 ): Promise<string> {
+  const sampleFilename = transport.sampleLocale?.toLowerCase().startsWith("zh")
+    ? "speech-service-check.zh-CN.mp3"
+    : "speech-service-check.en-US.mp3";
+  const sampleUrl = sampleFilename === "speech-service-check.zh-CN.mp3"
+    ? new URL("./fixtures/speech-service-check.zh-CN.mp3", import.meta.url)
+    : new URL("./fixtures/speech-service-check.en-US.mp3", import.meta.url);
   const sampleResponse = await (transport.sampleFetch ?? fetch)(
-    new URL("./fixtures/speech-service-check.mp3", import.meta.url),
+    sampleUrl,
     { signal },
   );
   if (!sampleResponse.ok) throw new Error("The built-in speech test audio is unavailable.");
   const sample = new File(
     [await sampleResponse.arrayBuffer()],
-    "speech-service-check.mp3",
+    sampleFilename,
     { type: "audio/mpeg" },
   );
   async function* parts() { yield sample; }
