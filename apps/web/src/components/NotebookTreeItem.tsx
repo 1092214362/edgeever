@@ -266,7 +266,7 @@ export const NotebookTreeItem = ({
                 }
               }}
             >
-              <NotebookIcon className={cn("h-4 w-4 shrink-0 transition-colors duration-200", selected ? "text-slate-700" : "text-slate-500")} />
+              <NotebookIcon className={cn("h-4 w-4 shrink-0 transition-colors duration-200", selected ? "text-slate-950" : "text-slate-500")} />
               <span
                 className={cn(
                   "truncate transition-colors duration-200",
@@ -278,7 +278,7 @@ export const NotebookTreeItem = ({
               <span
                 className={cn(
                   "shrink-0 tabular-nums text-xs font-normal transition-colors duration-200",
-                  selected ? "text-slate-600 font-medium" : "text-slate-400 group-hover:text-slate-500"
+                  selected ? "text-slate-900 font-medium" : "text-slate-400 group-hover:text-slate-500"
                 )}
                 aria-hidden="true"
               >

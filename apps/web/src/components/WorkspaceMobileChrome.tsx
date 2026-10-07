@@ -348,8 +348,9 @@ const MobileNotebookPickerItem = ({
         {hasChildren ? (
           <button
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition",
-              searchActive ? "cursor-default" : "hover:bg-slate-100 hover:text-slate-700"
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition",
+              selected ? "text-slate-950" : "text-slate-400",
+              searchActive ? "cursor-default" : selected ? "hover:bg-slate-100" : "hover:bg-slate-100 hover:text-slate-700"
             )}
             type="button"
             disabled={searchActive}
