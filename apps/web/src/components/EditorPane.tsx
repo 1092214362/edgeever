@@ -103,7 +103,6 @@ import { sanitizeAndScopeCss } from "@/lib/css-sandbox";
 import { RevisionHistoryDialog } from "./dialogs/RevisionHistoryDialog";
 import { ExternalLinkDialog } from "./dialogs/ExternalLinkDialog";
 import { MathFormulaDialog } from "./dialogs/MathFormulaDialog";
-import { AttachmentTranscriptDialog } from "./dialogs/AttachmentTranscriptDialog";
 import { SpeechProviderReachabilityError } from "@/lib/speech-transcription-error";
 import {
   applyMathFormula,
@@ -285,7 +284,8 @@ import {
   type ResourceDialogState,
   type ResourceMenuTarget,
 } from "./editor/useEditorResourceActions";
-import { removeAttachmentAt, renameAttachmentAt } from "./editor/attachment-editor-range";
+import { insertTranscriptAfterAttachment, removeAttachmentAt, renameAttachmentAt } from "./editor/attachment-editor-range";
+import { AttachmentTranscriptContext, type AttachmentTranscript, type AttachmentTranscriptContextValue } from "./editor/AttachmentTranscriptContext";
 import {
   createLocalEditSession,
   focusMobilePlainTextElement,
@@ -498,14 +498,7 @@ const RichEditorPane = ({
     canRemove: false,
   });
   const [mathFormulaOpen, setMathFormulaOpen] = useState(false);
-  const [attachmentTranscript, setAttachmentTranscript] = useState<{
-    memoId: string;
-    filename: string;
-    text: string;
-    loading: boolean;
-    completedSegments: number;
-    error: string | null;
-  } | null>(null);
+  const [attachmentTranscript, setAttachmentTranscript] = useState<AttachmentTranscript | null>(null);
   const attachmentTranscriptAbortRef = useRef<AbortController | null>(null);
   const [mathFormulaDraft, setMathFormulaDraft] = useState<MathFormulaDraft | null>(null);
   const {
@@ -1828,12 +1821,13 @@ const RichEditorPane = ({
   useEffect(() => {
     setNoteLinkHintPosition(null);
     resetResourceActions();
+    setAttachmentTranscript(null);
   }, [memo?.id, isMarkdownMode, resetResourceActions]);
 
   useEffect(() => () => {
     attachmentTranscriptAbortRef.current?.abort();
     attachmentTranscriptAbortRef.current = null;
-  }, [memo?.id]);
+  }, [memo?.id, isMarkdownMode]);
 
   useEffect(() => () => {
     if (resourceMenuHideTimerRef.current !== null) {
@@ -3132,27 +3126,45 @@ const RichEditorPane = ({
 
   const handleResourceTranscribe = useCallback(async (target: ResourceMenuTarget) => {
     const currentMemoId = memoRef.current?.id;
-    if (!currentMemoId || !target.resourceId) return;
+    if (!currentMemoId || target.kind !== "attachment" || !target.resourceId) return;
     attachmentTranscriptAbortRef.current?.abort();
     const controller = new AbortController();
     attachmentTranscriptAbortRef.current = controller;
     hideResourceMenu();
-    setAttachmentTranscript({ memoId: currentMemoId, filename: target.filename, text: "", loading: true, completedSegments: 0, error: null });
+    setAttachmentTranscript({ memoId: currentMemoId, target, text: "", loading: true, completedSegments: 0, error: null });
     try {
       const { transcribeNoteResource } = await import("@/lib/transcribe-note-resource");
       const result = await transcribeNoteResource(currentMemoId, target.resourceId, controller.signal, (completedSegments) => {
         if (attachmentTranscriptAbortRef.current !== controller) return;
-        setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
+        setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.target.element === target.element
           ? { ...current, completedSegments }
           : current);
       });
       if (attachmentTranscriptAbortRef.current !== controller) return;
-      setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
-        ? { ...current, text: result.text, loading: false }
+      const activeEditor = editorRef.current;
+      if (result.text.trim() && activeEditor?.isEditable && memoRef.current?.id === currentMemoId) {
+        try {
+          if (insertTranscriptAfterAttachment(
+            activeEditor,
+            target,
+            result.text,
+            t("speechTranscription.resultTitle"),
+            target.element,
+          )) {
+            setAttachmentTranscript(null);
+            return;
+          }
+        } catch {
+          // Keep the recognized text available in the inline card if insertion fails.
+        }
+      }
+      setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.target.element === target.element
+        ? { ...current, text: result.text, loading: false,
+          error: result.text.trim() ? null : t("speechTranscription.recognizeFailed") }
         : current);
     } catch (error) {
       if (attachmentTranscriptAbortRef.current !== controller || controller.signal.aborted) return;
-      setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.filename === target.filename
+      setAttachmentTranscript((current) => current?.memoId === currentMemoId && current.target.element === target.element
         ? { ...current, loading: false, error: error instanceof SpeechProviderReachabilityError
           ? t(error.platform === "browser"
             ? "speechTranscription.browserDirectUnavailable" : "speechTranscription.desktopDirectUnavailable")
@@ -3162,6 +3174,38 @@ const RichEditorPane = ({
       if (attachmentTranscriptAbortRef.current === controller) attachmentTranscriptAbortRef.current = null;
     }
   }, [hideResourceMenu, t]);
+
+  const dismissAttachmentTranscript = useCallback(() => {
+    attachmentTranscriptAbortRef.current?.abort();
+    attachmentTranscriptAbortRef.current = null;
+    setAttachmentTranscript(null);
+  }, []);
+
+  const retryAttachmentTranscript = useCallback(() => {
+    if (attachmentTranscript) void handleResourceTranscribe(attachmentTranscript.target);
+  }, [attachmentTranscript, handleResourceTranscribe]);
+
+  const insertAttachmentTranscript = useCallback(() => {
+    const activeEditor = editorRef.current;
+    if (!activeEditor?.isEditable || !attachmentTranscript?.text ||
+      attachmentTranscript.memoId !== memoRef.current?.id) return;
+    if (insertTranscriptAfterAttachment(
+      activeEditor,
+      attachmentTranscript.target,
+      attachmentTranscript.text,
+      t("speechTranscription.resultTitle"),
+      attachmentTranscript.target.element,
+    )) setAttachmentTranscript(null);
+  }, [attachmentTranscript, t]);
+
+  const attachmentTranscriptContext = useMemo<AttachmentTranscriptContextValue>(() => ({
+    transcript: attachmentTranscript?.memoId === memo?.id ? attachmentTranscript : null,
+    canInsert: Boolean(editor?.isEditable && !effectiveReadOnly && !useMarkdownSourceEditor && !useMobilePlainTextEditor),
+    onDismiss: dismissAttachmentTranscript,
+    onRetry: retryAttachmentTranscript,
+    onInsert: insertAttachmentTranscript,
+  }), [attachmentTranscript, dismissAttachmentTranscript, editor?.isEditable, effectiveReadOnly,
+    insertAttachmentTranscript, memo?.id, retryAttachmentTranscript, useMarkdownSourceEditor, useMobilePlainTextEditor]);
 
   const handleResourceSaveAs = useCallback(async (target: ResourceMenuTarget) => {
     hideResourceMenu();
@@ -4338,7 +4382,9 @@ const RichEditorPane = ({
                     onAsk={() => requestSelectionAi("ask")}
                   />
                 </BubbleMenu>
-                <EditorContent editor={editor} />
+                <AttachmentTranscriptContext.Provider value={attachmentTranscriptContext}>
+                  <EditorContent editor={editor} />
+                </AttachmentTranscriptContext.Provider>
               </div>
             )}
           </div>
@@ -4413,32 +4459,6 @@ const RichEditorPane = ({
           onMouseLeave={scheduleResourceMenuHide}
         />
       )}
-
-      <AttachmentTranscriptDialog
-        open={Boolean(attachmentTranscript && attachmentTranscript.memoId === memo?.id)}
-        filename={attachmentTranscript?.filename ?? ""}
-        text={attachmentTranscript?.text ?? ""}
-        loading={attachmentTranscript?.loading ?? false}
-        completedSegments={attachmentTranscript?.completedSegments ?? 0}
-        error={attachmentTranscript?.error ?? null}
-        canInsert={Boolean(editor && editor.isEditable && !effectiveReadOnly && !useMarkdownSourceEditor && !useMobilePlainTextEditor)}
-        onOpenChange={(open) => {
-          if (!open) {
-            attachmentTranscriptAbortRef.current?.abort();
-            attachmentTranscriptAbortRef.current = null;
-            setAttachmentTranscript(null);
-          }
-        }}
-        onInsert={() => {
-          if (!editor || !attachmentTranscript?.text || attachmentTranscript.memoId !== memo?.id) return;
-          const paragraphs = attachmentTranscript.text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
-          editor.chain().focus().insertContentAt(editor.state.doc.content.size, [
-            { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: t("speechTranscription.resultTitle") }] },
-            ...paragraphs.map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })),
-          ]).run();
-          setAttachmentTranscript(null);
-        }}
-      />
 
       <EditorResourceDialogs
         dialog={resourceDialog}

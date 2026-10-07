@@ -1223,6 +1223,7 @@ export const enUS = {
     copy: "Copy text",
     copied: "Copied",
     insertIntoNote: "Insert into note",
+    retry: "Retry transcription",
     attachmentNotice: "Only audio and video attachments already uploaded to notes can be transcribed. Audio is extracted and split on your device (up to 24 MB per segment), then sent directly from the client to your configured model service. The model key is given to the current signed-in client; browser calls also require provider CORS support.",
   },
   aiPrompts: {

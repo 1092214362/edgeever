@@ -1223,6 +1223,7 @@ export const pl = {
     copy: "Kopiuj tekst",
     copied: "Skopiowano",
     insertIntoNote: "Wstaw do notatki",
+    retry: "Ponów transkrypcję",
     attachmentNotice: "Transkrypcja działa tylko dla plików audio i wideo dodanych do notatek. Dźwięk jest wyodrębniany i dzielony na urządzeniu (do 24 MB na segment), a następnie wysyłany bezpośrednio z klienta do skonfigurowanej usługi modelu. Klucz modelu trafia do aktualnie zalogowanego klienta; przeglądarka wymaga też obsługi CORS przez dostawcę.",
   },
   aiPrompts: {
