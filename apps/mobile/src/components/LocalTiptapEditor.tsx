@@ -108,6 +108,7 @@ import {
   createMobileNoteSearchHighlightPlugin,
   getMobileNoteSearchMatches,
 } from "../lib/mobile-note-search";
+import { planMobileNoteImageRender } from "../lib/mobile-note-image-export";
 import { toProtectedResourceLoadPath } from "../lib/mobile-protected-resources";
 
 type EditorDoc = TiptapDoc;
@@ -173,8 +174,7 @@ const TRANSIENT_IMAGE_UPLOAD_META = "edgeeverImageUploadPlaceholder";
 const ignoreSearchResult = async () => undefined;
 const ignoreAiRequest = async () => undefined;
 const AI_PROMPT_OPTION_PREFIX = "prompt:";
-const IMAGE_EXPORT_PIXEL_RATIO = 2;
-const IMAGE_EXPORT_CHUNK_SIZE = 256 * 1024;
+const IMAGE_EXPORT_CHUNK_BYTES = 192 * 1024;
 
 type ImageExportRequest = {
   requestId: string;
@@ -195,8 +195,6 @@ type ImageExportRequest = {
   showUpdatedAt?: boolean;
   branding?: boolean;
 };
-
-const blobToBytes = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer());
 
 const bytesToBase64 = (bytes: Uint8Array) => {
   let binary = "";
@@ -1296,26 +1294,43 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       document.body.appendChild(host);
 
       try {
-        await document.fonts?.ready;
-        await Promise.all(Array.from(documentRoot.querySelectorAll("img")).map(async (image) => {
-          if (image.complete) return;
-          try { await image.decode(); } catch { /* Export the readable remainder. */ }
-        }));
+        const images = Array.from(documentRoot.querySelectorAll<HTMLImageElement>("img"));
+        await Promise.race([
+          Promise.all([
+            document.fonts?.ready,
+            ...images.map(async (image) => {
+              if (image.complete) return;
+              try { await image.decode(); } catch { /* Export the readable remainder. */ }
+            }),
+          ]),
+          new Promise<void>((resolve) => window.setTimeout(resolve, 8_000)),
+        ]);
         const exportedImages = Array.from(
           documentRoot.querySelectorAll<HTMLImageElement>(".edgeever-card-body img"),
         );
         const failedImages = exportedImages.filter((image) => !image.complete || image.naturalWidth === 0).length;
         const totalHeight = Math.max(1, Math.ceil(documentRoot.getBoundingClientRect().height));
+        const renderPlan = planMobileNoteImageRender(targetWidth, totalHeight);
+        let captureRoot = documentRoot;
+        if (renderPlan.sourceScale < 1) {
+          const wrapper = document.createElement("div");
+          wrapper.style.cssText = `position:relative;width:${renderPlan.sourceWidth}px;height:${renderPlan.sourceHeight}px;overflow:hidden;`;
+          documentRoot.replaceWith(wrapper);
+          wrapper.appendChild(documentRoot);
+          documentRoot.style.transform = `scale(${renderPlan.sourceScale})`;
+          documentRoot.style.transformOrigin = "top left";
+          captureRoot = wrapper;
+        }
         const backgroundColor = NOTE_IMAGE_BACKGROUND_COLORS[resolvedTheme] || themeCfg.canvasBg;
 
         const { toCanvas } = await import("html-to-image");
-        const canvas = await toCanvas(documentRoot, {
+        const canvas = await toCanvas(captureRoot, {
           backgroundColor,
           cacheBust: false,
-          height: totalHeight,
-          pixelRatio: IMAGE_EXPORT_PIXEL_RATIO,
+          height: renderPlan.sourceHeight,
+          pixelRatio: renderPlan.pixelRatio,
           skipFonts: true,
-          width: targetWidth,
+          width: renderPlan.sourceWidth,
         });
         const blob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(
@@ -1327,13 +1342,12 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
 
         const extension = request.format === "jpeg" ? "jpg" : "png";
         const basename = buildImageExportBasename(request.title, request.fallbackTitle);
-        const bytes = await blobToBytes(blob);
         const filename = `${basename}.${extension}`;
         const mimeType = request.format === "jpeg" ? "image/jpeg" : "image/png";
 
-        const base64 = bytesToBase64(bytes);
-        for (let offset = 0; offset < base64.length; offset += IMAGE_EXPORT_CHUNK_SIZE) {
-          await notify({ type: "chunk", chunk: base64.slice(offset, offset + IMAGE_EXPORT_CHUNK_SIZE) });
+        for (let offset = 0; offset < blob.size; offset += IMAGE_EXPORT_CHUNK_BYTES) {
+          const bytes = new Uint8Array(await blob.slice(offset, offset + IMAGE_EXPORT_CHUNK_BYTES).arrayBuffer());
+          await notify({ type: "chunk", chunk: bytesToBase64(bytes) });
         }
         await notify({
           type: "complete",
@@ -3173,24 +3187,24 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-editor-content ul[data-type="taskList"] li[data-checked] > div > p { margin-bottom: 0; }
   .edgeever-editor-content ul[data-type="taskList"] li[data-checked="true"] > div > p { color: #94a3b8; text-decoration: line-through; }
   .edgeever-editor-content ul[data-type="taskList"] ul[data-type="taskList"] { margin: 4px 0 0; padding-left: 24px; }
-  .edgeever-editor-content blockquote { margin-left: 0; max-width: 100%; padding: 6px 12px; border-left: 3px solid #16a06e; border-radius: 1px 4px 4px 1px; background: ${theme === "dark" ? "rgba(22, 160, 110, 0.08)" : "rgba(22, 160, 110, 0.04)"}; color: ${theme === "dark" ? "#cbd5e1" : "#334155"}; }
+  .edgeever-editor-content blockquote { margin-left: 0; max-width: 100%; padding: 6px 12px; border-left: 3px solid ${theme === "dark" ? "#475569" : "#cbd5e1"}; border-radius: 1px 4px 4px 1px; background: ${theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "#f3f5f7"}; color: ${theme === "dark" ? "#f8fafc" : "#3d4450"}; }
   .edgeever-editor-content pre { max-width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid ${theme === "dark" ? "#334155" : "#e2e8f0"}; padding: 12px 90px 12px 14px; background: ${theme === "dark" ? "#1e293b" : "#f8fafc"}; color: ${theme === "dark" ? "#e2e8f0" : "#0f172a"}; font-size: 0.88rem; box-shadow: 0 1px 2px ${theme === "dark" ? "rgba(0, 0, 0, 0.2)" : "rgba(15, 23, 42, 0.03)"}; }
-  .edgeever-editor-content code { border-radius: 4px; padding: 2px 5px; border: 1px solid ${theme === "dark" ? "rgba(22, 160, 110, 0.28)" : "#d4ebdc"}; background: ${theme === "dark" ? "rgba(22, 160, 110, 0.12)" : "#f2f9f5"}; color: ${theme === "dark" ? "#6ee7b7" : "#0d5f3a"}; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; font-weight: 550; }
+  .edgeever-editor-content code { border-radius: 4px; padding: 2px 5px; border: 1px solid ${theme === "dark" ? "rgba(255, 255, 255, 0.12)" : "#e1e5ea"}; background: ${theme === "dark" ? "rgba(255, 255, 255, 0.06)" : "#f3f5f7"}; color: ${theme === "dark" ? "#f8fafc" : "#3d4450"}; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; font-weight: 550; }
   .edgeever-editor-content pre code { padding: 0; border: 0; background: transparent; font-size: inherit; font-weight: normal; color: inherit; }
   .edgeever-editor-content .tiptap-mathematics-render[data-type="block-math"] { max-width: 100%; margin: 16px 0; overflow-x: auto; overflow-y: hidden; padding: 4px 0; text-align: center; -webkit-overflow-scrolling: touch; }
   .edgeever-editor-content .inline-math-error, .edgeever-editor-content .block-math-error { color: ${theme === "dark" ? "#fda4af" : "#be123c"}; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   /* External hyperlinks (match Web default ProseMirror). Attachment chips override below. */
   .edgeever-editor-content a {
-    color: ${theme === "dark" ? "#86efac" : "#00751f"};
+    color: ${theme === "dark" ? "#cad4ce" : "#404040"};
     font-weight: 500;
     text-decoration: underline;
-    text-decoration-color: ${theme === "dark" ? "rgba(134, 239, 172, 0.45)" : "rgba(0, 117, 31, 0.45)"};
+    text-decoration-color: ${theme === "dark" ? "rgba(202, 212, 206, 0.45)" : "rgba(64, 64, 64, 0.45)"};
     text-underline-offset: 2px;
     cursor: pointer;
   }
   .edgeever-editor-content a:active {
-    color: ${theme === "dark" ? "#4ade80" : "#00a82d"};
-    text-decoration-color: ${theme === "dark" ? "#4ade80" : "#00a82d"};
+    color: ${theme === "dark" ? "#eef3f0" : "#0a0a0a"};
+    text-decoration-color: ${theme === "dark" ? "#eef3f0" : "#0a0a0a"};
   }
   /* Compact attachment chips: still ≥48px touch height, less vertical bulk than 58px. */
   .edgeever-editor-content a.edgeever-attachment-link, .edgeever-editor-content a[href*="/api/v1/resources/"] {

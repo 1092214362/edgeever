@@ -47,6 +47,7 @@ import { NotebookPickerModal, SmartTagButton, TagPickerModal } from "./Workspace
 
 const ANDROID_SYSTEM_NAVIGATION_FALLBACK = 48;
 const RESOURCE_DATA_URL_CACHE_LIMIT = 32;
+const IMAGE_EXPORT_TIMEOUT_MS = 60_000;
 
 type MobileImageExportEvent =
   | { type: "chunk"; requestId: string; chunk: string }
@@ -63,7 +64,6 @@ type MobileImageExportEvent =
   | { type: "error"; requestId: string; message?: string };
 
 type MobilePreparedNoteImage = {
-  base64: string;
   failedImages: number;
   filename: string;
   height: number;
@@ -494,10 +494,12 @@ export const MemoDetailModal = ({
   const [imageShareBranding, setImageShareBranding] = useState(true);
   const [viewerNotebookPickerOpen, setViewerNotebookPickerOpen] = useState(false);
   const [preparedNoteImage, setPreparedNoteImage] = useState<MobilePreparedNoteImage | null>(null);
+  const [viewerGeneration, setViewerGeneration] = useState(0);
   const viewerRef = useRef<LocalTiptapEditorRef>(null);
   const imageExportIntentRef = useRef<"preview" | "share">("share");
   const imageExportRequestRef = useRef<string | null>(null);
   const imageExportChunksRef = useRef<string[]>([]);
+  const imageExportTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourceDataUrlCacheRef = useRef(new Map<string, Promise<string | null>>());
   // One user-visible notice per opened memo (multi-image notes should not spam alerts).
   const imageLoadFailureNotifier = useMemo(
@@ -756,6 +758,31 @@ export const MemoDetailModal = ({
     }
   };
 
+  const clearImageExportTimeout = useCallback(() => {
+    if (imageExportTimeoutRef.current !== null) {
+      clearTimeout(imageExportTimeoutRef.current);
+      imageExportTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearImageExportTimeout, [clearImageExportTimeout]);
+
+  const failImageExport = useCallback((message?: string) => {
+    clearImageExportTimeout();
+    imageExportChunksRef.current = [];
+    imageExportRequestRef.current = null;
+    setIsExportingImage(false);
+    const localizedMessage = message === "NOTE_IMAGE_TOO_LONG"
+      ? (resolvedLocale !== "zh-CN"
+          ? "This note is too long for one readable image. Choose a smaller font size or split the note."
+          : "这篇笔记太长，无法生成清晰的单张图片。请调小导出字号，或拆分笔记后重试。")
+      : message;
+    Alert.alert(
+      resolvedLocale !== "zh-CN" ? "Image export failed" : "导出笔记图片失败",
+      localizedMessage || (resolvedLocale !== "zh-CN" ? "Try again later." : "请稍后重试。")
+    );
+  }, [clearImageExportTimeout, resolvedLocale]);
+
   const handleImageExportEvent = useCallback(async (payloadJson: string) => {
     let event: MobileImageExportEvent;
     try {
@@ -769,16 +796,11 @@ export const MemoDetailModal = ({
       return;
     }
     if (event.type === "error") {
-      imageExportChunksRef.current = [];
-      imageExportRequestRef.current = null;
-      setIsExportingImage(false);
-      Alert.alert(
-        resolvedLocale !== "zh-CN" ? "Image export failed" : "导出笔记图片失败",
-        event.message || (resolvedLocale !== "zh-CN" ? "Try again later." : "请稍后重试。")
-      );
+      failImageExport(event.message);
       return;
     }
 
+    clearImageExportTimeout();
     try {
       const { Directory, File, Paths } = await import("expo-file-system");
       const directory = new Directory(Paths.cache, "edgeever-note-exports");
@@ -786,10 +808,8 @@ export const MemoDetailModal = ({
       const file = new File(directory, event.filename);
       if (file.exists) file.delete();
       file.create({ overwrite: true, intermediates: true });
-      const base64 = imageExportChunksRef.current.join("");
       file.write(decodeBase64Chunks(imageExportChunksRef.current));
       const prepared: MobilePreparedNoteImage = {
-        base64,
         failedImages: event.failedImages ?? 0,
         filename: event.filename,
         height: event.height ?? 0,
@@ -801,6 +821,7 @@ export const MemoDetailModal = ({
       if (imageExportIntentRef.current === "preview") {
         setPreparedNoteImage(prepared);
       } else {
+        setIsExportingImage(false);
         const Sharing = await import("expo-sharing");
         if (!(await Sharing.isAvailableAsync())) throw new Error(resolvedLocale !== "zh-CN" ? "Sharing is unavailable on this device." : "当前设备无法打开系统分享面板。");
         await Sharing.shareAsync(file.uri, {
@@ -818,7 +839,7 @@ export const MemoDetailModal = ({
       imageExportRequestRef.current = null;
       setIsExportingImage(false);
     }
-  }, [resolvedLocale]);
+  }, [clearImageExportTimeout, failImageExport, resolvedLocale]);
 
   const exportMemoImage = useCallback((
     format: "jpeg" | "png",
@@ -836,12 +857,25 @@ export const MemoDetailModal = ({
     } = {},
   ) => {
     if (!memo || !viewerReady || isExportingImage) return;
+    const viewer = viewerRef.current;
+    if (!viewer) {
+      failImageExport(resolvedLocale !== "zh-CN" ? "The note viewer is not ready. Try again." : "笔记尚未准备好，请重试。");
+      return;
+    }
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     imageExportRequestRef.current = requestId;
     imageExportChunksRef.current = [];
     imageExportIntentRef.current = options.intent ?? "share";
     setIsExportingImage(true);
-    safeDomCall(() => viewerRef.current?.exportImage(JSON.stringify({
+    imageExportTimeoutRef.current = setTimeout(() => {
+      if (imageExportRequestRef.current !== requestId) return;
+      failImageExport(resolvedLocale !== "zh-CN"
+        ? "Image generation took too long. Try a smaller font size or export a shorter note."
+        : "生成图片超时。请调小导出字号，或对较短的笔记重试。");
+      setViewerReady(false);
+      setViewerGeneration((generation) => generation + 1);
+    }, IMAGE_EXPORT_TIMEOUT_MS);
+    const request = JSON.stringify({
       requestId,
       format,
       title: localizeUntitledMemoTitle(memo.title, resolvedLocale),
@@ -858,8 +892,17 @@ export const MemoDetailModal = ({
       showTags: options.showTags ?? false,
       showUpdatedAt: options.showUpdatedAt ?? true,
       branding: options.showBranding ?? true,
-    })));
-  }, [isExportingImage, memo, notebookName, resolvedLocale, viewerReady]);
+    });
+    try {
+      void Promise.resolve(viewer.exportImage(request)).catch((error: unknown) => {
+        if (imageExportRequestRef.current === requestId) {
+          failImageExport(error instanceof Error ? error.message : undefined);
+        }
+      });
+    } catch (error) {
+      failImageExport(error instanceof Error ? error.message : undefined);
+    }
+  }, [failImageExport, isExportingImage, memo, notebookName, resolvedLocale, viewerReady]);
 
   const sharePreparedNoteImage = useCallback(async (prepared: MobilePreparedNoteImage) => {
     try {
@@ -876,7 +919,9 @@ export const MemoDetailModal = ({
 
   const copyPreparedNoteImage = useCallback(async (prepared: MobilePreparedNoteImage) => {
     try {
-      await Clipboard.setImageAsync(prepared.base64);
+      const FileSystem = await import("expo-file-system/legacy");
+      const base64 = await FileSystem.readAsStringAsync(prepared.uri, { encoding: FileSystem.EncodingType.Base64 });
+      await Clipboard.setImageAsync(base64);
       Alert.alert(resolvedLocale !== "zh-CN" ? "Copied" : "复制成功", resolvedLocale !== "zh-CN" ? "The image is on your clipboard." : "图片已复制到剪贴板。");
     } catch {
       Alert.alert(resolvedLocale !== "zh-CN" ? "Copy failed" : "复制失败", resolvedLocale !== "zh-CN" ? "Try saving the image instead." : "请尝试保存图片。" );
@@ -893,7 +938,8 @@ export const MemoDetailModal = ({
         prepared.filename,
         prepared.mimeType
       );
-      await FileSystem.StorageAccessFramework.writeAsStringAsync(destination, prepared.base64, {
+      const base64 = await FileSystem.readAsStringAsync(prepared.uri, { encoding: FileSystem.EncodingType.Base64 });
+      await FileSystem.StorageAccessFramework.writeAsStringAsync(destination, base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
       Alert.alert(resolvedLocale !== "zh-CN" ? "Saved" : "保存成功", prepared.filename);
@@ -1236,7 +1282,7 @@ export const MemoDetailModal = ({
             )}
             {baseUrl ? (
               <LocalTiptapEditor
-                key={memo.id}
+                key={`${memo.id}:${viewerGeneration}`}
                 aiPromptsJson={isEditing ? editor.aiPromptsJson : undefined}
                 autoFocus={isEditing && editingSession?.initialFocus === "body"}
                 baseUrl={baseUrl}
