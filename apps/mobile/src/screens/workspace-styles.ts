@@ -1949,17 +1949,15 @@ const baseWorkspaceStyles = StyleSheet.create({
     fontWeight: "600",
   },
   detailMetaRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
+    alignItems: "stretch",
+    gap: 2,
     marginTop: 12,
   },
   detailNotebookButton: {
     alignItems: "center",
     flexDirection: "row",
     gap: 4,
-    height: 32,
-    maxWidth: "46%",
+    minHeight: 32,
     paddingHorizontal: 8,
   },
   detailNotebookName: {
@@ -1968,26 +1966,22 @@ const baseWorkspaceStyles = StyleSheet.create({
     fontSize: 14,
   },
   detailTagsGroup: {
-    alignItems: "center",
-    flex: 1,
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: 8,
-    height: 32,
+    minHeight: 32,
     paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   detailTagsInline: {
     color: "#64748b",
     flex: 1,
     fontSize: 14,
+    lineHeight: 20,
+    minWidth: 0,
   },
   detailTagsPlaceholder: {
     color: "#94a3b8",
-  },
-  detailTimestamps: {
-    color: "#94a3b8",
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 4,
   },
   detailDivider: {
     backgroundColor: "#e2e8f0",

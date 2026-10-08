@@ -41,7 +41,7 @@ import { useMobileTheme } from "../lib/mobile-theme";
 import { useSession } from "../lib/session";
 import { beginEditorStartup } from "../lib/startup-performance";
 import type { MobileSyncQueueItem } from "../lib/sync-queue";
-import { formatMemoDetailDate, getTextSearchMatches, parseTags } from "./workspace-utils";
+import { getTextSearchMatches, parseTags } from "./workspace-utils";
 import { styles } from "./workspace-styles";
 import { NotebookPickerModal, SmartTagButton, TagPickerModal } from "./WorkspacePickers";
 
@@ -1170,17 +1170,11 @@ export const MemoDetailModal = ({
                     activeIndex={activeMatchIndex}
                     matchOffset={metadataSearchMatches.title.length}
                     matches={metadataSearchMatches.tags}
-                    numberOfLines={1}
                     style={[styles.detailTagsInline, memo.tags.length === 0 && styles.detailTagsPlaceholder]}
                     text={memoTagsText || "添加标签，用逗号分隔"}
                   />
                 </View>
               </View>
-              <Text selectable style={styles.detailTimestamps}>
-                {resolvedLocale !== "zh-CN" ? "Created" : "创建于"} {formatMemoDetailDate(memo.createdAt, resolvedLocale)}
-                {" · "}
-                {resolvedLocale !== "zh-CN" ? "Updated" : "更新于"} {formatMemoDetailDate(memo.updatedAt, resolvedLocale)}
-              </Text>
               {searchOpen ? (
                 <View style={styles.noteSearchPanel}>
                   <Search color="#64748b" size={16} />
