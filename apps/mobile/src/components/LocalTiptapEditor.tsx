@@ -3041,14 +3041,14 @@ const removeImageUploadPlaceholder = (editor: TiptapEditor, source: string) => {
 
 const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }) => {
   const bodyFontSize = MEMO_CONTENT_STYLE.body.fontSize;
-  const bodyLineHeight = MEMO_CONTENT_STYLE.body.lineHeight / MEMO_CONTENT_STYLE.body.fontSize;
-  const paragraphSpacing = MEMO_CONTENT_STYLE.body.paragraphSpacing;
+  const bodyLineHeight = 24 / bodyFontSize;
+  const paragraphSpacing = 6;
   return `
   :root {
     color-scheme: ${theme};
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-feature-settings: "chws" 1;
-    /* Match PC/Web memo body (MEMO_CONTENT_STYLE) so notes don't feel oversized on phone. */
+    /* Keep the shared body font size while using tighter spacing on mobile. */
     --editor-body-font-size: ${bodyFontSize}px;
     --editor-body-line-height: ${bodyLineHeight};
     --editor-paragraph-spacing: ${paragraphSpacing}px;

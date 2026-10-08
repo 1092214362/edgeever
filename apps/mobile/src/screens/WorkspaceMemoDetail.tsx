@@ -1249,6 +1249,7 @@ export const MemoDetailModal = ({
                   accessibilityLabel="所在笔记本"
                   accessibilityRole="button"
                   disabled={isSaving}
+                  hitSlop={8}
                   onPress={() => setViewerNotebookPickerOpen(true)}
                   style={styles.detailNotebookButton}
                 >
@@ -1257,7 +1258,7 @@ export const MemoDetailModal = ({
                 </Pressable>
                 )}
                 <View style={styles.detailTagsGroup}>
-                  <Tag color="#64748b" size={16} />
+                  <Tag color="#64748b" size={13} />
                   <HighlightedMetadataText
                     activeIndex={activeMatchIndex}
                     matchOffset={metadataSearchMatches.title.length}
@@ -1992,7 +1993,7 @@ const detailLayoutStyles = StyleSheet.create({
   meta: {
     paddingBottom: 0,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 8,
   },
   headerTitleSlot: {
     flex: 1,
