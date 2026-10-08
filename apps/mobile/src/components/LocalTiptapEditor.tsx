@@ -141,6 +141,7 @@ type LocalTiptapEditorSharedProps = {
   onResourcePress?: (targetJson: string) => Promise<void>;
   onReady?: (startupMs: number) => Promise<void>;
   onSearchResult?: (count: number, index: number, query: string) => Promise<void>;
+  onReaderScroll?: (scrollTop: number) => Promise<void>;
   onImageExportEvent?: (payloadJson: string) => Promise<void>;
   ref: Ref<LocalTiptapEditorRef>;
   locale: "zh-CN" | "en-US" | "ja" | "pl";
@@ -673,6 +674,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   const onAiCancelRef = useRef(props.mode === "viewer" ? undefined : props.onAiCancel);
   const onReadyRef = useRef(props.onReady ?? (async () => undefined));
   const onSearchResultRef = useRef(props.onSearchResult ?? ignoreSearchResult);
+  const onReaderScrollRef = useRef(props.onReaderScroll);
   const onImageExportEventRef = useRef(props.onImageExportEvent);
   const searchStateRef = useRef({ activeIndex: -1, query: "" });
   const [aiPanel, setAiPanel] = useState<MobileAiPanelState | null>(null);
@@ -730,6 +732,7 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
   onAiCancelRef.current = props.mode === "viewer" ? undefined : props.onAiCancel;
   onReadyRef.current = props.onReady ?? (async () => undefined);
   onSearchResultRef.current = props.onSearchResult ?? ignoreSearchResult;
+  onReaderScrollRef.current = props.onReaderScroll;
   onImageExportEventRef.current = props.onImageExportEvent;
   const protectedImageExtension = useMemo(
     () => createProtectedImageExtension(
@@ -1571,6 +1574,25 @@ function LocalTiptapEditorImpl(props: LocalTiptapEditorProps) {
       editor.off("selectionUpdate", handleSelectionUpdate);
     };
   }, [editor, isViewer]);
+
+  useEffect(() => {
+    if (!editor || !isViewer) return;
+    const scrollContainer = document.querySelector<HTMLElement>(".edgeever-editor-scroll");
+    if (!scrollContainer) return;
+
+    let titleCollapsed = false;
+    const reportScroll = () => {
+      const nextCollapsed = titleCollapsed
+        ? scrollContainer.scrollTop > 4
+        : scrollContainer.scrollTop > 24;
+      if (nextCollapsed === titleCollapsed) return;
+      titleCollapsed = nextCollapsed;
+      void onReaderScrollRef.current?.(scrollContainer.scrollTop);
+    };
+    scrollContainer.addEventListener("scroll", reportScroll, { passive: true });
+    reportScroll();
+    return () => scrollContainer.removeEventListener("scroll", reportScroll);
+  }, [editor, isViewer, visualDiagram]);
 
   const toolbarState = useEditorState({
     editor,

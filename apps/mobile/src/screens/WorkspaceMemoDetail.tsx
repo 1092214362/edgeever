@@ -480,6 +480,7 @@ export const MemoDetailModal = ({
   const [imagePreview, setImagePreview] = useState<{ alt: string; source: string } | null>(null);
   const [resourceTarget, setResourceTarget] = useState<MobileResourceTarget | null>(null);
   const [viewerReady, setViewerReady] = useState(false);
+  const [titleCollapsed, setTitleCollapsed] = useState(false);
   const [isExportingImage, setIsExportingImage] = useState(false);
   const [imageShareOptionsOpen, setImageShareOptionsOpen] = useState(false);
   const [imageShareFormat, setImageShareFormat] = useState<"jpeg" | "png">("png");
@@ -672,10 +673,19 @@ export const MemoDetailModal = ({
     Platform.OS === "android" ? ANDROID_SYSTEM_NAVIGATION_FALLBACK : 0
   ) + 16;
 
+  const handleReaderScroll = useCallback(async (scrollTop: number) => {
+    setTitleCollapsed(scrollTop > 24);
+  }, []);
+
+  useEffect(() => {
+    if (!visible) setTitleCollapsed(false);
+  }, [visible]);
+
   useEffect(() => {
     if (!isEditing) {
       return;
     }
+    setTitleCollapsed(false);
     setActionsOpen(false);
     setSearchOpen(false);
     setSearchQuery("");
@@ -690,6 +700,7 @@ export const MemoDetailModal = ({
   useEffect(() => {
     const normalizedInitialSearchQuery = initialSearchQuery.trim();
     setViewerReady(false);
+    setTitleCollapsed(false);
     setSearchOpen(Boolean(normalizedInitialSearchQuery));
     setSearchQuery(normalizedInitialSearchQuery);
     setBodySearchMatchCount(0);
@@ -985,6 +996,25 @@ export const MemoDetailModal = ({
           <Pressable accessibilityLabel="返回列表" accessibilityRole="button" onPress={onClose} style={styles.detailHeaderButton}>
             <ChevronLeft color="#475569" size={21} />
           </Pressable>
+          <View style={detailLayoutStyles.headerTitleSlot}>
+            {titleCollapsed && !searchOpen && memo ? (
+              !memo.isDeleted && !locksRichTextEdit ? (
+                <Pressable
+                  accessibilityHint="进入编辑并聚焦标题"
+                  accessibilityLabel={`编辑笔记标题：${memoTitle}`}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    beginEditorStartup();
+                    onRichEdit(memo, "title");
+                  }}
+                >
+                  <Text numberOfLines={1} style={detailLayoutStyles.headerTitle}>{memoTitle}</Text>
+                </Pressable>
+              ) : (
+                <Text numberOfLines={1} style={detailLayoutStyles.headerTitle}>{memoTitle}</Text>
+              )
+            ) : null}
+          </View>
           <View style={styles.detailHeaderActions}>
             <Pressable
               accessibilityHint={
@@ -1011,27 +1041,6 @@ export const MemoDetailModal = ({
                 {syncStatusLabel}
               </Text>
             </Pressable>
-            {memo && !memo.isDeleted ? (
-              <Pressable
-                accessibilityLabel="分享笔记"
-                accessibilityRole="button"
-                disabled={isSharing}
-                onPress={() => onShare(memo)}
-                style={[styles.detailHeaderIconButton, isSharing && styles.buttonDisabled]}
-              >
-                {isSharing ? <ActivityIndicator color="#475569" size="small" /> : <Share2 color="#475569" size={20} />}
-              </Pressable>
-            ) : null}
-            {memo && !memo.isDeleted ? (
-              <Pressable
-                accessibilityLabel="版本历史"
-                accessibilityRole="button"
-                onPress={() => onOpenRevisions(memo)}
-                style={styles.detailHeaderIconButton}
-              >
-                <History color="#475569" size={20} />
-              </Pressable>
-            ) : null}
             {memo && !memo.isDeleted ? (
               <Pressable
                 accessibilityLabel="搜索当前笔记"
@@ -1162,7 +1171,7 @@ export const MemoDetailModal = ({
                 {editor.draftRestored ? <Text style={styles.richEditorDraftNotice}>已恢复上次未完成的本地草稿</Text> : null}
                 {editor.error ? <Text style={styles.richEditorInlineError}>{editor.error}</Text> : null}
               </View>
-            ) : (
+            ) : titleCollapsed && !searchOpen ? null : (
             <View style={detailLayoutStyles.meta}>
               {!memo.isDeleted && !locksRichTextEdit ? (
                 <Pressable
@@ -1304,6 +1313,7 @@ export const MemoDetailModal = ({
                 onReady={async () => {
                   setViewerReady(true);
                 }}
+                onReaderScroll={isEditing ? undefined : handleReaderScroll}
                 onResourcePress={isEditing ? editor.selectResource : onResourcePress}
                 onSearchResult={async (count, _index, resultQuery) => {
                   if (resultQuery === searchQuery) {
@@ -1351,6 +1361,21 @@ export const MemoDetailModal = ({
               <Pressable style={styles.actionSheet}>
                 <View style={styles.actionSheetHandle} />
                 <Text style={styles.actionSheetTitle}>{resolvedLocale !== "zh-CN" ? "Note actions" : "笔记操作"}</Text>
+                {!memo.isDeleted ? (
+                  <>
+                    <DetailActionSheetItem
+                      disabled={isSharing}
+                      icon={isSharing ? <ActivityIndicator color="#16A06E" size="small" /> : <Share2 color="#0f172a" size={18} />}
+                      label={resolvedLocale !== "zh-CN" ? "Share note" : "分享笔记"}
+                      onPress={() => closeActionsAndRun(() => onShare(memo))}
+                    />
+                    <DetailActionSheetItem
+                      icon={<History color="#0f172a" size={18} />}
+                      label={resolvedLocale !== "zh-CN" ? "Version history" : "版本历史"}
+                      onPress={() => closeActionsAndRun(() => onOpenRevisions(memo))}
+                    />
+                  </>
+                ) : null}
                 {!memo.isDeleted && !locksRichTextEdit ? (
                   <DetailActionSheetItem
                     icon={<Sparkles color="#16A06E" size={18} />}
@@ -1923,6 +1948,17 @@ const detailLayoutStyles = StyleSheet.create({
     paddingBottom: 0,
     paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  headerTitleSlot: {
+    flex: 1,
+    justifyContent: "center",
+    marginHorizontal: 8,
+    minWidth: 0,
+  },
+  headerTitle: {
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: "600",
   },
   viewer: {
     backgroundColor: "#ffffff",
