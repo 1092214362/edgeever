@@ -405,6 +405,7 @@ const HighlightedMetadataText = ({
 export const MemoDetailModal = ({
   editingSession,
   imageCompressionEnabled,
+  imageShareFromList,
   initialSearchQuery,
   isDeleting,
   isLoading,
@@ -439,6 +440,7 @@ export const MemoDetailModal = ({
     memo: MemoDetail;
   } | null;
   imageCompressionEnabled: boolean;
+  imageShareFromList: boolean;
   initialSearchQuery: string;
   isDeleting: boolean;
   isLoading: boolean;
@@ -498,6 +500,7 @@ export const MemoDetailModal = ({
   const [viewerGeneration, setViewerGeneration] = useState(0);
   const viewerRef = useRef<LocalTiptapEditorRef>(null);
   const imageExportIntentRef = useRef<"preview" | "share">("share");
+  const imageShareOpenedMemoRef = useRef<string | null>(null);
   const imageExportRequestRef = useRef<string | null>(null);
   const imageExportChunksRef = useRef<string[]>([]);
   const imageExportTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -682,6 +685,29 @@ export const MemoDetailModal = ({
   }, [visible]);
 
   useEffect(() => {
+    if (!imageShareFromList || !visible) {
+      imageShareOpenedMemoRef.current = null;
+      return;
+    }
+    if (!memo || !viewerReady || imageShareOpenedMemoRef.current === memo.id) return;
+    imageShareOpenedMemoRef.current = memo.id;
+    setImageShareOptionsOpen(true);
+  }, [imageShareFromList, memo, viewerReady, visible]);
+
+  const closeImageShareOptions = () => {
+    setImageShareOptionsOpen(false);
+    if (imageShareFromList) onClose();
+  };
+
+  const closeImagePreview = () => {
+    setPreparedNoteImage(null);
+    if (imageShareFromList) {
+      setImageShareOptionsOpen(false);
+      onClose();
+    }
+  };
+
+  useEffect(() => {
     if (!isEditing) {
       return;
     }
@@ -778,11 +804,22 @@ export const MemoDetailModal = ({
 
   useEffect(() => clearImageExportTimeout, [clearImageExportTimeout]);
 
+  useEffect(() => {
+    if (visible) return;
+    clearImageExportTimeout();
+    imageExportRequestRef.current = null;
+    imageExportChunksRef.current = [];
+    setIsExportingImage(false);
+    setImageShareOptionsOpen(false);
+    setPreparedNoteImage(null);
+  }, [clearImageExportTimeout, visible]);
+
   const failImageExport = useCallback((message?: string) => {
     clearImageExportTimeout();
     imageExportChunksRef.current = [];
     imageExportRequestRef.current = null;
     setIsExportingImage(false);
+    if (imageShareFromList) setImageShareOptionsOpen(true);
     const localizedMessage = message === "NOTE_IMAGE_TOO_LONG"
       ? (resolvedLocale !== "zh-CN"
           ? "This note is too long for one readable image. Choose a smaller font size or split the note."
@@ -792,7 +829,7 @@ export const MemoDetailModal = ({
       resolvedLocale !== "zh-CN" ? "Image export failed" : "导出笔记图片失败",
       localizedMessage || (resolvedLocale !== "zh-CN" ? "Try again later." : "请稍后重试。")
     );
-  }, [clearImageExportTimeout, resolvedLocale]);
+  }, [clearImageExportTimeout, imageShareFromList, resolvedLocale]);
 
   const handleImageExportEvent = useCallback(async (payloadJson: string) => {
     let event: MobileImageExportEvent;
@@ -1426,8 +1463,14 @@ export const MemoDetailModal = ({
             </Pressable>
           </Modal>
         ) : null}
-        <Modal animationType="fade" onRequestClose={() => setImageShareOptionsOpen(false)} transparent visible={imageShareOptionsOpen}>
-          <Pressable onPress={() => setImageShareOptionsOpen(false)} style={styles.actionSheetBackdrop}>
+        <Modal animationType="fade" onRequestClose={closeImageShareOptions} transparent visible={imageShareOptionsOpen}>
+          <Pressable
+            onPress={closeImageShareOptions}
+            style={[
+              styles.actionSheetBackdrop,
+              { paddingBottom: Math.max(safeAreaInsets.bottom, Platform.OS === "android" ? ANDROID_SYSTEM_NAVIGATION_FALLBACK : 0) },
+            ]}
+          >
             <Pressable style={[styles.actionSheet, imageShareStyles.sheetContainer]}>
               <View style={styles.actionSheetHandle} />
               <Text style={styles.actionSheetTitle}>{resolvedLocale !== "zh-CN" ? "Share as image" : "分享为图片"}</Text>
@@ -1534,7 +1577,7 @@ export const MemoDetailModal = ({
 
               <Pressable
                 accessibilityRole="button"
-                disabled={isExportingImage}
+                disabled={isExportingImage || !viewerReady}
                 onPress={() => {
                   setImageShareOptionsOpen(false);
                   exportMemoImage(imageShareFormat, {
@@ -1550,22 +1593,24 @@ export const MemoDetailModal = ({
                     intent: "preview",
                   });
                 }}
-                style={[imageShareStyles.shareButton, isExportingImage && styles.buttonDisabled]}
+                style={[imageShareStyles.shareButton, (isExportingImage || !viewerReady) && styles.buttonDisabled]}
               >
                 <Share2 color="#ffffff" size={18} />
                 <Text style={imageShareStyles.shareButtonText}>
-                  {resolvedLocale !== "zh-CN" ? "Generate preview" : "生成预览"}
+                  {!viewerReady
+                    ? (resolvedLocale !== "zh-CN" ? "Preparing note…" : "正在准备笔记…")
+                    : (resolvedLocale !== "zh-CN" ? "Generate preview" : "生成预览")}
                 </Text>
               </Pressable>
               </ScrollView>
             </Pressable>
           </Pressable>
         </Modal>
-        <Modal animationType="slide" onRequestClose={() => setPreparedNoteImage(null)} presentationStyle="fullScreen" visible={Boolean(preparedNoteImage)}>
+        <Modal animationType="slide" onRequestClose={closeImagePreview} presentationStyle="fullScreen" visible={Boolean(preparedNoteImage)}>
           <SafeAreaView style={imageShareStyles.previewSafeArea}>
             <View style={imageShareStyles.previewHeader}>
               <Text style={imageShareStyles.previewTitle}>{resolvedLocale !== "zh-CN" ? "Image preview" : "图片预览"}</Text>
-              <Pressable accessibilityLabel={resolvedLocale !== "zh-CN" ? "Close preview" : "关闭预览"} accessibilityRole="button" onPress={() => setPreparedNoteImage(null)} style={imageShareStyles.previewCloseButton}>
+              <Pressable accessibilityLabel={resolvedLocale !== "zh-CN" ? "Close preview" : "关闭预览"} accessibilityRole="button" onPress={closeImagePreview} style={imageShareStyles.previewCloseButton}>
                 <X color="#0f172a" size={22} />
               </Pressable>
             </View>
@@ -1732,14 +1777,14 @@ export const MemoDetailModal = ({
 
 const imageShareStyles = StyleSheet.create({
   sheetContainer: {
-    maxHeight: "85%",
+    height: "85%",
     paddingBottom: 24,
   },
   optionsContent: {
-    paddingBottom: 4,
+    paddingBottom: 48,
   },
   optionsScroll: {
-    flexShrink: 1,
+    flex: 1,
   },
   themeGrid: {
     flexDirection: "row",
