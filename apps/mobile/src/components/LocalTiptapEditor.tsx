@@ -2431,6 +2431,13 @@ const createMobileCodeBlockExtension = (
                 return;
               }
               svgContainer.innerHTML = svg;
+              const renderedSvg = svgContainer.querySelector("svg");
+              const viewBox = renderedSvg?.viewBox.baseVal;
+              if (renderedSvg && viewBox && viewBox.width > 0 && viewBox.height > 0) {
+                renderedSvg.style.width = `${Math.ceil(viewBox.width)}px`;
+                renderedSvg.style.height = `${Math.ceil(viewBox.height)}px`;
+                renderedSvg.style.maxWidth = "none";
+              }
               preview.replaceChildren(svgContainer);
             })
             .catch(() => {
@@ -3320,10 +3327,10 @@ const getEditorStyles = (theme: "light" | "dark", options?: { viewer?: boolean }
   .edgeever-x6-diagram .x6-node { cursor: pointer; }
   .edgeever-mermaid-code-block > pre { display: none; margin: 8px 0 0; }
   .edgeever-mermaid-code-block.is-source-visible > pre { display: block; }
-  .edgeever-mermaid-preview { display: flex; min-height: 104px; align-items: center; justify-content: center; overflow-x: auto; padding: 16px 4px; background: transparent; }
+  .edgeever-mermaid-preview { display: flex; min-height: 104px; align-items: center; justify-content: flex-start; overflow-x: auto; padding: 16px 4px; background: transparent; }
   .edgeever-mermaid-preview[hidden] { display: none; }
-  .edgeever-mermaid-svg { width: 100%; text-align: center; }
-  .edgeever-mermaid-svg svg { display: block; width: auto; max-width: 100%; height: auto; max-height: 440px; margin: auto; }
+  .edgeever-mermaid-svg { display: flex; width: max-content; min-width: 100%; flex: none; justify-content: center; }
+  .edgeever-mermaid-svg svg { display: block; max-width: none; max-height: none; flex: none; }
   .edgeever-mermaid-message, .edgeever-mermaid-error { margin: 0; font-size: 14px; line-height: 1.5; text-align: center; }
   .edgeever-mermaid-message { color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
   .edgeever-mermaid-error { color: ${theme === "dark" ? "#fda4af" : "#be123c"}; }

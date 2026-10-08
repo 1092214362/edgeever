@@ -936,8 +936,10 @@ html[data-theme="dark"] .ProseMirror pre code {
 }
 
 .edgeever-mermaid svg {
-  max-width: 100%;
-  height: auto;
+  display: block;
+  max-width: none;
+  max-height: none;
+  margin: 0 auto;
 }
 
 #editor.edgeever-diagram-reader-host {
